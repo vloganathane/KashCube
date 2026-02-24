@@ -867,6 +867,28 @@ Device A                    Encrypted Cloud              Device B
 - API for third-party integrations
 - Export format extensions
 
+### 12.4 Receipt Scanning (Planned — Phase 2, Week 9)
+
+**Purpose:** Auto-extract transaction data from photographed bills/receipts, primarily for cash purchases that aren't captured via SMS.
+
+**Approach:**
+- Use `google_mlkit_text_recognition` directly (on-device, no network calls)
+- Build a thin Indian-receipt parser on top of raw OCR text
+- Extract: total amount, store/merchant name, date, line items (best-effort)
+- Target: kirana stores, restaurants, fuel stations, medical bills
+- All processing stays 100% local — no cloud APIs
+
+**Why not `receipt_recognition` package:**
+- Optimized for German/English supermarkets, not Indian layouts
+- Adds ~15-20MB (ML Kit) to APK; we target <20MB total
+- Low maturity (v0.2.8, 219 downloads, unverified publisher)
+- UPI-dominant India means most transactions already captured via SMS
+
+**Integration points:**
+- Triggered from the existing bill attachment flow (camera capture → OCR → pre-fill amount/merchant)
+- Falls back to manual entry if OCR confidence is low
+- Stored locally alongside the bill image already saved in `bill_attachments` table
+
 ---
 
 **Next Document:** [Database Schema](./DATABASE_SCHEMA.md)

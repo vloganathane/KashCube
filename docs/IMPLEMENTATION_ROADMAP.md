@@ -26,11 +26,11 @@ This roadmap follows a **core-first, iterative approach**:
 **Goal:** Get basic SMS parsing working
 
 **Tasks:**
-- [ ] Set up Flutter project structure
-- [ ] Configure SQLite database
-- [ ] Implement SMS permissions (Android)
-- [ ] Create SMS listener service
-- [ ] Parse basic UPI SMS (PhonePe, GPay)
+- [x] Set up Flutter project structure
+- [x] Configure SQLite database
+- [x] Implement SMS permissions (Android)
+- [x] Create SMS listener service
+- [x] Parse basic UPI SMS (PhonePe, GPay)
 - [ ] Test with real SMS from personal phone
 
 **Deliverables:**
@@ -43,12 +43,13 @@ This roadmap follows a **core-first, iterative approach**:
 **Goal:** Display and add transactions
 
 **Tasks:**
-- [ ] Design transaction data model
-- [ ] Create transaction list UI
-- [ ] Build add transaction screen (manual entry)
-- [ ] Implement transaction detail view
-- [ ] Add edit/delete functionality
-- [  ] Basic category dropdown
+- [x] Design transaction data model
+- [x] Create transaction list UI
+- [x] Build add transaction screen (manual entry)
+- [x] Implement transaction detail view
+- [x] Add edit/delete functionality
+- [x] Basic category dropdown
+- [x] Bill/receipt attachment support (photo + PDF, per transaction)
 
 **Deliverables:**
 - Transaction list displaying parsed SMS
@@ -65,10 +66,10 @@ This roadmap follows a **core-first, iterative approach**:
 **Goal:** Auto-suggest categories and separate business/personal
 
 **Tasks:**
-- [ ] Implement merchant-based categorization logic
-- [ ] Add business/personal toggle to transactions
+- [x] Implement merchant-based categorization logic
+- [x] Add business/personal toggle to transactions
 - [ ] Create quick confirmation dialog after SMS detection
-- [ ] Build daily summary dashboard
+- [x] Build daily summary dashboard
 - [ ] Implement smart suggestions based on history
 - [ ] Add transaction filters (today, week, month)
 
@@ -217,11 +218,13 @@ This roadmap follows a **core-first, iterative approach**:
 - [ ] Build merchant intelligence (spending patterns)
 - [ ] Add ATM withdrawal tracking
 - [ ] Implement wallet balance tracking (Paytm, Amazon Pay)
+- [ ] Receipt scanning via on-device ML Kit OCR (Indian receipt layouts)
 
 **Deliverables:**
 - Refunds link back to original transactions
 - Cashback tracked separately
 - Complete picture of all money movement
+- Auto-extract amount + store from photographed receipts (cash transactions)
 
 **Time Estimate:** 40 hours
 
@@ -565,12 +568,14 @@ This roadmap follows a **core-first, iterative approach**:
 
 ### This Week
 1. ✅ Complete documentation
-2. Set up development environment
-3. Create Flutter project structure
-4. Start Week 1 tasks (SMS reading)
+2. ✅ Set up development environment
+3. ✅ Create Flutter project structure
+4. ✅ Week 1 tasks (SMS reading) — complete
+5. ✅ Week 2 tasks (Transaction UI) — complete
+6. Continue Week 3 tasks (Smart categorization, filters, confirmation flow)
 
 ### This Month (Weeks 1-4)
-- Complete transaction foundation
+- ✅ Complete transaction foundation
 - Build credit management
 - Self-test core features
 

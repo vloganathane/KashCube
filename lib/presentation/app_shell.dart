@@ -5,6 +5,7 @@ import '../data/models/parsed_sms.dart';
 import '../data/models/transaction.dart';
 import '../data/services/sms_parser.dart';
 import 'providers/recurring_provider.dart';
+import 'providers/report_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'screens/credits/credits_screen.dart';
@@ -130,6 +131,11 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
+          if (index == 3) {
+            ref.invalidate(monthlyPnLProvider);
+            ref.invalidate(monthlyTotalsProvider);
+            ref.invalidate(dailyTotalsProvider);
+          }
           setState(() => _currentIndex = index);
         },
         destinations: const [

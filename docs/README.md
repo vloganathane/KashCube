@@ -24,8 +24,8 @@
 - Development Guidelines _(see CONTRIBUTING.md in root)_
 
 ### Design
-- UI/UX Guidelines _(planned for Week 2-3)_
-- Screen Flows _(planned for Week 2-3)_
+- [UI/UX Guidelines](./UI_UX_GUIDELINES.md) - Design system, colors, typography, components
+- [Screen Flows](./SCREEN_FLOWS.md) - Navigation map and user journeys
 - Component Library _(will be built during development)_
 
 ### Privacy & Security
@@ -81,8 +81,8 @@ UI/UX Guidelines (Look & Feel)
 | Privacy Architecture | ✅ Complete | Feb 24, 2026 |
 | Privacy Policy | ✅ Complete | Feb 24, 2026 |
 | Setup Guide | ✅ Complete | Feb 24, 2026 |
-| UI/UX Guidelines | 📝 Planned (Week 2-3) | - |
-| Screen Flows | 📝 Planned (Week 2-3) | - |
+| UI/UX Guidelines | ✅ Complete | Feb 24, 2026 |
+| Screen Flows | ✅ Complete | Feb 24, 2026 |
 | User Personas | ✅ In PRD Section 4 | Feb 24, 2026 |
 | Market Analysis | ✅ In PRD Section 2 | Feb 24, 2026 |
 | Security Spec | ✅ In Privacy Architecture | Feb 24, 2026 |

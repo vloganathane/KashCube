@@ -57,6 +57,8 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.png
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:

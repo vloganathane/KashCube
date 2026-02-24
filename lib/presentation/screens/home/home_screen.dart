@@ -32,7 +32,17 @@ class HomeScreen extends ConsumerWidget {
           slivers: [
             SliverAppBar(
               pinned: true,
-              title: const Text('Kash Cube'),
+              title: Row(
+                children: [
+                  Image.asset(
+                    'assets/logo.png',
+                    height: 28,
+                    width: 28,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Text('Kash Cube'),
+                ],
+              ),
               actions: [
                 IconButton(
                   icon: const Icon(Icons.search),

@@ -1,6 +1,10 @@
 # MVP Scope Definition
 # ExpenseOwl - Minimum Viable Product
 
+**Version:** 1.0  
+**Date:** February 24, 2026  
+**Status:** Planning Phase
+
 **Timeline:** 6 weeks  
 **Target:** Personal + Small Business (Indian market)  
 **Platform:** Android first (iOS later)
@@ -851,4 +855,4 @@ If NO:
 
 ---
 
-**Next Document:** [Screen Flows](./SCREEN_FLOWS.md)
+**Next Steps:** Begin [Week 1 Implementation](./IMPLEMENTATION_ROADMAP.md#week-1-2-transaction-foundation)

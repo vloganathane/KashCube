@@ -1,5 +1,11 @@
 # 🦉 ExpenseOwl - Quick Start Guide
 
+**Version:** 1.0  
+**Date:** February 24, 2026  
+**Status:** Active
+
+---
+
 ## Prerequisites
 - Flutter SDK 3.0+ installed ([Get Flutter](https://flutter.dev/docs/get-started/install))
 - Android Studio or Xcode for emulators

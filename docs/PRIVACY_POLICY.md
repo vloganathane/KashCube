@@ -1,6 +1,8 @@
 # Privacy Policy - ExpenseOwl
 
-**Last Updated: February 24, 2026**
+**Version:** 1.0  
+**Last Updated:** February 24, 2026  
+**Status:** Active
 
 ## Our Privacy Commitment
 

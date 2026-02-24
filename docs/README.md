@@ -8,33 +8,34 @@
 
 ### Product Documents
 - [Product Requirements Document (PRD)](./PRD.md) - Complete product vision and requirements
-- [Feature Specifications](./FEATURES_SPEC.md) - Detailed feature specifications
-- [User Personas](./USER_PERSONAS.md) - Target users and use cases
-- [Market Analysis](./MARKET_ANALYSIS.md) - Competitive landscape and positioning
+- Feature Specifications _(covered in PRD.md)_
+- User Personas _(covered in PRD.md Section 4)_
+- Market Analysis _(covered in PRD.md Section 2)_
 
 ### Technical Documents
 - [Technical Architecture](./TECHNICAL_ARCHITECTURE.md) - System design and architecture
 - [Database Schema](./DATABASE_SCHEMA.md) - Complete data models
 - [SMS Parsing Specification](./SMS_PARSING_SPEC.md) - SMS parsing patterns and logic
-- [API Documentation](./API_DOCUMENTATION.md) - Internal APIs and interfaces
+- API Documentation _(coming in Phase 2)_
 
 ### Implementation
 - [Implementation Roadmap](./IMPLEMENTATION_ROADMAP.md) - Phased build plan
 - [MVP Scope](./MVP_SCOPE.md) - Minimum Viable Product definition
-- [Development Guidelines](./DEVELOPMENT_GUIDELINES.md) - Coding standards and practices
+- Development Guidelines _(see CONTRIBUTING.md in root)_
 
 ### Design
-- [UI/UX Guidelines](./UI_UX_GUIDELINES.md) - Design principles and patterns
-- [Screen Flows](./SCREEN_FLOWS.md) - User journey maps
-- [Component Library](./COMPONENT_LIBRARY.md) - Reusable UI components
+- UI/UX Guidelines _(planned for Week 2-3)_
+- Screen Flows _(planned for Week 2-3)_
+- Component Library _(will be built during development)_
 
 ### Privacy & Security
 - [Privacy Architecture](./PRIVACY_ARCHITECTURE.md) - Privacy-first design
-- [Security Specification](./SECURITY_SPEC.md) - Security measures and protocols
-- [Data Governance](./DATA_GOVERNANCE.md) - Data handling policies
+- [Privacy Policy](./PRIVACY_POLICY.md) - User-facing privacy policy
+- Security Specification _(covered in PRIVACY_ARCHITECTURE.md)_
+- Data Governance _(covered in PRIVACY_ARCHITECTURE.md)_
 
-### Testing & Quality
-- [Test Plan](./TEST_PLAN.md) - Testing strategy
+##Test Plan _(planned for Week 4-5)_
+- Quality Checklist _(see MVP_SCOPE.md Definition of Done)_
 - [Quality Checklist](./QUALITY_CHECKLIST.md) - Release criteria
 
 ## 🎯 Quick Start
@@ -80,13 +81,13 @@ UI/UX Guidelines (Look & Feel)
 | Privacy Architecture | ✅ Complete | Feb 24, 2026 |
 | Privacy Policy | ✅ Complete | Feb 24, 2026 |
 | Setup Guide | ✅ Complete | Feb 24, 2026 |
-| UI/UX Guidelines | 📝 Todo | - |
-| Screen Flows | 📝 Todo | - |
-| User Personas | 📝 In PRD | - |
-| Market Analysis | 📝 In PRD | - |
-| Security Spec | 📝 Todo | - |
-| Test Plan | 📝 Todo | - |
-| Development Guidelines | 📝 Todo | - |
+| UI/UX Guidelines | 📝 Planned (Week 2-3) | - |
+| Screen Flows | 📝 Planned (Week 2-3) | - |
+| User Personas | ✅ In PRD Section 4 | Feb 24, 2026 |
+| Market Analysis | ✅ In PRD Section 2 | Feb 24, 2026 |
+| Security Spec | ✅ In Privacy Architecture | Feb 24, 2026 |
+| Test Plan | 📝 Planned (Week 4-5) | - |
+| Development Guidelines | ✅ See CONTRIBUTING.md | Feb 24, 2026 |
 
 ## 🤝 Contributing to Documentation
 

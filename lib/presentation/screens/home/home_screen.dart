@@ -30,7 +30,8 @@ class HomeScreen extends ConsumerWidget {
         },
         child: CustomScrollView(
           slivers: [
-            SliverAppBar.large(
+            SliverAppBar(
+              pinned: true,
               title: const Text('Kash Cube'),
               actions: [
                 IconButton(

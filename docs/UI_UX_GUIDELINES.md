@@ -1,5 +1,5 @@
 # UI/UX Design Guidelines
-# ExpenseOwl Design System
+# Kash Cube Design System
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -24,7 +24,7 @@
 
 - **Tone:** Calm, trustworthy, efficient
 - **Feel:** Like a personal finance diary, not a corporate banking app
-- **Mascot:** Owl (🦉) — wise, watchful, nocturnal (tracks while you sleep)
+- **Mascot:** Cube (🧊) — solid, structured, all your finances in one place
 - **Visual style:** Clean, minimal, data-dense where needed but never cluttered
 
 ---
@@ -634,8 +634,8 @@ Text(
 ```dart
 // ThemeData setup
 MaterialApp(
-  theme: ExpenseOwlTheme.light(),
-  darkTheme: ExpenseOwlTheme.dark(),
+  theme: KashCubeTheme.light(),
+  darkTheme: KashCubeTheme.dark(),
   themeMode: ThemeMode.system, // Follow system preference
 )
 
@@ -774,7 +774,7 @@ Max width: min(screen_width - 32, 400)
 
 ```
 ┌──────────────────────────┐
-│ 🦉 ExpenseOwl            │
+│ 🧊 Kash Cube            │
 │ ₹450 spent at Swiggy     │
 │ Category: Food & Dining   │
 │ [View]  [Edit Category]  │
@@ -805,7 +805,7 @@ lib/
 
 ```dart
 // Custom semantic colors via ThemeExtension
-class ExpenseOwlColors extends ThemeExtension<ExpenseOwlColors> {
+class KashCubeColors extends ThemeExtension<KashCubeColors> {
   final Color income;
   final Color expense;
   final Color credit;
@@ -818,7 +818,7 @@ class ExpenseOwlColors extends ThemeExtension<ExpenseOwlColors> {
 }
 
 // Usage:
-final colors = Theme.of(context).extension<ExpenseOwlColors>()!;
+final colors = Theme.of(context).extension<KashCubeColors>()!;
 Text('₹5,000', style: TextStyle(color: colors.income));
 ```
 

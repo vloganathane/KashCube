@@ -1,5 +1,5 @@
 # Technical Architecture
-# ExpenseOwl System Design
+# Kash Cube System Design
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -13,7 +13,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    ExpenseOwl Mobile App                │
+│                    Kash Cube Mobile App                │
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
@@ -565,7 +565,7 @@ class SecurityService {
   Future<bool> authenticateBiometric() async {
     final LocalAuthentication auth = LocalAuthentication();
     return await auth.authenticate(
-      localizedReason: 'Unlock ExpenseOwl',
+      localizedReason: 'Unlock Kash Cube',
       options: const AuthenticationOptions(
         biometricOnly: true,
         stickyAuth: true,

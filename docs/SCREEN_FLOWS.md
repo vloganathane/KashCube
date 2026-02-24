@@ -1,5 +1,5 @@
 # Screen Flows & User Journeys
-# ExpenseOwl Navigation Map
+# Kash Cube Navigation Map
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -13,7 +13,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│                     ExpenseOwl App                        │
+│                     Kash Cube App                        │
 ├──────────────────────────────────────────────────────────┤
 │                                                          │
 │  ┌─────────────┐                                         │
@@ -71,7 +71,7 @@ App Install & First Open
          │
          ▼
 ┌─────────────────┐
-│  Welcome Screen  │  "Welcome to ExpenseOwl 🦉"
+│  Welcome Screen  │  "Welcome to Kash Cube 🧊"
 │  (1 of 3)       │  "Track expenses privately"
 └────────┬────────┘
          │ Next
@@ -426,8 +426,8 @@ Settings Screen
 ┌───────────────────────────────────┐
 │  ✅ Backup Complete!             │
 │                                   │
-│  File: expense_owl_2026-02-24.db │
-│  Location: Downloads/ExpenseOwl/  │
+│  File: kash_cube_2026-02-24.db │
+│  Location: Downloads/Kash Cube/  │
 │  Size: 2.4 MB                    │
 │                                   │
 │  [Share] [OK]                    │
@@ -565,7 +565,7 @@ Settings Screen
 ```
 ┌───────────────────────────────┐
 │                               │
-│          🦉                   │
+│          🧊                   │
 │                               │
 │   "No transactions yet"       │
 │                               │
@@ -640,7 +640,7 @@ Settings Screen
 │                               │
 │   "SMS access not granted"    │
 │                               │
-│   You can still use ExpenseOwl│
+│   You can still use Kash Cube│
 │   by adding transactions      │
 │   manually.                   │
 │                               │
@@ -676,7 +676,7 @@ Settings Screen
 │   "Invalid backup file"       │
 │                               │
 │   The selected file is not    │
-│   a valid ExpenseOwl backup.  │
+│   a valid Kash Cube backup.  │
 │   Please select a .db file.   │
 │                               │
 │   [Try Again] [Cancel]        │
@@ -851,10 +851,10 @@ Monthly backup to personal drive
 
 | Link | Screen | Use Case |
 |------|--------|----------|
-| `expenseowl://add` | Add Transaction | Quick add from widget |
-| `expenseowl://credits` | Credits Screen | Notification tap |
-| `expenseowl://reports/monthly` | Monthly Report | Scheduled reminder |
-| `expenseowl://transaction/:id` | Transaction Detail | SMS notification tap |
+| `kashcube://add` | Add Transaction | Quick add from widget |
+| `kashcube://credits` | Credits Screen | Notification tap |
+| `kashcube://reports/monthly` | Monthly Report | Scheduled reminder |
+| `kashcube://transaction/:id` | Transaction Detail | SMS notification tap |
 
 ---
 

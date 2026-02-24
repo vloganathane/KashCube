@@ -1,4 +1,4 @@
-# 🦉 ExpenseOwl - Quick Start Guide
+# 🧊 Kash Cube - Quick Start Guide
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -15,7 +15,7 @@
 
 ### 1. Navigate to Project
 ```bash
-cd /Users/loganathanev/Documents/vloganathane/daily-apps/2026/02/24/ExpenseOwl
+cd /Users/loganathanev/Documents/vloganathane/daily-apps/2026/02/24/KashCube
 ```
 
 ### 2. Install Dependencies
@@ -140,8 +140,8 @@ lib/
 ## Database Location
 
 SQLite database is stored at:
-- **Android**: `/data/data/com.example.expense_owl/databases/expense_owl.db`
-- **iOS**: `Library/Application Support/expense_owl.db`
+- **Android**: `/data/data/com.example.kash_cube/databases/kash_cube.db`
+- **iOS**: `Library/Application Support/kash_cube.db`
 
 ## Next Steps
 
@@ -163,4 +163,4 @@ SQLite database is stored at:
 
 ---
 
-Happy tracking! 🦉
+Happy tracking! 🧊

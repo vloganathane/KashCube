@@ -1,5 +1,5 @@
 # MVP Scope Definition
-# ExpenseOwl - Minimum Viable Product
+# Kash Cube - Minimum Viable Product
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -16,7 +16,7 @@
 ### 1.1 Core Principle
 **"Use it every day for 2 weeks"**
 
-If we (developers) don't use ExpenseOwl daily after Week 6, MVP has failed. The app must solve a real problem immediately.
+If we (developers) don't use Kash Cube daily after Week 6, MVP has failed. The app must solve a real problem immediately.
 
 ### 1.2 What MVP Is
 ✅ Core functionality that works flawlessly  
@@ -383,7 +383,7 @@ And: I can filter by business expenses only
 
 **Story 1: No Data Leaks**
 ```
-Given: I installed ExpenseOwl
+Given: I installed Kash Cube
 When: I use the app
 Then: No data sent to internet
 And: All data stays on my phone
@@ -542,7 +542,7 @@ And: I control where it goes (not auto-cloud)
 - FAB (Floating Action Button): "+ Add Transaction"
 
 **App Bar:**
-- Logo/Title: "ExpenseOwl"
+- Logo/Title: "Kash Cube"
 - Actions:
   - Search icon
   - Settings icon
@@ -838,7 +838,7 @@ And: I control where it goes (not auto-cloud)
 ## 11. Success = Daily Use
 
 **The Only Metric That Matters:**
-> "Do we use ExpenseOwl every single day after Week 6?"
+> "Do we use Kash Cube every single day after Week 6?"
 
 If YES:
 - ✅ MVP succeeded

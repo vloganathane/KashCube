@@ -1,6 +1,6 @@
-# Contributing to ExpenseOwl
+# Contributing to Kash Cube
 
-Thank you for considering contributing to ExpenseOwl! 🦉
+Thank you for considering contributing to Kash Cube! 🧊
 
 ## How Can You Help?
 
@@ -119,7 +119,7 @@ flutter run
 
 - **General questions:** Open a GitHub Discussion (coming soon)
 - **Bug reports:** Open an issue
-- **Security concerns:** Email security@expenseowl.app (if serious)
+- **Security concerns:** Email security@kashcube.app (if serious)
 
 ## Recognition
 
@@ -134,4 +134,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-**Thank you for helping make ExpenseOwl better! 🙏**
+**Thank you for helping make Kash Cube better! 🙏**

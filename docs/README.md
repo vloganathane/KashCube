@@ -1,4 +1,4 @@
-# ExpenseOwl Documentation
+# Kash Cube Documentation
 
 **Version:** 1.0  
 **Last Updated:** February 24, 2026  
@@ -100,4 +100,4 @@ When updating documentation:
 ## 📞 Contact
 
 Documentation maintained by: Loganathan EV  
-Project: ExpenseOwl - Privacy-First Expense Tracker for India
+Project: Kash Cube - Privacy-First Expense Tracker for India

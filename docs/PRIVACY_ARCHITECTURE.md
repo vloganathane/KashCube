@@ -1,5 +1,5 @@
 # Privacy Architecture
-# ExpenseOwl - Privacy-First Design
+# Kash Cube - Privacy-First Design
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -48,7 +48,7 @@
 
 **Location:** 
 ```
-/data/data/com.expenseowl.app/databases/expense_owl.db
+/data/data/com.kashcube.app/databases/kash_cube.db
 ```
 
 **Security:**
@@ -261,7 +261,7 @@ final canAuth = await auth.canCheckBiometrics;
 
 if (canAuth) {
   final authenticated = await auth.authenticate(
-    localizedReason: 'Unlock ExpenseOwl',
+    localizedReason: 'Unlock Kash Cube',
     options: const AuthenticationOptions(
       biometricOnly: true,
       stickyAuth: true,
@@ -316,7 +316,7 @@ if (canAuth) {
 
 **File Format:**
 ```
-expense_owl_backup_2026-02-24_15-30.db
+kash_cube_backup_2026-02-24_15-30.db
 ```
 
 ### 6.2 CSV Export (MVP)
@@ -493,7 +493,7 @@ Profile 2 (Viewer):
 
 ---
 
-**ExpenseOwl Privacy Policy**
+**Kash Cube Privacy Policy**
 
 Last updated: February 24, 2026
 
@@ -525,7 +525,7 @@ We don't share any data with third parties because we don't have any data. We do
 If we add cloud sync in future (optional feature), we'll update this policy and notify you in the app.
 
 **Contact**  
-Questions? Email us at privacy@expenseowl.app
+Questions? Email us at privacy@kashcube.app
 
 ---
 
@@ -590,7 +590,7 @@ Can users request data deletion?
 ### 12.1 Open Source (Future)
 
 **Consideration:**
-Should we open-source ExpenseOwl?
+Should we open-source Kash Cube?
 
 **Pros:**
 - Ultimate transparency (users can verify privacy claims)
@@ -628,7 +628,7 @@ Should we open-source ExpenseOwl?
 ### 13.1 Privacy as Feature
 
 **Market Positioning:**
-> "ExpenseOwl: The Only Expense Tracker That Respects Your Privacy"
+> "Kash Cube: The Only Expense Tracker That Respects Your Privacy"
 
 **Differentiators:**
 - No account required (competitors force signup)
@@ -795,7 +795,7 @@ Should we open-source ExpenseOwl?
 - Rollback changes
 - Open-source the app (accountability)
 
-**Contact:** privacy@expenseowl.app
+**Contact:** privacy@kashcube.app
 
 ---
 

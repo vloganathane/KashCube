@@ -1,5 +1,5 @@
 # Product Requirements Document (PRD)
-# ExpenseOwl - Privacy-First Financial Tracker for India
+# Kash Cube - Privacy-First Financial Tracker for India
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -11,7 +11,7 @@
 ## 1. Executive Summary
 
 ### 1.1 Product Vision
-ExpenseOwl is a privacy-first financial tracking application specifically designed for the Indian market, focusing on small business owners and individuals who use UPI for daily transactions. The app automatically captures financial transactions from SMS, manages customer credits (udhar), tracks loans, and provides complete financial visibility—all while keeping data 100% local on the device.
+Kash Cube is a privacy-first financial tracking application specifically designed for the Indian market, focusing on small business owners and individuals who use UPI for daily transactions. The app automatically captures financial transactions from SMS, manages customer credits (udhar), tracks loans, and provides complete financial visibility—all while keeping data 100% local on the device.
 
 ### 1.2 Problem Statement
 **Who:** Small business owners, freelancers, and privacy-conscious individuals in India  

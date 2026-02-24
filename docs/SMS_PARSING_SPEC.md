@@ -1,5 +1,5 @@
 # SMS Parsing Specification
-# ExpenseOwl SMS Parser
+# Kash Cube SMS Parser
 
 **Version:** 1.0  
 **Date:** February 24, 2026  

@@ -1,5 +1,5 @@
 # Implementation Roadmap
-# ExpenseOwl Development Plan
+# Kash Cube Development Plan
 
 **Version:** 1.0  
 **Date:** February 24, 2026  
@@ -143,7 +143,7 @@ This roadmap follows a **core-first, iterative approach**:
 ## ✅ End of Phase 1 Checkpoint
 
 ### Self-Test Period (2 weeks)
-**Goal:** Use ExpenseOwl exclusively for personal finances
+**Goal:** Use Kash Cube exclusively for personal finances
 
 **Activities:**
 - Use app for all financial tracking

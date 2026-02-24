@@ -1,4 +1,4 @@
-# Privacy Policy - ExpenseOwl
+# Privacy Policy - Kash Cube
 
 **Version:** 1.0  
 **Last Updated:** February 24, 2026  
@@ -6,7 +6,7 @@
 
 ## Our Privacy Commitment
 
-ExpenseOwl is built with privacy at its core. We believe your financial data is yours and yours alone.
+Kash Cube is built with privacy at its core. We believe your financial data is yours and yours alone.
 
 ## Data Storage
 
@@ -26,7 +26,7 @@ ExpenseOwl is built with privacy at its core. We believe your financial data is 
 ### Where It's Stored
 - **Android**: Local device storage in app-private directory
 - **iOS**: App sandbox in Application Support directory
-- **Accessible only** to ExpenseOwl app, not to other apps
+- **Accessible only** to Kash Cube app, not to other apps
 
 ## Data We DO NOT Collect
 
@@ -76,13 +76,13 @@ Since all data is local:
 ## Data Security
 
 - Data stored in SQLite database with standard security
-- Access restricted to ExpenseOwl app only
+- Access restricted to Kash Cube app only
 - Protected by device-level security (lock screen, encryption)
 - No transmission over network = no interception risk
 
 ## Children's Privacy
 
-ExpenseOwl does not collect any data from anyone, including children. The app can be safely used by anyone to track expenses.
+Kash Cube does not collect any data from anyone, including children. The app can be safely used by anyone to track expenses.
 
 ## Changes to This Policy
 
@@ -93,7 +93,7 @@ Since we don't collect data:
 
 ## Open Source
 
-ExpenseOwl is open source. You can:
+Kash Cube is open source. You can:
 - Review the code to verify these claims
 - Audit the database implementation
 - Confirm no network calls are made
@@ -135,7 +135,7 @@ For questions about this privacy policy or the app:
 
 ## Third-Party Services
 
-ExpenseOwl uses these open-source packages:
+Kash Cube uses these open-source packages:
 - **sqflite**: Local database (no network calls)
 - **provider**: State management (local only)
 - **fl_chart**: Charts rendering (local only)
@@ -160,9 +160,9 @@ You can verify these claims by:
 
 ## Bottom Line
 
-**ExpenseOwl is privacy-first by design, not just by policy.**
+**Kash Cube is privacy-first by design, not just by policy.**
 
-Your financial data is personal. We built ExpenseOwl to keep it that way.
+Your financial data is personal. We built Kash Cube to keep it that way.
 
 ---
 

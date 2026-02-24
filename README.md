@@ -1,8 +1,8 @@
-# ExpenseOwl 🦉
+# Kash Cube 🧊
 
 **Privacy-First Expense Tracker for Indian Small Businesses & Freelancers**
 
-ExpenseOwl is a Flutter mobile app that automatically captures UPI transactions from SMS, manages customer credits (udhar/khata), and provides comprehensive financial tracking—all while keeping your data 100% local and private.
+Kash Cube is a Flutter mobile app that automatically captures UPI transactions from SMS, manages customer credits (udhar/khata), and provides comprehensive financial tracking—all while keeping your data 100% local and private.
 
 ## 🎯 Vision
 
@@ -50,7 +50,7 @@ A smart expense tracker designed specifically for the Indian market that:
 
 ```bash
 # Clone repository
-cd ExpenseOwl
+cd KashCube
 
 # Install dependencies
 flutter pub get

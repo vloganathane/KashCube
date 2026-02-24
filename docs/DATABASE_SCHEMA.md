@@ -1,5 +1,5 @@
 # Database Schema
-# ExpenseOwl Data Model
+# Kash Cube Data Model
 
 **Version:** 1.0  
 **Date:** February 24, 2026  

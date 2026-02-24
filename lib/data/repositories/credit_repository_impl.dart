@@ -81,6 +81,17 @@ class CreditRepositoryImpl implements CreditRepository {
   }
 
   @override
+  Future<List<CreditRecord>> getCleared() async {
+    final db = await _db;
+    final rows = await db.query(
+      'credits',
+      where: 'deleted_at IS NULL AND is_cleared = 1',
+      orderBy: 'cleared_date DESC',
+    );
+    return rows.map((r) => CreditRecord.fromMap(r)).toList();
+  }
+
+  @override
   Future<List<CreditRecord>> getByCustomer(String customerName) async {
     final db = await _db;
     final rows = await db.query(
@@ -115,7 +126,13 @@ class CreditRepositoryImpl implements CreditRepository {
   }
 
   @override
-  Future<void> recordPayment(int creditId, double amount) async {
+  Future<void> recordPayment(
+    int creditId,
+    double amount, {
+    String? paymentMethod,
+    int? transactionId,
+    String? notes,
+  }) async {
     final db = await _db;
     final credit = await getById(creditId);
     if (credit == null) return;
@@ -124,6 +141,17 @@ class CreditRepositoryImpl implements CreditRepository {
     final newPending = credit.totalAmount - newPaid;
     final isCleared = newPending <= 0;
 
+    // Insert payment record
+    await db.insert('credit_payments', CreditPayment(
+      creditId: creditId,
+      amount: amount,
+      paymentDate: DateTime.now(),
+      paymentMethod: paymentMethod,
+      transactionId: transactionId,
+      notes: notes,
+    ).toMap());
+
+    // Update credit record
     await db.update(
       'credits',
       {
@@ -136,6 +164,18 @@ class CreditRepositoryImpl implements CreditRepository {
       where: 'id = ?',
       whereArgs: [creditId],
     );
+  }
+
+  @override
+  Future<List<CreditPayment>> getPaymentsForCredit(int creditId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'credit_payments',
+      where: 'credit_id = ?',
+      whereArgs: [creditId],
+      orderBy: 'payment_date DESC',
+    );
+    return rows.map((r) => CreditPayment.fromMap(r)).toList();
   }
 
   @override
@@ -163,5 +203,57 @@ class CreditRepositoryImpl implements CreditRepository {
       limit: 50,
     );
     return rows.map((r) => CreditRecord.fromMap(r)).toList();
+  }
+
+  @override
+  Future<List<CustomerCreditSummary>> getCustomerSummaries() async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT 
+        customer_name,
+        phone_number,
+        COALESCE(SUM(CASE WHEN direction = 'given' THEN total_amount ELSE 0 END), 0) as total_given,
+        COALESCE(SUM(CASE WHEN direction = 'received' THEN total_amount ELSE 0 END), 0) as total_received,
+        COALESCE(SUM(CASE WHEN is_cleared = 0 THEN pending_amount ELSE 0 END), 0) as total_pending,
+        SUM(CASE WHEN is_cleared = 0 THEN 1 ELSE 0 END) as pending_count,
+        SUM(CASE WHEN is_cleared = 1 THEN 1 ELSE 0 END) as cleared_count,
+        SUM(CASE WHEN is_cleared = 0 AND due_date IS NOT NULL AND due_date < ? THEN 1 ELSE 0 END) as overdue_count
+      FROM credits 
+      WHERE deleted_at IS NULL
+      GROUP BY customer_name
+      ORDER BY total_pending DESC
+    ''', [DateTime.now().toIso8601String()]);
+
+    return rows.map((r) => CustomerCreditSummary(
+      customerName: r['customer_name'] as String,
+      phoneNumber: r['phone_number'] as String?,
+      totalGiven: (r['total_given'] as num).toDouble(),
+      totalReceived: (r['total_received'] as num).toDouble(),
+      totalPending: (r['total_pending'] as num).toDouble(),
+      pendingCount: (r['pending_count'] as num).toInt(),
+      clearedCount: (r['cleared_count'] as num).toInt(),
+      overdueCount: (r['overdue_count'] as num).toInt(),
+    )).toList();
+  }
+
+  @override
+  Future<CustomerCreditSummary?> getCustomerSummary(String customerName) async {
+    final summaries = await getCustomerSummaries();
+    try {
+      return summaries.firstWhere(
+        (s) => s.customerName.toLowerCase() == customerName.toLowerCase(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<List<String>> getCustomerNames() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT DISTINCT customer_name FROM credits WHERE deleted_at IS NULL ORDER BY customer_name",
+    );
+    return rows.map((r) => r['customer_name'] as String).toList();
   }
 }

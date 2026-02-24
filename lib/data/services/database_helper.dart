@@ -93,6 +93,7 @@ class DatabaseHelper {
         total_amount REAL NOT NULL,
         paid_amount REAL DEFAULT 0,
         pending_amount REAL NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'given',
         credit_date TEXT NOT NULL,
         due_date TEXT,
         cleared_date TEXT,
@@ -113,6 +114,26 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_credits_status ON credits(is_cleared, is_overdue)');
     await db.execute('CREATE INDEX idx_credits_due_date ON credits(due_date)');
     await db.execute('CREATE INDEX idx_credits_pending ON credits(pending_amount DESC)');
+    await db.execute('CREATE INDEX idx_credits_direction ON credits(direction)');
+
+    // -- credit_payments table
+    await db.execute('''
+      CREATE TABLE credit_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        credit_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        payment_date TEXT NOT NULL,
+        payment_method TEXT,
+        transaction_id INTEGER,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE,
+        FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+      )
+    ''');
+
+    await db.execute('CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)');
+    await db.execute('CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)');
 
     // -- loans table
     await db.execute('''
@@ -285,8 +306,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 2,
-      'description': 'Add bill_attachments table',
+      'version': 3,
+      'description': 'Add credit_payments table and direction column',
     });
 
     // Seed default categories
@@ -316,6 +337,36 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 2,
         'description': 'Add bill_attachments table',
+      });
+    }
+
+    if (oldVersion < 3) {
+      // Add direction column to credits
+      await db.execute("ALTER TABLE credits ADD COLUMN direction TEXT NOT NULL DEFAULT 'given'");
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_credits_direction ON credits(direction)');
+
+      // Create credit_payments table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS credit_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          credit_id INTEGER NOT NULL,
+          amount REAL NOT NULL,
+          payment_date TEXT NOT NULL,
+          payment_method TEXT,
+          transaction_id INTEGER,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE,
+          FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+        )
+      ''');
+
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_credit ON credit_payments(credit_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_date ON credit_payments(payment_date DESC)');
+
+      await db.insert('schema_version', {
+        'version': 3,
+        'description': 'Add credit_payments table and direction column',
       });
     }
   }

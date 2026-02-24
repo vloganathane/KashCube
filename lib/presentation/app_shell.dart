@@ -1,21 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/models/parsed_sms.dart';
+import '../data/models/transaction.dart';
+import '../data/services/sms_parser.dart';
+import 'providers/recurring_provider.dart';
+import 'providers/sms_provider.dart';
+import 'providers/transaction_provider.dart';
 import 'screens/credits/credits_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_screen.dart';
+import 'widgets/sms_confirmation_sheet.dart';
 
-/// App shell with bottom navigation bar and FAB.
-class AppShell extends StatefulWidget {
+/// App shell with bottom navigation bar, FAB, and SMS listener.
+class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   int _currentIndex = 0;
+  bool _smsListenerStarted = false;
 
   static const _screens = [
     HomeScreen(),
@@ -23,6 +32,91 @@ class _AppShellState extends State<AppShell> {
     CreditsScreen(),
     ReportsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Kick off SMS listener after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initSmsListener();
+      _processRecurringTransactions();
+    });
+  }
+
+  Future<void> _processRecurringTransactions() async {
+    await processDueRecurringTransactions(ref);
+  }
+
+  Future<void> _initSmsListener() async {
+    if (_smsListenerStarted) return;
+
+    final smsService = ref.read(smsServiceProvider);
+    final hasPermission = await smsService.hasPermission;
+    if (!hasPermission) return;
+
+    _smsListenerStarted = true;
+    smsService.startListening(
+      onTransactionDetected: _onSmsTransactionDetected,
+    );
+  }
+
+  void _onSmsTransactionDetected(ParsedSms parsed) {
+    // Check for duplicate before showing confirmation
+    final dedupeHash = SmsParser.generateDedupeHash(parsed);
+
+    // Add to pending list (provider handles dedup by smsBody)
+    ref.read(pendingSmsConfirmationsProvider.notifier).addPending(parsed);
+
+    // Show confirmation sheet if the app is in foreground
+    if (mounted) {
+      _showSmsConfirmation(parsed, dedupeHash);
+    }
+  }
+
+  Future<void> _showSmsConfirmation(
+    ParsedSms parsed,
+    String dedupeHash,
+  ) async {
+    // Check if already saved (by dedupe hash)
+    final repo = ref.read(transactionRepositoryProvider);
+    final exists = await repo.existsByDedupeHash(dedupeHash);
+    if (exists) {
+      ref.read(pendingSmsConfirmationsProvider.notifier).removePending(parsed);
+      return;
+    }
+
+    if (!mounted) return;
+
+    final action = await showSmsConfirmationSheet(context, ref, parsed);
+
+    if (action == SmsConfirmAction.editManually && mounted) {
+      // Open Add screen pre-filled with parsed data
+      Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => AddEditTransactionScreen(
+            transaction: Transaction(
+              amount: parsed.amount,
+              date: parsed.date ?? DateTime.now(),
+              type: parsed.isCredit
+                  ? TransactionType.income
+                  : TransactionType.expense,
+              category: '',
+              partyName: parsed.partyName,
+              smsBody: parsed.smsBody,
+              smsSender: parsed.smsSender,
+              upiApp: parsed.upiApp,
+              upiRefNo: parsed.upiRefNo,
+              referenceId: parsed.referenceId,
+              autoDetected: true,
+            ),
+          ),
+        ),
+      );
+      ref.read(pendingSmsConfirmationsProvider.notifier).removePending(parsed);
+    } else if (action == SmsConfirmAction.dismissed) {
+      ref.read(pendingSmsConfirmationsProvider.notifier).removePending(parsed);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

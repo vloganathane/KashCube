@@ -27,6 +27,59 @@ final totalOverdueCreditProvider = FutureProvider<double>((ref) async {
   return repo.getTotalOverdue();
 });
 
+/// Provider for overdue credits list.
+final overdueCreditsProvider = FutureProvider<List<CreditRecord>>((ref) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getOverdue();
+});
+
+/// Provider for cleared credits list.
+final clearedCreditsProvider = FutureProvider<List<CreditRecord>>((ref) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getCleared();
+});
+
+/// Provider for customer summaries.
+final customerSummariesProvider =
+    FutureProvider<List<CustomerCreditSummary>>((ref) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getCustomerSummaries();
+});
+
+/// Provider for credits by customer name.
+final creditsByCustomerProvider =
+    FutureProvider.family<List<CreditRecord>, String>((ref, customerName) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getByCustomer(customerName);
+});
+
+/// Provider for a single customer's credit summary.
+final customerSummaryProvider =
+    FutureProvider.family<CustomerCreditSummary?, String>((ref, customerName) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getCustomerSummary(customerName);
+});
+
+/// Provider for payments on a specific credit record.
+final creditPaymentsProvider =
+    FutureProvider.family<List<CreditPayment>, int>((ref, creditId) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getPaymentsForCredit(creditId);
+});
+
+/// Provider for a single credit record by ID.
+final creditByIdProvider =
+    FutureProvider.family<CreditRecord?, int>((ref, creditId) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getById(creditId);
+});
+
+/// Provider for known customer names (for autocomplete).
+final creditCustomerNamesProvider = FutureProvider<List<String>>((ref) async {
+  final repo = ref.read(creditRepositoryProvider);
+  return repo.getCustomerNames();
+});
+
 /// Manages credit records state.
 class CreditsNotifier extends StateNotifier<AsyncValue<List<CreditRecord>>> {
   final CreditRepository _repository;
@@ -82,9 +135,21 @@ class CreditsNotifier extends StateNotifier<AsyncValue<List<CreditRecord>>> {
     }
   }
 
-  Future<void> recordPayment(int creditId, double amount) async {
+  Future<void> recordPayment(
+    int creditId,
+    double amount, {
+    String? paymentMethod,
+    int? transactionId,
+    String? notes,
+  }) async {
     try {
-      await _repository.recordPayment(creditId, amount);
+      await _repository.recordPayment(
+        creditId,
+        amount,
+        paymentMethod: paymentMethod,
+        transactionId: transactionId,
+        notes: notes,
+      );
       await loadPending();
     } catch (e, st) {
       state = AsyncValue.error(e, st);

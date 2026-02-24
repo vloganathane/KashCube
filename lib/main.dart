@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
 import 'presentation/app_shell.dart';
+import 'presentation/providers/settings_provider.dart';
+import 'presentation/screens/settings/pin_lock_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -10,18 +13,119 @@ void main() {
 }
 
 /// Root widget for Kash Cube.
-class KashCubeApp extends StatelessWidget {
+class KashCubeApp extends ConsumerWidget {
   const KashCubeApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp(
       title: 'Kash Cube',
       debugShowCheckedModeBanner: false,
       theme: KashCubeTheme.light,
       darkTheme: KashCubeTheme.dark,
       themeMode: ThemeMode.system,
-      home: const AppShell(),
+      home: const _LockGate(),
     );
   }
 }
+
+/// Checks if app lock is enabled and shows PIN screen before the main app.
+class _LockGate extends ConsumerStatefulWidget {
+  const _LockGate();
+
+  @override
+  ConsumerState<_LockGate> createState() => _LockGateState();
+}
+
+class _LockGateState extends ConsumerState<_LockGate>
+    with WidgetsBindingObserver {
+  bool _isLocked = true;
+  bool _checkedLock = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkLock();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
+      // Re-lock when app comes back from background
+      _checkLock();
+    }
+  }
+
+  Future<void> _checkLock() async {
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final lockEnabled = await settingsRepo.get(SettingsKeys.appLockEnabled);
+
+    if (mounted) {
+      setState(() {
+        _isLocked = lockEnabled == 'true';
+        _checkedLock = true;
+      });
+    }
+
+    // Try biometric first if enabled
+    if (_isLocked) {
+      await _attemptBiometric();
+    }
+  }
+
+  Future<void> _attemptBiometric() async {
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    final bioEnabled = await settingsRepo.get(SettingsKeys.biometricEnabled);
+
+    if (bioEnabled != 'true') return;
+
+    try {
+      final localAuth = LocalAuthentication();
+      final canAuth = await localAuth.canCheckBiometrics ||
+          await localAuth.isDeviceSupported();
+
+      if (!canAuth) return;
+
+      final authenticated = await localAuth.authenticate(
+        localizedReason: 'Unlock Kash Cube',
+      );
+
+      if (authenticated && mounted) {
+        setState(() => _isLocked = false);
+      }
+    } catch (_) {
+      // Biometric failed or cancelled — user can enter PIN manually
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_checkedLock) {
+      // Splash / loading while we check lock state
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_isLocked) {
+      return PinLockScreen(
+        mode: PinScreenMode.unlock,
+        onSuccess: () {
+          setState(() => _isLocked = false);
+        },
+      );
+    }
+
+    return const AppShell();
+  }
+}
+
+/// Creates a [LocalAuthentication] instance.
+

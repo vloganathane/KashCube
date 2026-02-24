@@ -158,6 +158,105 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<Map<String, double>> getIncomeByCategorySummary(
+      DateTime start, DateTime end) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT category, SUM(amount) as total FROM transactions "
+      "WHERE deleted_at IS NULL AND type IN ('income', 'credit_received', 'loan_taken') "
+      "AND date >= ? AND date <= ? "
+      "GROUP BY category ORDER BY total DESC",
+      [start.toIso8601String(), end.toIso8601String()],
+    );
+    return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
+  }
+
+  @override
+  Future<Map<String, double>> getExpenseByCategorySummary(
+      DateTime start, DateTime end) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT category, SUM(amount) as total FROM transactions "
+      "WHERE deleted_at IS NULL AND type IN ('expense', 'credit_given', 'loan_repayment') "
+      "AND date >= ? AND date <= ? "
+      "GROUP BY category ORDER BY total DESC",
+      [start.toIso8601String(), end.toIso8601String()],
+    );
+    return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
+  }
+
+  @override
+  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT date(date) as day, "
+      "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
+      "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? "
+      "GROUP BY day ORDER BY day",
+      [start.toIso8601String(), end.toIso8601String()],
+    );
+    return rows
+        .map((r) => DailyTotal(
+              date: DateTime.parse(r['day'] as String),
+              income: (r['income'] as num).toDouble(),
+              expense: (r['expense'] as num).toDouble(),
+            ))
+        .toList();
+  }
+
+  @override
+  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6}) async {
+    final db = await _db;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month - months + 1, 1);
+    final rows = await db.rawQuery(
+      "SELECT "
+      "CAST(strftime('%Y', date) AS INTEGER) as yr, "
+      "CAST(strftime('%m', date) AS INTEGER) as mo, "
+      "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
+      "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND date >= ? "
+      "GROUP BY yr, mo ORDER BY yr, mo",
+      [start.toIso8601String()],
+    );
+    return rows
+        .map((r) => MonthlyTotal(
+              year: (r['yr'] as num).toInt(),
+              month: (r['mo'] as num).toInt(),
+              income: (r['income'] as num).toDouble(),
+              expense: (r['expense'] as num).toDouble(),
+            ))
+        .toList();
+  }
+
+  @override
+  Future<List<PartyTotal>> getTopParties(
+    DateTime start,
+    DateTime end, {
+    int limit = 10,
+  }) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT party_name, SUM(amount) as total, COUNT(*) as cnt "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != '' "
+      "AND date >= ? AND date <= ? "
+      "GROUP BY party_name ORDER BY total DESC LIMIT ?",
+      [start.toIso8601String(), end.toIso8601String(), limit],
+    );
+    return rows
+        .map((r) => PartyTotal(
+              partyName: r['party_name'] as String,
+              totalAmount: (r['total'] as num).toDouble(),
+              transactionCount: (r['cnt'] as num).toInt(),
+            ))
+        .toList();
+  }
+
+  @override
   Future<bool> existsByDedupeHash(String hash) async {
     final db = await _db;
     final result = await db.query(

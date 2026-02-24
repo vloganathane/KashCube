@@ -8,6 +8,9 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../loans/loans_screen.dart';
+import '../recurring/recurring_transactions_screen.dart';
+import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
@@ -29,6 +32,19 @@ class HomeScreen extends ConsumerWidget {
           slivers: [
             SliverAppBar.large(
               title: const Text('Kash Cube'),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Search',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SearchScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             SliverPadding(
               padding: const EdgeInsets.all(AppSpacing.base),
@@ -43,6 +59,41 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
+
+                  // Quick Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _QuickActionChip(
+                          icon: Icons.account_balance,
+                          label: 'Loans',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const LoansScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _QuickActionChip(
+                          icon: Icons.repeat,
+                          label: 'Recurring',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const RecurringTransactionsScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Recent Transactions Header
                   Row(
@@ -336,6 +387,27 @@ class _EmptyState extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ActionChip(
+      avatar: Icon(icon, size: AppSpacing.iconSm),
+      label: Text(label),
+      onPressed: onTap,
     );
   }
 }

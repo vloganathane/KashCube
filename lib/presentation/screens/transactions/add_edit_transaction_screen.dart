@@ -9,8 +9,10 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/services/suggestion_service.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/suggestion_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/bill_picker.dart';
 
@@ -53,6 +55,10 @@ class _AddEditTransactionScreenState
   BillPickerResult? _pendingBill;
   BillAttachment? _existingBill;
   bool _billRemoved = false;
+
+  // Smart suggestion state
+  TransactionSuggestion? _activeSuggestion;
+  bool _suggestionApplied = false;
 
   @override
   void initState() {
@@ -188,17 +194,12 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Party Name
-            TextFormField(
-              controller: _partyNameController,
-              decoration: const InputDecoration(
-                labelText: 'Party / Merchant (optional)',
-                prefixIcon: Icon(Icons.person_outline),
-                hintText: 'e.g. Swiggy, Ramesh',
-              ),
-              textCapitalization: TextCapitalization.words,
-              textInputAction: TextInputAction.next,
-            ),
+            // Party Name with Autocomplete
+            _buildPartyNameField(),
+
+            // Smart suggestion chip
+            if (_activeSuggestion != null && !_suggestionApplied)
+              _buildSuggestionChip(),
             const SizedBox(height: AppSpacing.lg),
 
             // Date & Time Row
@@ -286,6 +287,157 @@ class _AddEditTransactionScreenState
         ),
       ),
     );
+  }
+
+  Widget _buildPartyNameField() {
+    final knownNamesAsync = ref.watch(knownPartyNamesProvider);
+    final knownNames = knownNamesAsync.valueOrNull ?? [];
+
+    return Autocomplete<String>(
+      initialValue: _partyNameController.value,
+      optionsBuilder: (textEditingValue) {
+        if (textEditingValue.text.isEmpty) return const [];
+        final query = textEditingValue.text.toLowerCase();
+        return knownNames
+            .where((name) => name.toLowerCase().contains(query))
+            .take(5);
+      },
+      onSelected: (selected) {
+        _partyNameController.text = selected;
+        _fetchSuggestionForParty(selected);
+      },
+      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+        // Sync the external controller
+        controller.text = _partyNameController.text;
+        controller.addListener(() {
+          if (_partyNameController.text != controller.text) {
+            _partyNameController.text = controller.text;
+          }
+        });
+
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          decoration: const InputDecoration(
+            labelText: 'Party / Merchant (optional)',
+            prefixIcon: Icon(Icons.person_outline),
+            hintText: 'e.g. Swiggy, Ramesh',
+          ),
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+          onEditingComplete: () {
+            onFieldSubmitted();
+            if (controller.text.isNotEmpty) {
+              _fetchSuggestionForParty(controller.text);
+            }
+          },
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final option = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(option),
+                    leading: const Icon(Icons.history, size: 18),
+                    onTap: () => onSelected(option),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSuggestionChip() {
+    final suggestion = _activeSuggestion!;
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
+      child: Card(
+        color: context.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline,
+                size: 16,
+                color: context.colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'Previously: ${suggestion.category} via ${suggestion.paymentMethod.label}',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: _applySuggestion,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Apply'),
+              ),
+              IconButton(
+                onPressed: () => setState(() => _suggestionApplied = true),
+                icon: const Icon(Icons.close, size: 16),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fetchSuggestionForParty(String partyName) async {
+    if (widget.isEditing) return; // Don't suggest when editing
+
+    final service = ref.read(suggestionServiceProvider);
+    final suggestion = await service.suggestForParty(partyName);
+    if (mounted && suggestion != null) {
+      setState(() {
+        _activeSuggestion = suggestion;
+        _suggestionApplied = false;
+      });
+    }
+  }
+
+  void _applySuggestion() {
+    final suggestion = _activeSuggestion;
+    if (suggestion == null) return;
+
+    setState(() {
+      // Apply category if it exists in current type's list
+      final cats = _categoriesForType;
+      if (cats.contains(suggestion.category)) {
+        _category = suggestion.category;
+      }
+      _paymentMethod = suggestion.paymentMethod;
+      _mode = suggestion.mode;
+      _suggestionApplied = true;
+    });
   }
 
   Future<void> _save() async {

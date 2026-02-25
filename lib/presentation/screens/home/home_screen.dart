@@ -9,8 +9,10 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/bill_schedule_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/loan_provider.dart';
 import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
 import '../bills/bills_screen.dart';
 import '../loans/loans_screen.dart';
@@ -90,6 +92,9 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
+
+                  // Upcoming payments — loan EMIs / due dates + bills
+                  const _UpcomingSection(),
 
                   // Recent Transactions Header
                   Row(
@@ -880,4 +885,274 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// _UpcomingSection — swipeable upcoming loan + bill reminders
+// ---------------------------------------------------------------------------
 
+class _UpcomingSection extends ConsumerStatefulWidget {
+  const _UpcomingSection();
+
+  @override
+  ConsumerState<_UpcomingSection> createState() => _UpcomingSectionState();
+}
+
+class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
+  static const _previewCount = 5;
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final upcomingAsync = ref.watch(upcomingItemsProvider);
+
+    return upcomingAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+
+        final overdueCount = items.where((i) => i.isOverdue).length;
+        final displayed =
+            _expanded ? items : items.take(_previewCount).toList();
+        final extra = items.length - _previewCount;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Upcoming',
+                      style: context.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (overdueCount > 0) ...
+                    [
+                      const SizedBox(width: AppSpacing.sm),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.colorScheme.error,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$overdueCount overdue',
+                          style: context.textTheme.labelSmall?.copyWith(
+                            color: context.colorScheme.onError,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (items.length > _previewCount)
+                  TextButton(
+                    onPressed: () =>
+                        setState(() => _expanded = !_expanded),
+                    child: Text(
+                      _expanded ? 'Show less' : 'See $extra more',
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Items
+            ...displayed.map((item) {
+              final String key;
+              if (item is LoanUpcomingItem) {
+                key = 'loan_${item.loan.id}';
+              } else {
+                key = 'bill_${(item as BillUpcomingItem).bill.id}';
+              }
+              return Dismissible(
+                key: ValueKey(key),
+                direction: DismissDirection.startToEnd,
+                background: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade600,
+                    borderRadius:
+                        BorderRadius.circular(AppSpacing.radiusMd),
+                  ),
+                  padding: const EdgeInsets.only(left: AppSpacing.lg),
+                  alignment: Alignment.centerLeft,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Mark Paid',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                onDismissed: (_) => _onMarkPaid(item),
+                child: _UpcomingItemTile(item: item),
+              );
+            }),
+
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _onMarkPaid(UpcomingItem item) async {
+    if (item is BillUpcomingItem) {
+      await ref
+          .read(scheduledBillsProvider.notifier)
+          .markPaid(item.bill.id!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${item.bill.name} marked as paid'),
+          action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () => ref
+                .read(scheduledBillsProvider.notifier)
+                .markUnpaid(item.bill.id!),
+          ),
+        ),
+      );
+    } else if (item is LoanUpcomingItem) {
+      final amt = item.paymentAmount;
+      await ref
+          .read(activeLoansProvider.notifier)
+          .recordPayment(item.loan.id!, amt);
+      ref.invalidate(totalOutstandingLentProvider);
+      ref.invalidate(totalOutstandingBorrowedProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${CurrencyFormatter.format(amt)} paid · ${item.loan.lenderName}',
+          ),
+        ),
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _UpcomingItemTile
+// ---------------------------------------------------------------------------
+
+class _UpcomingItemTile extends StatelessWidget {
+  const _UpcomingItemTile({required this.item});
+
+  final UpcomingItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final days = item.daysUntilDue;
+
+    final String title;
+    final String subtitle;
+    final double amount;
+    final Color accentColor;
+    final IconData iconData;
+
+    if (item is LoanUpcomingItem) {
+      final l = item as LoanUpcomingItem;
+      title = l.loan.lenderName;
+      subtitle = l.loan.isLent ? 'Collect' : 'Pay back';
+      amount = l.paymentAmount;
+      accentColor = l.loan.isLent ? colors.income : colors.expense;
+      iconData = l.loan.isLent ? Icons.call_received : Icons.send;
+    } else {
+      final b = item as BillUpcomingItem;
+      title = b.bill.name;
+      subtitle = b.bill.category;
+      amount = b.bill.amount;
+      accentColor = colors.expense;
+      iconData = Icons.receipt_long;
+    }
+
+    final dueLabel = switch (days) {
+      0 => 'Due today',
+      1 => 'Tomorrow',
+      final d when d < 0 => '${d.abs()}d overdue',
+      final d => 'in ${d}d',
+    };
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(iconData, color: accentColor, size: 18),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '$subtitle · $dueLabel',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: days < 0
+                          ? context.colorScheme.error
+                          : context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  CurrencyFormatter.format(amount),
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: accentColor,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'RobotoMono',
+                  ),
+                ),
+                Icon(
+                  Icons.swipe_right_outlined,
+                  size: 12,
+                  color: context.colorScheme.outlineVariant,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

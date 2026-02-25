@@ -97,6 +97,20 @@ class BillScheduleRepositoryImpl implements BillScheduleRepository {
   }
 
   @override
+  Future<void> markUnpaid(int id) async {
+    final db = await _db;
+    await db.update(
+      _table,
+      {
+        'last_paid_date': null,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  @override
   Future<double> getTotalMonthly() async {
     final bills = await getAll();
     double total = 0;

@@ -26,6 +26,9 @@ abstract class BillScheduleRepository {
   /// Marks a bill as paid for the current period.
   Future<void> markPaid(int id);
 
+  /// Marks a bill as unpaid (clears last_paid_date).
+  Future<void> markUnpaid(int id);
+
   /// Returns total monthly bill outflow (active bills normalized to monthly).
   Future<double> getTotalMonthly();
 }

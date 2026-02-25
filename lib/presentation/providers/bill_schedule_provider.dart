@@ -52,6 +52,11 @@ class ScheduledBillsNotifier extends StateNotifier<AsyncValue<List<Bill>>> {
     await _repo.markPaid(id);
     await loadAll();
   }
+
+  Future<void> markUnpaid(int id) async {
+    await _repo.markUnpaid(id);
+    await loadAll();
+  }
 }
 
 /// Single bill by id.

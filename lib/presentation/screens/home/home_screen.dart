@@ -164,6 +164,9 @@ class _DashboardDeck extends ConsumerStatefulWidget {
 class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
   final _controller = PageController(viewportFraction: 0.92);
   int _page = 0;
+  bool _expanded = false;
+
+  void _toggle() => setState(() => _expanded = !_expanded);
 
   @override
   void dispose() {
@@ -186,37 +189,57 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final netBalance = summary.balance + lent - borrowed;
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Column(
-          children: [
-            // Month
-            Text(
-              DateFormatter.formatMonthYear(DateTime.now()),
-              style: context.textTheme.bodySmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
+      child: InkWell(
+        onTap: _toggle,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Column(
+            children: [
+              // Month
+              Text(
+                DateFormatter.formatMonthYear(DateTime.now()),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
+              const SizedBox(height: 2),
 
-            // Primary: Actual Balance (cash in hand)
-            Text(
-              CurrencyFormatter.format(actualBalance),
-              style: context.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontFamily: 'RobotoMono',
+              // Primary: Actual Balance (cash in hand)
+              Text(
+                CurrencyFormatter.format(actualBalance),
+                style: context.textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'RobotoMono',
+                ),
               ),
-            ),
-            const SizedBox(height: 1),
-            Text(
-              'Actual Balance',
-              style: context.textTheme.labelSmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
+              const SizedBox(height: 1),
+              // Label + chevron
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Actual Balance',
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 14,
+                      color: context.colorScheme.outline,
+                    ),
+                  ),
+                ],
               ),
-            ),
 
-            // Secondary: Net Balance + breakdown — only when loans exist
-            if (hasLoans) ...[
+              // Secondary: Net Balance + breakdown — only when loans exist
+              if (hasLoans) ...[
               const SizedBox(height: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -262,43 +285,52 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
             ],
 
-            const SizedBox(height: AppSpacing.xs),
-
-            // Swipeable cards
-            SizedBox(
-              height: 130,
-              child: PageView(
-                controller: _controller,
-                onPageChanged: (i) => setState(() => _page = i),
-                children: [
-                  _OverviewCard(summary: summary, colors: colors),
-                  _PersonalCard(summary: summary, colors: colors),
-                  _BusinessCard(summary: summary, colors: colors),
-                ],
+              // Swipeable cards — only when expanded
+              AnimatedSize(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOut,
+                child: _expanded
+                    ? Column(
+                        children: [
+                          const SizedBox(height: AppSpacing.xs),
+                          SizedBox(
+                            height: 130,
+                            child: PageView(
+                              controller: _controller,
+                              onPageChanged: (i) => setState(() => _page = i),
+                              children: [
+                                _OverviewCard(summary: summary, colors: colors),
+                                _PersonalCard(summary: summary, colors: colors),
+                                _BusinessCard(summary: summary, colors: colors),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          // Page dots
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List.generate(3, (i) {
+                              final active = i == _page;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                width: active ? 14 : 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? context.colorScheme.primary
+                                      : context.colorScheme.outlineVariant,
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
               ),
-            ),
-
-            const SizedBox(height: AppSpacing.xs),
-            // Page dots
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (i) {
-                final active = i == _page;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: active ? 14 : 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: active
-                        ? context.colorScheme.primary
-                        : context.colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                );
-              }),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

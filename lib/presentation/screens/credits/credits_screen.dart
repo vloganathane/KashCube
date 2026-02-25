@@ -65,6 +65,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_credits',
         onPressed: () => _navigateToAddCredit(),
         icon: const Icon(Icons.add),
         label: const Text('Give Credit'),

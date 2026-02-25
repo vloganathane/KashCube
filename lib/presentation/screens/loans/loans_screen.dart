@@ -76,6 +76,7 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_loans',
         onPressed: () => _showAddLoanSheet(context),
         child: const Icon(Icons.add),
       ),

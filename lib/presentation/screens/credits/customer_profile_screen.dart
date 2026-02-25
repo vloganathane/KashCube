@@ -28,6 +28,7 @@ class CustomerProfileScreen extends ConsumerWidget {
         title: Text(customerName),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_customer_profile',
         onPressed: () => _addCredit(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('New Credit'),

@@ -163,6 +163,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       ),
       floatingActionButton: showFab
           ? FloatingActionButton(
+              heroTag: 'fab_app_shell',
               onPressed: () {
                 Navigator.of(context).push<bool>(
                   MaterialPageRoute(

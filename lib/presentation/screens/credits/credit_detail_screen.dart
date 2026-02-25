@@ -91,6 +91,7 @@ class _CreditDetailBody extends ConsumerWidget {
       floatingActionButton: credit.isCleared
           ? null
           : FloatingActionButton.extended(
+              heroTag: 'fab_credit_detail',
               onPressed: () => _recordPayment(context, ref),
               icon: const Icon(Icons.payments_outlined),
               label: const Text('Record Payment'),

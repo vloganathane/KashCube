@@ -28,6 +28,7 @@ class RecurringTransactionsScreen extends ConsumerWidget {
         title: const Text('Recurring Transactions'),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_recurring',
         onPressed: () => _openAddScreen(context),
         child: const Icon(Icons.add),
       ),

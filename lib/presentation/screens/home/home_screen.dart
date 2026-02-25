@@ -899,6 +899,9 @@ class _UpcomingSection extends ConsumerStatefulWidget {
 class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
   static const _previewCount = 5;
   bool _expanded = false;
+  /// Keys of items the user has already swiped — remove immediately so the
+  /// Dismissible widget leaves the tree before the provider refreshes.
+  final Set<String> _dismissedKeys = {};
 
   @override
   Widget build(BuildContext context) {
@@ -910,10 +913,28 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
       data: (items) {
         if (items.isEmpty) return const SizedBox.shrink();
 
-        final overdueCount = items.where((i) => i.isOverdue).length;
+        // Clear keys that are no longer in the provider list (already removed)
+        final incomingKeys = items.map((item) {
+          if (item is LoanUpcomingItem) return 'loan_${item.loan.id}';
+          return 'bill_${(item as BillUpcomingItem).bill.id}';
+        }).toSet();
+        _dismissedKeys.removeWhere((k) => !incomingKeys.contains(k));
+
+        // Filter out already-dismissed items (pending async provider refresh)
+        final visible = items.where((item) {
+          final String k;
+          if (item is LoanUpcomingItem) {
+            k = 'loan_${item.loan.id}';
+          } else {
+            k = 'bill_${(item as BillUpcomingItem).bill.id}';
+          }
+          return !_dismissedKeys.contains(k);
+        }).toList();
+        if (visible.isEmpty) return const SizedBox.shrink();
+        final overdueCount = visible.where((i) => i.isOverdue).length;
         final displayed =
-            _expanded ? items : items.take(_previewCount).toList();
-        final extra = items.length - _previewCount;
+            _expanded ? visible : visible.take(_previewCount).toList();
+        final extra = visible.length - _previewCount;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,7 +973,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
                     ],
                   ],
                 ),
-                if (items.length > _previewCount)
+                if (visible.length > _previewCount)
                   TextButton(
                     onPressed: () =>
                         setState(() => _expanded = !_expanded),
@@ -998,7 +1019,12 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
                     ],
                   ),
                 ),
-                onDismissed: (_) => _onMarkPaid(item),
+                onDismissed: (_) {
+                  // Remove from local set immediately so the item leaves the
+                  // tree before the async provider refresh completes.
+                  setState(() => _dismissedKeys.add(key));
+                  _onMarkPaid(item);
+                },
                 child: _UpcomingItemTile(item: item),
               );
             }),

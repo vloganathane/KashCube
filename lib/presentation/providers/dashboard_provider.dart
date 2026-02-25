@@ -11,13 +11,29 @@ class DashboardSummary {
   final double totalInvestment;
   final Map<String, double> categorySummary;
 
+  // Mode breakdown
+  final double personalIncome;
+  final double personalExpense;
+  final double businessIncome;
+  final double businessExpense;
+
   const DashboardSummary({
     this.totalIncome = 0,
     this.totalExpense = 0,
     this.balance = 0,
     this.totalInvestment = 0,
     this.categorySummary = const {},
+    this.personalIncome = 0,
+    this.personalExpense = 0,
+    this.businessIncome = 0,
+    this.businessExpense = 0,
   });
+
+  double get personalPnl => personalIncome - personalExpense;
+  double get businessPnl => businessIncome - businessExpense;
+
+  /// True when any business-mode transaction exists this month.
+  bool get hasBusinessActivity => businessIncome > 0 || businessExpense > 0;
 }
 
 /// Provider for this month's dashboard summary.
@@ -47,12 +63,24 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
       final redeemed = await impl.getTotalRedeemed(monthStart, monthEnd);
       final categorySummary = await _transactionRepo.getCategorySummary(monthStart, monthEnd);
 
+      // Mode breakdown (run in parallel)
+      final results = await Future.wait([
+        _transactionRepo.getTotalIncome(monthStart, monthEnd, mode: 'personal'),
+        _transactionRepo.getTotalExpense(monthStart, monthEnd, mode: 'personal'),
+        _transactionRepo.getTotalIncome(monthStart, monthEnd, mode: 'business'),
+        _transactionRepo.getTotalExpense(monthStart, monthEnd, mode: 'business'),
+      ]);
+
       state = AsyncValue.data(DashboardSummary(
         totalIncome: income,
         totalExpense: expense,
         balance: income - expense,
         totalInvestment: invested - redeemed,
         categorySummary: categorySummary,
+        personalIncome: results[0],
+        personalExpense: results[1],
+        businessIncome: results[2],
+        businessExpense: results[3],
       ));
     } catch (e, st) {
       state = AsyncValue.error(e, st);

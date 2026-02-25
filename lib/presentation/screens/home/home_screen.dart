@@ -383,6 +383,13 @@ class _ExpandedDetails extends StatelessWidget {
               ),
             ],
           ),
+
+          // Personal / Business split — only when business activity exists
+          if (summary.hasBusinessActivity) ...[  
+            const SizedBox(height: AppSpacing.sm),
+            _ModeSplitRow(summary: summary, colors: colors),
+          ],
+
           const SizedBox(height: AppSpacing.sm),
           // Loans / Bills / Recurring
           Row(
@@ -442,6 +449,130 @@ class _ExpandedDetails extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Two-column Personal / Business breakdown row shown in expanded deck.
+class _ModeSplitRow extends StatelessWidget {
+  const _ModeSplitRow({
+    required this.summary,
+    required this.colors,
+  });
+
+  final DashboardSummary summary;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ModeTile(
+            icon: Icons.person_outline,
+            label: 'Personal',
+            income: summary.personalIncome,
+            expense: summary.personalExpense,
+            pnl: summary.personalPnl,
+            colors: colors,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _ModeTile(
+            icon: Icons.business_center_outlined,
+            label: 'Business',
+            income: summary.businessIncome,
+            expense: summary.businessExpense,
+            pnl: summary.businessPnl,
+            colors: colors,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Single Personal/Business tile showing income, expense, and net P&L.
+class _ModeTile extends StatelessWidget {
+  const _ModeTile({
+    required this.icon,
+    required this.label,
+    required this.income,
+    required this.expense,
+    required this.pnl,
+    required this.colors,
+  });
+
+  final IconData icon;
+  final String label;
+  final double income;
+  final double expense;
+  final double pnl;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final pnlColor = pnl >= 0 ? colors.income : colors.expense;
+    final pnlPrefix = pnl >= 0 ? '+' : '';
+
+    return Material(
+      color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: AppSpacing.iconSm, color: context.colorScheme.outline),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: context.textTheme.labelSmall),
+                  const SizedBox(height: 1),
+                  // Income ↓ / Expense ↑ sub-row
+                  Row(
+                    children: [
+                      Icon(Icons.arrow_downward, size: 10, color: colors.income),
+                      const SizedBox(width: 1),
+                      Text(
+                        CurrencyFormatter.formatCompact(income),
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: colors.income,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(Icons.arrow_upward, size: 10, color: colors.expense),
+                      const SizedBox(width: 1),
+                      Text(
+                        CurrencyFormatter.formatCompact(expense),
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: colors.expense,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
+                    style: context.textTheme.titleSmall?.copyWith(
+                      color: pnlColor,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'RobotoMono',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

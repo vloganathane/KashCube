@@ -11,11 +11,11 @@ class DashboardSummary {
   final double totalInvestment;
   final Map<String, double> categorySummary;
 
-  // Mode breakdown
-  final double personalIncome;
-  final double personalExpense;
-  final double businessIncome;
-  final double businessExpense;
+  // Mode breakdown — nullable so hot-reload with stale objects doesn't crash
+  final double? personalIncome;
+  final double? personalExpense;
+  final double? businessIncome;
+  final double? businessExpense;
 
   const DashboardSummary({
     this.totalIncome = 0,
@@ -23,17 +23,18 @@ class DashboardSummary {
     this.balance = 0,
     this.totalInvestment = 0,
     this.categorySummary = const {},
-    this.personalIncome = 0,
-    this.personalExpense = 0,
-    this.businessIncome = 0,
-    this.businessExpense = 0,
+    this.personalIncome,
+    this.personalExpense,
+    this.businessIncome,
+    this.businessExpense,
   });
 
-  double get personalPnl => personalIncome - personalExpense;
-  double get businessPnl => businessIncome - businessExpense;
+  double get personalPnl => (personalIncome ?? 0) - (personalExpense ?? 0);
+  double get businessPnl => (businessIncome ?? 0) - (businessExpense ?? 0);
 
   /// True when any business-mode transaction exists this month.
-  bool get hasBusinessActivity => businessIncome > 0 || businessExpense > 0;
+  bool get hasBusinessActivity =>
+      (businessIncome ?? 0) > 0 || (businessExpense ?? 0) > 0;
 }
 
 /// Provider for this month's dashboard summary.

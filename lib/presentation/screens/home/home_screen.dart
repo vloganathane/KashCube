@@ -472,8 +472,8 @@ class _ModeSplitRow extends StatelessWidget {
           child: _ModeTile(
             icon: Icons.person_outline,
             label: 'Personal',
-            income: summary.personalIncome,
-            expense: summary.personalExpense,
+            income: summary.personalIncome ?? 0,
+            expense: summary.personalExpense ?? 0,
             pnl: summary.personalPnl,
             colors: colors,
           ),
@@ -483,8 +483,8 @@ class _ModeSplitRow extends StatelessWidget {
           child: _ModeTile(
             icon: Icons.business_center_outlined,
             label: 'Business',
-            income: summary.businessIncome,
-            expense: summary.businessExpense,
+            income: summary.businessIncome ?? 0,
+            expense: summary.businessExpense ?? 0,
             pnl: summary.businessPnl,
             colors: colors,
           ),

@@ -176,10 +176,10 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final summary = widget.summary;
     final colors = context.kashColors;
 
-    // Actual balance = cash flow + money owed to you − money you owe
+    // Cash in hand = transaction flow + cash received (borrowed) − cash given out (lent)
     final lent     = ref.watch(totalPendingLentProvider).valueOrNull ?? 0.0;
     final borrowed = ref.watch(totalPendingBorrowedProvider).valueOrNull ?? 0.0;
-    final actualBalance = summary.balance + lent - borrowed;
+    final actualBalance = summary.balance + borrowed - lent;
     final hasLoans = lent > 0 || borrowed > 0;
 
     return Card(

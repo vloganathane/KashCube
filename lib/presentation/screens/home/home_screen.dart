@@ -16,6 +16,7 @@ import '../../app_shell.dart';
 import '../bills/bills_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
@@ -58,6 +59,17 @@ class HomeScreen extends ConsumerWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => const SearchScreen(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  tooltip: 'Settings',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SettingsScreen(),
                       ),
                     );
                   },

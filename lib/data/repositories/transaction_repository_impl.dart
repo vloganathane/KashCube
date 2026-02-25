@@ -324,33 +324,39 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<List<LedgerPartyEntry>> getPartyLedgerSummaries() async {
     final db = await _db;
+    // Include ALL transaction types that reference a party so the khata
+    // view shows the full financial relationship (not just lent/borrowed).
     final rows = await db.rawQuery(
       "SELECT t.party_name, "
       "COALESCE(p.party_type, 'person') as party_type, "
-      "SUM(CASE WHEN t.type = 'lent' THEN t.amount ELSE 0 END) as total_lent, "
-      "SUM(CASE WHEN t.type = 'borrowed' THEN t.amount ELSE 0 END) as total_borrowed, "
-      "SUM(CASE WHEN t.type = 'received_back' THEN t.amount ELSE 0 END) as total_received_back, "
-      "SUM(CASE WHEN t.type = 'paid_back' THEN t.amount ELSE 0 END) as total_paid_back, "
-      "SUM(CASE WHEN t.type = 'invested' THEN t.amount ELSE 0 END) as total_invested, "
-      "SUM(CASE WHEN t.type = 'redeemed' THEN t.amount ELSE 0 END) as total_redeemed, "
+      "SUM(CASE WHEN t.type = 'lent'          THEN t.amount ELSE 0 END) as total_lent, "
+      "SUM(CASE WHEN t.type = 'borrowed'       THEN t.amount ELSE 0 END) as total_borrowed, "
+      "SUM(CASE WHEN t.type = 'received_back'  THEN t.amount ELSE 0 END) as total_received_back, "
+      "SUM(CASE WHEN t.type = 'paid_back'      THEN t.amount ELSE 0 END) as total_paid_back, "
+      "SUM(CASE WHEN t.type = 'invested'       THEN t.amount ELSE 0 END) as total_invested, "
+      "SUM(CASE WHEN t.type = 'redeemed'       THEN t.amount ELSE 0 END) as total_redeemed, "
+      "SUM(CASE WHEN t.type = 'income'         THEN t.amount ELSE 0 END) as total_income, "
+      "SUM(CASE WHEN t.type = 'expense'        THEN t.amount ELSE 0 END) as total_expense, "
       "COUNT(*) as cnt, MAX(t.date) as last_date "
       "FROM transactions t "
       "LEFT JOIN parties p ON LOWER(TRIM(p.name)) = LOWER(TRIM(t.party_name)) "
       "WHERE t.deleted_at IS NULL AND t.party_name IS NOT NULL AND t.party_name != '' "
-      "AND t.type IN ('lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed') "
-      "GROUP BY t.party_name "
+      "AND t.type != 'transfer' "
+      "GROUP BY LOWER(TRIM(t.party_name)) "
       "ORDER BY MAX(t.date) DESC",
     );
     return rows.map((r) => LedgerPartyEntry(
       partyName: r['party_name'] as String,
       partyType: r['party_type'] as String? ?? 'person',
-      totalLent: (r['total_lent'] as num).toDouble(),
-      totalBorrowed: (r['total_borrowed'] as num).toDouble(),
-      totalReceivedBack: (r['total_received_back'] as num).toDouble(),
-      totalPaidBack: (r['total_paid_back'] as num).toDouble(),
-      totalInvested: (r['total_invested'] as num).toDouble(),
-      totalRedeemed: (r['total_redeemed'] as num).toDouble(),
-      transactionCount: (r['cnt'] as num).toInt(),
+      totalLent:          (r['total_lent']          as num).toDouble(),
+      totalBorrowed:      (r['total_borrowed']       as num).toDouble(),
+      totalReceivedBack:  (r['total_received_back']  as num).toDouble(),
+      totalPaidBack:      (r['total_paid_back']      as num).toDouble(),
+      totalInvested:      (r['total_invested']       as num).toDouble(),
+      totalRedeemed:      (r['total_redeemed']       as num).toDouble(),
+      totalIncome:        (r['total_income']          as num).toDouble(),
+      totalExpense:       (r['total_expense']         as num).toDouble(),
+      transactionCount:   (r['cnt'] as num).toInt(),
       lastTransactionDate: r['last_date'] != null
           ? DateTime.tryParse(r['last_date'] as String)
           : null,
@@ -360,11 +366,12 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<List<Transaction>> getTransactionsByParty(String partyName) async {
     final db = await _db;
+    // Return ALL transaction types for this party (full khata view).
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND party_name = ? AND type IN (?, ?, ?, ?, ?, ?)',
-      whereArgs: [partyName, 'lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed'],
-      orderBy: 'date DESC',
+      where: 'deleted_at IS NULL AND LOWER(TRIM(party_name)) = LOWER(TRIM(?))',
+      whereArgs: [partyName],
+      orderBy: 'date ASC',  // ascending for running-balance chronology
     );
     return rows.map((r) => Transaction.fromMap(Map<String, dynamic>.from(r))).toList();
   }

@@ -126,7 +126,11 @@ class PartyTotal {
   final int transactionCount;
 }
 
-/// Aggregated ledger position for a single party.
+/// Aggregated ledger (khata) position for a single party.
+///
+/// Covers ALL transaction types that reference a party — not just
+/// lending/borrowing.  Income + expense with a party are now first-class
+/// citizens so the Ledger screen can render a full T-account khata.
 class LedgerPartyEntry {
   const LedgerPartyEntry({
     required this.partyName,
@@ -136,34 +140,57 @@ class LedgerPartyEntry {
     required this.totalPaidBack,
     required this.totalInvested,
     required this.totalRedeemed,
+    required this.totalIncome,
+    required this.totalExpense,
     required this.transactionCount,
     this.lastTransactionDate,
     this.partyType = 'person',
   });
 
   final String partyName;
+
+  // ── Lending / borrowing ─────────────────────────────────────────────────
   final double totalLent;
   final double totalBorrowed;
   final double totalReceivedBack;
   final double totalPaidBack;
+
+  // ── Investments ─────────────────────────────────────────────────────────
   final double totalInvested;
   final double totalRedeemed;
+
+  // ── Regular transactions with this party ────────────────────────────────
+  /// Money received FROM this party (salary, rent, freelance, etc.)
+  final double totalIncome;
+  /// Money paid TO this party (bills, services, purchases, etc.)
+  final double totalExpense;
+
   final int transactionCount;
   final DateTime? lastTransactionDate;
   /// 'person' or 'vendor' — sourced from the parties table.
   final String partyType;
 
-  /// Positive = they owe you; negative = you owe them.
+  // ── Computed balances ────────────────────────────────────────────────────
+
+  /// Outstanding lent net (lent - received_back).  Positive = they owe you.
   double get netLendingBalance => totalLent - totalReceivedBack;
 
-  /// Positive = you owe them; negative = overpaid.
+  /// Outstanding borrowed net (borrowed - paid_back).  Positive = you owe them.
   double get netBorrowingBalance => totalBorrowed - totalPaidBack;
 
-  /// Net across lending + borrowing (positive = they owe you net).
+  /// Net money-owed balance: positive = they owe you; negative = you owe them.
+  /// Only counts lent/borrowed obligations (not regular income/expense).
   double get netBalance => netLendingBalance - netBorrowingBalance;
 
   /// Unredeemed investment amount with this party/institution.
   double get netInvestment => totalInvested - totalRedeemed;
 
+  /// True when there are no outstanding obligations (lent/borrowed/invested).
   bool get isCleared => netBalance.abs() < 0.01 && netInvestment.abs() < 0.01;
+
+  /// True when there is any outstanding money-owed obligation.
+  bool get hasOutstanding => !isCleared;
+
+  /// True when there are regular income/expense transactions with this party.
+  bool get hasRegularActivity => totalIncome > 0 || totalExpense > 0;
 }

@@ -9,7 +9,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/bill_schedule_provider.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/loan_provider.dart';
 import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../app_shell.dart';
@@ -33,9 +32,8 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.read(dashboardSummaryProvider.notifier).loadSummary();
           ref.read(recentTransactionsProvider.notifier).loadRecent();
-          ref.invalidate(totalPendingLoanProvider);
-          ref.invalidate(totalPendingLentProvider);
-          ref.invalidate(totalPendingBorrowedProvider);
+          ref.invalidate(totalOutstandingLentProvider);
+          ref.invalidate(totalOutstandingBorrowedProvider);
           ref.invalidate(totalMonthlyBillsProvider);
         },
         child: CustomScrollView(
@@ -179,8 +177,8 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final summary = widget.summary;
     final colors = context.kashColors;
 
-    final lent     = ref.watch(totalPendingLentProvider).valueOrNull ?? 0.0;
-    final borrowed = ref.watch(totalPendingBorrowedProvider).valueOrNull ?? 0.0;
+    final lent     = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+    final borrowed = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
     final hasLoans = lent > 0 || borrowed > 0;
 
     // Actual = cash physically in hand (borrowed money is in pocket; lent money has left)
@@ -348,7 +346,10 @@ class _OverviewCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
     final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
-    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
+    // Total outstanding = outstanding lent (to receive) + outstanding borrowed (to pay)
+    final lentOutstanding     = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+    final borrowedOutstanding = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
+    final totalOutstanding = lentOutstanding + borrowedOutstanding;
 
     return _SwipeCard(
       label: 'Overview',
@@ -391,8 +392,7 @@ class _OverviewCard extends ConsumerWidget {
         ),
         _CardFooterTile(
           icon: Icons.account_balance_wallet, label: 'Ledger',
-          value: totalLoanAsync.maybeWhen(
-            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          value: CurrencyFormatter.formatCompact(totalOutstanding),
           onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
         ),
       ],
@@ -470,8 +470,8 @@ class _BusinessCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lentAsync = ref.watch(totalPendingLentProvider);
-    final borrowedAsync = ref.watch(totalPendingBorrowedProvider);
+    final lentAsync = ref.watch(totalOutstandingLentProvider);
+    final borrowedAsync = ref.watch(totalOutstandingBorrowedProvider);
     final income = summary.businessIncome ?? 0;
     final expense = summary.businessExpense ?? 0;
     final pnl = summary.businessPnl;

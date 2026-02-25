@@ -325,22 +325,25 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<List<LedgerPartyEntry>> getPartyLedgerSummaries() async {
     final db = await _db;
     final rows = await db.rawQuery(
-      "SELECT party_name, "
-      "SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END) as total_lent, "
-      "SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END) as total_borrowed, "
-      "SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END) as total_received_back, "
-      "SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END) as total_paid_back, "
-      "SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END) as total_invested, "
-      "SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END) as total_redeemed, "
-      "COUNT(*) as cnt, MAX(date) as last_date "
-      "FROM transactions "
-      "WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != '' "
-      "AND type IN ('lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed') "
-      "GROUP BY party_name "
-      "ORDER BY MAX(date) DESC",
+      "SELECT t.party_name, "
+      "COALESCE(p.party_type, 'person') as party_type, "
+      "SUM(CASE WHEN t.type = 'lent' THEN t.amount ELSE 0 END) as total_lent, "
+      "SUM(CASE WHEN t.type = 'borrowed' THEN t.amount ELSE 0 END) as total_borrowed, "
+      "SUM(CASE WHEN t.type = 'received_back' THEN t.amount ELSE 0 END) as total_received_back, "
+      "SUM(CASE WHEN t.type = 'paid_back' THEN t.amount ELSE 0 END) as total_paid_back, "
+      "SUM(CASE WHEN t.type = 'invested' THEN t.amount ELSE 0 END) as total_invested, "
+      "SUM(CASE WHEN t.type = 'redeemed' THEN t.amount ELSE 0 END) as total_redeemed, "
+      "COUNT(*) as cnt, MAX(t.date) as last_date "
+      "FROM transactions t "
+      "LEFT JOIN parties p ON LOWER(TRIM(p.name)) = LOWER(TRIM(t.party_name)) "
+      "WHERE t.deleted_at IS NULL AND t.party_name IS NOT NULL AND t.party_name != '' "
+      "AND t.type IN ('lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed') "
+      "GROUP BY t.party_name "
+      "ORDER BY MAX(t.date) DESC",
     );
     return rows.map((r) => LedgerPartyEntry(
       partyName: r['party_name'] as String,
+      partyType: r['party_type'] as String? ?? 'person',
       totalLent: (r['total_lent'] as num).toDouble(),
       totalBorrowed: (r['total_borrowed'] as num).toDouble(),
       totalReceivedBack: (r['total_received_back'] as num).toDouble(),

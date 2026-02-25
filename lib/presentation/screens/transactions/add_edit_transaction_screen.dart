@@ -11,10 +11,12 @@ import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/suggestion_service.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/suggestion_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/account_picker_sheet.dart';
 import '../../widgets/bill_picker.dart';
 
 /// Screen for adding or editing a transaction.
@@ -65,6 +67,10 @@ class _AddEditTransactionScreenState
   DateTime? _dueDate;
   InterestType _interestType = InterestType.none;
 
+  // Transfer fields
+  int? _fromAccountId;
+  int? _toAccountId;
+
   bool _isSaving = false;
 
   // Bill attachment state
@@ -94,6 +100,8 @@ class _AddEditTransactionScreenState
       _time = TimeOfDay.fromDateTime(txn.date);
       _dueDate = txn.dueDate;
       _interestType = txn.interestType ?? InterestType.none;
+      _fromAccountId = txn.accountId;
+      _toAccountId = txn.toAccountId;
       if (txn.interestRate != null) {
         _interestRateController.text = txn.interestRate!.toStringAsFixed(1);
       }
@@ -132,6 +140,9 @@ class _AddEditTransactionScreenState
   List<String> get _categoriesForType {
     if (_type == TransactionType.income) {
       return AppConstants.incomeCategories;
+    }
+    if (_type.isTransfer) {
+      return ['Transfer'];
     }
     if (_type.isLending || _type.isSettlement || _type.isInvestment) {
       return ['Lending / Credit', 'Investment', 'Other'];
@@ -174,6 +185,11 @@ class _AddEditTransactionScreenState
                   if (!type.isIncome && !type.isExpense) {
                     _mode = TransactionMode.personal;
                   }
+                  // Transfer accounts reset
+                  if (!type.isTransfer) {
+                    _fromAccountId = null;
+                    _toAccountId = null;
+                  }
                 });
               },
             ),
@@ -207,6 +223,17 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
 
+            // Transfer: From / To account pickers
+            if (_type.isTransfer) ...[  
+              _TransferAccountRow(
+                fromAccountId: _fromAccountId,
+                toAccountId: _toAccountId,
+                onFromChanged: (id) => setState(() => _fromAccountId = id),
+                onToChanged: (id) => setState(() => _toAccountId = id),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
             // Category — only for income / expense
             if (_type.isIncome || _type.isExpense) ...[
               DropdownButtonFormField<String>(
@@ -230,13 +257,13 @@ class _AddEditTransactionScreenState
               const SizedBox(height: AppSpacing.lg),
             ],
 
-            // Party Name with Autocomplete
-            _buildPartyNameField(),
-
-            // Smart suggestion chip
-            if (_activeSuggestion != null && !_suggestionApplied)
-              _buildSuggestionChip(),
-            const SizedBox(height: AppSpacing.lg),
+            // Party Name — not for transfer
+            if (!_type.isTransfer) ...[  
+              _buildPartyNameField(),
+              if (_activeSuggestion != null && !_suggestionApplied)
+                _buildSuggestionChip(),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Due date — for lent / borrowed
             if (_type == TransactionType.lent || _type == TransactionType.borrowed) ...[
@@ -548,6 +575,8 @@ class _AddEditTransactionScreenState
       partyName: _partyNameController.text.trim().isNotEmpty
           ? _partyNameController.text.trim()
           : null,
+      accountId: _type.isTransfer ? _fromAccountId : widget.transaction?.accountId,
+      toAccountId: _type.isTransfer ? _toAccountId : widget.transaction?.toAccountId,
       paymentMethod: _paymentMethod,
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
@@ -561,7 +590,6 @@ class _AddEditTransactionScreenState
       // Preserve existing fields when editing
       partyId: widget.transaction?.partyId,
       phoneNumber: widget.transaction?.phoneNumber,
-      accountId: widget.transaction?.accountId,
       smsBody: widget.transaction?.smsBody,
       smsSender: widget.transaction?.smsSender,
       upiApp: widget.transaction?.upiApp,
@@ -758,6 +786,7 @@ class _TypeSelector extends StatelessWidget {
       (TransactionType.redeemed, Icons.redeem, 'Redeemed'),
       (TransactionType.receivedBack, Icons.call_received, 'Got back'),
       (TransactionType.paidBack, Icons.call_made, 'Paid back'),
+      (TransactionType.transfer, Icons.swap_horiz, 'Transfer'),
     ];
 
     return Column(
@@ -817,6 +846,97 @@ class _ModeChips extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// From / To account pickers for the Transfer transaction type.
+class _TransferAccountRow extends ConsumerWidget {
+  const _TransferAccountRow({
+    required this.fromAccountId,
+    required this.toAccountId,
+    required this.onFromChanged,
+    required this.onToChanged,
+  });
+
+  final int? fromAccountId;
+  final int? toAccountId;
+  final ValueChanged<int?> onFromChanged;
+  final ValueChanged<int?> onToChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountsAsync = ref.watch(accountsProvider);
+    return accountsAsync.when(
+      data: (accounts) {
+        String nameFor(int? id) {
+          if (id == null) return 'Select account';
+          return accounts.firstWhere((a) => a.id == id,
+              orElse: () => accounts.first).accountName;
+        }
+
+        return Column(
+          children: [
+            _AccountTile(
+              label: 'From',
+              accountName: nameFor(fromAccountId),
+              onTap: () async {
+                final picked = await showAccountPicker(
+                  context,
+                  excludeId: toAccountId,
+                  title: 'From Account',
+                );
+                if (picked != null) onFromChanged(picked.id);
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Icon(Icons.arrow_downward, size: 20),
+            const SizedBox(height: AppSpacing.sm),
+            _AccountTile(
+              label: 'To',
+              accountName: nameFor(toAccountId),
+              onTap: () async {
+                final picked = await showAccountPicker(
+                  context,
+                  excludeId: fromAccountId,
+                  title: 'To Account',
+                );
+                if (picked != null) onToChanged(picked.id);
+              },
+            ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Text('Error: $e'),
+    );
+  }
+}
+
+class _AccountTile extends StatelessWidget {
+  const _AccountTile({
+    required this.label,
+    required this.accountName,
+    required this.onTap,
+  });
+
+  final String label;
+  final String accountName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
+          suffixIcon: const Icon(Icons.expand_more),
+        ),
+        child: Text(accountName),
+      ),
     );
   }
 }

@@ -13,7 +13,8 @@ enum TransactionType {
   invested,
   receivedBack,
   paidBack,
-  redeemed;
+  redeemed,
+  transfer;
 
   String get label {
     switch (this) {
@@ -33,6 +34,8 @@ enum TransactionType {
         return 'Paid Back';
       case TransactionType.redeemed:
         return 'Redeemed';
+      case TransactionType.transfer:
+        return 'Transfer';
     }
   }
 
@@ -54,6 +57,8 @@ enum TransactionType {
         return 'paid_back';
       case TransactionType.redeemed:
         return 'redeemed';
+      case TransactionType.transfer:
+        return 'transfer';
     }
   }
 
@@ -84,6 +89,8 @@ enum TransactionType {
         return TransactionType.borrowed;
       case 'loan_repayment':
         return TransactionType.paidBack;
+      case 'transfer':
+        return TransactionType.transfer;
       default:
         return TransactionType.expense;
     }
@@ -108,6 +115,8 @@ enum TransactionType {
 
   bool get isInvestment =>
       this == TransactionType.invested || this == TransactionType.redeemed;
+
+  bool get isTransfer => this == TransactionType.transfer;
 
   bool get requiresParty => isLending || isInvestment;
 }
@@ -222,6 +231,7 @@ class Transaction extends Equatable {
     this.phoneNumber,
     this.paymentMethod = PaymentMethod.cash,
     this.accountId,
+    this.toAccountId,
     this.smsBody,
     this.smsSender,
     this.upiApp,
@@ -257,6 +267,8 @@ class Transaction extends Equatable {
   final String? phoneNumber;
   final PaymentMethod paymentMethod;
   final int? accountId;
+  /// For transfer type: the destination account.
+  final int? toAccountId;
   final String? smsBody;
   final String? smsSender;
   final String? upiApp;
@@ -341,6 +353,7 @@ class Transaction extends Equatable {
     String? phoneNumber,
     PaymentMethod? paymentMethod,
     int? accountId,
+    int? toAccountId,
     String? smsBody,
     String? smsSender,
     String? upiApp,
@@ -375,6 +388,7 @@ class Transaction extends Equatable {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       accountId: accountId ?? this.accountId,
+      toAccountId: toAccountId ?? this.toAccountId,
       smsBody: smsBody ?? this.smsBody,
       smsSender: smsSender ?? this.smsSender,
       upiApp: upiApp ?? this.upiApp,
@@ -413,6 +427,7 @@ class Transaction extends Equatable {
       'phone_number': phoneNumber,
       'payment_method': paymentMethod.dbValue,
       'account_id': accountId,
+      'to_account_id': toAccountId,
       'sms_body': smsBody,
       'sms_sender': smsSender,
       'upi_app': upiApp,
@@ -455,6 +470,7 @@ class Transaction extends Equatable {
       paymentMethod:
           PaymentMethod.fromDb(map['payment_method'] as String? ?? 'cash'),
       accountId: map['account_id'] as int?,
+      toAccountId: map['to_account_id'] as int?,
       smsBody: map['sms_body'] as String?,
       smsSender: map['sms_sender'] as String?,
       upiApp: map['upi_app'] as String?,

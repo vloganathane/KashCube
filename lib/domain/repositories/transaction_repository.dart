@@ -138,6 +138,7 @@ class LedgerPartyEntry {
     required this.totalRedeemed,
     required this.transactionCount,
     this.lastTransactionDate,
+    this.partyType = 'person',
   });
 
   final String partyName;
@@ -149,6 +150,8 @@ class LedgerPartyEntry {
   final double totalRedeemed;
   final int transactionCount;
   final DateTime? lastTransactionDate;
+  /// 'person' or 'vendor' — sourced from the parties table.
+  final String partyType;
 
   /// Positive = they owe you; negative = you owe them.
   double get netLendingBalance => totalLent - totalReceivedBack;

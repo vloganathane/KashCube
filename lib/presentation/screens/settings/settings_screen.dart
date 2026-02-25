@@ -9,6 +9,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/backup_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
@@ -27,6 +28,25 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           const SizedBox(height: AppSpacing.sm),
+
+          // -- Accounts --
+          _SettingsSection(
+            title: 'Accounts',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.account_balance_outlined),
+                title: const Text('Manage Accounts'),
+                subtitle: const Text('Bank, UPI, Wallet, Cash'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AccountsManageScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
 
           // -- General --
           _SettingsSection(

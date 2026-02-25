@@ -53,6 +53,7 @@ class DatabaseHelper {
         phone_number TEXT,
         payment_method TEXT DEFAULT 'cash',
         account_id INTEGER,
+        to_account_id INTEGER,
         sms_body TEXT,
         sms_sender TEXT,
         upi_app TEXT,
@@ -87,6 +88,8 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_transactions_party ON transactions(party_name)');
     await db.execute('CREATE INDEX idx_transactions_mode_type ON transactions(mode, type, date DESC)');
     await db.execute('CREATE INDEX idx_transactions_category ON transactions(category, date DESC)');
+    await db.execute('CREATE INDEX idx_transactions_account ON transactions(account_id)');
+    await db.execute('CREATE INDEX idx_transactions_to_account ON transactions(to_account_id)');
     await db.execute('CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)');
     await db.execute('CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)');
 
@@ -364,8 +367,9 @@ class DatabaseHelper {
       'description': 'Unified transaction model: new types + lending fields',
     });
 
-    // Seed default categories
+    // Seed default categories + default accounts
     await _seedCategories(db);
+    await _seedAccounts(db);
 
     debugPrint('Database created successfully.');
   }
@@ -588,8 +592,44 @@ class DatabaseHelper {
         'description': 'Unified transaction model: new types + lending fields',
       });
     }
+    if (oldVersion < 8) {
+      // Add to_account_id for Transfer type
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN to_account_id INTEGER');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id)');
+
+      // Pre-seed default accounts if none exist
+      final existing = await db.rawQuery(
+          'SELECT COUNT(*) as cnt FROM accounts WHERE deleted_at IS NULL');
+      final count = (existing.first['cnt'] as int? ?? 0);
+      if (count == 0) {
+        await _seedAccounts(db);
+      }
+
+      await db.insert('schema_version', {
+        'version': 8,
+        'description': 'Add to_account_id + pre-seed accounts + Transfer type',
+      });
+    }
   }
 
+  Future<void> _seedAccounts(Database db) async {
+    final accounts = [
+      {'account_type': 'savings', 'account_name': 'Bank', 'is_primary': 1},
+      {'account_type': 'upiWallet', 'account_name': 'UPI / Wallet', 'is_primary': 0},
+      {'account_type': 'savings', 'account_name': 'Cash', 'is_primary': 0},
+    ];
+    for (final a in accounts) {
+      await db.insert('accounts', {
+        ...a,
+        'is_active': 1,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    }
+  }
+
+  /// Seed default expense and income categories.
   Future<void> _seedCategories(Database db) async {
     final expenseCategories = [
       {'name': 'Food & Dining', 'icon': 'restaurant', 'color': '#FF5722', 'keywords': 'swiggy,zomato,restaurant,food,cafe,hotel,dining'},

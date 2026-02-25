@@ -176,11 +176,14 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final summary = widget.summary;
     final colors = context.kashColors;
 
-    // Cash in hand = transaction flow + cash received (borrowed) − cash given out (lent)
     final lent     = ref.watch(totalPendingLentProvider).valueOrNull ?? 0.0;
     final borrowed = ref.watch(totalPendingBorrowedProvider).valueOrNull ?? 0.0;
-    final actualBalance = summary.balance + borrowed - lent;
     final hasLoans = lent > 0 || borrowed > 0;
+
+    // Actual = cash physically in hand (borrowed money is in pocket; lent money has left)
+    final actualBalance = summary.balance + borrowed - lent;
+    // Net worth = what you truly own (lent money is still your receivable)
+    final netBalance = summary.balance + lent - borrowed;
 
     return Card(
       child: Padding(
@@ -195,7 +198,8 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
-            // Actual balance
+
+            // Primary: Actual Balance (cash in hand)
             Text(
               CurrencyFormatter.format(actualBalance),
               style: context.textTheme.headlineLarge?.copyWith(
@@ -205,40 +209,56 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
             ),
             const SizedBox(height: 2),
             Text(
-              'Net Balance',
+              'Actual Balance',
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.colorScheme.onSurfaceVariant,
               ),
             ),
 
-            // Breakdown row — only when loans affect the total
+            // Secondary: Net Balance + breakdown — only when loans exist
             if (hasLoans) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _BalanceChip(
-                    label: 'Cash',
-                    value: CurrencyFormatter.formatCompact(summary.balance),
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
-                  if (lent > 0) ...[
-                    _BalanceDot(),
-                    _BalanceChip(
-                      label: '+lent',
-                      value: CurrencyFormatter.formatCompact(lent),
-                      color: colors.income,
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                decoration: BoxDecoration(
+                  color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Net worth ',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      ),
                     ),
-                  ],
-                  if (borrowed > 0) ...[
-                    _BalanceDot(),
-                    _BalanceChip(
-                      label: '-owed',
-                      value: CurrencyFormatter.formatCompact(borrowed),
-                      color: colors.expense,
+                    Text(
+                      CurrencyFormatter.formatCompact(netBalance),
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: netBalance >= 0 ? colors.income : colors.expense,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'RobotoMono',
+                      ),
                     ),
+                    _BalanceDot(),
+                    if (lent > 0) ...[
+                      _BalanceChip(
+                        label: 'lent',
+                        value: CurrencyFormatter.formatCompact(lent),
+                        color: colors.income,
+                      ),
+                      _BalanceDot(),
+                    ],
+                    if (borrowed > 0)
+                      _BalanceChip(
+                        label: 'owed',
+                        value: CurrencyFormatter.formatCompact(borrowed),
+                        color: colors.expense,
+                      ),
                   ],
-                ],
+                ),
               ),
             ],
 

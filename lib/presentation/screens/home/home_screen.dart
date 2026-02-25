@@ -176,12 +176,18 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final summary = widget.summary;
     final colors = context.kashColors;
 
+    // Actual balance = cash flow + money owed to you − money you owe
+    final lent     = ref.watch(totalPendingLentProvider).valueOrNull ?? 0.0;
+    final borrowed = ref.watch(totalPendingBorrowedProvider).valueOrNull ?? 0.0;
+    final actualBalance = summary.balance + lent - borrowed;
+    final hasLoans = lent > 0 || borrowed > 0;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
         child: Column(
           children: [
-            // Month + Balance
+            // Month
             Text(
               DateFormatter.formatMonthYear(DateTime.now()),
               style: context.textTheme.bodySmall?.copyWith(
@@ -189,8 +195,9 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
+            // Actual balance
             Text(
-              CurrencyFormatter.format(summary.balance),
+              CurrencyFormatter.format(actualBalance),
               style: context.textTheme.headlineLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 fontFamily: 'RobotoMono',
@@ -198,11 +205,43 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
             ),
             const SizedBox(height: 2),
             Text(
-              'Balance',
+              'Net Balance',
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.colorScheme.onSurfaceVariant,
               ),
             ),
+
+            // Breakdown row — only when loans affect the total
+            if (hasLoans) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _BalanceChip(
+                    label: 'Cash',
+                    value: CurrencyFormatter.formatCompact(summary.balance),
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                  if (lent > 0) ...[
+                    _BalanceDot(),
+                    _BalanceChip(
+                      label: '+lent',
+                      value: CurrencyFormatter.formatCompact(lent),
+                      color: colors.income,
+                    ),
+                  ],
+                  if (borrowed > 0) ...[
+                    _BalanceDot(),
+                    _BalanceChip(
+                      label: '-owed',
+                      value: CurrencyFormatter.formatCompact(borrowed),
+                      color: colors.expense,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+
             const SizedBox(height: AppSpacing.md),
 
             // Swipeable cards
@@ -604,6 +643,57 @@ class _CardFooterTile extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small labelled chip used in the balance breakdown row.
+class _BalanceChip extends StatelessWidget {
+  const _BalanceChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return RichText(
+      text: TextSpan(
+        children: [
+          TextSpan(
+            text: '$label ',
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.colorScheme.outline,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: context.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BalanceDot extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Text(
+        '·',
+        style: context.textTheme.labelSmall?.copyWith(
+          color: context.colorScheme.outlineVariant,
+        ),
       ),
     );
   }

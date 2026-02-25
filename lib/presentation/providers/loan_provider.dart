@@ -71,6 +71,18 @@ final totalPendingLoanProvider = FutureProvider<double>((ref) async {
   return repo.getTotalPending();
 });
 
+/// Total pending lent amount.
+final totalPendingLentProvider = FutureProvider<double>((ref) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getTotalPendingLent();
+});
+
+/// Total pending borrowed amount.
+final totalPendingBorrowedProvider = FutureProvider<double>((ref) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getTotalPendingBorrowed();
+});
+
 /// Cleared loans.
 final clearedLoansProvider = FutureProvider<List<Loan>>((ref) async {
   final repo = ref.read(loanRepositoryProvider);
@@ -81,4 +93,31 @@ final clearedLoansProvider = FutureProvider<List<Loan>>((ref) async {
 final overdueLoansProvider = FutureProvider<List<Loan>>((ref) async {
   final repo = ref.read(loanRepositoryProvider);
   return repo.getOverdue();
+});
+
+/// Loans filtered by direction.
+final loansByDirectionProvider =
+    FutureProvider.family<List<Loan>, LoanDirection>((ref, direction) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getActiveByDirection(direction);
+});
+
+/// Party-wise ledger summaries.
+final partySummariesProvider =
+    FutureProvider<List<PartyLedgerSummary>>((ref) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getPartySummaries();
+});
+
+/// Loans for a specific party name.
+final loansByPartyProvider =
+    FutureProvider.family<List<Loan>, String>((ref, partyName) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getByPartyName(partyName);
+});
+
+/// Distinct party names for autocomplete.
+final loanPartyNamesProvider = FutureProvider<List<String>>((ref) async {
+  final repo = ref.read(loanRepositoryProvider);
+  return repo.getPartyNames();
 });

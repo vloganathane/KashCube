@@ -10,19 +10,19 @@ import '../../../data/models/loan_payment.dart';
 import '../../providers/loan_payment_provider.dart';
 import '../../providers/loan_provider.dart';
 
-/// Filter tabs for loans list.
-enum _LoanFilter { active, overdue, cleared }
+/// Filter tabs for the ledger list.
+enum _LedgerFilter { all, lent, borrowed, overdue, cleared }
 
-/// Screen listing all loans with summary.
-class LoansScreen extends ConsumerStatefulWidget {
-  const LoansScreen({super.key});
+/// Unified Ledger screen — merges Credits + Loans.
+class LedgerScreen extends ConsumerStatefulWidget {
+  const LedgerScreen({super.key});
 
   @override
-  ConsumerState<LoansScreen> createState() => _LoansScreenState();
+  ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
 }
 
-class _LoansScreenState extends ConsumerState<LoansScreen> {
-  _LoanFilter _filter = _LoanFilter.active;
+class _LedgerScreenState extends ConsumerState<LedgerScreen> {
+  _LedgerFilter _filter = _LedgerFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -30,30 +30,35 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
     final totalPendingAsync = ref.watch(totalPendingLoanProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Loans'),
-      ),
+      appBar: AppBar(title: const Text('Ledger')),
       body: Column(
         children: [
           // Summary card
           totalPendingAsync.when(
-            data: (total) => _SummaryCard(totalPending: total),
+            data: (total) => _SummaryCard(
+              totalPending: total,
+              totalLentAsync: ref.watch(totalPendingLentProvider),
+              totalBorrowedAsync: ref.watch(totalPendingBorrowedProvider),
+            ),
             loading: () => const SizedBox.shrink(),
             error: (_, _) => const SizedBox.shrink(),
           ),
 
           // Filter tabs
-          Padding(
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.base,
               vertical: AppSpacing.sm,
             ),
             child: Row(
-              children: _LoanFilter.values.map((f) {
+              children: _LedgerFilter.values.map((f) {
                 final label = switch (f) {
-                  _LoanFilter.active => 'Active',
-                  _LoanFilter.overdue => 'Overdue',
-                  _LoanFilter.cleared => 'Cleared',
+                  _LedgerFilter.all => 'All',
+                  _LedgerFilter.lent => 'Lent (Diya)',
+                  _LedgerFilter.borrowed => 'Borrowed (Liya)',
+                  _LedgerFilter.overdue => 'Overdue',
+                  _LedgerFilter.cleared => 'Cleared',
                 };
                 return Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
@@ -69,43 +74,45 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
             ),
           ),
 
-          // Loans list
-          Expanded(
-            child: _buildList(loansAsync),
-          ),
+          // List
+          Expanded(child: _buildList(loansAsync)),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        heroTag: 'fab_loans',
-        onPressed: () => _showAddLoanSheet(context),
+        heroTag: 'fab_ledger',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AddLedgerEntryScreen()),
+        ),
         child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildList(AsyncValue<List<Loan>> loansAsync) {
-    return loansAsync.when(
+    return switch (_filter) {
+      _LedgerFilter.overdue => _buildOverdueList(),
+      _LedgerFilter.cleared => _buildClearedList(),
+      _LedgerFilter.lent => _buildDirectionList(LoanDirection.lent),
+      _LedgerFilter.borrowed => _buildDirectionList(LoanDirection.borrowed),
+      _LedgerFilter.all => loansAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Error: $e')),
+          data: (loans) => loans.isEmpty
+              ? _buildEmpty()
+              : _buildLoanList(loans),
+        ),
+    };
+  }
+
+  Widget _buildDirectionList(LoanDirection direction) {
+    final async = ref.watch(loansByDirectionProvider(direction));
+    return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
-      data: (activeLoans) {
-        // For overdue and cleared, we use separate providers
-        if (_filter == _LoanFilter.overdue) {
-          return _buildOverdueList();
-        }
-        if (_filter == _LoanFilter.cleared) {
-          return _buildClearedList();
-        }
-
-        if (activeLoans.isEmpty) {
-          return _buildEmpty();
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-          itemCount: activeLoans.length,
-          itemBuilder: (context, index) =>
-              _LoanTile(loan: activeLoans[index]),
-        );
+      data: (loans) {
+        final label = direction == LoanDirection.lent ? 'lent' : 'borrowed';
+        if (loans.isEmpty) return _buildEmpty(message: 'No $label entries');
+        return _buildLoanList(loans);
       },
     );
   }
@@ -116,12 +123,8 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (loans) {
-        if (loans.isEmpty) return _buildEmpty(message: 'No overdue loans');
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-          itemCount: loans.length,
-          itemBuilder: (context, index) => _LoanTile(loan: loans[index]),
-        );
+        if (loans.isEmpty) return _buildEmpty(message: 'No overdue entries');
+        return _buildLoanList(loans);
       },
     );
   }
@@ -132,25 +135,27 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (loans) {
-        if (loans.isEmpty) {
-          return _buildEmpty(message: 'No cleared loans');
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-          itemCount: loans.length,
-          itemBuilder: (context, index) => _LoanTile(loan: loans[index]),
-        );
+        if (loans.isEmpty) return _buildEmpty(message: 'No cleared entries');
+        return _buildLoanList(loans);
       },
     );
   }
 
-  Widget _buildEmpty({String message = 'No loans yet'}) {
+  Widget _buildLoanList(List<Loan> loans) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+      itemCount: loans.length,
+      itemBuilder: (context, index) => _LedgerTile(loan: loans[index]),
+    );
+  }
+
+  Widget _buildEmpty({String message = 'No ledger entries yet'}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            Icons.account_balance_outlined,
+            Icons.account_balance_wallet_outlined,
             size: 64,
             color: context.colorScheme.outlineVariant,
           ),
@@ -163,7 +168,7 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Tap + to add a loan',
+            'Tap + to add a credit or loan',
             style: context.textTheme.bodyMedium?.copyWith(
               color: context.colorScheme.outline,
             ),
@@ -172,50 +177,77 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
       ),
     );
   }
-
-  void _showAddLoanSheet(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddLoanScreen()),
-    );
-  }
 }
 
-/// Summary card showing total pending loans.
+// ---------------------------------------------------------------------------
+// Summary Card
+// ---------------------------------------------------------------------------
+
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.totalPending});
+  const _SummaryCard({
+    required this.totalPending,
+    required this.totalLentAsync,
+    required this.totalBorrowedAsync,
+  });
 
   final double totalPending;
+  final AsyncValue<double> totalLentAsync;
+  final AsyncValue<double> totalBorrowedAsync;
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.kashColors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
-          child: Row(
+          child: Column(
             children: [
-              Icon(
-                Icons.account_balance,
-                color: context.colorScheme.primary,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    'Total Pending',
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colorScheme.onSurfaceVariant,
+                  Icon(Icons.account_balance_wallet,
+                      color: context.colorScheme.primary),
+                  const SizedBox(width: AppSpacing.md),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Total Pending',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(totalPending),
+                        style: context.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: _MiniStat(
+                      label: 'Lent (Diya)',
+                      value: totalLentAsync.valueOrNull ?? 0,
+                      color: colors.credit,
+                      icon: Icons.arrow_upward,
                     ),
                   ),
-                  Text(
-                    CurrencyFormatter.format(totalPending),
-                    style: context.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'RobotoMono',
-                      color: context.kashColors.expense,
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: _MiniStat(
+                      label: 'Borrowed (Liya)',
+                      value: totalBorrowedAsync.valueOrNull ?? 0,
+                      color: colors.expense,
+                      icon: Icons.arrow_downward,
                     ),
                   ),
                 ],
@@ -228,9 +260,50 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// Individual loan tile.
-class _LoanTile extends ConsumerWidget {
-  const _LoanTile({required this.loan});
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final double value;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: AppSpacing.xs),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: context.textTheme.labelSmall),
+            Text(
+              CurrencyFormatter.formatCompact(value),
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'RobotoMono',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ledger Tile (individual entry)
+// ---------------------------------------------------------------------------
+
+class _LedgerTile extends ConsumerWidget {
+  const _LedgerTile({required this.loan});
 
   final Loan loan;
 
@@ -239,12 +312,13 @@ class _LoanTile extends ConsumerWidget {
     final colors = context.kashColors;
     final daysLeft = loan.daysUntilDue;
     final isOverdue = daysLeft != null && daysLeft < 0;
+    final directionColor = loan.isLent ? colors.credit : colors.expense;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        onTap: () => _showLoanDetail(context, ref),
+        onTap: () => _showDetail(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
@@ -252,17 +326,14 @@ class _LoanTile extends ConsumerWidget {
             children: [
               Row(
                 children: [
+                  // Direction indicator avatar
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: context.colorScheme.primaryContainer,
-                    child: Text(
-                      loan.lenderName.isNotEmpty
-                          ? loan.lenderName[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        color: context.colorScheme.onPrimaryContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    backgroundColor: directionColor.withValues(alpha: 0.12),
+                    child: Icon(
+                      loan.isLent ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: directionColor,
+                      size: 20,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -275,11 +346,33 @@ class _LoanTile extends ConsumerWidget {
                           style: context.textTheme.titleSmall,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(
-                          DateFormatter.format(loan.loanDate),
-                          style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colorScheme.onSurfaceVariant,
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: directionColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                loan.isLent ? 'Lent' : 'Borrowed',
+                                style: context.textTheme.labelSmall?.copyWith(
+                                  color: directionColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(
+                              DateFormatter.format(loan.loanDate),
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: context.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -292,7 +385,9 @@ class _LoanTile extends ConsumerWidget {
                         style: context.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                           fontFamily: 'RobotoMono',
-                          color: loan.isCleared ? colors.income : colors.expense,
+                          color: loan.isCleared
+                              ? colors.income
+                              : directionColor,
                         ),
                       ),
                       if (loan.isCleared)
@@ -348,23 +443,34 @@ class _LoanTile extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
-              // Amount summary
-              Text(
-                'Paid ${CurrencyFormatter.formatCompact(loan.paidAmount)} '
-                'of ${CurrencyFormatter.formatCompact(loan.principalAmount)}',
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
+              // Amount summary + schedule info
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Paid ${CurrencyFormatter.formatCompact(loan.paidAmount)} '
+                      'of ${CurrencyFormatter.formatCompact(loan.principalAmount)}',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  if (loan.interestType != InterestType.none &&
+                      loan.interestRate != null)
+                    Text(
+                      '${loan.interestRate!.toStringAsFixed(1)}% ${loan.interestType.label}',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.tertiary,
+                      ),
+                    ),
+                ],
               ),
               if (loan.repaymentFrequency != null) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
-                    Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: context.colorScheme.primary,
-                    ),
+                    Icon(Icons.schedule, size: 14,
+                        color: context.colorScheme.primary),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       '${loan.repaymentFrequency!.label} · '
@@ -384,35 +490,34 @@ class _LoanTile extends ConsumerWidget {
     );
   }
 
-  void _showLoanDetail(BuildContext context, WidgetRef ref) {
-    // If loan has a repayment schedule, show full-screen schedule page
+  void _showDetail(BuildContext context, WidgetRef ref) {
     if (loan.repaymentFrequency != null) {
       Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => _LoanScheduleScreen(loan: loan),
-        ),
+        MaterialPageRoute(builder: (_) => _ScheduleScreen(loan: loan)),
       );
     } else {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
-        builder: (_) => _LoanDetailSheet(loan: loan),
+        builder: (_) => _DetailSheet(loan: loan),
       );
     }
   }
 }
 
-/// Detail sheet for a loan with pay & delete actions.
-class _LoanDetailSheet extends ConsumerStatefulWidget {
-  const _LoanDetailSheet({required this.loan});
+// ---------------------------------------------------------------------------
+// Detail Sheet (for entries without repayment schedule)
+// ---------------------------------------------------------------------------
 
+class _DetailSheet extends ConsumerStatefulWidget {
+  const _DetailSheet({required this.loan});
   final Loan loan;
 
   @override
-  ConsumerState<_LoanDetailSheet> createState() => _LoanDetailSheetState();
+  ConsumerState<_DetailSheet> createState() => _DetailSheetState();
 }
 
-class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
+class _DetailSheetState extends ConsumerState<_DetailSheet> {
   final _paymentController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -426,13 +531,12 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
   Widget build(BuildContext context) {
     final loan = widget.loan;
     final colors = context.kashColors;
+    final directionColor = loan.isLent ? colors.credit : colors.expense;
 
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          AppSpacing.base,
-          AppSpacing.base,
-          AppSpacing.base,
+          AppSpacing.base, AppSpacing.base, AppSpacing.base,
           MediaQuery.of(context).viewInsets.bottom + AppSpacing.base,
         ),
         child: Column(
@@ -442,8 +546,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
             // Handle
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 40, height: 4,
                 margin: const EdgeInsets.only(bottom: AppSpacing.base),
                 decoration: BoxDecoration(
                   color: context.colorScheme.outlineVariant,
@@ -452,12 +555,33 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
               ),
             ),
 
-            // Title
-            Text(
-              loan.lenderName,
-              style: context.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            // Title + direction badge
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    loan.lenderName,
+                    style: context.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: directionColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    loan.isLent ? 'Lent (Diya)' : 'Borrowed (Liya)',
+                    style: context.textTheme.labelMedium?.copyWith(
+                      color: directionColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
 
@@ -465,20 +589,20 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
             Row(
               children: [
                 Expanded(
-                  child: _DetailItem(
+                  child: _LabelValue(
                     label: 'Principal',
                     value: CurrencyFormatter.format(loan.principalAmount),
                   ),
                 ),
                 Expanded(
-                  child: _DetailItem(
+                  child: _LabelValue(
                     label: 'Paid',
                     value: CurrencyFormatter.format(loan.paidAmount),
                     color: colors.income,
                   ),
                 ),
                 Expanded(
-                  child: _DetailItem(
+                  child: _LabelValue(
                     label: 'Pending',
                     value: CurrencyFormatter.format(loan.pendingAmount),
                     color: colors.expense,
@@ -490,23 +614,29 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
 
             // Dates
             if (loan.dueDate != null)
-              _DetailItem(
+              _LabelValue(
                 label: 'Due Date',
                 value: DateFormatter.format(loan.dueDate!),
               ),
             if (loan.interestRate != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: _DetailItem(
+                child: _LabelValue(
                   label: 'Interest',
                   value:
                       '${loan.interestRate!.toStringAsFixed(1)}% (${loan.interestType.label})',
                 ),
               ),
+            if (loan.phoneNumber != null && loan.phoneNumber!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: _LabelValue(
+                    label: 'Phone', value: loan.phoneNumber!),
+              ),
             if (loan.notes != null && loan.notes!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
-                child: _DetailItem(label: 'Notes', value: loan.notes!),
+                child: _LabelValue(label: 'Notes', value: loan.notes!),
               ),
 
             if (!loan.isCleared) ...[
@@ -544,9 +674,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Required';
                           final amount = double.tryParse(v);
-                          if (amount == null || amount <= 0) {
-                            return 'Invalid';
-                          }
+                          if (amount == null || amount <= 0) return 'Invalid';
                           if (amount > loan.pendingAmount) {
                             return 'Exceeds pending';
                           }
@@ -566,7 +694,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
 
             const SizedBox(height: AppSpacing.md),
 
-            // Edit & Delete buttons
+            // Edit & Delete
             Row(
               children: [
                 Expanded(
@@ -583,8 +711,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('Delete'),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.expense,
-                    ),
+                        foregroundColor: colors.expense),
                   ),
                 ),
               ],
@@ -597,10 +724,10 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
   }
 
   void _editLoan(BuildContext context) {
-    Navigator.pop(context); // Close bottom sheet
+    Navigator.pop(context);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AddLoanScreen(loan: widget.loan),
+        builder: (_) => AddLedgerEntryScreen(loan: widget.loan),
       ),
     );
   }
@@ -611,9 +738,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
     await ref
         .read(activeLoansProvider.notifier)
         .recordPayment(widget.loan.id!, amount);
-    ref.invalidate(totalPendingLoanProvider);
-    ref.invalidate(overdueLoansProvider);
-    ref.invalidate(clearedLoansProvider);
+    _invalidateAll(ref);
     if (mounted) {
       Navigator.pop(context);
       context.showSnackBar(
@@ -628,10 +753,11 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Loan?'),
+        title: const Text('Delete Entry?'),
         content: Text(
-          'Delete loan of ${CurrencyFormatter.format(widget.loan.principalAmount)} '
-          'from ${widget.loan.lenderName}?',
+          'Delete ${CurrencyFormatter.format(widget.loan.principalAmount)} '
+          '${widget.loan.isLent ? "lent to" : "borrowed from"} '
+          '${widget.loan.lenderName}?',
         ),
         actions: [
           TextButton(
@@ -641,8 +767,7 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: context.colorScheme.error,
-            ),
+                backgroundColor: context.colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -652,27 +777,30 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
       await ref
           .read(activeLoansProvider.notifier)
           .deleteLoan(widget.loan.id!);
-      ref.invalidate(totalPendingLoanProvider);
+      _invalidateAll(ref);
       if (mounted) {
         navigator.pop();
         scaffoldMessenger.showSnackBar(
-          const SnackBar(content: Text('Loan deleted')),
+          const SnackBar(content: Text('Entry deleted')),
         );
       }
     }
   }
 }
 
-/// Full-screen schedule view for loans with repayment schedules.
-class _LoanScheduleScreen extends ConsumerWidget {
-  const _LoanScheduleScreen({required this.loan});
+// ---------------------------------------------------------------------------
+// Schedule Screen (for entries with repayment schedule)
+// ---------------------------------------------------------------------------
 
+class _ScheduleScreen extends ConsumerWidget {
+  const _ScheduleScreen({required this.loan});
   final Loan loan;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final paymentsAsync = ref.watch(loanPaymentsProvider(loan.id!));
     final colors = context.kashColors;
+    final directionColor = loan.isLent ? colors.credit : colors.expense;
 
     return Scaffold(
       appBar: AppBar(
@@ -680,13 +808,11 @@ class _LoanScheduleScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => AddLoanScreen(loan: loan),
-                ),
-              );
-            },
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AddLedgerEntryScreen(loan: loan),
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -696,33 +822,54 @@ class _LoanScheduleScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // Loan summary header
+          // Summary header
           Card(
             margin: const EdgeInsets.all(AppSpacing.base),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
               child: Column(
                 children: [
+                  // Direction badge
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: directionColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        loan.isLent ? 'Lent (Diya)' : 'Borrowed (Liya)',
+                        style: context.textTheme.labelMedium?.copyWith(
+                          color: directionColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       Expanded(
-                        child: _DetailItem(
+                        child: _LabelValue(
                           label: 'Principal',
-                          value:
-                              CurrencyFormatter.format(loan.principalAmount),
+                          value: CurrencyFormatter.format(
+                              loan.principalAmount),
                         ),
                       ),
                       Expanded(
-                        child: _DetailItem(
+                        child: _LabelValue(
                           label: 'Paid',
                           value: CurrencyFormatter.format(loan.paidAmount),
                           color: colors.income,
                         ),
                       ),
                       Expanded(
-                        child: _DetailItem(
+                        child: _LabelValue(
                           label: 'Pending',
-                          value: CurrencyFormatter.format(loan.pendingAmount),
+                          value: CurrencyFormatter.format(
+                              loan.pendingAmount),
                           color: colors.expense,
                         ),
                       ),
@@ -788,9 +935,8 @@ class _LoanScheduleScreen extends ConsumerWidget {
                 const Spacer(),
                 paymentsAsync.whenOrNull(
                       data: (payments) {
-                        final overdue = payments
-                            .where((p) => p.isOverdue)
-                            .length;
+                        final overdue =
+                            payments.where((p) => p.isOverdue).length;
                         if (overdue == 0) return null;
                         return Container(
                           padding: const EdgeInsets.symmetric(
@@ -840,10 +986,7 @@ class _LoanScheduleScreen extends ConsumerWidget {
                       horizontal: AppSpacing.base),
                   itemCount: payments.length,
                   itemBuilder: (context, index) =>
-                      _InstallmentTile(
-                    payment: payments[index],
-                    loan: loan,
-                  ),
+                      _InstallmentTile(payment: payments[index], loan: loan),
                 );
               },
             ),
@@ -859,10 +1002,11 @@ class _LoanScheduleScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Loan?'),
+        title: const Text('Delete Entry?'),
         content: Text(
-          'Delete loan of ${CurrencyFormatter.format(loan.principalAmount)} '
-          'from ${loan.lenderName}? This will also delete the repayment schedule.',
+          'Delete ${CurrencyFormatter.format(loan.principalAmount)} '
+          '${loan.isLent ? "lent to" : "borrowed from"} '
+          '${loan.lenderName}? This will also delete the repayment schedule.',
         ),
         actions: [
           TextButton(
@@ -872,8 +1016,7 @@ class _LoanScheduleScreen extends ConsumerWidget {
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: context.colorScheme.error,
-            ),
+                backgroundColor: context.colorScheme.error),
             child: const Text('Delete'),
           ),
         ],
@@ -881,18 +1024,21 @@ class _LoanScheduleScreen extends ConsumerWidget {
     );
     if (confirmed == true) {
       await ref.read(activeLoansProvider.notifier).deleteLoan(loan.id!);
-      ref.invalidate(totalPendingLoanProvider);
+      _invalidateAll(ref);
       if (context.mounted) {
         navigator.pop();
         scaffoldMessenger.showSnackBar(
-          const SnackBar(content: Text('Loan deleted')),
+          const SnackBar(content: Text('Entry deleted')),
         );
       }
     }
   }
 }
 
-/// A single installment tile in the schedule list.
+// ---------------------------------------------------------------------------
+// Installment Tile
+// ---------------------------------------------------------------------------
+
 class _InstallmentTile extends ConsumerWidget {
   const _InstallmentTile({required this.payment, required this.loan});
 
@@ -950,13 +1096,10 @@ class _InstallmentTile extends ConsumerWidget {
             if (isOverdue)
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: 2,
-                ),
+                    horizontal: AppSpacing.sm, vertical: 2),
                 decoration: BoxDecoration(
                   color: colors.expense.withValues(alpha: 0.1),
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusSm),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: Text(
                   'Overdue',
@@ -989,10 +1132,8 @@ class _InstallmentTile extends ConsumerWidget {
         trailing: isPaid
             ? null
             : IconButton(
-                icon: Icon(
-                  Icons.payment,
-                  color: context.colorScheme.primary,
-                ),
+                icon: Icon(Icons.payment,
+                    color: context.colorScheme.primary),
                 tooltip: 'Pay installment',
                 onPressed: () => _payInstallment(context, ref),
               ),
@@ -1004,19 +1145,13 @@ class _InstallmentTile extends ConsumerWidget {
     final paymentRepo = ref.read(loanPaymentRepositoryProvider);
     final payAmount = payment.remainingAmount;
 
-    // Mark this specific installment as paid
     await paymentRepo.markPaid(payment.id!, payAmount);
-
-    // Update loan totals (without auto-marking installments)
     await ref
         .read(activeLoansProvider.notifier)
         .addPaymentAmount(loan.id!, payAmount);
 
-    // Refresh schedule + loan lists
     ref.invalidate(loanPaymentsProvider(loan.id!));
-    ref.invalidate(totalPendingLoanProvider);
-    ref.invalidate(overdueLoansProvider);
-    ref.invalidate(clearedLoansProvider);
+    _invalidateAll(ref);
 
     if (context.mounted) {
       context.showSnackBar(
@@ -1027,8 +1162,12 @@ class _InstallmentTile extends ConsumerWidget {
   }
 }
 
-class _DetailItem extends StatelessWidget {
-  const _DetailItem({required this.label, required this.value, this.color});
+// ---------------------------------------------------------------------------
+// Label-Value helper
+// ---------------------------------------------------------------------------
+
+class _LabelValue extends StatelessWidget {
+  const _LabelValue({required this.label, required this.value, this.color});
 
   final String label;
   final String value;
@@ -1057,25 +1196,32 @@ class _DetailItem extends StatelessWidget {
   }
 }
 
-/// Screen to add or edit a loan.
-class AddLoanScreen extends ConsumerStatefulWidget {
-  const AddLoanScreen({super.key, this.loan});
+// ---------------------------------------------------------------------------
+// Add / Edit Ledger Entry Screen
+// ---------------------------------------------------------------------------
+
+class AddLedgerEntryScreen extends ConsumerStatefulWidget {
+  const AddLedgerEntryScreen({super.key, this.loan});
 
   /// If provided, the screen is in edit mode.
   final Loan? loan;
 
   @override
-  ConsumerState<AddLoanScreen> createState() => _AddLoanScreenState();
+  ConsumerState<AddLedgerEntryScreen> createState() =>
+      _AddLedgerEntryScreenState();
 }
 
-class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
+class _AddLedgerEntryScreenState extends ConsumerState<AddLedgerEntryScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _lenderController = TextEditingController();
+  final _nameController = TextEditingController();
   final _amountController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _interestController = TextEditingController();
   final _emiAmountController = TextEditingController();
   final _totalEmisController = TextEditingController();
   final _notesController = TextEditingController();
+
+  LoanDirection _direction = LoanDirection.lent;
   DateTime _loanDate = DateTime.now();
   DateTime? _dueDate;
   InterestType _interestType = InterestType.none;
@@ -1088,8 +1234,10 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
     super.initState();
     final loan = widget.loan;
     if (loan != null) {
-      _lenderController.text = loan.lenderName;
+      _direction = loan.direction;
+      _nameController.text = loan.lenderName;
       _amountController.text = loan.principalAmount.toStringAsFixed(0);
+      _phoneController.text = loan.phoneNumber ?? '';
       _loanDate = loan.loanDate;
       _dueDate = loan.dueDate;
       _interestType = loan.interestType;
@@ -1111,8 +1259,9 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
 
   @override
   void dispose() {
-    _lenderController.dispose();
+    _nameController.dispose();
     _amountController.dispose();
+    _phoneController.dispose();
     _interestController.dispose();
     _emiAmountController.dispose();
     _totalEmisController.dispose();
@@ -1122,26 +1271,108 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final partyNamesAsync = ref.watch(loanPartyNamesProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Loan' : 'Add Loan'),
+        title: Text(_isEditing ? 'Edit Entry' : 'New Ledger Entry'),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.base),
           children: [
-            // Lender name
-            TextFormField(
-              controller: _lenderController,
-              decoration: const InputDecoration(
-                labelText: 'Lender Name *',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person_outline),
+            // Direction selector
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Type',
+                        style: context.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        )),
+                    const SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: LoanDirection.values.map((d) {
+                        final selected = _direction == d;
+                        final isLent = d == LoanDirection.lent;
+                        final color = isLent ? colors.credit : colors.expense;
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                                right: isLent ? AppSpacing.sm : 0),
+                            child: InkWell(
+                              onTap: () =>
+                                  setState(() => _direction = d),
+                              borderRadius:
+                                  BorderRadius.circular(AppSpacing.radiusMd),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? color.withValues(alpha: 0.1)
+                                      : null,
+                                  border: Border.all(
+                                    color: selected
+                                        ? color
+                                        : context.colorScheme.outlineVariant,
+                                    width: selected ? 2 : 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(
+                                      AppSpacing.radiusMd),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      isLent
+                                          ? Icons.arrow_upward
+                                          : Icons.arrow_downward,
+                                      color: selected
+                                          ? color
+                                          : context
+                                              .colorScheme.onSurfaceVariant,
+                                    ),
+                                    const SizedBox(height: AppSpacing.xs),
+                                    Text(
+                                      isLent
+                                          ? 'Lent (Diya)'
+                                          : 'Borrowed (Liya)',
+                                      style: context.textTheme.bodyMedium
+                                          ?.copyWith(
+                                        color: selected
+                                            ? color
+                                            : context
+                                                .colorScheme.onSurfaceVariant,
+                                        fontWeight: selected
+                                            ? FontWeight.w600
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                    Text(
+                                      isLent
+                                          ? 'You gave money'
+                                          : 'You received money',
+                                      style: context.textTheme.bodySmall
+                                          ?.copyWith(
+                                        color: context
+                                            .colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
-              textCapitalization: TextCapitalization.words,
             ),
             const SizedBox(height: AppSpacing.base),
 
@@ -1149,7 +1380,7 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
             TextFormField(
               controller: _amountController,
               decoration: const InputDecoration(
-                labelText: 'Loan Amount *',
+                labelText: 'Amount *',
                 border: OutlineInputBorder(),
                 prefixText: '₹ ',
               ),
@@ -1163,50 +1394,112 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
             ),
             const SizedBox(height: AppSpacing.base),
 
-            // Loan date
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.calendar_today),
-              title: const Text('Loan Date'),
-              subtitle: Text(DateFormatter.format(_loanDate)),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _loanDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
+            // Party name with autocomplete
+            Autocomplete<String>(
+              initialValue: TextEditingValue(text: _nameController.text),
+              optionsBuilder: (textEditingValue) {
+                final names = partyNamesAsync.valueOrNull ?? [];
+                if (textEditingValue.text.isEmpty) return names.take(5);
+                return names.where((n) => n
+                    .toLowerCase()
+                    .contains(textEditingValue.text.toLowerCase()));
+              },
+              onSelected: (selection) {
+                _nameController.text = selection;
+              },
+              fieldViewBuilder:
+                  (context, controller, focusNode, onFieldSubmitted) {
+                // Sync the autocomplete controller with our _nameController
+                _nameController.text = controller.text;
+                controller.addListener(() {
+                  _nameController.text = controller.text;
+                });
+                return TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: InputDecoration(
+                    labelText: _direction == LoanDirection.lent
+                        ? 'Borrower Name *'
+                        : 'Lender Name *',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person_outline),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
                 );
-                if (picked != null) setState(() => _loanDate = picked);
               },
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.base),
+
+            // Phone number
+            TextFormField(
+              controller: _phoneController,
+              decoration: const InputDecoration(
+                labelText: 'Phone Number (optional)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: AppSpacing.base),
+
+            // Date
+            InputDecorator(
+              decoration: const InputDecoration(
+                labelText: 'Date',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.calendar_today),
+              ),
+              child: InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _loanDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) setState(() => _loanDate = picked);
+                },
+                child: Text(DateFormatter.format(_loanDate)),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.base),
 
             // Due date
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.event),
-              title: const Text('Due Date (Optional)'),
-              subtitle: Text(
-                _dueDate != null ? DateFormatter.format(_dueDate!) : 'Not set',
+            InputDecorator(
+              decoration: InputDecoration(
+                labelText: 'Due Date (optional)',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.event),
+                suffixIcon: _dueDate != null
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () =>
+                            setState(() => _dueDate = null),
+                      )
+                    : null,
               ),
-              trailing: _dueDate != null
-                  ? IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _dueDate = null),
-                    )
-                  : null,
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _dueDate ?? DateTime.now().add(
-                      const Duration(days: 30)),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 3650)),
-                );
-                if (picked != null) setState(() => _dueDate = picked);
-              },
+              child: InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate:
+                        _dueDate ?? DateTime.now().add(const Duration(days: 30)),
+                    firstDate: DateTime.now(),
+                    lastDate:
+                        DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) setState(() => _dueDate = picked);
+                },
+                child: Text(
+                  _dueDate != null
+                      ? DateFormatter.format(_dueDate!)
+                      : 'Not set',
+                ),
+              ),
             ),
-            const Divider(height: AppSpacing.xl),
+            const Divider(height: AppSpacing.xxl),
 
             // Interest
             Text('Interest', style: context.textTheme.titleSmall),
@@ -1239,7 +1532,8 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
             const Divider(height: AppSpacing.xl),
 
             // Repayment Schedule
-            Text('Repayment Schedule', style: context.textTheme.titleSmall),
+            Text('Repayment Schedule',
+                style: context.textTheme.titleSmall),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Set up installment payments (daily, weekly, or monthly)',
@@ -1248,8 +1542,6 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-
-            // Frequency selector
             Wrap(
               spacing: AppSpacing.sm,
               children: [
@@ -1271,13 +1563,13 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
                 ),
               ],
             ),
-
             if (_repaymentFrequency != null) ...[
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _emiAmountController,
                 decoration: InputDecoration(
-                  labelText: '${_repaymentFrequency!.label} Installment Amount *',
+                  labelText:
+                      '${_repaymentFrequency!.label} Installment Amount *',
                   border: const OutlineInputBorder(),
                   prefixText: '₹ ',
                 ),
@@ -1308,24 +1600,26 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
                 },
               ),
             ],
-
             const SizedBox(height: AppSpacing.base),
 
             // Notes
             TextFormField(
               controller: _notesController,
               decoration: const InputDecoration(
-                labelText: 'Notes',
+                labelText: 'Notes (optional)',
                 border: OutlineInputBorder(),
+                counterText: '',
               ),
               maxLines: 2,
+              maxLength: 200,
             ),
             const SizedBox(height: AppSpacing.xl),
 
             // Submit
-            FilledButton(
+            FilledButton.icon(
               onPressed: _submit,
-              child: Text(_isEditing ? 'Save Changes' : 'Add Loan'),
+              icon: Icon(_isEditing ? Icons.check : Icons.add),
+              label: Text(_isEditing ? 'Save Changes' : 'Add Entry'),
             ),
           ],
         ),
@@ -1346,14 +1640,21 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
     final totalEmis = _repaymentFrequency != null
         ? int.tryParse(_totalEmisController.text)
         : null;
+    final phone = _phoneController.text.trim().isEmpty
+        ? null
+        : _phoneController.text.trim();
+    final notes = _notesController.text.trim().isEmpty
+        ? null
+        : _notesController.text.trim();
 
     if (_isEditing) {
       final existing = widget.loan!;
-      // Recalculate pending based on new principal and existing paid
       final newPending =
           (amount - existing.paidAmount).clamp(0.0, double.infinity);
       final updated = existing.copyWith(
-        lenderName: _lenderController.text.trim(),
+        direction: _direction,
+        lenderName: _nameController.text.trim(),
+        phoneNumber: phone,
         principalAmount: amount,
         pendingAmount: newPending,
         loanDate: _loanDate,
@@ -1363,23 +1664,15 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
         repaymentFrequency: _repaymentFrequency,
         emiAmount: emiAmount,
         totalEmis: totalEmis,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
+        notes: notes,
       );
 
       await ref.read(activeLoansProvider.notifier).updateLoan(updated);
-      ref.invalidate(totalPendingLoanProvider);
-      ref.invalidate(overdueLoansProvider);
-      ref.invalidate(clearedLoansProvider);
-
-      if (mounted) {
-        Navigator.pop(context, true);
-        context.showSnackBar('Loan updated');
-      }
     } else {
       final loan = Loan(
-        lenderName: _lenderController.text.trim(),
+        direction: _direction,
+        lenderName: _nameController.text.trim(),
+        phoneNumber: phone,
         principalAmount: amount,
         pendingAmount: amount,
         loanDate: _loanDate,
@@ -1389,19 +1682,38 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
         repaymentFrequency: _repaymentFrequency,
         emiAmount: emiAmount,
         totalEmis: totalEmis,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
+        notes: notes,
       );
 
       await ref.read(activeLoansProvider.notifier).addLoan(loan);
-      ref.invalidate(totalPendingLoanProvider);
-
-      if (mounted) {
-        Navigator.pop(context);
-        context.showSnackBar(
-            'Loan of ${CurrencyFormatter.format(amount)} added');
-      }
     }
+
+    _invalidateAll(ref);
+    if (mounted) {
+      Navigator.pop(context, true);
+      context.showSnackBar(
+        _isEditing
+            ? 'Entry updated'
+            : '${CurrencyFormatter.format(amount)} ${_direction == LoanDirection.lent ? "lent" : "borrowed"} added',
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper to invalidate all ledger-related providers
+// ---------------------------------------------------------------------------
+
+void _invalidateAll(WidgetRef ref) {
+  ref.invalidate(totalPendingLoanProvider);
+  ref.invalidate(totalPendingLentProvider);
+  ref.invalidate(totalPendingBorrowedProvider);
+  ref.invalidate(overdueLoansProvider);
+  ref.invalidate(clearedLoansProvider);
+  ref.invalidate(partySummariesProvider);
+  ref.invalidate(loanPartyNamesProvider);
+  // Invalidate direction providers
+  for (final d in LoanDirection.values) {
+    ref.invalidate(loansByDirectionProvider(d));
   }
 }

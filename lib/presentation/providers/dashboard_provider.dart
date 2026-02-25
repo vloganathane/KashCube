@@ -8,7 +8,6 @@ class DashboardSummary {
   final double totalIncome;
   final double totalExpense;
   final double balance;
-  final double totalPendingCredit;
   final double totalInvestment;
   final Map<String, double> categorySummary;
 
@@ -16,7 +15,6 @@ class DashboardSummary {
     this.totalIncome = 0,
     this.totalExpense = 0,
     this.balance = 0,
-    this.totalPendingCredit = 0,
     this.totalInvestment = 0,
     this.categorySummary = const {},
   });

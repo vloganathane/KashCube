@@ -135,10 +135,11 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)');
     await db.execute('CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)');
 
-    // -- loans table
+    // -- loans table (also stores credits / udhar)
     await db.execute('''
       CREATE TABLE loans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        direction TEXT NOT NULL DEFAULT 'borrowed',
         lender_name TEXT NOT NULL,
         lender_id INTEGER,
         phone_number TEXT,
@@ -171,6 +172,7 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_loans_lender ON loans(lender_name)');
     await db.execute('CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)');
     await db.execute('CREATE INDEX idx_loans_next_emi ON loans(next_emi_date)');
+    await db.execute('CREATE INDEX idx_loans_direction ON loans(direction)');
 
     // -- loan_payments table
     await db.execute('''
@@ -351,8 +353,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 5,
-      'description': 'Add bills table for scheduled payments',
+      'version': 6,
+      'description': 'Merge credits into loans (Ledger)',
     });
 
     // Seed default categories
@@ -479,6 +481,40 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 5,
         'description': 'Add bills table for scheduled payments',
+      });
+    }
+
+    if (oldVersion < 6) {
+      // Add direction column to loans table
+      await db.execute(
+          "ALTER TABLE loans ADD COLUMN direction TEXT NOT NULL DEFAULT 'borrowed'");
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_loans_direction ON loans(direction)');
+
+      // Migrate credits into loans table
+      await db.execute('''
+        INSERT INTO loans (
+          lender_name, lender_id, phone_number,
+          principal_amount, paid_amount, pending_amount,
+          direction, loan_date, due_date, cleared_date,
+          is_cleared, is_overdue,
+          interest_rate, interest_type,
+          notes, tags, created_at, updated_at, deleted_at
+        )
+        SELECT
+          customer_name, customer_id, phone_number,
+          total_amount, paid_amount, pending_amount,
+          CASE WHEN direction = 'given' THEN 'lent' ELSE 'borrowed' END,
+          credit_date, due_date, cleared_date,
+          is_cleared, is_overdue,
+          interest_rate, interest_type,
+          notes, tags, created_at, updated_at, deleted_at
+        FROM credits
+      ''');
+
+      await db.insert('schema_version', {
+        'version': 6,
+        'description': 'Merge credits into loans (Ledger)',
       });
     }
   }

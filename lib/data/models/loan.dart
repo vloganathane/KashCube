@@ -1,3 +1,21 @@
+/// Direction of a loan entry: borrowed (liya) or lent (diya).
+enum LoanDirection {
+  borrowed('Borrowed (Liya)', 'borrowed'),
+  lent('Lent (Diya)', 'lent');
+
+  const LoanDirection(this.label, this.dbValue);
+  final String label;
+  final String dbValue;
+
+  static LoanDirection fromDb(String? value) {
+    if (value == null) return LoanDirection.borrowed;
+    return LoanDirection.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => LoanDirection.borrowed,
+    );
+  }
+}
+
 /// Represents the type of interest on a loan.
 enum InterestType {
   none('None', 'none'),
@@ -36,9 +54,10 @@ enum RepaymentFrequency {
   }
 }
 
-/// A loan record (taken from a lender).
+/// A loan / credit (ledger) record.
 class Loan {
   final int? id;
+  final LoanDirection direction;
   final String lenderName;
   final int? lenderId;
   final String? phoneNumber;
@@ -67,6 +86,7 @@ class Loan {
 
   Loan({
     this.id,
+    this.direction = LoanDirection.borrowed,
     required this.lenderName,
     this.lenderId,
     this.phoneNumber,
@@ -102,9 +122,16 @@ class Loan {
   int? get daysUntilDue =>
       dueDate?.difference(DateTime.now()).inDays;
 
+  /// Whether this is money you lent to someone.
+  bool get isLent => direction == LoanDirection.lent;
+
+  /// Whether this is money you borrowed.
+  bool get isBorrowed => direction == LoanDirection.borrowed;
+
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
+      'direction': direction.dbValue,
       'lender_name': lenderName,
       'lender_id': lenderId,
       'phone_number': phoneNumber,
@@ -135,6 +162,7 @@ class Loan {
   factory Loan.fromMap(Map<String, dynamic> map) {
     return Loan(
       id: map['id'] as int?,
+      direction: LoanDirection.fromDb(map['direction'] as String?),
       lenderName: map['lender_name'] as String,
       lenderId: map['lender_id'] as int?,
       phoneNumber: map['phone_number'] as String?,
@@ -176,6 +204,7 @@ class Loan {
 
   Loan copyWith({
     int? id,
+    LoanDirection? direction,
     String? lenderName,
     int? lenderId,
     String? phoneNumber,
@@ -201,6 +230,7 @@ class Loan {
   }) {
     return Loan(
       id: id ?? this.id,
+      direction: direction ?? this.direction,
       lenderName: lenderName ?? this.lenderName,
       lenderId: lenderId ?? this.lenderId,
       phoneNumber: phoneNumber ?? this.phoneNumber,

@@ -14,7 +14,6 @@ import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../app_shell.dart';
 import '../bills/bills_screen.dart';
-import '../loans/loans_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
@@ -378,8 +377,8 @@ class _ExpandedDetails extends StatelessWidget {
             children: [
               Expanded(
                 child: _ActionTile(
-                  icon: Icons.account_balance,
-                  label: 'Loans',
+                  icon: Icons.account_balance_wallet,
+                  label: 'Ledger',
                   value: totalLoanAsync.when(
                     data: (v) => CurrencyFormatter.formatCompact(v),
                     loading: () => '…',
@@ -387,9 +386,8 @@ class _ExpandedDetails extends StatelessWidget {
                   ),
                   color: colors.expense,
                   onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LoansScreen()),
-                    );
+                    // Switch to Ledger tab (index 2)
+                    ref.read(currentTabIndexProvider.notifier).state = 2;
                   },
                 ),
               ),

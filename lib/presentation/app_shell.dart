@@ -8,7 +8,7 @@ import 'providers/recurring_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
-import 'screens/credits/credits_screen.dart';
+import 'screens/ledger/ledger_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
@@ -32,7 +32,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const _screens = [
     HomeScreen(),
     TransactionsScreen(),
-    CreditsScreen(),
+    LedgerScreen(),
     ReportsScreen(),
   ];
 
@@ -153,9 +153,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Transactions',
           ),
           NavigationDestination(
-            icon: Icon(Icons.handshake_outlined),
-            selectedIcon: Icon(Icons.handshake),
-            label: 'Credits',
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Ledger',
           ),
           NavigationDestination(
             icon: Icon(Icons.bar_chart_outlined),

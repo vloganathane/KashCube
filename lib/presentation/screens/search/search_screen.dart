@@ -6,14 +6,14 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
-import '../../../data/models/credit_record.dart';
+import '../../../data/models/loan.dart';
 import '../../../data/models/transaction.dart';
-import '../../providers/credit_provider.dart';
+import '../../providers/loan_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../credits/credit_detail_screen.dart';
+import '../ledger/ledger_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
-/// Global search across transactions and credits.
+/// Global search across transactions and ledger entries.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -39,7 +39,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           controller: _searchController,
           autofocus: true,
           decoration: InputDecoration(
-            hintText: 'Search transactions, credits, parties...',
+            hintText: 'Search transactions, ledger, parties...',
             border: InputBorder.none,
             suffixIcon: _query.isNotEmpty
                 ? IconButton(
@@ -83,7 +83,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-/// Displays combined search results from transactions and credits.
+/// Displays combined search results from transactions and ledger entries.
 class _SearchResults extends ConsumerWidget {
   const _SearchResults({required this.query});
 
@@ -92,7 +92,7 @@ class _SearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsync = ref.watch(transactionsProvider);
-    final creditsAsync = ref.watch(pendingCreditsProvider);
+    final loansAsync = ref.watch(activeLoansProvider);
 
     return transactionsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -112,16 +112,16 @@ class _SearchResults extends ConsumerWidget {
               amount.contains(q);
         }).toList();
 
-        // Filter credits
-        final credits = creditsAsync.valueOrNull ?? <CreditRecord>[];
-        final matchedCredits = credits.where((c) {
-          final name = c.customerName.toLowerCase();
-          final phone = c.phoneNumber?.toLowerCase() ?? '';
-          final notes = c.notes?.toLowerCase() ?? '';
+        // Filter ledger entries
+        final loans = loansAsync.valueOrNull ?? <Loan>[];
+        final matchedLoans = loans.where((l) {
+          final name = l.lenderName.toLowerCase();
+          final phone = l.phoneNumber?.toLowerCase() ?? '';
+          final notes = l.notes?.toLowerCase() ?? '';
           return name.contains(q) || phone.contains(q) || notes.contains(q);
         }).toList();
 
-        final totalResults = matchedTxns.length + matchedCredits.length;
+        final totalResults = matchedTxns.length + matchedLoans.length;
 
         if (totalResults == 0) {
           return Center(
@@ -171,20 +171,20 @@ class _SearchResults extends ConsumerWidget {
               const SizedBox(height: AppSpacing.base),
             ],
 
-            // Credits section
-            if (matchedCredits.isNotEmpty) ...[
+            // Ledger section
+            if (matchedLoans.isNotEmpty) ...[
               _SectionHeader(
-                title: 'Credits',
-                count: matchedCredits.length,
-                icon: Icons.handshake,
+                title: 'Ledger',
+                count: matchedLoans.length,
+                icon: Icons.account_balance_wallet,
               ),
               const SizedBox(height: AppSpacing.sm),
-              ...matchedCredits.take(20).map((c) => _CreditTile(credit: c)),
-              if (matchedCredits.length > 20)
+              ...matchedLoans.take(20).map((l) => _LedgerTile(loan: l)),
+              if (matchedLoans.length > 20)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
-                    '+ ${matchedCredits.length - 20} more credits',
+                    '+ ${matchedLoans.length - 20} more entries',
                     style: context.textTheme.bodySmall?.copyWith(
                       color: context.colorScheme.outline,
                     ),
@@ -297,32 +297,33 @@ class _TransactionTile extends StatelessWidget {
   }
 }
 
-class _CreditTile extends StatelessWidget {
-  const _CreditTile({required this.credit});
+class _LedgerTile extends StatelessWidget {
+  const _LedgerTile({required this.loan});
 
-  final CreditRecord credit;
+  final Loan loan;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
+    final directionColor = loan.isLent ? colors.credit : colors.expense;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
-        backgroundColor: colors.creditBackground,
+        backgroundColor: directionColor.withValues(alpha: 0.12),
         child: Icon(
-          credit.isGiven ? Icons.arrow_upward : Icons.arrow_downward,
-          color: colors.credit,
+          loan.isLent ? Icons.arrow_upward : Icons.arrow_downward,
+          color: directionColor,
           size: AppSpacing.iconMd,
         ),
       ),
       title: Text(
-        credit.customerName,
+        loan.lenderName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
-        '${credit.direction.shortLabel} · ${DateFormatter.format(credit.creditDate)}',
+        '${loan.isLent ? "Lent" : "Borrowed"} · ${DateFormatter.format(loan.loanDate)}',
         style: context.textTheme.bodySmall,
       ),
       trailing: Column(
@@ -330,17 +331,17 @@ class _CreditTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            CurrencyFormatter.format(credit.pendingAmount),
+            CurrencyFormatter.format(loan.pendingAmount),
             style: context.textTheme.titleSmall?.copyWith(
-              color: colors.credit,
+              color: directionColor,
               fontWeight: FontWeight.w600,
               fontFamily: 'RobotoMono',
             ),
           ),
           Text(
-            credit.isCleared ? 'Cleared' : 'Pending',
+            loan.isCleared ? 'Cleared' : 'Pending',
             style: context.textTheme.bodySmall?.copyWith(
-              color: credit.isCleared
+              color: loan.isCleared
                   ? colors.income
                   : context.colorScheme.onSurfaceVariant,
             ),
@@ -348,10 +349,11 @@ class _CreditTile extends StatelessWidget {
         ],
       ),
       onTap: () {
-        if (credit.id != null) {
+        // Navigate to ledger entry edit
+        if (loan.id != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => CreditDetailScreen(creditId: credit.id!),
+              builder: (_) => AddLedgerEntryScreen(loan: loan),
             ),
           );
         }

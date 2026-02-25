@@ -38,6 +38,18 @@ class LoanRepositoryImpl implements LoanRepository {
   }
 
   @override
+  Future<List<Loan>> getActiveByDirection(LoanDirection direction) async {
+    final db = await _db;
+    final rows = await db.query(
+      'loans',
+      where: 'deleted_at IS NULL AND is_cleared = 0 AND direction = ?',
+      whereArgs: [direction.dbValue],
+      orderBy: 'due_date ASC, loan_date DESC',
+    );
+    return rows.map(Loan.fromMap).toList();
+  }
+
+  @override
   Future<List<Loan>> getCleared() async {
     final db = await _db;
     final rows = await db.query(
@@ -221,5 +233,73 @@ class LoanRepositoryImpl implements LoanRepository {
       'FROM loans WHERE deleted_at IS NULL AND is_cleared = 0',
     );
     return (result.first['total'] as num).toDouble();
+  }
+
+  @override
+  Future<double> getTotalPendingLent() async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(pending_amount), 0) as total "
+      "FROM loans WHERE deleted_at IS NULL AND is_cleared = 0 AND direction = 'lent'",
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
+  @override
+  Future<double> getTotalPendingBorrowed() async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(pending_amount), 0) as total "
+      "FROM loans WHERE deleted_at IS NULL AND is_cleared = 0 AND direction = 'borrowed'",
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
+  @override
+  Future<List<PartyLedgerSummary>> getPartySummaries() async {
+    final db = await _db;
+    final rows = await db.rawQuery('''
+      SELECT
+        lender_name,
+        SUM(CASE WHEN direction = 'lent' THEN principal_amount ELSE 0 END) as total_lent,
+        SUM(CASE WHEN direction = 'borrowed' THEN principal_amount ELSE 0 END) as total_borrowed,
+        SUM(CASE WHEN direction = 'lent' AND is_cleared = 0 THEN pending_amount ELSE 0 END) as pending_lent,
+        SUM(CASE WHEN direction = 'borrowed' AND is_cleared = 0 THEN pending_amount ELSE 0 END) as pending_borrowed,
+        SUM(CASE WHEN is_cleared = 0 THEN 1 ELSE 0 END) as active_count
+      FROM loans
+      WHERE deleted_at IS NULL
+      GROUP BY lender_name
+      ORDER BY active_count DESC, lender_name ASC
+    ''');
+
+    return rows.map((r) => PartyLedgerSummary(
+      partyName: r['lender_name'] as String,
+      totalLent: (r['total_lent'] as num?)?.toDouble() ?? 0,
+      totalBorrowed: (r['total_borrowed'] as num?)?.toDouble() ?? 0,
+      pendingLent: (r['pending_lent'] as num?)?.toDouble() ?? 0,
+      pendingBorrowed: (r['pending_borrowed'] as num?)?.toDouble() ?? 0,
+      activeCount: (r['active_count'] as int?) ?? 0,
+    )).toList();
+  }
+
+  @override
+  Future<List<Loan>> getByPartyName(String partyName) async {
+    final db = await _db;
+    final rows = await db.query(
+      'loans',
+      where: 'deleted_at IS NULL AND lender_name = ?',
+      whereArgs: [partyName],
+      orderBy: 'is_cleared ASC, loan_date DESC',
+    );
+    return rows.map(Loan.fromMap).toList();
+  }
+
+  @override
+  Future<List<String>> getPartyNames() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT lender_name FROM loans WHERE deleted_at IS NULL ORDER BY lender_name',
+    );
+    return rows.map((r) => r['lender_name'] as String).toList();
   }
 }

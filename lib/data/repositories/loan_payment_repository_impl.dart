@@ -132,4 +132,23 @@ class LoanPaymentRepositoryImpl implements LoanPaymentRepository {
     );
     return (result.first['total'] as num).toDouble();
   }
+
+  @override
+  Future<Map<int, DateTime>> getNextPaymentDatesForAll() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      'SELECT loan_id, MIN(due_date) as next_due '
+      'FROM loan_payments WHERE is_paid = 0 '
+      'GROUP BY loan_id',
+    );
+    final map = <int, DateTime>{};
+    for (final row in rows) {
+      final loanId = row['loan_id'] as int;
+      final dateStr = row['next_due'] as String?;
+      if (dateStr != null) {
+        map[loanId] = DateTime.parse(dateStr);
+      }
+    }
+    return map;
+  }
 }

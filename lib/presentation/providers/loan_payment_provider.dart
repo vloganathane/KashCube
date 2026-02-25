@@ -36,3 +36,11 @@ final nextPaymentProvider =
   final repo = ref.read(loanPaymentRepositoryProvider);
   return repo.getNextPayment(loanId);
 });
+
+/// Map of loanId → next unpaid payment due date, across ALL loans with schedules.
+/// Used by upcomingItemsProvider as a fallback when loan.nextEmiDate is null.
+final nextPaymentDatesForAllProvider =
+    FutureProvider<Map<int, DateTime>>((ref) async {
+  final repo = ref.read(loanPaymentRepositoryProvider);
+  return repo.getNextPaymentDatesForAll();
+});

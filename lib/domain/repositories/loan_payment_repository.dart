@@ -28,4 +28,8 @@ abstract class LoanPaymentRepository {
 
   /// Get total paid amount across all installments for a loan.
   Future<double> getTotalPaid(int loanId);
+
+  /// Returns a map of loanId → next unpaid payment due date, for ALL active
+  /// loans that have a schedule. Used by the upcoming reminders provider.
+  Future<Map<int, DateTime>> getNextPaymentDatesForAll();
 }

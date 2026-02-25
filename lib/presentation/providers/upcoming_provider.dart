@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/bill.dart';
 import '../../data/models/loan.dart';
 import 'bill_schedule_provider.dart';
+import 'loan_payment_provider.dart';
 import 'loan_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -28,12 +29,15 @@ sealed class UpcomingItem {
 
 /// An upcoming loan EMI repayment or lump-sum due date.
 final class LoanUpcomingItem extends UpcomingItem {
-  const LoanUpcomingItem(this.loan);
+  const LoanUpcomingItem(this.loan, {this.resolvedDueDate});
 
   final Loan loan;
+  /// Overrides loan.nextEmiDate when that field is null (e.g. legacy data).
+  final DateTime? resolvedDueDate;
 
   @override
-  DateTime get dueDate => loan.nextEmiDate ?? loan.dueDate ?? DateTime.now();
+  DateTime get dueDate =>
+      resolvedDueDate ?? loan.nextEmiDate ?? loan.dueDate ?? DateTime.now();
 
   /// Amount expected this installment (EMI or full pending).
   double get paymentAmount => loan.emiAmount ?? loan.pendingAmount;
@@ -60,6 +64,9 @@ final class BillUpcomingItem extends UpcomingItem {
 final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
   final loansAsync = ref.watch(activeLoansProvider);
   final billsAsync = ref.watch(scheduledBillsProvider);
+  // Fallback: actual next unpaid installment date from loan_payments table,
+  // for loans whose next_emi_date column is null (e.g. created before this fix).
+  final nextDatesAsync = ref.watch(nextPaymentDatesForAllProvider);
 
   return loansAsync.when(
     loading: () => const AsyncValue.loading(),
@@ -68,23 +75,37 @@ final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
       loading: () => const AsyncValue.loading(),
       error: AsyncValue.error,
       data: (bills) {
+        // nextDates may still be loading — use empty map as fallback so we
+        // don't block the whole section.
+        final nextDates = nextDatesAsync.valueOrNull ?? {};
+
         const windowDays = 14;
         final items = <UpcomingItem>[];
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
 
-        // Loans: include if active and has a due date within window or overdue
+        // Loans: include if active and has a due date within window or overdue.
+        // Priority: nextEmiDate > scheduled installment from loan_payments > dueDate
         for (final loan in loans) {
           if (loan.isCleared) continue;
-          final due = loan.nextEmiDate ?? loan.dueDate;
+
+          // Resolve effective due date
+          final due = loan.nextEmiDate
+              ?? nextDates[loan.id]  // fallback: first unpaid installment
+              ?? loan.dueDate;
+
           if (due == null) continue;
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
           final dueOnly = DateTime(due.year, due.month, due.day);
           if (dueOnly.difference(today).inDays <= windowDays) {
-            items.add(LoanUpcomingItem(loan));
+            items.add(LoanUpcomingItem(
+              loan,
+              resolvedDueDate:
+                  loan.nextEmiDate == null ? nextDates[loan.id] : null,
+            ));
           }
         }
 
-        // Bills: include if unpaid and within window or overdue
+        // Bills: include if unpaid and within window or overdue.
         for (final bill in bills) {
           if (bill.isPaidThisPeriod) continue;
           if (bill.daysUntilDue <= windowDays) {

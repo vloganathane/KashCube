@@ -131,6 +131,16 @@ class LoanRepositoryImpl implements LoanRepository {
         batch.insert('loan_payments', payment.toMap());
       }
       await batch.commit(noResult: true);
+
+      // Keep next_emi_date in sync
+      if (payments.isNotEmpty) {
+        await db.update(
+          'loans',
+          {'next_emi_date': payments.first.dueDate.toIso8601String()},
+          where: 'id = ?',
+          whereArgs: [loanId],
+        );
+      }
     }
 
     return loanId;
@@ -244,6 +254,27 @@ class LoanRepositoryImpl implements LoanRepository {
       whereArgs: [loanId],
     );
 
+    // Advance next_emi_date to the next unpaid installment
+    if (loan.repaymentFrequency != null) {
+      final nextRow = await db.query(
+        'loan_payments',
+        columns: ['due_date'],
+        where: 'loan_id = ? AND is_paid = 0',
+        whereArgs: [loanId],
+        orderBy: 'due_date ASC',
+        limit: 1,
+      );
+      final nextEmi = nextRow.isNotEmpty
+          ? nextRow.first['due_date'] as String?
+          : null;
+      await db.update(
+        'loans',
+        {'next_emi_date': nextEmi},
+        where: 'id = ?',
+        whereArgs: [loanId],
+      );
+    }
+
     // Auto-create a repayment transaction so it appears in Khata/reports
     final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;
     final repayTx = tx.Transaction(
@@ -289,6 +320,27 @@ class LoanRepositoryImpl implements LoanRepository {
       where: 'id = ?',
       whereArgs: [loanId],
     );
+
+    // Advance next_emi_date to the next unpaid installment
+    if (loan.repaymentFrequency != null) {
+      final nextRow = await db.query(
+        'loan_payments',
+        columns: ['due_date'],
+        where: 'loan_id = ? AND is_paid = 0',
+        whereArgs: [loanId],
+        orderBy: 'due_date ASC',
+        limit: 1,
+      );
+      final nextEmi = nextRow.isNotEmpty
+          ? nextRow.first['due_date'] as String?
+          : null;
+      await db.update(
+        'loans',
+        {'next_emi_date': nextEmi},
+        where: 'id = ?',
+        whereArgs: [loanId],
+      );
+    }
 
     // Auto-create a repayment transaction so it appears in Khata/reports
     final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;

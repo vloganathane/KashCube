@@ -318,6 +318,29 @@ class DatabaseHelper {
 
     await db.execute('CREATE INDEX idx_bill_attachments_txn ON bill_attachments(transaction_id)');
 
+    // -- bills table (scheduled / recurring bill payments)
+    await db.execute('''
+      CREATE TABLE bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        category TEXT NOT NULL DEFAULT 'Bills & Utilities',
+        frequency TEXT NOT NULL DEFAULT 'monthly',
+        due_day INTEGER NOT NULL DEFAULT 1,
+        is_auto_pay INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        notes TEXT,
+        payment_method TEXT,
+        last_paid_date TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        deleted_at TEXT
+      )
+    ''');
+
+    await db.execute('CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)');
+    await db.execute('CREATE INDEX idx_bills_due ON bills(due_day)');
+
     // -- schema_version table
     await db.execute('''
       CREATE TABLE schema_version (
@@ -328,8 +351,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 4,
-      'description': 'Add loan_payments table and repayment_frequency',
+      'version': 5,
+      'description': 'Add bills table for scheduled payments',
     });
 
     // Seed default categories
@@ -424,6 +447,38 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 4,
         'description': 'Add loan_payments table and repayment_frequency',
+      });
+    }
+
+    if (oldVersion < 5) {
+      // Add bills table for scheduled/recurring bill payments
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS bills (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          amount REAL NOT NULL,
+          category TEXT NOT NULL DEFAULT 'Bills & Utilities',
+          frequency TEXT NOT NULL DEFAULT 'monthly',
+          due_day INTEGER NOT NULL DEFAULT 1,
+          is_auto_pay INTEGER NOT NULL DEFAULT 0,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          notes TEXT,
+          payment_method TEXT,
+          last_paid_date TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT,
+          deleted_at TEXT
+        )
+      ''');
+
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_bills_active ON bills(is_active, deleted_at)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_bills_due ON bills(due_day)');
+
+      await db.insert('schema_version', {
+        'version': 5,
+        'description': 'Add bills table for scheduled payments',
       });
     }
   }

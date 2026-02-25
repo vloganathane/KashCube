@@ -7,11 +7,13 @@ import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../providers/bill_schedule_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../app_shell.dart';
+import '../bills/bills_screen.dart';
 import '../loans/loans_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
@@ -341,6 +343,7 @@ class _ExpandedDetails extends StatelessWidget {
     final totalLoanAsync = ref.watch(totalPendingLoanProvider);
     final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
     final recurringNet = recurringSummary.expense + recurringSummary.income;
+    final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
 
     return Padding(
       padding: const EdgeInsets.only(top: AppSpacing.md),
@@ -370,7 +373,7 @@ class _ExpandedDetails extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          // Loans / Recurring
+          // Loans / Bills / Recurring
           Row(
             children: [
               Expanded(
@@ -386,6 +389,25 @@ class _ExpandedDetails extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const LoansScreen()),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ActionTile(
+                  icon: Icons.receipt_long,
+                  label: 'Bills',
+                  value: totalBillsAsync.when(
+                    data: (v) => CurrencyFormatter.formatCompact(v),
+                    loading: () => '…',
+                    error: (e, st) => '–',
+                  ),
+                  suffix: '/mo',
+                  color: context.colorScheme.tertiary,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BillsScreen()),
                     );
                   },
                 ),

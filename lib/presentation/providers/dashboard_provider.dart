@@ -9,6 +9,7 @@ class DashboardSummary {
   final double totalExpense;
   final double balance;
   final double totalPendingCredit;
+  final double totalInvestment;
   final Map<String, double> categorySummary;
 
   const DashboardSummary({
@@ -16,6 +17,7 @@ class DashboardSummary {
     this.totalExpense = 0,
     this.balance = 0,
     this.totalPendingCredit = 0,
+    this.totalInvestment = 0,
     this.categorySummary = const {},
   });
 }
@@ -42,12 +44,19 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
 
       final income = await _transactionRepo.getTotalIncome(monthStart, monthEnd);
       final expense = await _transactionRepo.getTotalExpense(monthStart, monthEnd);
+      final invested = await _transactionRepo.getTotalExpense(
+        monthStart, monthEnd, mode: 'investment',
+      );
+      final investmentReturns = await _transactionRepo.getTotalIncome(
+        monthStart, monthEnd, mode: 'investment',
+      );
       final categorySummary = await _transactionRepo.getCategorySummary(monthStart, monthEnd);
 
       state = AsyncValue.data(DashboardSummary(
         totalIncome: income,
         totalExpense: expense,
         balance: income - expense,
+        totalInvestment: invested + investmentReturns,
         categorySummary: categorySummary,
       ));
     } catch (e, st) {

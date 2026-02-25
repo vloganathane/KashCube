@@ -198,13 +198,13 @@ class _DashboardCards extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.md),
 
-        // Income / Expense Row
+        // Income / Expense / Investment Row
         Row(
           children: [
             Expanded(
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.base),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -212,13 +212,13 @@ class _DashboardCards extends StatelessWidget {
                         children: [
                           Icon(Icons.arrow_downward, color: colors.income, size: AppSpacing.iconMd),
                           const SizedBox(width: AppSpacing.xs),
-                          Text('Income', style: context.textTheme.bodySmall),
+                          Flexible(child: Text('Income', style: context.textTheme.bodySmall)),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         CurrencyFormatter.formatCompact(summary.totalIncome),
-                        style: context.textTheme.titleLarge?.copyWith(
+                        style: context.textTheme.titleMedium?.copyWith(
                           color: colors.income,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'RobotoMono',
@@ -229,11 +229,11 @@ class _DashboardCards extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: AppSpacing.md),
+            const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.base),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -241,14 +241,43 @@ class _DashboardCards extends StatelessWidget {
                         children: [
                           Icon(Icons.arrow_upward, color: colors.expense, size: AppSpacing.iconMd),
                           const SizedBox(width: AppSpacing.xs),
-                          Text('Expense', style: context.textTheme.bodySmall),
+                          Flexible(child: Text('Expense', style: context.textTheme.bodySmall)),
                         ],
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         CurrencyFormatter.formatCompact(summary.totalExpense),
-                        style: context.textTheme.titleLarge?.copyWith(
+                        style: context.textTheme.titleMedium?.copyWith(
                           color: colors.expense,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.trending_up, color: colors.investment, size: AppSpacing.iconMd),
+                          const SizedBox(width: AppSpacing.xs),
+                          Flexible(child: Text('Invest', style: context.textTheme.bodySmall)),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        CurrencyFormatter.formatCompact(summary.totalInvestment),
+                        style: context.textTheme.titleMedium?.copyWith(
+                          color: colors.investment,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'RobotoMono',
                         ),

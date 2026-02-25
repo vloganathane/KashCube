@@ -8,20 +8,24 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
     required this.expense,
     required this.credit,
     required this.overdue,
+    required this.investment,
     required this.incomeBackground,
     required this.expenseBackground,
     required this.creditBackground,
     required this.overdueBackground,
+    required this.investmentBackground,
   });
 
   final Color income;
   final Color expense;
   final Color credit;
   final Color overdue;
+  final Color investment;
   final Color incomeBackground;
   final Color expenseBackground;
   final Color creditBackground;
   final Color overdueBackground;
+  final Color investmentBackground;
 
   // Light theme colors
   static const light = KashCubeColors(
@@ -29,10 +33,12 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
     expense: Color(0xFFC62828),
     credit: Color(0xFFE65100),
     overdue: Color(0xFFB71C1C),
+    investment: Color(0xFF0D47A1),
     incomeBackground: Color(0xFFE8F5E9),
     expenseBackground: Color(0xFFFFEBEE),
     creditBackground: Color(0xFFFFF3E0),
     overdueBackground: Color(0xFFFFCDD2),
+    investmentBackground: Color(0xFFE3F2FD),
   );
 
   // Dark theme colors
@@ -41,10 +47,12 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
     expense: Color(0xFFEF5350),
     credit: Color(0xFFFFA726),
     overdue: Color(0xFFEF5350),
+    investment: Color(0xFF42A5F5),
     incomeBackground: Color(0xFF1B5E20),
     expenseBackground: Color(0xFF4E0000),
     creditBackground: Color(0xFF3E2723),
     overdueBackground: Color(0xFF4E0000),
+    investmentBackground: Color(0xFF0D47A1),
   );
 
   @override
@@ -53,20 +61,24 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
     Color? expense,
     Color? credit,
     Color? overdue,
+    Color? investment,
     Color? incomeBackground,
     Color? expenseBackground,
     Color? creditBackground,
     Color? overdueBackground,
+    Color? investmentBackground,
   }) {
     return KashCubeColors(
       income: income ?? this.income,
       expense: expense ?? this.expense,
       credit: credit ?? this.credit,
       overdue: overdue ?? this.overdue,
+      investment: investment ?? this.investment,
       incomeBackground: incomeBackground ?? this.incomeBackground,
       expenseBackground: expenseBackground ?? this.expenseBackground,
       creditBackground: creditBackground ?? this.creditBackground,
       overdueBackground: overdueBackground ?? this.overdueBackground,
+      investmentBackground: investmentBackground ?? this.investmentBackground,
     );
   }
 
@@ -78,10 +90,12 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
       expense: Color.lerp(expense, other.expense, t)!,
       credit: Color.lerp(credit, other.credit, t)!,
       overdue: Color.lerp(overdue, other.overdue, t)!,
+      investment: Color.lerp(investment, other.investment, t)!,
       incomeBackground: Color.lerp(incomeBackground, other.incomeBackground, t)!,
       expenseBackground: Color.lerp(expenseBackground, other.expenseBackground, t)!,
       creditBackground: Color.lerp(creditBackground, other.creditBackground, t)!,
       overdueBackground: Color.lerp(overdueBackground, other.overdueBackground, t)!,
+      investmentBackground: Color.lerp(investmentBackground, other.investmentBackground, t)!,
     );
   }
 }

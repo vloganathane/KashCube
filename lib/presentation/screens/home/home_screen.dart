@@ -187,7 +187,7 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
         child: Column(
           children: [
             // Month
@@ -197,30 +197,30 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 color: context.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 2),
 
             // Primary: Actual Balance (cash in hand)
             Text(
               CurrencyFormatter.format(actualBalance),
-              style: context.textTheme.headlineLarge?.copyWith(
+              style: context.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 fontFamily: 'RobotoMono',
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 1),
             Text(
               'Actual Balance',
-              style: context.textTheme.bodySmall?.copyWith(
+              style: context.textTheme.labelSmall?.copyWith(
                 color: context.colorScheme.onSurfaceVariant,
               ),
             ),
 
             // Secondary: Net Balance + breakdown — only when loans exist
             if (hasLoans) ...[
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  horizontal: AppSpacing.sm, vertical: 2),
                 decoration: BoxDecoration(
                   color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
                   borderRadius: BorderRadius.circular(20),
@@ -262,11 +262,11 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
             ],
 
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.xs),
 
             // Swipeable cards
             SizedBox(
-              height: 148,
+              height: 130,
               child: PageView(
                 controller: _controller,
                 onPageChanged: (i) => setState(() => _page = i),
@@ -278,7 +278,7 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
             ),
 
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
             // Page dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -287,8 +287,8 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 return AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: active ? 16 : 6,
-                  height: 6,
+                  width: active ? 14 : 5,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: active
                         ? context.colorScheme.primary
@@ -298,7 +298,6 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 );
               }),
             ),
-            const SizedBox(height: AppSpacing.xs),
           ],
         ),
       ),
@@ -516,7 +515,7 @@ class _SwipeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+          AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -524,18 +523,18 @@ class _SwipeCard extends StatelessWidget {
             // Card label
             Row(
               children: [
-                Icon(icon, size: 13, color: onLabelColor.withAlpha(180)),
+                Icon(icon, size: 12, color: onLabelColor.withAlpha(180)),
                 const SizedBox(width: 4),
                 Text(
                   label,
-                  style: context.textTheme.labelMedium?.copyWith(
+                  style: context.textTheme.labelSmall?.copyWith(
                     color: onLabelColor.withAlpha(200),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
 
             // Stats row
             Row(
@@ -543,9 +542,9 @@ class _SwipeCard extends StatelessWidget {
               children: statsRow,
             ),
 
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
             Divider(height: 1, color: onLabelColor.withAlpha(40)),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
 
             // Footer tiles
             Row(

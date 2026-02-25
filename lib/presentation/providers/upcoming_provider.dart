@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/models/bill.dart';
 import '../../data/models/loan.dart';
-import 'bill_schedule_provider.dart';
+import '../../data/models/scheduled_payment.dart';
 import 'loan_payment_provider.dart';
 import 'loan_provider.dart';
+import 'scheduled_payment_provider.dart';
 
 // ---------------------------------------------------------------------------
 // UpcomingItem — sealed union of upcoming loan payments + bills
@@ -43,27 +43,27 @@ final class LoanUpcomingItem extends UpcomingItem {
   double get paymentAmount => loan.emiAmount ?? loan.pendingAmount;
 }
 
-/// An upcoming bill payment.
-final class BillUpcomingItem extends UpcomingItem {
-  const BillUpcomingItem(this.bill);
+/// An upcoming scheduled payment (bill, subscription, one-time, salary, etc.)
+final class ScheduledUpcomingItem extends UpcomingItem {
+  const ScheduledUpcomingItem(this.payment);
 
-  final Bill bill;
+  final ScheduledPayment payment;
 
   @override
-  DateTime get dueDate => bill.nextDueDate;
+  DateTime get dueDate => payment.nextDate;
 }
 
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 
-/// Merged upcoming items from active loans and unpaid bills.
+/// Merged upcoming items from active loans and unpaid scheduled payments.
 ///
 /// Window: overdue items + next 14 days.
 /// Sorted ascending by due date (overdue-first, nearest upcoming next).
 final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
   final loansAsync = ref.watch(activeLoansProvider);
-  final billsAsync = ref.watch(scheduledBillsProvider);
+  final scheduledAsync = ref.watch(scheduledPaymentsProvider);
   // Fallback: actual next unpaid installment date from loan_payments table,
   // for loans whose next_emi_date column is null (e.g. created before this fix).
   final nextDatesAsync = ref.watch(nextPaymentDatesForAllProvider);
@@ -71,10 +71,10 @@ final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
   return loansAsync.when(
     loading: () => const AsyncValue.loading(),
     error: AsyncValue.error,
-    data: (loans) => billsAsync.when(
+    data: (loans) => scheduledAsync.when(
       loading: () => const AsyncValue.loading(),
       error: AsyncValue.error,
-      data: (bills) {
+      data: (payments) {
         // nextDates may still be loading — use empty map as fallback so we
         // don't block the whole section.
         final nextDates = nextDatesAsync.valueOrNull ?? {};
@@ -105,11 +105,14 @@ final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
           }
         }
 
-        // Bills: include if unpaid and within window or overdue.
-        for (final bill in bills) {
-          if (bill.isPaidThisPeriod) continue;
-          if (bill.daysUntilDue <= windowDays) {
-            items.add(BillUpcomingItem(bill));
+        // Scheduled payments: include if unpaid and within window or overdue.
+        for (final payment in payments) {
+          if (!payment.isActive) continue;
+          if (payment.isPaidThisPeriod) continue;
+          final dueOnly = DateTime(
+              payment.nextDate.year, payment.nextDate.month, payment.nextDate.day);
+          if (dueOnly.difference(today).inDays <= windowDays) {
+            items.add(ScheduledUpcomingItem(payment));
           }
         }
 

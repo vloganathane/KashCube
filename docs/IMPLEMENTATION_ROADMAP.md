@@ -1,8 +1,8 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.0  
-**Date:** February 25, 2026  
+**Version:** 2.1  
+**Date:** February 26, 2026  
 **Duration:** 6 months (26 weeks)
 
 ---
@@ -178,7 +178,7 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-## ✅ Phase 1.5: Unified Transaction Model (Week 7)
+## ✅ Phase 1.5: Unified Transaction Model + Bills & Payments (Weeks 7–7.5)
 
 ### Week 7: Architecture Redesign
 **Goal:** Unify all financial events (income, expense, lending, borrowing, investment, settlement) into a single Transaction model with progressive disclosure form
@@ -206,6 +206,22 @@ This roadmap follows a **core-first, iterative approach**:
 - [x] Custom app launcher icon generated from `assets/logo.png` (adaptive icon, API 26+)
 - [x] Compact pinned `SliverAppBar` replacing the large variant
 
+**Week 7.5 — Bills & Payments UX Overhaul (26 Feb 2026):**
+- [x] Speed-dial FAB: Transaction / Loan·Lend / Bills & Pay
+- [x] Home card "Ledger" tile renamed to "Loans" (`handshake_outlined` icon)
+- [x] Merged `Bill` + `RecurringTransaction` models → unified `ScheduledPayment` model
+  - `ScheduledFrequency` enum with `toMonthly()` / `nextOccurrence()` helpers
+  - `isOneTime`, `autoCreate`, `isAutoPay`, `isPaidThisPeriod`, `isOverdue`, `daysUntilDue`
+- [x] New `ScheduledPaymentRepository` (domain interface + SQLite impl)
+- [x] New `scheduledPaymentsProvider` (StateNotifier: add / update / remove / markPaid / markUnpaid)
+- [x] `processScheduledAutoCreations()` replaces `processDueRecurringTransactions()`
+- [x] New `BillsAndPaymentsScreen` — filter chips (All / Recurring / One-time / Overdue / Paid), summary card (monthly in/out), swipe-to-pay dismissible list
+- [x] New `AddEditScheduledPaymentScreen` — type toggle (Expense/Income), schedule toggle (Recurring/One-time), frequency dropdown, due-day picker, one-time date picker, auto-create & auto-pay switches
+- [x] Home screen Overview & Personal cards: "Bills" + "Recurring" tiles → single "Bills & Pay" tile → `BillsAndPaymentsScreen`
+- [x] `upcomingItemsProvider`: `BillUpcomingItem` → `ScheduledUpcomingItem(payment)`
+- [x] `NotificationService` updated for `ScheduledUpcomingItem`
+- [x] DB v9 → v10: `scheduled_payments` table with migration from `bills` + `recurring_transactions`
+
 **Deliverables:**
 - Single Transaction model for ALL financial events (9 types)
 - Progressive form: select type → relevant fields appear
@@ -213,8 +229,10 @@ This roadmap follows a **core-first, iterative approach**:
 - Transfer type: from-account / to-account pickers, no party name needed
 - Multi-account support: manage accounts from Settings
 - No separate Credits/Loans screens — everything is a transaction
+- Single "Bills & Payments" entry point replacing two separate screens
+- Unified `ScheduledPayment` model covering bills, subscriptions, salary, EMIs, one-time reminders
 
-**Time Estimate:** 50 hours (delivered)
+**Time Estimate:** 50 + 12 hours (delivered)
 
 ---
 
@@ -629,7 +647,8 @@ This roadmap follows a **core-first, iterative approach**:
 8. ✅ Week 5 tasks (Reports & Search) — complete
 9. ✅ Week 6 tasks (Data & Security) — complete
 10. ✅ Week 7 tasks (Unified Transaction Model, Transfer type, multi-account) — complete
-11. Begin Phase 2 — Week 8: Budget tracking & savings goals
+11. ✅ Week 7.5 tasks (Bills & Payments unification, ScheduledPayment model, DB v10) — complete
+12. Begin Phase 2 — Week 8: Budget tracking & savings goals
 
 ### This Month (Weeks 1-7)
 - ✅ Complete transaction foundation (Week 1-2)
@@ -639,6 +658,7 @@ This roadmap follows a **core-first, iterative approach**:
 - ✅ Phase 1 MVP — Complete
 - ✅ Unified Transaction Model v7+v8, Transfer type, multi-account (Week 7)
 - ✅ Phase 1.5 — Complete
+- ✅ Bills & Payments UX Overhaul (Week 7.5) — Complete
 - Begin Phase 2: Week 8 (Budgets & Savings Goals)
 
 ### Overall Progress
@@ -651,11 +671,12 @@ This roadmap follows a **core-first, iterative approach**:
 | Week 5 | ✅ Complete (6/6) | Reports with charts, global search, advanced filters, loan tracking |
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
 | Week 7 | ✅ Complete (9/9 + extras) | Unified model v7+v8, 9 types, progressive form, Ledger rebuild, Transfer type, multi-account, custom icon |
+| Week 7.5 | ✅ Complete | ScheduledPayment model, BillsAndPaymentsScreen, speed-dial FAB, DB v10 |
 
-**Codebase:** ~78 Dart files in `lib/`, 0 lint issues  
-**Database:** SQLite v8 (transactions + accounts + 9 other tables)  
+**Codebase:** ~85 Dart files in `lib/`, 0 lint issues  
+**Database:** SQLite v10 (transactions + accounts + scheduled_payments + 9 other tables)  
 **Phase 1 MVP:** COMPLETE  
-**Phase 1.5 (Unified Model):** COMPLETE  
+**Phase 1.5 (Unified Model + Bills & Payments):** COMPLETE  
 **Current Phase:** Phase 2 (Scale Features) — starting Week 8
 
 ### This Quarter (Weeks 1-12)

@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/parsed_sms.dart';
 import '../data/models/transaction.dart';
 import '../data/services/sms_parser.dart';
-import 'providers/recurring_provider.dart';
+import 'providers/scheduled_payment_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'screens/bills/bills_and_payments_screen.dart';
 import 'screens/ledger/ledger_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/loans/loans_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_screen.dart';
@@ -47,7 +49,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 
   Future<void> _processRecurringTransactions() async {
-    await processDueRecurringTransactions(ref);
+    await processScheduledAutoCreations(ref);
   }
 
   Future<void> _initSmsListener() async {
@@ -124,7 +126,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
-    final showFab = currentIndex == 0 || currentIndex == 1;
+    final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
 
     return Scaffold(
       body: IndexedStack(
@@ -164,19 +166,185 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
-      floatingActionButton: showFab
-          ? FloatingActionButton(
-              heroTag: 'fab_app_shell',
-              onPressed: () {
-                Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => const AddEditTransactionScreen(),
-                  ),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
+      floatingActionButton: showFab ? const _SpeedDialFab() : null,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Speed Dial FAB
+// ---------------------------------------------------------------------------
+
+class _SpeedDialFab extends ConsumerStatefulWidget {
+  const _SpeedDialFab();
+
+  @override
+  ConsumerState<_SpeedDialFab> createState() => _SpeedDialFabState();
+}
+
+class _SpeedDialFabState extends ConsumerState<_SpeedDialFab>
+    with SingleTickerProviderStateMixin {
+  bool _open = false;
+  late final AnimationController _ctrl;
+  late final Animation<double> _expandAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _expandAnim = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() => _open = !_open);
+    _open ? _ctrl.forward() : _ctrl.reverse();
+  }
+
+  void _close() {
+    setState(() => _open = false);
+    _ctrl.reverse();
+  }
+
+  void _openTransaction() {
+    _close();
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddEditTransactionScreen()),
+    );
+  }
+
+  void _openLoan() async {
+    _close();
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddLedgerEntryScreen()),
+    );
+  }
+
+  void _openBillsAndPayments() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (_) => const AddEditScheduledPaymentScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // ── Option: Bills & Payments ───────────────────────────────────────
+        ScaleTransition(
+          scale: _expandAnim,
+          child: FadeTransition(
+            opacity: _expandAnim,
+            child: _SpeedDialOption(
+              icon: Icons.event_repeat,
+              label: 'Bills & Pay',
+              onTap: _openBillsAndPayments,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Option: Loan / Lend ────────────────────────────────────────
+        ScaleTransition(
+          scale: _expandAnim,
+          child: FadeTransition(
+            opacity: _expandAnim,
+            child: _SpeedDialOption(
+              icon: Icons.handshake_outlined,
+              label: 'Loan / Lend',
+              onTap: _openLoan,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // ── Option: Transaction ────────────────────────────────────────
+        ScaleTransition(
+          scale: _expandAnim,
+          child: FadeTransition(
+            opacity: _expandAnim,
+            child: _SpeedDialOption(
+              icon: Icons.receipt_long_outlined,
+              label: 'Transaction',
+              onTap: _openTransaction,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Main FAB ───────────────────────────────────────────────────
+        FloatingActionButton(
+          heroTag: 'fab_speed_dial',
+          onPressed: _toggle,
+          child: AnimatedRotation(
+            turns: _open ? 0.125 : 0, // 45° when open → × icon feel
+            duration: const Duration(milliseconds: 220),
+            child: const Icon(Icons.add),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeedDialOption extends StatelessWidget {
+  const _SpeedDialOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Label pill
+        Material(
+          color: colorScheme.secondaryContainer,
+          borderRadius: BorderRadius.circular(8),
+          elevation: 2,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        // Mini FAB
+        FloatingActionButton.small(
+          heroTag: 'fab_$label',
+          onPressed: onTap,
+          child: Icon(icon),
+        ),
+      ],
     );
   }
 }

@@ -353,6 +353,36 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)');
     await db.execute('CREATE INDEX idx_bills_due ON bills(due_day)');
 
+    // -- scheduled_payments table (unified bills + recurring replacement)
+    await db.execute('''
+      CREATE TABLE scheduled_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        type TEXT NOT NULL DEFAULT 'expense',
+        category TEXT NOT NULL,
+        is_one_time INTEGER NOT NULL DEFAULT 0,
+        frequency TEXT,
+        due_day INTEGER,
+        auto_create INTEGER NOT NULL DEFAULT 0,
+        is_auto_pay INTEGER NOT NULL DEFAULT 0,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        next_date TEXT NOT NULL,
+        last_paid_date TEXT,
+        last_generated TEXT,
+        party_name TEXT,
+        payment_method TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        deleted_at TEXT
+      )
+    ''');
+
+    await db.execute('CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)');
+    await db.execute('CREATE INDEX idx_sp_next ON scheduled_payments(next_date)');
+    await db.execute('CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+
     // -- schema_version table
     await db.execute('''
       CREATE TABLE schema_version (
@@ -363,8 +393,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 7,
-      'description': 'Unified transaction model: new types + lending fields',
+      'version': 10,
+      'description': 'Unified scheduled_payments table',
     });
 
     // Seed default categories + default accounts
@@ -610,6 +640,108 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 8,
         'description': 'Add to_account_id + pre-seed accounts + Transfer type',
+      });
+    }
+
+    if (oldVersion < 9) {
+      // Create the unified scheduled_payments table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS scheduled_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          amount REAL NOT NULL,
+          type TEXT NOT NULL DEFAULT 'expense',
+          category TEXT NOT NULL,
+          is_one_time INTEGER NOT NULL DEFAULT 0,
+          frequency TEXT,
+          due_day INTEGER,
+          auto_create INTEGER NOT NULL DEFAULT 0,
+          is_auto_pay INTEGER NOT NULL DEFAULT 0,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          next_date TEXT NOT NULL,
+          last_paid_date TEXT,
+          last_generated TEXT,
+          party_name TEXT,
+          payment_method TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT,
+          deleted_at TEXT
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+
+      // Migrate legacy bills → scheduled_payments (reminder mode, no auto-create)
+      await db.execute('''
+        INSERT INTO scheduled_payments
+          (name, amount, type, category, is_one_time, frequency, due_day,
+           auto_create, is_auto_pay, is_active, next_date,
+           last_paid_date, payment_method, notes, created_at, updated_at, deleted_at)
+        SELECT
+          name, amount, 'expense', category, 0, frequency, due_day,
+          0, is_auto_pay, is_active,
+          datetime('now', '+7 days'),
+          last_paid_date, payment_method, notes, created_at, updated_at, deleted_at
+        FROM bills
+        WHERE deleted_at IS NULL
+      ''');
+
+      // Migrate recurring_transactions → scheduled_payments (auto-create mode)
+      await db.execute('''
+        INSERT INTO scheduled_payments
+          (name, amount, type, category, is_one_time, frequency, due_day,
+           auto_create, is_auto_pay, is_active, next_date,
+           last_paid_date, last_generated, party_name, payment_method, notes,
+           created_at, updated_at)
+        SELECT
+          category, amount, type, category, 0, frequency, NULL,
+          1, 0, is_active, next_date,
+          last_generated, last_generated, party_name, payment_method, notes,
+          created_at, updated_at
+        FROM recurring_transactions
+      ''');
+
+      await db.insert('schema_version', {
+        'version': 9,
+        'description': 'Unified scheduled_payments: merge bills + recurring',
+      });
+    }
+
+    if (oldVersion < 10) {
+      // Safety re-run: ensures scheduled_payments exists on devices that were
+      // already at v9 before the table was added (e.g. dev builds).
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS scheduled_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          amount REAL NOT NULL,
+          type TEXT NOT NULL DEFAULT 'expense',
+          category TEXT NOT NULL,
+          is_one_time INTEGER NOT NULL DEFAULT 0,
+          frequency TEXT,
+          due_day INTEGER,
+          auto_create INTEGER NOT NULL DEFAULT 0,
+          is_auto_pay INTEGER NOT NULL DEFAULT 0,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          next_date TEXT NOT NULL,
+          last_paid_date TEXT,
+          last_generated TEXT,
+          party_name TEXT,
+          payment_method TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT,
+          deleted_at TEXT
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+      await db.insert('schema_version', {
+        'version': 10,
+        'description': 'Ensure scheduled_payments table exists (v9 safety)',
       });
     }
   }

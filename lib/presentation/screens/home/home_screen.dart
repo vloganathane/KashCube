@@ -7,16 +7,14 @@ import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
-import '../../providers/bill_schedule_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/loan_provider.dart';
-import '../../providers/recurring_provider.dart';
+import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
-import '../bills/bills_screen.dart';
+import '../bills/bills_and_payments_screen.dart';
 import '../loans/loans_screen.dart';
-import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
@@ -37,7 +35,7 @@ class HomeScreen extends ConsumerWidget {
           ref.read(recentTransactionsProvider.notifier).loadRecent();
           ref.invalidate(totalOutstandingLentProvider);
           ref.invalidate(totalOutstandingBorrowedProvider);
-          ref.invalidate(totalMonthlyBillsProvider);
+          ref.invalidate(totalMonthlyScheduledExpenseProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -350,8 +348,7 @@ class _OverviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
-    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final monthlyScheduledAsync = ref.watch(totalMonthlyScheduledExpenseProvider);
     // Total outstanding = outstanding lent (to receive) + outstanding borrowed (to pay)
     final lentOutstanding     = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
     final borrowedOutstanding = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
@@ -381,23 +378,15 @@ class _OverviewCard extends ConsumerWidget {
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.receipt_long, label: 'Bills',
-          value: totalBillsAsync.maybeWhen(
+          icon: Icons.event_repeat, label: 'Bills & Pay',
+          value: monthlyScheduledAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
           suffix: '/mo',
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BillsScreen())),
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen())),
         ),
         _CardFooterTile(
-          icon: Icons.repeat, label: 'Recurring',
-          value: CurrencyFormatter.formatCompact(
-              (recurringSummary.expense + recurringSummary.income).abs()),
-          suffix: '/mo',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen())),
-        ),
-        _CardFooterTile(
-          icon: Icons.account_balance_wallet, label: 'Ledger',
+          icon: Icons.handshake_outlined, label: 'Loans',
           value: CurrencyFormatter.formatCompact(totalOutstanding),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const LoansScreen())),
@@ -416,8 +405,7 @@ class _PersonalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
-    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final monthlyScheduledAsync = ref.watch(totalMonthlyScheduledExpenseProvider);
     final income = summary.personalIncome ?? 0;
     final expense = summary.personalExpense ?? 0;
     final pnl = summary.personalPnl;
@@ -448,20 +436,12 @@ class _PersonalCard extends ConsumerWidget {
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.receipt_long, label: 'Bills',
-          value: totalBillsAsync.maybeWhen(
+          icon: Icons.event_repeat, label: 'Bills & Pay',
+          value: monthlyScheduledAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
           suffix: '/mo',
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BillsScreen())),
-        ),
-        _CardFooterTile(
-          icon: Icons.repeat, label: 'Recurring',
-          value: CurrencyFormatter.formatCompact(
-              (recurringSummary.expense + recurringSummary.income).abs()),
-          suffix: '/mo',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen())),
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen())),
         ),
       ],
     );
@@ -916,7 +896,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
         // Clear keys that are no longer in the provider list (already removed)
         final incomingKeys = items.map((item) {
           if (item is LoanUpcomingItem) return 'loan_${item.loan.id}';
-          return 'bill_${(item as BillUpcomingItem).bill.id}';
+          return 'sched_${(item as ScheduledUpcomingItem).payment.id}';
         }).toSet();
         _dismissedKeys.removeWhere((k) => !incomingKeys.contains(k));
 
@@ -926,7 +906,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
           if (item is LoanUpcomingItem) {
             k = 'loan_${item.loan.id}';
           } else {
-            k = 'bill_${(item as BillUpcomingItem).bill.id}';
+            k = 'sched_${(item as ScheduledUpcomingItem).payment.id}';
           }
           return !_dismissedKeys.contains(k);
         }).toList();
@@ -991,7 +971,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
               if (item is LoanUpcomingItem) {
                 key = 'loan_${item.loan.id}';
               } else {
-                key = 'bill_${(item as BillUpcomingItem).bill.id}';
+                key = 'sched_${(item as ScheduledUpcomingItem).payment.id}';
               }
               return Dismissible(
                 key: ValueKey(key),
@@ -1037,19 +1017,19 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
   }
 
   Future<void> _onMarkPaid(UpcomingItem item) async {
-    if (item is BillUpcomingItem) {
+    if (item is ScheduledUpcomingItem) {
       await ref
-          .read(scheduledBillsProvider.notifier)
-          .markPaid(item.bill.id!);
+          .read(scheduledPaymentsProvider.notifier)
+          .markPaid(item.payment);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${item.bill.name} marked as paid'),
+          content: Text('${item.payment.name} marked as paid'),
           action: SnackBarAction(
             label: 'UNDO',
             onPressed: () => ref
-                .read(scheduledBillsProvider.notifier)
-                .markUnpaid(item.bill.id!),
+                .read(scheduledPaymentsProvider.notifier)
+                .markUnpaid(item.payment),
           ),
         ),
       );
@@ -1100,12 +1080,12 @@ class _UpcomingItemTile extends StatelessWidget {
       accentColor = l.loan.isLent ? colors.income : colors.expense;
       iconData = l.loan.isLent ? Icons.call_received : Icons.send;
     } else {
-      final b = item as BillUpcomingItem;
-      title = b.bill.name;
-      subtitle = b.bill.category;
-      amount = b.bill.amount;
-      accentColor = colors.expense;
-      iconData = Icons.receipt_long;
+      final b = item as ScheduledUpcomingItem;
+      title = b.payment.name;
+      subtitle = b.payment.category;
+      amount = b.payment.amount;
+      accentColor = b.payment.isIncome ? colors.income : colors.expense;
+      iconData = b.payment.isOneTime ? Icons.event : Icons.event_repeat;
     }
 
     final dueLabel = switch (days) {

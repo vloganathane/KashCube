@@ -18,11 +18,11 @@ const _channelName = 'Upcoming Payments';
 const _channelDesc =
     'Reminders for upcoming loan EMI repayments and bill due dates';
 
-/// Base IDs to prevent collision between bills and loans.
-/// Bills:        10_000 + bill.id
+/// Base IDs to prevent collision between scheduled payments and loans.
+/// Scheduled: 10_000 + payment.id
 /// Loans (due):  20_000 + loan.id
 /// Loans (day−1): 25_000 + loan.id
-/// Bills (day−1): 15_000 + bill.id
+/// Scheduled (day−1): 15_000 + payment.id
 const _billBase = 10000;
 const _loanBase = 20000;
 const _dayBeforeOffset = 5000;
@@ -104,10 +104,10 @@ class NotificationService {
                 : 'Pay back ${l.loan.lenderName}',
             '${CurrencyFormatter.format(l.paymentAmount)} installment due',
           ),
-        BillUpcomingItem b => (
-            _billBase + (b.bill.id ?? 0),
-            b.bill.name,
-            '${CurrencyFormatter.format(b.bill.amount)} bill due',
+        ScheduledUpcomingItem b => (
+            _billBase + (b.payment.id ?? 0),
+            b.payment.name,
+            '${CurrencyFormatter.format(b.payment.amount)} due',
           ),
       };
 

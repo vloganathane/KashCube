@@ -670,3 +670,22 @@ class _AddEditBillSheetState extends State<_AddEditBillSheet> {
     Navigator.pop(context);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Public helper — call from anywhere (e.g. speed-dial FAB)
+// ---------------------------------------------------------------------------
+
+/// Shows the add-bill bottom sheet without navigating to BillsScreen.
+void showAddBillSheet(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _AddEditBillSheet(
+      onSave: (bill) {
+        ref.read(scheduledBillsProvider.notifier).addBill(bill);
+        ref.invalidate(totalMonthlyBillsProvider);
+      },
+    ),
+  );
+}

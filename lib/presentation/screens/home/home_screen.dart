@@ -385,9 +385,9 @@ class _ExpandedDetails extends StatelessWidget {
           ),
 
           // Personal / Business split — only when business activity exists
-          if (summary.hasBusinessActivity) ...[  
+          if (summary.hasBusinessActivity) ...[
             const SizedBox(height: AppSpacing.sm),
-            _ModeSplitRow(summary: summary, colors: colors),
+            _ModeTabCard(summary: summary, colors: colors),
           ],
 
           const SizedBox(height: AppSpacing.sm),
@@ -454,72 +454,35 @@ class _ExpandedDetails extends StatelessWidget {
   }
 }
 
-/// Two-column Personal / Business breakdown row shown in expanded deck.
-class _ModeSplitRow extends StatelessWidget {
-  const _ModeSplitRow({
-    required this.summary,
-    required this.colors,
-  });
+/// Tabbed card for Personal / Business breakdown in the expanded deck.
+class _ModeTabCard extends StatefulWidget {
+  const _ModeTabCard({required this.summary, required this.colors});
 
   final DashboardSummary summary;
   final KashCubeColors colors;
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ModeTile(
-            icon: Icons.person_outline,
-            label: 'Personal',
-            income: summary.personalIncome ?? 0,
-            expense: summary.personalExpense ?? 0,
-            pnl: summary.personalPnl,
-            colors: colors,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _ModeTile(
-            icon: Icons.business_center_outlined,
-            label: 'Business',
-            income: summary.businessIncome ?? 0,
-            expense: summary.businessExpense ?? 0,
-            pnl: summary.businessPnl,
-            colors: colors,
-          ),
-        ),
-      ],
-    );
-  }
+  State<_ModeTabCard> createState() => _ModeTabCardState();
 }
 
-/// Single Personal/Business tile showing income, expense, and net P&L.
-class _ModeTile extends StatelessWidget {
-  const _ModeTile({
-    required this.icon,
-    required this.label,
-    required this.income,
-    required this.expense,
-    required this.pnl,
-    required this.colors,
-  });
-
-  final IconData icon;
-  final String label;
-  final double income;
-  final double expense;
-  final double pnl;
-  final KashCubeColors colors;
+class _ModeTabCardState extends State<_ModeTabCard> {
+  bool _isBusiness = false;
 
   @override
   Widget build(BuildContext context) {
-    final pnlColor = pnl >= 0 ? colors.income : colors.expense;
+    final income = _isBusiness
+        ? (widget.summary.businessIncome ?? 0)
+        : (widget.summary.personalIncome ?? 0);
+    final expense = _isBusiness
+        ? (widget.summary.businessExpense ?? 0)
+        : (widget.summary.personalExpense ?? 0);
+    final pnl = _isBusiness ? widget.summary.businessPnl : widget.summary.personalPnl;
+    final pnlColor = pnl >= 0 ? widget.colors.income : widget.colors.expense;
     final pnlPrefix = pnl >= 0 ? '+' : '';
 
     return Material(
       color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
@@ -527,46 +490,32 @@ class _ModeTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: AppSpacing.iconSm, color: context.colorScheme.outline),
-            const SizedBox(width: AppSpacing.xs),
+            // Tab toggle
+            _ModeToggle(
+              isBusiness: _isBusiness,
+              onChanged: (v) => setState(() => _isBusiness = v),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            // Stats
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  Text(label, style: context.textTheme.labelSmall),
-                  const SizedBox(height: 1),
-                  // Income ↓ / Expense ↑ sub-row
-                  Row(
-                    children: [
-                      Icon(Icons.arrow_downward, size: 10, color: colors.income),
-                      const SizedBox(width: 1),
-                      Text(
-                        CurrencyFormatter.formatCompact(income),
-                        style: context.textTheme.labelSmall?.copyWith(
-                          color: colors.income,
-                          fontFamily: 'RobotoMono',
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.xs),
-                      Icon(Icons.arrow_upward, size: 10, color: colors.expense),
-                      const SizedBox(width: 1),
-                      Text(
-                        CurrencyFormatter.formatCompact(expense),
-                        style: context.textTheme.labelSmall?.copyWith(
-                          color: colors.expense,
-                          fontFamily: 'RobotoMono',
-                        ),
-                      ),
-                    ],
+                  _ModeStat(
+                    icon: Icons.arrow_downward,
+                    value: CurrencyFormatter.formatCompact(income),
+                    color: widget.colors.income,
                   ),
-                  const SizedBox(height: 1),
-                  Text(
-                    '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
-                    style: context.textTheme.titleSmall?.copyWith(
-                      color: pnlColor,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'RobotoMono',
-                    ),
+                  _ModeStat(
+                    icon: Icons.arrow_upward,
+                    value: CurrencyFormatter.formatCompact(expense),
+                    color: widget.colors.expense,
+                  ),
+                  _ModeStat(
+                    label: 'Net',
+                    value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
+                    color: pnlColor,
+                    bold: true,
                   ),
                 ],
               ),
@@ -574,6 +523,133 @@ class _ModeTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({required this.isBusiness, required this.onChanged});
+
+  final bool isBusiness;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ToggleChip(
+            icon: Icons.person_outline,
+            label: 'Personal',
+            selected: !isBusiness,
+            onTap: () => onChanged(false),
+          ),
+          _ToggleChip(
+            icon: Icons.business_center_outlined,
+            label: 'Business',
+            selected: isBusiness,
+            onTap: () => onChanged(true),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleChip extends StatelessWidget {
+  const _ToggleChip({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = context.colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? scheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 12,
+              color: selected ? scheme.onPrimary : scheme.outline,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: selected ? scheme.onPrimary : scheme.outline,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeStat extends StatelessWidget {
+  const _ModeStat({
+    this.icon,
+    this.label,
+    required this.value,
+    required this.color,
+    this.bold = false,
+  });
+
+  final IconData? icon;
+  final String? label;
+  final String value;
+  final Color color;
+  final bool bold;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (icon != null)
+          Icon(icon, size: 11, color: color)
+        else
+          Text(
+            label!,
+            style: context.textTheme.labelSmall?.copyWith(color: color),
+          ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            fontFamily: 'RobotoMono',
+          ),
+        ),
+      ],
     );
   }
 }

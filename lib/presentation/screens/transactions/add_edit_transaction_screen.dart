@@ -170,6 +170,10 @@ class _AddEditTransactionScreenState
                   if (!cats.contains(_category)) {
                     _category = cats.first;
                   }
+                  // Reset mode — only personal/business apply to income/expense
+                  if (!type.isIncome && !type.isExpense) {
+                    _mode = TransactionMode.personal;
+                  }
                 });
               },
             ),
@@ -294,12 +298,14 @@ class _AddEditTransactionScreenState
               const SizedBox(height: AppSpacing.lg),
             ],
 
-            // Mode Toggle
-            _ModeChips(
-              selected: _mode,
-              onChanged: (mode) => setState(() => _mode = mode),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+            // Mode Toggle — only relevant for income / expense
+            if (_type.isIncome || _type.isExpense) ...[  
+              _ModeChips(
+                selected: _mode,
+                onChanged: (mode) => setState(() => _mode = mode),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Notes
             TextFormField(

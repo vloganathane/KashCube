@@ -42,19 +42,16 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
 
       final income = await _transactionRepo.getTotalIncome(monthStart, monthEnd);
       final expense = await _transactionRepo.getTotalExpense(monthStart, monthEnd);
-      final invested = await _transactionRepo.getTotalExpense(
-        monthStart, monthEnd, mode: 'investment',
-      );
-      final investmentReturns = await _transactionRepo.getTotalIncome(
-        monthStart, monthEnd, mode: 'investment',
-      );
+      final impl = _transactionRepo as TransactionRepositoryImpl;
+      final invested = await impl.getTotalInvested(monthStart, monthEnd);
+      final redeemed = await impl.getTotalRedeemed(monthStart, monthEnd);
       final categorySummary = await _transactionRepo.getCategorySummary(monthStart, monthEnd);
 
       state = AsyncValue.data(DashboardSummary(
         totalIncome: income,
         totalExpense: expense,
         balance: income - expense,
-        totalInvestment: invested + investmentReturns,
+        totalInvestment: invested - redeemed,
         categorySummary: categorySummary,
       ));
     } catch (e, st) {

@@ -115,8 +115,7 @@ enum TransactionType {
 /// Represents the mode of a transaction.
 enum TransactionMode {
   personal,
-  business,
-  investment;
+  business;
 
   String get label {
     switch (this) {
@@ -124,8 +123,6 @@ enum TransactionMode {
         return 'Personal';
       case TransactionMode.business:
         return 'Business';
-      case TransactionMode.investment:
-        return 'Investment';
     }
   }
 }

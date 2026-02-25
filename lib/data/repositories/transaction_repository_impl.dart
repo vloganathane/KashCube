@@ -121,6 +121,28 @@ class TransactionRepositoryImpl implements TransactionRepository {
     return rows.map((r) => Transaction.fromMap(r)).toList();
   }
 
+  Future<double> getTotalInvested(DateTime start, DateTime end) async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
+      "WHERE deleted_at IS NULL AND type = 'invested' "
+      "AND date >= ? AND date <= ?",
+      [start.toIso8601String(), end.toIso8601String()],
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
+  Future<double> getTotalRedeemed(DateTime start, DateTime end) async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
+      "WHERE deleted_at IS NULL AND type = 'redeemed' "
+      "AND date >= ? AND date <= ?",
+      [start.toIso8601String(), end.toIso8601String()],
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
   @override
   Future<double> getTotalIncome(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;

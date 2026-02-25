@@ -23,12 +23,14 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(dashboardSummaryProvider);
     final recentAsync = ref.watch(recentTransactionsProvider);
+    final totalPendingLoans = ref.watch(totalPendingLoanProvider).valueOrNull ?? 0.0;
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
           ref.read(dashboardSummaryProvider.notifier).loadSummary();
           ref.read(recentTransactionsProvider.notifier).loadRecent();
+          ref.invalidate(totalPendingLoanProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -65,7 +67,10 @@ class HomeScreen extends ConsumerWidget {
                 delegate: SliverChildListDelegate([
                   // Dashboard Summary Cards
                   dashboardAsync.when(
-                    data: (summary) => _DashboardCards(summary: summary),
+                    data: (summary) => _DashboardCards(
+                      summary: summary,
+                      totalPendingLoans: totalPendingLoans,
+                    ),
                     loading: () => const _DashboardCardsLoading(),
                     error: (e, _) => Center(
                       child: Text('Error: $e', style: TextStyle(color: context.colorScheme.error)),
@@ -137,7 +142,11 @@ class HomeScreen extends ConsumerWidget {
 
 class _DashboardCards extends StatelessWidget {
   final DashboardSummary summary;
-  const _DashboardCards({required this.summary});
+  final double totalPendingLoans;
+  const _DashboardCards({
+    required this.summary,
+    this.totalPendingLoans = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +168,9 @@ class _DashboardCards extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  CurrencyFormatter.format(summary.balance),
+                  CurrencyFormatter.format(
+                    summary.balance + totalPendingLoans,
+                  ),
                   style: context.textTheme.headlineLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontFamily: 'RobotoMono',
@@ -172,6 +183,15 @@ class _DashboardCards extends StatelessWidget {
                     color: context.colorScheme.onSurfaceVariant,
                   ),
                 ),
+                if (totalPendingLoans > 0) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Incl. loans ${CurrencyFormatter.formatCompact(totalPendingLoans)}',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

@@ -1,7 +1,7 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.5  
+**Version:** 2.7  
 **Date:** February 26, 2026  
 **Duration:** 6 months (26 weeks)
 
@@ -580,123 +580,56 @@ Screen 3 — How do you use money?
 
 ---
 
-### Week 21-22: Business Mode — Billing, POS & Delivery
+### Week 21-22: Business Mode — Billing & Invoicing
 **Goal:** Opt-in business layer; zero impact on personal finance users
 
 **Guiding rule:** Business Mode is a toggle in Settings. When off, none of these screens or nav items appear. The core 4-tab nav never changes.
 
-**Two flows, one data model:**
-```
-B2B invoice flow:   Draft → Sent → Paid → (overdue handling)
-POS / takeaway:     Created → Paid → Out for Delivery → Delivered
-```
-Both use the same `invoices` table — differentiated by `order_type` field.
-
 **Architecture:**
 ```
 item_catalog     (name, unit_price, tax_pct, hsn_code*, is_active)
-invoices         (quote_id?, invoice_no, order_type, status,
-                  delivery_token, due_date, total, paid_amount,
-                  customer_party_id, notes)
-                  -- order_type: 'invoice' | 'pos'
-                  -- status: draft|sent|paid|out_for_delivery|delivered|overdue
-                  -- delivery_token: 4-digit PIN, locally generated
-invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
 quotes           (customer_party_id, status, valid_until, total, notes)
 quote_items      (quote_id, item_name, qty, unit_price, discount_pct, line_total)
+invoices         (quote_id?, invoice_no, status, due_date, total, paid_amount,
+                  customer_party_id, notes)
+                  -- status: draft | sent | paid | overdue
+invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
 ```
 *hsn_code stored but not validated until GST scope opens
 
 **Tasks:**
-
-*Core billing (both flows):*
 - [ ] Add `businessModeEnabled` to Settings
 - [ ] Item catalog screen: add/edit products & services with price + tax %
+- [ ] Quote builder: pick customer (from parties), add items, apply discount, save draft
+- [ ] Quote → Invoice conversion (one tap; auto-assign INV-YYYY-NNN)
 - [ ] Invoice payment recording → auto-creates `Transaction(type: income)` in main ledger
-- [ ] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue / Delivered)
+- [ ] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue)
 - [ ] Share invoice as PDF (offline, `pdf` + `share_plus`)
 - [ ] Basic GST line items: CGST + SGST / IGST split shown on invoice (no GSTIN validation yet)
 - [ ] Send quote/invoice via WhatsApp / SMS / Email (OS intents, same pattern as Week 9)
 
-*B2B invoice flow:*
-- [ ] Quote builder: pick customer (from parties), add items, apply discount, save draft
-- [ ] Quote → Invoice conversion (one tap; auto-assign INV-YYYY-NNN)
-
-*POS / takeaway flow:*
-- [ ] **POS Quick Mode screen**: full-screen item picker optimized for counter use
-  - Grid of catalog items, tap to add → quantity adjusts inline
-  - Running total visible at all times (bottom bar)
-  - Customer name optional (walk-ins work without a party)
-  - Payment method selector (Cash / UPI / Card)
-  - "Collect & Confirm" button → records payment, generates order #, 4-digit delivery token
-- [ ] **Order confirmation message** (WhatsApp/SMS/Email OS intent, pre-filled):
-  ```
-  "Order #[42] confirmed ✓
-   [Item 1 x2 — ₹120]
-   [Item 2 x1 — ₹80]
-   Total paid: ₹200 (UPI)
-   Delivery token: 7391
-   — [Business Name]"
-  ```
-- [ ] **"Out for Delivery" action**: cashier taps → order status updates → sends dispatch message
-  ```
-  "Your order #[42] is on the way!
-   Show token 7391 to delivery person. — [Business Name]"
-  ```
-- [ ] **Delivery View screen** (Business Mode, simple):
-  - List of today's `out_for_delivery` orders
-  - Each card shows: order #, customer name, items summary, token
-  - Large "Mark Delivered" button → prompts cashier to enter token (customer shows message) → confirms → status → `delivered` → timestamp recorded
-- [ ] **Delivered confirmation message** (optional, user-triggered):
-  ```
-  "Order #[42] delivered ✓ Thank you!
-   — [Business Name]"
-  ```
-
-**How delivery token verification works (offline, no network):**
-- Token is a 4-digit number derived locally: `(orderId * 7 + timestamp.secondOfDay) % 9000 + 1000`
-- Cashier/delivery person opens Delivery View → taps order → enters token customer shows
-- App checks token locally → marks delivered
-- No QR scanner, no deep link, no internet required
-- Works on the same device, or delivery person calls the token in
-
-**Message templates (locally generated, user-editable in Settings):**
+**Message templates (locally generated, user-editable):**
 ```
-Order confirmed:    "Order #[no] confirmed ✓ [items] Total: ₹[amt] Token: [pin] — [biz]"
-Out for delivery:   "Order #[no] is on the way! Show token [pin] to delivery person. — [biz]"
-Delivered:          "Order #[no] delivered ✓ Thank you! — [biz]"
-Quote sent:         "Hi [name], quote #[no] for ₹[amt]. Valid till [date]. — [biz]"
-Invoice due:        "Hi [name], invoice #[no] ₹[amt] due [date]. — [biz]"
-Invoice overdue:    "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pending. — [biz]"
+Quote sent:      "Hi [name], quote #[no] for ₹[amt]. Valid till [date]. — [biz]"
+Invoice due:     "Hi [name], invoice #[no] ₹[amt] due [date]. — [biz]"
+Invoice overdue: "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pending. — [biz]"
 ```
 
 **Explicitly out of scope this sprint:**
-- Kitchen display / KDS → NO — separate screen is sufficient
-- Table / dine-in management → NO — POS is takeaway/counter only
-- Thermal printer integration → deferred (Android print API exists, wire up later)
-- Stock / inventory deduction → additive column later (`qty_in_stock` on item_catalog)
+- POS quick mode / counter billing → Year 2 (see Future Backlog)
+- Delivery flow / order tracking → Year 2
+- Stock / inventory management → Year 2
 - GSTIN validation → regex check, add when needed
 - e-Invoicing / IRN → requires network call, deferred indefinitely
-- Multi-device real-time sync → delivery token + same-device Delivery View is sufficient for MVP
-- Deep link `kashcube://order/{id}/verify?pin={token}` → v2, when multi-device matters
+- Recurring invoices → hook exists via ScheduledPayment, wire up later
 
 **Deliverables:**
 - Business Mode off by default — personal users see nothing new
-- Full quote → invoice → payment → ledger pipeline
-- Full POS flow: tap items → collect payment → notify customer → token-based delivery verify
-- PDF invoice/receipt shareable via WhatsApp / email
-- Transaction bridge: paid order/invoice = income entry in main dashboard
+- Full quote → invoice → payment → ledger pipeline working locally
+- PDF invoice shareable via WhatsApp / email
+- Transaction bridge: paid invoice = income entry in main dashboard
 
-**Applicable business types (same code path, different catalog content):**
-| Business | Catalog items | "Delivered" maps to |
-|---|---|---|
-| Takeaway restaurant | Menu items | Food handed to customer |
-| Medical shop | Medicines | Prescription picked up |
-| Salon / spa | Services | Appointment completed |
-| Repair shop | Services + parts | Device handed back |
-| Any retail counter | Products | Item handed over |
-
-**Time Estimate:** 75 hours (+15 for POS/delivery flow)
+**Time Estimate:** 60 hours
 
 ---
 
@@ -749,6 +682,52 @@ Invoice overdue:    "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pen
 ## Future Backlog (Post Week 26 — demand-driven)
 
 These features are **intentionally deferred**. Each is additive with no architectural rework needed. Ship only when real user demand justifies the complexity cost.
+
+### Year 2: POS & Counter Business Mode
+
+> **Context:** Designed for takeaway restaurants, medical shops, salons, repair shops — any counter business that needs: create bill fast → collect payment → notify customer → verify delivery. Architecture spec is complete (see git history); deferred until billing (Week 21-22) has real users.
+
+**The flow:**
+```
+POS Quick Mode → tap items → running total → "Collect & Confirm"
+  → payment recorded → order # + 4-digit delivery token generated
+  → WhatsApp/SMS confirmation sent (OS intent)
+  → "Out for Delivery" tap → dispatch message sent
+  → Delivery View → customer shows token → cashier enters token → Delivered ✓
+```
+
+**Token verification (offline, no network):**
+`(orderId * 7 + secondOfDay) % 9000 + 1000` — 4-digit PIN, locally derived. No QR, no deep link, no internet.
+
+**DB additions needed on top of Week 21-22 schema:**
+```
+invoices: + order_type ('invoice'|'pos'), + status ('out_for_delivery'|'delivered'), + delivery_token
+```
+
+**Applicable business types:**
+| Business | Catalog items | "Delivered" maps to |
+|---|---|---|
+| Takeaway restaurant | Menu items | Food handed to customer |
+| Medical shop | Medicines | Prescription picked up |
+| Salon / spa | Services | Appointment completed |
+| Repair shop | Services + parts | Device handed back |
+| Any retail counter | Products | Item handed over |
+
+**Message templates:**
+```
+Order confirmed:  "Order #[no] ✓ [items] Total: ₹[amt] Token: [pin] — [biz]"
+Out for delivery: "Order #[no] is on the way! Show token [pin]. — [biz]"
+Delivered:        "Order #[no] delivered ✓ Thank you! — [biz]"
+```
+
+**Explicitly NOT in Year 2 scope:**
+- Kitchen display / table management
+- Thermal printer (Android print API exists, wire up in Year 3)
+- Multi-device real-time sync
+
+**Effort:** ~3 weeks on top of working billing (Week 21-22)
+
+---
 
 ### Business Mode Extensions
 

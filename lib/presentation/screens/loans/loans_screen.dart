@@ -566,21 +566,41 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
 
             const SizedBox(height: AppSpacing.md),
 
-            // Delete button
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _deleteLoan(context),
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Delete Loan'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.expense,
+            // Edit & Delete buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _editLoan(context),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Edit'),
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _deleteLoan(context),
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Delete'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.expense,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
         ),
+      ),
+    );
+  }
+
+  void _editLoan(BuildContext context) {
+    Navigator.pop(context); // Close bottom sheet
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AddLoanScreen(loan: widget.loan),
       ),
     );
   }
@@ -658,6 +678,16 @@ class _LoanScheduleScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(loan.lenderName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AddLoanScreen(loan: loan),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: () => _deleteLoan(context, ref),
@@ -1027,9 +1057,12 @@ class _DetailItem extends StatelessWidget {
   }
 }
 
-/// Screen to add a new loan.
+/// Screen to add or edit a loan.
 class AddLoanScreen extends ConsumerStatefulWidget {
-  const AddLoanScreen({super.key});
+  const AddLoanScreen({super.key, this.loan});
+
+  /// If provided, the screen is in edit mode.
+  final Loan? loan;
 
   @override
   ConsumerState<AddLoanScreen> createState() => _AddLoanScreenState();
@@ -1048,6 +1081,34 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
   InterestType _interestType = InterestType.none;
   RepaymentFrequency? _repaymentFrequency;
 
+  bool get _isEditing => widget.loan != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final loan = widget.loan;
+    if (loan != null) {
+      _lenderController.text = loan.lenderName;
+      _amountController.text = loan.principalAmount.toStringAsFixed(0);
+      _loanDate = loan.loanDate;
+      _dueDate = loan.dueDate;
+      _interestType = loan.interestType;
+      if (loan.interestRate != null) {
+        _interestController.text = loan.interestRate!.toStringAsFixed(1);
+      }
+      _repaymentFrequency = loan.repaymentFrequency;
+      if (loan.emiAmount != null) {
+        _emiAmountController.text = loan.emiAmount!.toStringAsFixed(0);
+      }
+      if (loan.totalEmis != null) {
+        _totalEmisController.text = loan.totalEmis.toString();
+      }
+      if (loan.notes != null) {
+        _notesController.text = loan.notes!;
+      }
+    }
+  }
+
   @override
   void dispose() {
     _lenderController.dispose();
@@ -1063,7 +1124,7 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Loan'),
+        title: Text(_isEditing ? 'Edit Loan' : 'Add Loan'),
       ),
       body: Form(
         key: _formKey,
@@ -1264,7 +1325,7 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
             // Submit
             FilledButton(
               onPressed: _submit,
-              child: const Text('Add Loan'),
+              child: Text(_isEditing ? 'Save Changes' : 'Add Loan'),
             ),
           ],
         ),
@@ -1286,28 +1347,61 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
         ? int.tryParse(_totalEmisController.text)
         : null;
 
-    final loan = Loan(
-      lenderName: _lenderController.text.trim(),
-      principalAmount: amount,
-      pendingAmount: amount,
-      loanDate: _loanDate,
-      dueDate: _dueDate,
-      interestRate: interestRate,
-      interestType: _interestType,
-      repaymentFrequency: _repaymentFrequency,
-      emiAmount: emiAmount,
-      totalEmis: totalEmis,
-      notes: _notesController.text.trim().isEmpty
-          ? null
-          : _notesController.text.trim(),
-    );
+    if (_isEditing) {
+      final existing = widget.loan!;
+      // Recalculate pending based on new principal and existing paid
+      final newPending =
+          (amount - existing.paidAmount).clamp(0.0, double.infinity);
+      final updated = existing.copyWith(
+        lenderName: _lenderController.text.trim(),
+        principalAmount: amount,
+        pendingAmount: newPending,
+        loanDate: _loanDate,
+        dueDate: _dueDate,
+        interestRate: interestRate,
+        interestType: _interestType,
+        repaymentFrequency: _repaymentFrequency,
+        emiAmount: emiAmount,
+        totalEmis: totalEmis,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      );
 
-    await ref.read(activeLoansProvider.notifier).addLoan(loan);
-    ref.invalidate(totalPendingLoanProvider);
+      await ref.read(activeLoansProvider.notifier).updateLoan(updated);
+      ref.invalidate(totalPendingLoanProvider);
+      ref.invalidate(overdueLoansProvider);
+      ref.invalidate(clearedLoansProvider);
 
-    if (mounted) {
-      Navigator.pop(context);
-      context.showSnackBar('Loan of ${CurrencyFormatter.format(amount)} added');
+      if (mounted) {
+        Navigator.pop(context, true);
+        context.showSnackBar('Loan updated');
+      }
+    } else {
+      final loan = Loan(
+        lenderName: _lenderController.text.trim(),
+        principalAmount: amount,
+        pendingAmount: amount,
+        loanDate: _loanDate,
+        dueDate: _dueDate,
+        interestRate: interestRate,
+        interestType: _interestType,
+        repaymentFrequency: _repaymentFrequency,
+        emiAmount: emiAmount,
+        totalEmis: totalEmis,
+        notes: _notesController.text.trim().isEmpty
+            ? null
+            : _notesController.text.trim(),
+      );
+
+      await ref.read(activeLoansProvider.notifier).addLoan(loan);
+      ref.invalidate(totalPendingLoanProvider);
+
+      if (mounted) {
+        Navigator.pop(context);
+        context.showSnackBar(
+            'Loan of ${CurrencyFormatter.format(amount)} added');
+      }
     }
   }
 }

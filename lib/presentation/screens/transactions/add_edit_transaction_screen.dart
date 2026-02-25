@@ -689,7 +689,7 @@ class _TypeToggle extends StatelessWidget {
   }
 }
 
-/// Chip-based mode selector (Personal / Business).
+/// Chip-based mode selector (Personal / Business / Investment).
 class _ModeChips extends StatelessWidget {
   final TransactionMode selected;
   final ValueChanged<TransactionMode> onChanged;
@@ -706,7 +706,7 @@ class _ModeChips extends StatelessWidget {
         Wrap(
           spacing: AppSpacing.sm,
           children: [
-            for (final mode in [TransactionMode.personal, TransactionMode.business])
+            for (final mode in TransactionMode.values)
               ChoiceChip(
                 label: Text(mode.label),
                 selected: selected == mode,

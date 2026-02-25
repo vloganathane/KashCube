@@ -178,31 +178,43 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-## Phase 1.5: Unified Transaction Model (Week 7)
+## ✅ Phase 1.5: Unified Transaction Model (Week 7)
 
 ### Week 7: Architecture Redesign
 **Goal:** Unify all financial events (income, expense, lending, borrowing, investment, settlement) into a single Transaction model with progressive disclosure form
 
 **Tasks:**
-- [ ] Expand TransactionType enum: `income, expense, lent, borrowed, invested, receivedBack, paidBack, redeemed`
-- [ ] Add nullable lending fields to Transaction model (dueDate, interestRate, interestType, repaymentFrequency, totalInstallments, emiAmount, linkedTransactionId)
-- [ ] DB migration V6→V7: add columns to transactions table, migrate loans data, update type enum values
-- [ ] Remove separate Loan model, loan_repository, loan_provider
-- [ ] Update SMS parser with keyword→type detection (EMI→paidBack, SIP→invested, loan disbursed→borrowed)
-- [ ] Rebuild Add/Edit Transaction screen with progressive disclosure (2-3 fields default, expanding based on type)
-- [ ] Rebuild Ledger screen as grouped aggregation view (GROUP BY party from transactions table)
-- [ ] Update Home dashboard, search, and providers to use unified model
-- [ ] Update all tests for new transaction types
+- [x] Expand TransactionType enum: `income, expense, lent, borrowed, invested, receivedBack, paidBack, redeemed` (+ `transfer` as 9th type)
+- [x] Add nullable lending fields to Transaction model (dueDate, interestRate, interestType, repaymentFrequency, totalInstallments, emiAmount, linkedTransactionId, toAccountId)
+- [x] DB migration V6→V7: add columns, migrate loans data, update type enum values
+- [x] DB migration V7→V8: add `to_account_id` column, pre-seed 3 default accounts (Bank, UPI/Wallet, Cash)
+- [x] Remove separate Loan model, loan_repository, loan_provider
+- [x] Update SMS parser with keyword→type detection (EMI→paidBack, SIP→invested, loan disbursed→borrowed)
+- [x] Rebuild Add/Edit Transaction screen with progressive disclosure (2-3 fields default, expanding based on type)
+- [x] Rebuild Ledger screen as grouped aggregation view (GROUP BY party from transactions table)
+- [x] Update Home dashboard, search, and providers to use unified model
+- [x] Update all tests for new transaction types
+
+**Additional tasks completed (beyond original scope):**
+- [x] Remove `investment` from `TransactionMode` — only `personal` / `business` remain; mode field hidden for non-income/expense types
+- [x] Add `transfer` as 9th `TransactionType` with from/to account pickers in the form
+- [x] Multi-account infrastructure: `AccountRepository` interface + `AccountRepositoryImpl` + `accountsProvider`
+- [x] `AccountsManageScreen` accessible from Settings (add/edit/archive accounts)
+- [x] `showAccountPicker()` reusable bottom sheet widget
+- [x] `LedgerPartyEntry.partyType` sourced via LEFT JOIN with `parties` table (`'person'` / `'vendor'`)
+- [x] Settings gear icon added to Home app bar
+- [x] Custom app launcher icon generated from `assets/logo.png` (adaptive icon, API 26+)
+- [x] Compact pinned `SliverAppBar` replacing the large variant
 
 **Deliverables:**
-- Single Transaction model for ALL financial events
+- Single Transaction model for ALL financial events (9 types)
 - Progressive form: select type → relevant fields appear
 - Ledger tab shows net positions per party (who owes what)
-- Sections in Ledger: People (receivables/payables), Investments, Loans
-- Settlement linking: paying back auto-links to original lent/borrowed entry
+- Transfer type: from-account / to-account pickers, no party name needed
+- Multi-account support: manage accounts from Settings
 - No separate Credits/Loans screens — everything is a transaction
 
-**Time Estimate:** 50 hours
+**Time Estimate:** 50 hours (delivered)
 
 ---
 
@@ -235,9 +247,9 @@ This roadmap follows a **core-first, iterative approach**:
 - [ ] Add credit card SMS parsing (HDFC, ICICI, SBI, Axis)
 - [ ] Add debit card SMS parsing
 - [ ] Add bank account SMS parsing (NEFT, RTGS, balance updates)
-- [ ] Implement account management (track multiple accounts)
+- [x] Implement account management (track multiple accounts) ← done in Week 7 extension
 - [ ] Add duplicate transaction detection
-- [ ] Build account balance tracking
+- [ ] Build account balance tracking (per-account running balance)
 
 **Deliverables:**
 - Parses SMS from major banks and cards
@@ -616,15 +628,18 @@ This roadmap follows a **core-first, iterative approach**:
 7. ✅ Week 4 tasks (Credit management / Udhar) — complete
 8. ✅ Week 5 tasks (Reports & Search) — complete
 9. ✅ Week 6 tasks (Data & Security) — complete
-10. Begin self-test period
+10. ✅ Week 7 tasks (Unified Transaction Model, Transfer type, multi-account) — complete
+11. Begin Phase 2 — Week 8: Budget tracking & savings goals
 
-### This Month (Weeks 1-6)
+### This Month (Weeks 1-7)
 - ✅ Complete transaction foundation (Week 1-2)
 - ✅ Build credit management (Week 3-4)
 - ✅ Reports, search, filters, loan tracking (Week 5)
 - ✅ Backup, PIN lock, biometric, recurring transactions (Week 6)
 - ✅ Phase 1 MVP — Complete
-- Begin self-test period
+- ✅ Unified Transaction Model v7+v8, Transfer type, multi-account (Week 7)
+- ✅ Phase 1.5 — Complete
+- Begin Phase 2: Week 8 (Budgets & Savings Goals)
 
 ### Overall Progress
 | Week | Status | Key Deliverables |
@@ -635,11 +650,13 @@ This roadmap follows a **core-first, iterative approach**:
 | Week 4 | ✅ Complete (6/6) | Credit give/receive, collections dashboard, customer profiles |
 | Week 5 | ✅ Complete (6/6) | Reports with charts, global search, advanced filters, loan tracking |
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
+| Week 7 | ✅ Complete (9/9 + extras) | Unified model v7+v8, 9 types, progressive form, Ledger rebuild, Transfer type, multi-account, custom icon |
 
-**Codebase:** 68 Dart files in `lib/`, 0 lint issues  
-**Database:** SQLite v6 (10+ tables) → v7 migration pending (unified transaction model)  
+**Codebase:** ~78 Dart files in `lib/`, 0 lint issues  
+**Database:** SQLite v8 (transactions + accounts + 9 other tables)  
 **Phase 1 MVP:** COMPLETE  
-**Phase 1.5:** IN PROGRESS (Unified Transaction Model)
+**Phase 1.5 (Unified Model):** COMPLETE  
+**Current Phase:** Phase 2 (Scale Features) — starting Week 8
 
 ### This Quarter (Weeks 1-12)
 - Launch MVP

@@ -23,7 +23,7 @@ class KashCubeApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: KashCubeTheme.light,
       darkTheme: KashCubeTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider),
       home: const _LockGate(),
     );
   }

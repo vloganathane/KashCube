@@ -14,6 +14,7 @@ import '../../../data/services/suggestion_service.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/suggestion_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/account_picker_sheet.dart';
@@ -71,6 +72,9 @@ class _AddEditTransactionScreenState
   int? _fromAccountId;
   int? _toAccountId;
 
+  // Account for non-transfer types
+  int? _accountId;
+
   bool _isSaving = false;
 
   // Bill attachment state
@@ -102,6 +106,7 @@ class _AddEditTransactionScreenState
       _interestType = txn.interestType ?? InterestType.none;
       _fromAccountId = txn.accountId;
       _toAccountId = txn.toAccountId;
+      _accountId = txn.accountId;
       if (txn.interestRate != null) {
         _interestRateController.text = txn.interestRate!.toStringAsFixed(1);
       }
@@ -153,6 +158,15 @@ class _AddEditTransactionScreenState
   @override
   Widget build(BuildContext context) {
     final title = widget.isEditing ? 'Edit Transaction' : 'Add Transaction';
+
+    // Pre-fill default account for new transactions once the provider loads.
+    if (!widget.isEditing) {
+      ref.listen<int?>(defaultAccountIdProvider, (_, next) {
+        if (next != null && _accountId == null) {
+          setState(() => _accountId = next);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -230,6 +244,15 @@ class _AddEditTransactionScreenState
                 toAccountId: _toAccountId,
                 onFromChanged: (id) => setState(() => _fromAccountId = id),
                 onToChanged: (id) => setState(() => _toAccountId = id),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // Account picker — for all non-transfer types
+            if (!_type.isTransfer) ...[  
+              _AccountRow(
+                accountId: _accountId,
+                onChanged: (id) => setState(() => _accountId = id),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -575,7 +598,7 @@ class _AddEditTransactionScreenState
       partyName: _partyNameController.text.trim().isNotEmpty
           ? _partyNameController.text.trim()
           : null,
-      accountId: _type.isTransfer ? _fromAccountId : widget.transaction?.accountId,
+      accountId: _type.isTransfer ? _fromAccountId : _accountId,
       toAccountId: _type.isTransfer ? _toAccountId : widget.transaction?.toAccountId,
       paymentMethod: _paymentMethod,
       notes: _notesController.text.trim().isNotEmpty
@@ -913,16 +936,64 @@ class _TransferAccountRow extends ConsumerWidget {
   }
 }
 
+/// Single account picker row — used for income, expense, and other non-transfer types.
+class _AccountRow extends ConsumerWidget {
+  const _AccountRow({
+    required this.accountId,
+    required this.onChanged,
+  });
+
+  final int? accountId;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountsAsync = ref.watch(accountsProvider);
+
+    return accountsAsync.when(
+      data: (accounts) {
+        String accountName() {
+          if (accountId == null) return 'Select account (optional)';
+          return accounts
+              .where((a) => a.id == accountId)
+              .map((a) => a.accountName)
+              .firstOrNull ?? 'Select account (optional)';
+        }
+
+        return _AccountTile(
+          label: 'Account',
+          accountName: accountName(),
+          accountId: accountId,
+          onTap: () async {
+            final picked = await showAccountPicker(
+              context,
+              title: 'Account',
+            );
+            if (picked != null) onChanged(picked.id);
+          },
+          onClear: accountId != null ? () => onChanged(null) : null,
+        );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (e, _) => const SizedBox.shrink(),
+    );
+  }
+}
+
 class _AccountTile extends StatelessWidget {
   const _AccountTile({
     required this.label,
     required this.accountName,
     required this.onTap,
+    this.accountId,
+    this.onClear,
   });
 
   final String label;
   final String accountName;
   final VoidCallback onTap;
+  final int? accountId;
+  final VoidCallback? onClear;
 
   @override
   Widget build(BuildContext context) {
@@ -933,7 +1004,12 @@ class _AccountTile extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-          suffixIcon: const Icon(Icons.expand_more),
+          suffixIcon: onClear != null
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: onClear,
+                )
+              : const Icon(Icons.expand_more),
         ),
         child: Text(accountName),
       ),

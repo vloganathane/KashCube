@@ -7,8 +7,10 @@ import 'package:share_plus/share_plus.dart' show Share, XFile;
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/backup_service.dart';
+import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
 
@@ -20,6 +22,9 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final appLockAsync = ref.watch(appLockEnabledProvider);
     final biometricAsync = ref.watch(biometricEnabledProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final defaultAccountId = ref.watch(defaultAccountIdProvider);
+    final accountsAsync = ref.watch(accountsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -55,10 +60,27 @@ class SettingsScreen extends ConsumerWidget {
               ListTile(
                 leading: const Icon(Icons.palette_outlined),
                 title: const Text('Theme'),
-                subtitle: const Text('System default'),
-                onTap: () {
-                  // Theme follows system
-                },
+                subtitle: Text(_themeModeLabel(themeMode)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showThemePicker(context, ref, themeMode),
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: const Text('Default Account'),
+                subtitle: Text(
+                  accountsAsync.whenOrNull(
+                    data: (accounts) {
+                      if (defaultAccountId == null) return 'None (ask each time)';
+                      final match = accounts
+                          .where((a) => a.id == defaultAccountId)
+                          .firstOrNull;
+                      return match?.accountName ?? 'None (ask each time)';
+                    },
+                  ) ??
+                      'Loading…',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showDefaultAccountPicker(context, ref),
               ),
             ],
           ),
@@ -201,6 +223,132 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Theme
+  // ---------------------------------------------------------------------------
+
+  String _themeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      default:
+        return 'System default';
+    }
+  }
+
+  void _showThemePicker(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeMode current,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                'Choose Theme',
+                style: context.textTheme.titleMedium,
+              ),
+            ),
+            const Divider(height: 1),
+            RadioGroup<ThemeMode>(
+              groupValue: current,
+              onChanged: (v) {
+                if (v != null) {
+                  ref.read(themeModeProvider.notifier).setTheme(v);
+                  Navigator.pop(ctx);
+                }
+              },
+              child: Column(
+                children: [
+                  for (final mode in ThemeMode.values)
+                    RadioListTile<ThemeMode>(
+                      title: Text(_themeModeLabel(mode)),
+                      secondary: Icon(
+                        mode == ThemeMode.light
+                            ? Icons.light_mode_outlined
+                            : mode == ThemeMode.dark
+                                ? Icons.dark_mode_outlined
+                                : Icons.brightness_auto_outlined,
+                      ),
+                      value: mode,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Default account
+  // ---------------------------------------------------------------------------
+
+  Future<void> _showDefaultAccountPicker(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    // Option to clear the default
+    final shouldClear = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.base,
+                AppSpacing.sm,
+              ),
+              child: Text(
+                'Default Account',
+                style: ctx.textTheme.titleMedium,
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.do_not_disturb_alt_outlined),
+              title: const Text('None (ask each time)'),
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!context.mounted) return;
+
+    if (shouldClear == true) {
+      ref.read(defaultAccountIdProvider.notifier).setDefault(null);
+      return;
+    }
+
+    // Otherwise open the full account picker
+    final picked = await showAccountPicker(context, title: 'Default Account');
+    if (!context.mounted) return;
+    if (picked != null) {
+      ref.read(defaultAccountIdProvider.notifier).setDefault(picked.id);
+    }
   }
 
   // ---------------------------------------------------------------------------

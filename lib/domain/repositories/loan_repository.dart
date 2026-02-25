@@ -29,6 +29,10 @@ abstract class LoanRepository {
   /// Record a payment against a loan.
   Future<void> recordPayment(int loanId, double amount);
 
+  /// Update loan totals after a schedule installment is directly paid.
+  /// Unlike [recordPayment], this does NOT auto-mark installments.
+  Future<void> addPaymentAmount(int loanId, double amount);
+
   /// Get total pending loan amount.
   Future<double> getTotalPending();
 }

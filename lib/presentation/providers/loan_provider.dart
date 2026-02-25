@@ -50,6 +50,12 @@ class LoansNotifier extends StateNotifier<AsyncValue<List<Loan>>> {
     await _repo.recordPayment(loanId, amount);
     await loadActive();
   }
+
+  /// Update loan totals after a schedule installment is directly paid.
+  Future<void> addPaymentAmount(int loanId, double amount) async {
+    await _repo.addPaymentAmount(loanId, amount);
+    await loadActive();
+  }
 }
 
 /// Loan by ID (family provider).

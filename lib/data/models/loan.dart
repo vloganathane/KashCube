@@ -17,6 +17,25 @@ enum InterestType {
   }
 }
 
+/// Frequency at which loan installments are due.
+enum RepaymentFrequency {
+  daily('Daily', 'daily'),
+  weekly('Weekly', 'weekly'),
+  monthly('Monthly', 'monthly');
+
+  const RepaymentFrequency(this.label, this.dbValue);
+  final String label;
+  final String dbValue;
+
+  static RepaymentFrequency? fromDb(String? value) {
+    if (value == null) return null;
+    return RepaymentFrequency.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => RepaymentFrequency.monthly,
+    );
+  }
+}
+
 /// A loan record (taken from a lender).
 class Loan {
   final int? id;
@@ -39,6 +58,7 @@ class Loan {
   final double? interestRate;
   final InterestType interestType;
   final double? totalInterest;
+  final RepaymentFrequency? repaymentFrequency;
   final String? notes;
   final String? tags;
   final DateTime createdAt;
@@ -66,6 +86,7 @@ class Loan {
     this.interestRate,
     this.interestType = InterestType.none,
     this.totalInterest,
+    this.repaymentFrequency,
     this.notes,
     this.tags,
     DateTime? createdAt,
@@ -103,6 +124,7 @@ class Loan {
       'interest_rate': interestRate,
       'interest_type': interestType.dbValue,
       'total_interest': totalInterest,
+      'repayment_frequency': repaymentFrequency?.dbValue,
       'notes': notes,
       'tags': tags,
       'created_at': createdAt.toIso8601String(),
@@ -138,6 +160,8 @@ class Loan {
       interestRate: (map['interest_rate'] as num?)?.toDouble(),
       interestType: InterestType.fromDb(map['interest_type'] as String?),
       totalInterest: (map['total_interest'] as num?)?.toDouble(),
+      repaymentFrequency:
+          RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
       notes: map['notes'] as String?,
       tags: map['tags'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
@@ -171,6 +195,7 @@ class Loan {
     double? interestRate,
     InterestType? interestType,
     double? totalInterest,
+    RepaymentFrequency? repaymentFrequency,
     String? notes,
     String? tags,
   }) {
@@ -195,6 +220,7 @@ class Loan {
       interestRate: interestRate ?? this.interestRate,
       interestType: interestType ?? this.interestType,
       totalInterest: totalInterest ?? this.totalInterest,
+      repaymentFrequency: repaymentFrequency ?? this.repaymentFrequency,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
       createdAt: createdAt,

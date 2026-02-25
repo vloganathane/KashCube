@@ -2,7 +2,9 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../domain/repositories/loan_repository.dart';
 import '../models/loan.dart';
+import '../models/loan_payment.dart';
 import '../services/database_helper.dart';
+import '../services/schedule_generator.dart';
 
 /// SQLite implementation of [LoanRepository].
 class LoanRepositoryImpl implements LoanRepository {
@@ -75,7 +77,27 @@ class LoanRepositoryImpl implements LoanRepository {
   @override
   Future<int> insert(Loan loan) async {
     final db = await _db;
-    return db.insert('loans', loan.toMap());
+    final loanId = await db.insert('loans', loan.toMap());
+
+    // Auto-generate repayment schedule if frequency is set
+    if (loan.repaymentFrequency != null &&
+        loan.emiAmount != null &&
+        loan.totalEmis != null) {
+      final payments = ScheduleGenerator.generate(
+        loanId: loanId,
+        startDate: loan.loanDate,
+        frequency: loan.repaymentFrequency!,
+        installmentAmount: loan.emiAmount!,
+        totalInstallments: loan.totalEmis!,
+      );
+      final batch = db.batch();
+      for (final payment in payments) {
+        batch.insert('loan_payments', payment.toMap());
+      }
+      await batch.commit(noResult: true);
+    }
+
+    return loanId;
   }
 
   @override
@@ -107,11 +129,81 @@ class LoanRepositoryImpl implements LoanRepository {
     final newPending = (loan.principalAmount - newPaid).clamp(0, double.infinity);
     final isCleared = newPending <= 0;
 
+    // If loan has a repayment schedule, mark the next installment as paid
+    int newPaidEmis = loan.paidEmis;
+    if (loan.repaymentFrequency != null) {
+      var remaining = amount;
+      final unpaid = await db.query(
+        'loan_payments',
+        where: 'loan_id = ? AND is_paid = 0',
+        whereArgs: [loanId],
+        orderBy: 'installment_number ASC',
+      );
+      for (final row in unpaid) {
+        if (remaining <= 0) break;
+        final payment = LoanPayment.fromMap(row);
+        final payable =
+            (payment.amount - payment.paidAmount).clamp(0, double.infinity);
+        final toPay = remaining >= payable ? payable : remaining;
+        final totalPaid = payment.paidAmount + toPay;
+        final isPaid = totalPaid >= payment.amount;
+
+        await db.update(
+          'loan_payments',
+          {
+            'paid_amount': totalPaid,
+            'is_paid': isPaid ? 1 : 0,
+            if (isPaid) 'paid_date': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [payment.id],
+        );
+
+        if (isPaid) newPaidEmis++;
+        remaining -= toPay;
+      }
+    }
+
     await db.update(
       'loans',
       {
         'paid_amount': newPaid,
         'pending_amount': newPending,
+        'paid_emis': newPaidEmis,
+        'is_cleared': isCleared ? 1 : 0,
+        if (isCleared) 'cleared_date': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [loanId],
+    );
+  }
+
+  @override
+  Future<void> addPaymentAmount(int loanId, double amount) async {
+    final db = await _db;
+    final loan = await getById(loanId);
+    if (loan == null) return;
+
+    final newPaid = loan.paidAmount + amount;
+    final newPending =
+        (loan.principalAmount - newPaid).clamp(0, double.infinity);
+    final isCleared = newPending <= 0;
+
+    // Count paid installments from the schedule table
+    final countResult = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM loan_payments '
+      'WHERE loan_id = ? AND is_paid = 1',
+      [loanId],
+    );
+    final paidEmis = (countResult.first['cnt'] as int?) ?? 0;
+
+    await db.update(
+      'loans',
+      {
+        'paid_amount': newPaid,
+        'pending_amount': newPending,
+        'paid_emis': paidEmis,
         'is_cleared': isCleared ? 1 : 0,
         if (isCleared) 'cleared_date': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),

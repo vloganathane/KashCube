@@ -6,6 +6,8 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/loan.dart';
+import '../../../data/models/loan_payment.dart';
+import '../../providers/loan_payment_provider.dart';
 import '../../providers/loan_provider.dart';
 
 /// Filter tabs for loans list.
@@ -353,6 +355,27 @@ class _LoanTile extends ConsumerWidget {
                   color: context.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (loan.repaymentFrequency != null) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.schedule,
+                      size: 14,
+                      color: context.colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      '${loan.repaymentFrequency!.label} · '
+                      '${loan.paidEmis}/${loan.totalEmis ?? "?"} paid',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -361,11 +384,20 @@ class _LoanTile extends ConsumerWidget {
   }
 
   void _showLoanDetail(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _LoanDetailSheet(loan: loan),
-    );
+    // If loan has a repayment schedule, show full-screen schedule page
+    if (loan.repaymentFrequency != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => _LoanScheduleScreen(loan: loan),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => _LoanDetailSheet(loan: loan),
+      );
+    }
   }
 }
 
@@ -610,6 +642,360 @@ class _LoanDetailSheetState extends ConsumerState<_LoanDetailSheet> {
   }
 }
 
+/// Full-screen schedule view for loans with repayment schedules.
+class _LoanScheduleScreen extends ConsumerWidget {
+  const _LoanScheduleScreen({required this.loan});
+
+  final Loan loan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final paymentsAsync = ref.watch(loanPaymentsProvider(loan.id!));
+    final colors = context.kashColors;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(loan.lenderName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _deleteLoan(context, ref),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Loan summary header
+          Card(
+            margin: const EdgeInsets.all(AppSpacing.base),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.base),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DetailItem(
+                          label: 'Principal',
+                          value:
+                              CurrencyFormatter.format(loan.principalAmount),
+                        ),
+                      ),
+                      Expanded(
+                        child: _DetailItem(
+                          label: 'Paid',
+                          value: CurrencyFormatter.format(loan.paidAmount),
+                          color: colors.income,
+                        ),
+                      ),
+                      Expanded(
+                        child: _DetailItem(
+                          label: 'Pending',
+                          value: CurrencyFormatter.format(loan.pendingAmount),
+                          color: colors.expense,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  // Progress bar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          value: loan.progress,
+                          backgroundColor:
+                              context.colorScheme.surfaceContainerHighest,
+                          color: loan.isCleared
+                              ? colors.income
+                              : context.colorScheme.primary,
+                          minHeight: 6,
+                          borderRadius:
+                              BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${loan.paidEmis}/${loan.totalEmis ?? "?"} installments',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Icon(Icons.schedule,
+                          size: 14, color: context.colorScheme.primary),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        '${loan.repaymentFrequency?.label ?? ""}  ·  '
+                        '${CurrencyFormatter.format(loan.emiAmount ?? 0)} per installment',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Schedule title
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+            child: Row(
+              children: [
+                Text(
+                  'Repayment Schedule',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                paymentsAsync.whenOrNull(
+                      data: (payments) {
+                        final overdue = payments
+                            .where((p) => p.isOverdue)
+                            .length;
+                        if (overdue == 0) return null;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: AppSpacing.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.expense.withValues(alpha: 0.1),
+                            borderRadius:
+                                BorderRadius.circular(AppSpacing.radiusSm),
+                          ),
+                          child: Text(
+                            '$overdue overdue',
+                            style: context.textTheme.labelSmall?.copyWith(
+                              color: colors.expense,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ) ??
+                    const SizedBox.shrink(),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+
+          // Schedule list
+          Expanded(
+            child: paymentsAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (payments) {
+                if (payments.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No installments scheduled',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.base),
+                  itemCount: payments.length,
+                  itemBuilder: (context, index) =>
+                      _InstallmentTile(
+                    payment: payments[index],
+                    loan: loan,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteLoan(BuildContext context, WidgetRef ref) async {
+    final navigator = Navigator.of(context);
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Loan?'),
+        content: Text(
+          'Delete loan of ${CurrencyFormatter.format(loan.principalAmount)} '
+          'from ${loan.lenderName}? This will also delete the repayment schedule.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: context.colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(activeLoansProvider.notifier).deleteLoan(loan.id!);
+      ref.invalidate(totalPendingLoanProvider);
+      if (context.mounted) {
+        navigator.pop();
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(content: Text('Loan deleted')),
+        );
+      }
+    }
+  }
+}
+
+/// A single installment tile in the schedule list.
+class _InstallmentTile extends ConsumerWidget {
+  const _InstallmentTile({required this.payment, required this.loan});
+
+  final LoanPayment payment;
+  final Loan loan;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.kashColors;
+    final isOverdue = payment.isOverdue;
+    final isPaid = payment.isPaid;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      color: isPaid
+          ? colors.income.withValues(alpha: 0.05)
+          : isOverdue
+              ? colors.expense.withValues(alpha: 0.05)
+              : null,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        leading: CircleAvatar(
+          radius: 18,
+          backgroundColor: isPaid
+              ? colors.income.withValues(alpha: 0.15)
+              : isOverdue
+                  ? colors.expense.withValues(alpha: 0.15)
+                  : context.colorScheme.surfaceContainerHighest,
+          child: isPaid
+              ? Icon(Icons.check, size: 18, color: colors.income)
+              : Text(
+                  '#${payment.installmentNumber}',
+                  style: context.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: isOverdue
+                        ? colors.expense
+                        : context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+        ),
+        title: Row(
+          children: [
+            Text(
+              CurrencyFormatter.format(payment.amount),
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFamily: 'RobotoMono',
+                decoration: isPaid ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            const Spacer(),
+            if (isOverdue)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.expense.withValues(alpha: 0.1),
+                  borderRadius:
+                      BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Text(
+                  'Overdue',
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: colors.expense,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else if (isPaid)
+              Text(
+                'Paid',
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: colors.income,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+        subtitle: Text(
+          isPaid && payment.paidDate != null
+              ? 'Paid on ${DateFormatter.format(payment.paidDate!)}'
+              : 'Due ${DateFormatter.format(payment.dueDate)}',
+          style: context.textTheme.bodySmall?.copyWith(
+            color: isOverdue
+                ? colors.expense
+                : context.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        trailing: isPaid
+            ? null
+            : IconButton(
+                icon: Icon(
+                  Icons.payment,
+                  color: context.colorScheme.primary,
+                ),
+                tooltip: 'Pay installment',
+                onPressed: () => _payInstallment(context, ref),
+              ),
+      ),
+    );
+  }
+
+  Future<void> _payInstallment(BuildContext context, WidgetRef ref) async {
+    final paymentRepo = ref.read(loanPaymentRepositoryProvider);
+    final payAmount = payment.remainingAmount;
+
+    // Mark this specific installment as paid
+    await paymentRepo.markPaid(payment.id!, payAmount);
+
+    // Update loan totals (without auto-marking installments)
+    await ref
+        .read(activeLoansProvider.notifier)
+        .addPaymentAmount(loan.id!, payAmount);
+
+    // Refresh schedule + loan lists
+    ref.invalidate(loanPaymentsProvider(loan.id!));
+    ref.invalidate(totalPendingLoanProvider);
+    ref.invalidate(overdueLoansProvider);
+    ref.invalidate(clearedLoansProvider);
+
+    if (context.mounted) {
+      context.showSnackBar(
+        'Installment #${payment.installmentNumber} paid '
+        '(${CurrencyFormatter.format(payAmount)})',
+      );
+    }
+  }
+}
+
 class _DetailItem extends StatelessWidget {
   const _DetailItem({required this.label, required this.value, this.color});
 
@@ -653,16 +1039,21 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
   final _lenderController = TextEditingController();
   final _amountController = TextEditingController();
   final _interestController = TextEditingController();
+  final _emiAmountController = TextEditingController();
+  final _totalEmisController = TextEditingController();
   final _notesController = TextEditingController();
   DateTime _loanDate = DateTime.now();
   DateTime? _dueDate;
   InterestType _interestType = InterestType.none;
+  RepaymentFrequency? _repaymentFrequency;
 
   @override
   void dispose() {
     _lenderController.dispose();
     _amountController.dispose();
     _interestController.dispose();
+    _emiAmountController.dispose();
+    _totalEmisController.dispose();
     _notesController.dispose();
     super.dispose();
   }
@@ -783,6 +1174,81 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
             ],
             const SizedBox(height: AppSpacing.base),
 
+            const Divider(height: AppSpacing.xl),
+
+            // Repayment Schedule
+            Text('Repayment Schedule', style: context.textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Set up installment payments (daily, weekly, or monthly)',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Frequency selector
+            Wrap(
+              spacing: AppSpacing.sm,
+              children: [
+                FilterChip(
+                  label: const Text('None'),
+                  selected: _repaymentFrequency == null,
+                  showCheckmark: false,
+                  onSelected: (_) =>
+                      setState(() => _repaymentFrequency = null),
+                ),
+                ...RepaymentFrequency.values.map(
+                  (f) => FilterChip(
+                    label: Text(f.label),
+                    selected: _repaymentFrequency == f,
+                    showCheckmark: false,
+                    onSelected: (_) =>
+                        setState(() => _repaymentFrequency = f),
+                  ),
+                ),
+              ],
+            ),
+
+            if (_repaymentFrequency != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _emiAmountController,
+                decoration: InputDecoration(
+                  labelText: '${_repaymentFrequency!.label} Installment Amount *',
+                  border: const OutlineInputBorder(),
+                  prefixText: '₹ ',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (_repaymentFrequency == null) return null;
+                  if (v == null || v.isEmpty) return 'Required';
+                  final amount = double.tryParse(v);
+                  if (amount == null || amount <= 0) return 'Invalid';
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _totalEmisController,
+                decoration: const InputDecoration(
+                  labelText: 'Total Installments *',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.format_list_numbered),
+                ),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (_repaymentFrequency == null) return null;
+                  if (v == null || v.isEmpty) return 'Required';
+                  final count = int.tryParse(v);
+                  if (count == null || count <= 0) return 'Invalid';
+                  return null;
+                },
+              ),
+            ],
+
+            const SizedBox(height: AppSpacing.base),
+
             // Notes
             TextFormField(
               controller: _notesController,
@@ -812,6 +1278,12 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
     final interestRate = _interestType != InterestType.none
         ? double.tryParse(_interestController.text)
         : null;
+    final emiAmount = _repaymentFrequency != null
+        ? double.tryParse(_emiAmountController.text)
+        : null;
+    final totalEmis = _repaymentFrequency != null
+        ? int.tryParse(_totalEmisController.text)
+        : null;
 
     final loan = Loan(
       lenderName: _lenderController.text.trim(),
@@ -821,6 +1293,9 @@ class _AddLoanScreenState extends ConsumerState<AddLoanScreen> {
       dueDate: _dueDate,
       interestRate: interestRate,
       interestType: _interestType,
+      repaymentFrequency: _repaymentFrequency,
+      emiAmount: emiAmount,
+      totalEmis: totalEmis,
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),

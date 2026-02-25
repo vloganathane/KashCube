@@ -158,6 +158,7 @@ class DatabaseHelper {
         interest_rate REAL,
         interest_type TEXT,
         total_interest REAL,
+        repayment_frequency TEXT,
         notes TEXT,
         tags TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -170,6 +171,27 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_loans_lender ON loans(lender_name)');
     await db.execute('CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)');
     await db.execute('CREATE INDEX idx_loans_next_emi ON loans(next_emi_date)');
+
+    // -- loan_payments table
+    await db.execute('''
+      CREATE TABLE loan_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_id INTEGER NOT NULL,
+        installment_number INTEGER NOT NULL,
+        due_date TEXT NOT NULL,
+        amount REAL NOT NULL,
+        paid_amount REAL DEFAULT 0,
+        is_paid INTEGER DEFAULT 0,
+        paid_date TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+      )
+    ''');
+
+    await db.execute('CREATE INDEX idx_loan_payments_loan ON loan_payments(loan_id)');
+    await db.execute('CREATE INDEX idx_loan_payments_due ON loan_payments(due_date)');
+    await db.execute('CREATE INDEX idx_loan_payments_status ON loan_payments(is_paid, due_date)');
 
     // -- parties table
     await db.execute('''
@@ -306,8 +328,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 3,
-      'description': 'Add credit_payments table and direction column',
+      'version': 4,
+      'description': 'Add loan_payments table and repayment_frequency',
     });
 
     // Seed default categories
@@ -367,6 +389,41 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 3,
         'description': 'Add credit_payments table and direction column',
+      });
+    }
+
+    if (oldVersion < 4) {
+      // Add repayment_frequency column to loans
+      await db.execute(
+          "ALTER TABLE loans ADD COLUMN repayment_frequency TEXT");
+
+      // Create loan_payments table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS loan_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          loan_id INTEGER NOT NULL,
+          installment_number INTEGER NOT NULL,
+          due_date TEXT NOT NULL,
+          amount REAL NOT NULL,
+          paid_amount REAL DEFAULT 0,
+          is_paid INTEGER DEFAULT 0,
+          paid_date TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_loan_payments_loan ON loan_payments(loan_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_loan_payments_due ON loan_payments(due_date)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_loan_payments_status ON loan_payments(is_paid, due_date)');
+
+      await db.insert('schema_version', {
+        'version': 4,
+        'description': 'Add loan_payments table and repayment_frequency',
       });
     }
   }

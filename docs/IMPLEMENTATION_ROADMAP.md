@@ -1,7 +1,7 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.8  
+**Version:** 2.9  
 **Date:** February 26, 2026  
 **Duration:** 6 months (26 weeks)
 
@@ -249,23 +249,10 @@ This roadmap follows a **core-first, iterative approach**:
 
 ## Phase 2: Scale Features (Weeks 8-11)
 
-### Week 8: Money Management
-**Goal:** Add budget tracking and savings goals
+> **Revised sequence (26 Feb 2026):** Week 9 Part B (Party Management) → Week 21-22 (Billing) → Week 8 Budgets folded into Pro tier (Week 19-20). Rationale: billing needs party phone/email; billing adds more immediate value than budgets for business users; budgets fit naturally as a Pro feature.
 
-**Tasks:**
-- [ ] Implement category-wise budgets
-- [ ] Add budget vs actual tracking
-- [ ] Build budget alerts (80%, 100%, exceeded)
-- [ ] Create savings goals feature
-- [ ] Add spending insights
-- [ ] Build weekly summary notification
-
-**Deliverables:**
-- Can set monthly budgets per category
-- Alerts when approaching limit
-- Visual progress on savings goals
-
-**Time Estimate:** 40 hours
+### ~~Week 8: Money Management~~ → Folded into Pro Tier (Week 19-20)
+**Moved:** Budget tracking and savings goals are now part of the Pro tier feature set (Week 19-20). The `budgets` table already exists in the DB schema — no migration needed when the time comes.
 
 ---
 
@@ -568,15 +555,18 @@ Screen 3 — How do you use money?
 - [ ] Advanced reports: custom date ranges, category drill-down (Pro)
 - [ ] PDF export with branded invoice/statement layout (Pro, uses `pdf` package — 100% local)
 - [ ] Month-over-month comparison chart (Pro)
-- [ ] Budget tracking with category limits + visual progress bars (Pro)
+- [ ] **Budget tracking with category limits + visual progress bars (Pro)** ← moved from Week 8
+- [ ] **Savings goals with progress ring + target date countdown (Pro)** ← moved from Week 8
+- [ ] **Budget alerts at 80% / 100% / exceeded via local notifications (Pro)** ← moved from Week 8
 - [ ] Test payment flow end-to-end
 
 **Deliverables:**
 - Pro plan purchasable from Settings
-- 3–4 Pro features clearly surfaced behind a paywall
+- 4–5 Pro features clearly surfaced behind a paywall
 - Free tier remains fully functional for core tracking
+- Budgets and savings goals gated as Pro (the `budgets` table already exists in DB v10 schema)
 
-**Time Estimate:** 45 hours
+**Time Estimate:** 55 hours
 
 ---
 
@@ -950,7 +940,9 @@ Device B: Import → decrypt with own key → merge event log
 9. ✅ Week 6 tasks (Data & Security) — complete
 10. ✅ Week 7 tasks (Unified Transaction Model, Transfer type, multi-account) — complete
 11. ✅ Week 7.5 tasks (Bills & Payments unification, ScheduledPayment model, DB v10) — complete
-12. Begin Phase 2 — Week 8: Budget tracking & savings goals
+12. Begin Week 9 Part B — Party Management (phone/email/contact picker/reminders)
+13. Then Week 21-22 — Billing & Invoicing
+14. Week 8 Budgets → folded into Pro tier (Week 19-20)
 
 ### This Month (Weeks 1-7)
 - ✅ Complete transaction foundation (Week 1-2)
@@ -961,7 +953,7 @@ Device B: Import → decrypt with own key → merge event log
 - ✅ Unified Transaction Model v7+v8, Transfer type, multi-account (Week 7)
 - ✅ Phase 1.5 — Complete
 - ✅ Bills & Payments UX Overhaul (Week 7.5) — Complete
-- Begin Phase 2: Week 8 (Budgets & Savings Goals)
+- 🔜 Week 9 Part B: Party Management → then Billing (Week 21-22)
 
 ### Overall Progress
 | Week | Status | Key Deliverables |

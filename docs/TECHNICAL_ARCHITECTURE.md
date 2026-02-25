@@ -1,9 +1,9 @@
 # Technical Architecture
 # Kash Cube System Design
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
-**Status:** Design Phase
+**Version:** 2.0  
+**Date:** February 25, 2026  
+**Status:** Active Development
 
 ---
 
@@ -93,12 +93,10 @@ lib/
 │   │   └── widgets/
 │   ├── transactions/
 │   │   ├── transactions_screen.dart
-│   │   ├── add_transaction_screen.dart
+│   │   ├── add_transaction_screen.dart   # Unified form with progressive disclosure
 │   │   └── transaction_detail_screen.dart
-│   ├── credits/
-│   │   ├── credits_screen.dart
-│   │   ├── give_credit_screen.dart
-│   │   └── customer_detail_screen.dart
+│   ├── ledger/
+│   │   └── ledger_screen.dart           # Grouped summary by party/account
 │   ├── reports/
 │   │   ├── reports_screen.dart
 │   │   └── widgets/
@@ -131,22 +129,20 @@ lib/
 lib/
 ├── providers/            # Riverpod providers
 │   ├── transaction_provider.dart
-│   ├── credit_provider.dart
-│   ├── loan_provider.dart
+│   ├── ledger_provider.dart         # Aggregated ledger summaries
 │   ├── category_provider.dart
 │   └── auth_provider.dart
 │
 ├── services/             # Business logic services
 │   ├── sms_parser_service.dart
 │   ├── categorization_service.dart
+│   ├── settlement_service.dart       # Auto-link repayments to lent/borrowed
 │   ├── analytics_service.dart
 │   ├── export_service.dart
 │   └── backup_service.dart
 │
 ├── repositories/         # Data access layer
-│   ├── transaction_repository.dart
-│   ├── credit_repository.dart
-│   ├── loan_repository.dart
+│   ├── transaction_repository.dart   # Handles ALL transaction types
 │   └── settings_repository.dart
 ```
 
@@ -172,14 +168,10 @@ lib/
 │   │   ├── migration_v1.dart
 │   │   └── migration_v2.dart
 │   └── dao/                        # Data Access Objects
-│       ├── transaction_dao.dart
-│       ├── credit_dao.dart
-│       └── loan_dao.dart
+│       └── transaction_dao.dart     # Single DAO for all transaction types
 │
 ├── models/                          # Data models
-│   ├── transaction.dart
-│   ├── credit_record.dart
-│   ├── loan_record.dart
+│   ├── transaction.dart             # Unified model with expanded TransactionType
 │   ├── party.dart
 │   ├── category.dart
 │   └── account.dart
@@ -307,13 +299,13 @@ class CategorizationService {
 
 ---
 
-### 4.3 Credit Linking Service
+### 4.3 Settlement Linking Service
 
-**Purpose:** Auto-link repayments to pending credits
+**Purpose:** Auto-link repayments to pending lent/borrowed transactions
 
 ```dart
-class CreditLinkingService {
-  Future<CreditSuggestion?> suggestCreditLink(
+class SettlementLinkingService {
+  Future<SettlementSuggestion?> suggestSettlement(
     ParsedTransaction transaction
   ) async {
     // 1. Check if transaction is "received" type
@@ -321,18 +313,20 @@ class CreditLinkingService {
       return null;
     }
     
-    // 2. Find customers with pending credit
-    List<CreditRecord> pending = await creditRepo
-        .findPendingByCustomerName(transaction.partyName);
+    // 2. Find parties with pending lent/borrowed amounts
+    List<Transaction> pending = await transactionRepo
+        .findPendingByPartyName(transaction.partyName);
     
-    // 3. If match found, suggest linking
+    // 3. If match found, suggest settlement
     if (pending.isNotEmpty) {
-      return CreditSuggestion(
+      final totalPending = pending.fold(0.0, (sum, t) => sum + t.amount);
+      return SettlementSuggestion(
         transaction: transaction,
-        creditRecord: pending.first,
+        pendingEntries: pending,
+        totalPending: totalPending,
         confidence: calculateMatchConfidence(
           transaction.partyName,
-          pending.first.customerName
+          pending.first.partyName,
         ),
       );
     }
@@ -399,13 +393,14 @@ class AnalyticsService {
 **See:** [Database Schema](./DATABASE_SCHEMA.md) for complete schema
 
 ```dart
-// Transaction Model
+// Unified Transaction Model (all financial events in one model)
 class Transaction {
   final int? id;
   final double amount;
   final DateTime date;
-  final TransactionType type;        // income, expense, credit_given, etc.
-  final TransactionMode mode;        // business, personal
+  final TransactionType type;        // income, expense, lent, borrowed, invested,
+                                     // receivedBack, paidBack, redeemed
+  final TransactionMode mode;        // business, personal, investment
   final String category;
   final String? partyName;
   final String? phoneNumber;
@@ -417,9 +412,17 @@ class Transaction {
   final String? smsSender;
   final bool autoDetected;
   
-  // Linking
-  final int? creditId;
-  final int? loanId;
+  // Settlement linking
+  final int? linkedTransactionId;    // For settlements → points to original lent/borrowed
+  final int? parentTransactionId;    // For refunds/reversals
+  
+  // Lent/Borrowed extras (nullable — only used for lending/borrowing types)
+  final DateTime? dueDate;
+  final double? interestRate;
+  final String? interestType;        // 'simple', 'compound', 'flat'
+  final String? repaymentFrequency;  // 'daily', 'weekly', 'monthly'
+  final int? totalInstallments;
+  final double? emiAmount;
   
   // Business
   final bool gstApplicable;
@@ -429,54 +432,6 @@ class Transaction {
   final String? notes;
   final DateTime createdAt;
   final DateTime? updatedAt;
-}
-
-// Credit Record Model
-class CreditRecord {
-  final int? id;
-  final String customerName;
-  final String? phoneNumber;
-  final double totalAmount;
-  final double paidAmount;
-  final double pendingAmount;      // totalAmount - paidAmount
-  
-  final DateTime creditDate;
-  final DateTime? dueDate;
-  final bool isCleared;
-  
-  // Optional
-  final double? interestRate;
-  final double? creditLimit;
-  
-  // Tracking
-  final List<int> transactionIds;  // Related payments
-  final String? notes;
-}
-
-// Loan Record Model
-class LoanRecord {
-  final int? id;
-  final String lenderName;
-  final String? phoneNumber;
-  final double principalAmount;
-  final double paidAmount;
-  final double pendingAmount;
-  
-  final DateTime loanDate;
-  final DateTime? dueDate;
-  final bool isCleared;
-  
-  // Repayment plan
-  final double? emiAmount;
-  final int? totalEmis;
-  final int? paidEmis;
-  
-  // Interest
-  final double? interestRate;
-  final InterestType? interestType;
-  
-  final List<int> transactionIds;
-  final String? notes;
 }
 ```
 
@@ -531,19 +486,17 @@ class TransactionNotifier extends StateNotifier<AsyncValue<List<Transaction>>> {
 App Root
 ├─ Database Provider (singleton)
 │  └─ Repository Providers
-│     ├─ Transaction Repository
-│     ├─ Credit Repository
-│     └─ Loan Repository
+│     └─ Transaction Repository  (handles ALL types)
 │
 ├─ Service Providers
 │  ├─ SMS Parser Service
 │  ├─ Categorization Service
+│  ├─ Settlement Linking Service
 │  └─ Analytics Service
 │
 └─ State Providers
-   ├─ Transaction Provider (depends on repo)
-   ├─ Credit Provider (depends on repo)
-   ├─ Loan Provider (depends on repo)
+   ├─ Transaction Provider (journal view — all types)
+   ├─ Ledger Provider (grouped aggregation by party/account)
    └─ Settings Provider
 ```
 

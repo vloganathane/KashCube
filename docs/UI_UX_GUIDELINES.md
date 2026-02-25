@@ -1,9 +1,9 @@
 # UI/UX Design Guidelines
 # Kash Cube Design System
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
-**Status:** Design Phase  
+**Version:** 2.0  
+**Date:** February 25, 2026  
+**Status:** Implementation Phase  
 **Framework:** Flutter + Material Design 3
 
 ---
@@ -50,9 +50,15 @@
 | `incomeBackground` | `#E8F5E9` | Income cards background |
 | `expense` | `#C62828` | Expense amounts, negative trends |
 | `expenseBackground` | `#FFEBEE` | Expense cards background |
-| `credit` | `#E65100` | Credit/udhar amounts |
-| `creditBackground` | `#FFF3E0` | Credit cards background |
-| `overdue` | `#B71C1C` | Overdue credit badges |
+| `lent` | `#E65100` | Lent amounts (money you're owed) |
+| `lentBackground` | `#FFF3E0` | Lent cards background |
+| `borrowed` | `#6A1B9A` | Borrowed amounts (money you owe) |
+| `borrowedBackground` | `#F3E5F5` | Borrowed cards background |
+| `invested` | `#0277BD` | Investment amounts |
+| `investedBackground` | `#E1F5FE` | Investment cards background |
+| `settlement` | `#00695C` | Settlement amounts (receivedBack/paidBack) |
+| `settlementBackground` | `#E0F2F1` | Settlement cards background |
+| `overdue` | `#B71C1C` | Overdue badges |
 
 #### Surface Colors
 
@@ -89,7 +95,10 @@
 | `onSurface` | `#E6E1E5` | Primary text |
 | `income` | `#66BB6A` | Income (brighter for dark bg) |
 | `expense` | `#EF5350` | Expense (brighter for dark bg) |
-| `credit` | `#FFA726` | Credit (brighter for dark bg) |
+| `lent` | `#FFA726` | Lent (brighter for dark bg) |
+| `borrowed` | `#CE93D8` | Borrowed (brighter for dark bg) |
+| `invested` | `#4FC3F7` | Invested (brighter for dark bg) |
+| `settlement` | `#4DB6AC` | Settlement (brighter for dark bg) |
 
 ### 2.3 Color Usage Rules
 
@@ -293,19 +302,21 @@ Border radius: 16dp
 Padding: 16dp all sides
 ```
 
-### 5.3 Credit Customer Tile
+### 5.3 Ledger Party Tile
 
 ```
 ┌──────────────────────────────────────────┐
 │ RK  Ramesh Kumar                ₹5,000  │
-│     Phone: 9876543210           OVERDUE  │
+│     Lent on Feb 10              OWED   │
 │     Due: Mar 10, 2026           🔴      │
 └──────────────────────────────────────────┘
 
 Left: Avatar initials (40dp circle)
-Center: Name (titleMedium) + Details (bodySmall)
-Right: Amount (income color) + Status badge
+Center: Name (titleMedium) + Type + Details (bodySmall)
+Right: Net amount (semantic color) + Status badge
 Overdue badge: error/overdue color, labelSmall
+Positive amount = they owe you (lent color)
+Negative amount = you owe them (borrowed color)
 ```
 
 ### 5.4 Category Chip
@@ -399,7 +410,7 @@ Animation: Scale in/out on tab change
 |-----|----------|--------|
 | Home | `home_outlined` | `home` |
 | Transactions | `receipt_long_outlined` | `receipt_long` |
-| Credits | `account_balance_wallet_outlined` | `account_balance_wallet` |
+| Ledger | `book_outlined` | `book` |
 | Reports | `bar_chart_outlined` | `bar_chart` |
 
 ### 6.4 Action Icons
@@ -696,7 +707,8 @@ String formatIndianCurrency(double amount) {
 
 ### 11.4 Language / Copy Conventions
 
-- Use "Credit" not "Loan" for udhar
+- Use "Lent" / "Borrowed" not "Credit" / "Loan" for udhar
+- Use "Settlement" not "Repayment" for paying back
 - Use "Party" not "Vendor" for transaction counterparty
 - Use "UPI" prominently (most Indian users understand)
 - Payment methods: Cash, UPI, Card, Net Banking, Wallet

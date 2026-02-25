@@ -1,28 +1,38 @@
 import 'package:equatable/equatable.dart';
 
-/// Represents the type of a financial transaction.
+/// Represents the type of a financial transaction (unified model).
+///
+/// All financial events — spending, earning, lending, borrowing,
+/// investing, and settlements — are stored as transactions with
+/// one of these types.
 enum TransactionType {
   income,
   expense,
-  creditGiven,
-  creditReceived,
-  loanTaken,
-  loanRepayment;
+  lent,
+  borrowed,
+  invested,
+  receivedBack,
+  paidBack,
+  redeemed;
 
   String get label {
     switch (this) {
       case TransactionType.income:
-        return 'Income';
+        return 'Earned';
       case TransactionType.expense:
-        return 'Expense';
-      case TransactionType.creditGiven:
-        return 'Credit Given';
-      case TransactionType.creditReceived:
-        return 'Credit Received';
-      case TransactionType.loanTaken:
-        return 'Loan Taken';
-      case TransactionType.loanRepayment:
-        return 'Loan Repayment';
+        return 'Spent';
+      case TransactionType.lent:
+        return 'Lent';
+      case TransactionType.borrowed:
+        return 'Borrowed';
+      case TransactionType.invested:
+        return 'Invested';
+      case TransactionType.receivedBack:
+        return 'Received Back';
+      case TransactionType.paidBack:
+        return 'Paid Back';
+      case TransactionType.redeemed:
+        return 'Redeemed';
     }
   }
 
@@ -32,14 +42,18 @@ enum TransactionType {
         return 'income';
       case TransactionType.expense:
         return 'expense';
-      case TransactionType.creditGiven:
-        return 'credit_given';
-      case TransactionType.creditReceived:
-        return 'credit_received';
-      case TransactionType.loanTaken:
-        return 'loan_taken';
-      case TransactionType.loanRepayment:
-        return 'loan_repayment';
+      case TransactionType.lent:
+        return 'lent';
+      case TransactionType.borrowed:
+        return 'borrowed';
+      case TransactionType.invested:
+        return 'invested';
+      case TransactionType.receivedBack:
+        return 'received_back';
+      case TransactionType.paidBack:
+        return 'paid_back';
+      case TransactionType.redeemed:
+        return 'redeemed';
     }
   }
 
@@ -49,18 +63,53 @@ enum TransactionType {
         return TransactionType.income;
       case 'expense':
         return TransactionType.expense;
+      case 'lent':
+        return TransactionType.lent;
+      case 'borrowed':
+        return TransactionType.borrowed;
+      case 'invested':
+        return TransactionType.invested;
+      case 'received_back':
+        return TransactionType.receivedBack;
+      case 'paid_back':
+        return TransactionType.paidBack;
+      case 'redeemed':
+        return TransactionType.redeemed;
+      // Legacy V6 migration fallbacks
       case 'credit_given':
-        return TransactionType.creditGiven;
+        return TransactionType.lent;
       case 'credit_received':
-        return TransactionType.creditReceived;
+        return TransactionType.borrowed;
       case 'loan_taken':
-        return TransactionType.loanTaken;
+        return TransactionType.borrowed;
       case 'loan_repayment':
-        return TransactionType.loanRepayment;
+        return TransactionType.paidBack;
       default:
         return TransactionType.expense;
     }
   }
+
+  bool get isIncome =>
+      this == TransactionType.income ||
+      this == TransactionType.receivedBack ||
+      this == TransactionType.redeemed;
+
+  bool get isExpense =>
+      this == TransactionType.expense || this == TransactionType.paidBack;
+
+  bool get isLending =>
+      this == TransactionType.lent ||
+      this == TransactionType.borrowed ||
+      this == TransactionType.receivedBack ||
+      this == TransactionType.paidBack;
+
+  bool get isSettlement =>
+      this == TransactionType.receivedBack || this == TransactionType.paidBack;
+
+  bool get isInvestment =>
+      this == TransactionType.invested || this == TransactionType.redeemed;
+
+  bool get requiresParty => isLending || isInvestment;
 }
 
 /// Represents the mode of a transaction.
@@ -120,7 +169,49 @@ enum PaymentMethod {
   }
 }
 
-/// A financial transaction record.
+/// Type of interest on a lending/borrowing transaction.
+enum InterestType {
+  none('None', 'none'),
+  simple('Simple', 'simple'),
+  compound('Compound', 'compound');
+
+  const InterestType(this.label, this.dbValue);
+  final String label;
+  final String dbValue;
+
+  static InterestType fromDb(String? value) {
+    if (value == null) return InterestType.none;
+    return InterestType.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => InterestType.none,
+    );
+  }
+}
+
+/// Frequency at which loan installments are due.
+enum RepaymentFrequency {
+  daily('Daily', 'daily'),
+  weekly('Weekly', 'weekly'),
+  monthly('Monthly', 'monthly');
+
+  const RepaymentFrequency(this.label, this.dbValue);
+  final String label;
+  final String dbValue;
+
+  static RepaymentFrequency? fromDb(String? value) {
+    if (value == null) return null;
+    return RepaymentFrequency.values.firstWhere(
+      (e) => e.dbValue == value,
+      orElse: () => RepaymentFrequency.monthly,
+    );
+  }
+}
+
+/// A unified financial transaction record.
+///
+/// This model covers ALL financial events: income, expense, lending,
+/// borrowing, investment, and settlements. Lending/borrowing fields
+/// are nullable and only populated for those transaction types.
 class Transaction extends Equatable {
   const Transaction({
     this.id,
@@ -141,9 +232,15 @@ class Transaction extends Equatable {
     this.referenceId,
     this.autoDetected = false,
     this.verified = false,
-    this.creditId,
-    this.loanId,
+    this.linkedTransactionId,
     this.parentTransactionId,
+    // Lending/borrowing fields
+    this.dueDate,
+    this.interestRate,
+    this.interestType,
+    this.repaymentFrequency,
+    this.totalInstallments,
+    this.emiAmount,
     this.dedupeHash,
     this.notes,
     this.tags,
@@ -170,9 +267,34 @@ class Transaction extends Equatable {
   final String? referenceId;
   final bool autoDetected;
   final bool verified;
-  final int? creditId;
-  final int? loanId;
+
+  /// For settlement types (receivedBack/paidBack/redeemed):
+  /// links back to the original lent/borrowed/invested transaction.
+  final int? linkedTransactionId;
+
+  /// For recurring / split transactions.
   final int? parentTransactionId;
+
+  // --- Lending / Borrowing fields (nullable) ---
+
+  /// When this lent/borrowed amount is due.
+  final DateTime? dueDate;
+
+  /// Annual interest rate (e.g., 12.0 for 12%).
+  final double? interestRate;
+
+  /// Type of interest calculation.
+  final InterestType? interestType;
+
+  /// How often installments are due.
+  final RepaymentFrequency? repaymentFrequency;
+
+  /// Total number of installments/EMIs.
+  final int? totalInstallments;
+
+  /// Per-installment EMI amount.
+  final double? emiAmount;
+
   final String? dedupeHash;
   final String? notes;
   final List<String>? tags;
@@ -183,14 +305,31 @@ class Transaction extends Equatable {
   /// Whether this is a money-in transaction.
   bool get isIncome =>
       type == TransactionType.income ||
-      type == TransactionType.creditReceived ||
-      type == TransactionType.loanTaken;
+      type == TransactionType.receivedBack ||
+      type == TransactionType.redeemed;
 
   /// Whether this is a money-out transaction.
   bool get isExpense =>
       type == TransactionType.expense ||
-      type == TransactionType.creditGiven ||
-      type == TransactionType.loanRepayment;
+      type == TransactionType.lent ||
+      type == TransactionType.invested ||
+      type == TransactionType.paidBack;
+
+  /// Whether this is a lending/borrowing event.
+  bool get isLending =>
+      type == TransactionType.lent || type == TransactionType.borrowed;
+
+  /// Whether this is a settlement (paying back / receiving back).
+  bool get isSettlement =>
+      type == TransactionType.receivedBack ||
+      type == TransactionType.paidBack;
+
+  /// Whether this is an investment event.
+  bool get isInvestment =>
+      type == TransactionType.invested || type == TransactionType.redeemed;
+
+  /// Whether this type requires a party name.
+  bool get requiresParty => isLending || isSettlement;
 
   /// Creates a copy with updated fields.
   Transaction copyWith({
@@ -212,9 +351,14 @@ class Transaction extends Equatable {
     String? referenceId,
     bool? autoDetected,
     bool? verified,
-    int? creditId,
-    int? loanId,
+    int? linkedTransactionId,
     int? parentTransactionId,
+    DateTime? dueDate,
+    double? interestRate,
+    InterestType? interestType,
+    RepaymentFrequency? repaymentFrequency,
+    int? totalInstallments,
+    double? emiAmount,
     String? dedupeHash,
     String? notes,
     List<String>? tags,
@@ -241,9 +385,14 @@ class Transaction extends Equatable {
       referenceId: referenceId ?? this.referenceId,
       autoDetected: autoDetected ?? this.autoDetected,
       verified: verified ?? this.verified,
-      creditId: creditId ?? this.creditId,
-      loanId: loanId ?? this.loanId,
+      linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
+      dueDate: dueDate ?? this.dueDate,
+      interestRate: interestRate ?? this.interestRate,
+      interestType: interestType ?? this.interestType,
+      repaymentFrequency: repaymentFrequency ?? this.repaymentFrequency,
+      totalInstallments: totalInstallments ?? this.totalInstallments,
+      emiAmount: emiAmount ?? this.emiAmount,
       dedupeHash: dedupeHash ?? this.dedupeHash,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
@@ -274,9 +423,14 @@ class Transaction extends Equatable {
       'reference_id': referenceId,
       'auto_detected': autoDetected ? 1 : 0,
       'verified': verified ? 1 : 0,
-      'credit_id': creditId,
-      'loan_id': loanId,
+      'linked_transaction_id': linkedTransactionId,
       'parent_transaction_id': parentTransactionId,
+      'due_date': dueDate?.toIso8601String(),
+      'interest_rate': interestRate,
+      'interest_type': interestType?.dbValue,
+      'repayment_frequency': repaymentFrequency?.dbValue,
+      'total_installments': totalInstallments,
+      'emi_amount': emiAmount,
       'dedupe_hash': dedupeHash,
       'notes': notes,
       'tags': tags?.join(','),
@@ -301,7 +455,8 @@ class Transaction extends Equatable {
       partyName: map['party_name'] as String?,
       partyId: map['party_id'] as int?,
       phoneNumber: map['phone_number'] as String?,
-      paymentMethod: PaymentMethod.fromDb(map['payment_method'] as String? ?? 'cash'),
+      paymentMethod:
+          PaymentMethod.fromDb(map['payment_method'] as String? ?? 'cash'),
       accountId: map['account_id'] as int?,
       smsBody: map['sms_body'] as String?,
       smsSender: map['sms_sender'] as String?,
@@ -310,15 +465,32 @@ class Transaction extends Equatable {
       referenceId: map['reference_id'] as String?,
       autoDetected: (map['auto_detected'] as int? ?? 0) == 1,
       verified: (map['verified'] as int? ?? 0) == 1,
-      creditId: map['credit_id'] as int?,
-      loanId: map['loan_id'] as int?,
+      linkedTransactionId: map['linked_transaction_id'] as int?,
       parentTransactionId: map['parent_transaction_id'] as int?,
+      dueDate: map['due_date'] != null
+          ? DateTime.parse(map['due_date'] as String)
+          : null,
+      interestRate: (map['interest_rate'] as num?)?.toDouble(),
+      interestType: InterestType.fromDb(map['interest_type'] as String?),
+      repaymentFrequency:
+          RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
+      totalInstallments: map['total_installments'] as int?,
+      emiAmount: (map['emi_amount'] as num?)?.toDouble(),
       dedupeHash: map['dedupe_hash'] as String?,
       notes: map['notes'] as String?,
-      tags: (map['tags'] as String?)?.split(',').where((t) => t.isNotEmpty).toList(),
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
-      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
-      deletedAt: map['deleted_at'] != null ? DateTime.parse(map['deleted_at'] as String) : null,
+      tags: (map['tags'] as String?)
+          ?.split(',')
+          .where((t) => t.isNotEmpty)
+          .toList(),
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : null,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
+          : null,
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
     );
   }
 

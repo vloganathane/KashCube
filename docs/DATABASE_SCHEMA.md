@@ -1,8 +1,8 @@
 # Database Schema
 # Kash Cube Data Model
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
+**Version:** 2.0  
+**Date:** February 25, 2026  
 **Database:** SQLite 3.x
 
 ---
@@ -13,21 +13,17 @@
 
 ```
 ┌─────────────┐         ┌──────────────┐         ┌──────────────┐
-│ transactions│◄───────►│   parties    │◄───────►│  credits     │
+│ transactions│◄───────►│   parties    │         │  categories  │
 └─────────────┘         └──────────────┘         └──────────────┘
        │                       │                         │
        │                       │                         │
        ▼                       ▼                        ▼
 ┌─────────────┐         ┌──────────────┐         ┌──────────────┐
-│  categories │         │   accounts   │         │    loans     │
+│   accounts  │         │   budgets    │         │recurring_txns│
 └─────────────┘         └──────────────┘         └──────────────┘
-       │                                                 │
-       │                                                 │
-       ▼                                                 ▼
-┌─────────────┐                                  ┌──────────────┐
-│   budgets   │                                  │recurring_txns│
-└─────────────┘                                  └──────────────┘
 ```
+
+**Note:** Credits and loans are no longer separate tables. All financial events (income, expense, lending, borrowing, investments, settlements) are stored in the unified `transactions` table with expanded type values.
 
 ### 1.2 Design Principles
 
@@ -54,7 +50,8 @@ CREATE TABLE transactions (
   date TEXT NOT NULL,  -- ISO 8601 format
   
   -- Classification
-  type TEXT NOT NULL,  -- 'income', 'expense', 'credit_given', 'credit_received', 'loan_taken', 'loan_repayment'
+  type TEXT NOT NULL,  -- 'income', 'expense', 'lent', 'borrowed', 'invested',
+                       -- 'received_back', 'paid_back', 'redeemed'
   mode TEXT NOT NULL,  -- 'personal', 'business', 'investment'
   category TEXT NOT NULL,
   
@@ -77,9 +74,16 @@ CREATE TABLE transactions (
   verified BOOLEAN DEFAULT 0,
   
   -- Linking
-  credit_id INTEGER,  -- FK to credits table
-  loan_id INTEGER,  -- FK to loans table
+  linked_transaction_id INTEGER,  -- For settlements → points to original lent/borrowed
   parent_transaction_id INTEGER,  -- For refunds/reversals
+  
+  -- Lending/Borrowing extras (nullable — only used for lent/borrowed types)
+  due_date TEXT,              -- When repayment is expected
+  interest_rate REAL,         -- % per period
+  interest_type TEXT,         -- 'simple', 'compound', 'flat', 'none'
+  repayment_frequency TEXT,   -- 'daily', 'weekly', 'monthly'
+  total_installments INTEGER, -- Total number of installments
+  emi_amount REAL,            -- Per-installment amount
   
   -- Business/Tax
   gst_applicable BOOLEAN DEFAULT 0,
@@ -107,8 +111,7 @@ CREATE TABLE transactions (
   -- Foreign Keys
   FOREIGN KEY (party_id) REFERENCES parties(id),
   FOREIGN KEY (account_id) REFERENCES accounts(id),
-  FOREIGN KEY (credit_id) REFERENCES credits(id),
-  FOREIGN KEY (loan_id) REFERENCES loans(id),
+  FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),
   FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)
 );
 
@@ -570,34 +573,58 @@ CREATE VIEW v_daily_summary AS
 SELECT 
   DATE(date) as day,
   mode,
-  SUM(CASE WHEN type IN ('income', 'credit_received') THEN amount ELSE 0 END) as total_income,
-  SUM(CASE WHEN type IN ('expense', 'credit_given') THEN amount ELSE 0 END) as total_expense,
-  SUM(CASE WHEN type IN ('income', 'credit_received') THEN amount ELSE -amount END) as net,
+  SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as total_income,
+  SUM(CASE WHEN type IN ('expense', 'lent', 'invested', 'paid_back') THEN amount ELSE 0 END) as total_expense,
+  SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE -amount END) as net,
   COUNT(*) as transaction_count
 FROM transactions
 WHERE deleted_at IS NULL
 GROUP BY DATE(date), mode;
 ```
 
-### 4.2 `v_pending_credits` View
+### 4.2 `v_ledger_party_summary` View
 
-**All pending credits with customer details**
+**Ledger: net position per party (grouped summary)**
 
 ```sql
-CREATE VIEW v_pending_credits AS
+CREATE VIEW v_ledger_party_summary AS
 SELECT 
-  c.id,
-  c.customer_name,
-  c.phone_number,
-  c.pending_amount,
-  c.due_date,
-  c.is_overdue,
-  p.default_count,
-  julianday('now') - julianday(c.due_date) as days_overdue
-FROM credits c
-LEFT JOIN parties p ON c.customer_id = p.id
-WHERE c.is_cleared = 0
-  AND c.deleted_at IS NULL
+  party_name,
+  SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END) as total_lent,
+  SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END) as total_received_back,
+  SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END) as total_borrowed,
+  SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END) as total_paid_back,
+  SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END) - 
+    SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END) as pending_receivable,
+  SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END) - 
+    SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END) as pending_payable,
+  COUNT(*) as transaction_count
+FROM transactions
+WHERE type IN ('lent', 'received_back', 'borrowed', 'paid_back')
+  AND deleted_at IS NULL
+  AND party_name IS NOT NULL
+GROUP BY party_name;
+```
+
+### 4.3 `v_investment_summary` View
+
+**Ledger: net investment position per instrument**
+
+```sql
+CREATE VIEW v_investment_summary AS
+SELECT 
+  party_name as instrument,
+  category,
+  SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END) as total_invested,
+  SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END) as total_redeemed,
+  SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END) - 
+    SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END) as current_value,
+  COUNT(*) as transaction_count
+FROM transactions
+WHERE type IN ('invested', 'redeemed')
+  AND deleted_at IS NULL
+GROUP BY party_name, category;
+```
 ORDER BY c.is_overdue DESC, c.due_date ASC;
 ```
 
@@ -727,7 +754,8 @@ ALTER TABLE transactions ADD CONSTRAINT chk_amount_positive CHECK (amount > 0);
 
 -- Ensure valid transaction types
 ALTER TABLE transactions ADD CONSTRAINT chk_valid_type 
-  CHECK (type IN ('income', 'expense', 'credit_given', 'credit_received', 'loan_taken', 'loan_repayment'));
+  CHECK (type IN ('income', 'expense', 'lent', 'borrowed', 'invested',
+                  'received_back', 'paid_back', 'redeemed'));
 
 -- Ensure valid modes
 ALTER TABLE transactions ADD CONSTRAINT chk_valid_mode 
@@ -764,9 +792,9 @@ ORDER BY date DESC;
 ```sql
 SELECT 
   strftime('%Y-%m', date) as month,
-  SUM(CASE WHEN type IN ('income', 'credit_received') THEN amount ELSE 0 END) as income,
-  SUM(CASE WHEN type IN ('expense', 'credit_given') THEN amount ELSE 0 END) as expense,
-  SUM(CASE WHEN type IN ('income', 'credit_received') THEN amount ELSE -amount END) as profit
+  SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as income,
+  SUM(CASE WHEN type IN ('expense', 'lent', 'invested', 'paid_back') THEN amount ELSE 0 END) as expense,
+  SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE -amount END) as profit
 FROM transactions
 WHERE mode = 'business'
   AND deleted_at IS NULL

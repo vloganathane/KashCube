@@ -65,6 +65,18 @@ abstract class TransactionRepository {
 
   /// Get recent transactions (for home screen).
   Future<List<Transaction>> getRecent({int limit = 10});
+
+  /// Get party-level ledger summaries (lent/borrowed/invested grouped by party).
+  Future<List<LedgerPartyEntry>> getPartyLedgerSummaries();
+
+  /// Get all ledger transactions for a specific party.
+  Future<List<Transaction>> getTransactionsByParty(String partyName);
+
+  /// Get total outstanding lent amount (lent - received_back).
+  Future<double> getTotalOutstandingLent();
+
+  /// Get total outstanding borrowed amount (borrowed - paid_back).
+  Future<double> getTotalOutstandingBorrowed();
 }
 
 /// Daily income/expense totals.
@@ -112,4 +124,43 @@ class PartyTotal {
   final String partyName;
   final double totalAmount;
   final int transactionCount;
+}
+
+/// Aggregated ledger position for a single party.
+class LedgerPartyEntry {
+  const LedgerPartyEntry({
+    required this.partyName,
+    required this.totalLent,
+    required this.totalBorrowed,
+    required this.totalReceivedBack,
+    required this.totalPaidBack,
+    required this.totalInvested,
+    required this.totalRedeemed,
+    required this.transactionCount,
+    this.lastTransactionDate,
+  });
+
+  final String partyName;
+  final double totalLent;
+  final double totalBorrowed;
+  final double totalReceivedBack;
+  final double totalPaidBack;
+  final double totalInvested;
+  final double totalRedeemed;
+  final int transactionCount;
+  final DateTime? lastTransactionDate;
+
+  /// Positive = they owe you; negative = you owe them.
+  double get netLendingBalance => totalLent - totalReceivedBack;
+
+  /// Positive = you owe them; negative = overpaid.
+  double get netBorrowingBalance => totalBorrowed - totalPaidBack;
+
+  /// Net across lending + borrowing (positive = they owe you net).
+  double get netBalance => netLendingBalance - netBorrowingBalance;
+
+  /// Unredeemed investment amount with this party/institution.
+  double get netInvestment => totalInvested - totalRedeemed;
+
+  bool get isCleared => netBalance.abs() < 0.01 && netInvestment.abs() < 0.01;
 }

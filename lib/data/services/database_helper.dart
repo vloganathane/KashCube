@@ -62,7 +62,14 @@ class DatabaseHelper {
         verified INTEGER DEFAULT 0,
         credit_id INTEGER,
         loan_id INTEGER,
+        linked_transaction_id INTEGER,
         parent_transaction_id INTEGER,
+        due_date TEXT,
+        interest_rate REAL,
+        interest_type TEXT,
+        repayment_frequency TEXT,
+        total_installments INTEGER,
+        emi_amount REAL,
         dedupe_hash TEXT UNIQUE,
         notes TEXT,
         tags TEXT,
@@ -71,7 +78,7 @@ class DatabaseHelper {
         deleted_at TEXT,
         FOREIGN KEY (party_id) REFERENCES parties(id),
         FOREIGN KEY (account_id) REFERENCES accounts(id),
-        FOREIGN KEY (credit_id) REFERENCES credits(id),
+        FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),
         FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)
       )
     ''');
@@ -353,8 +360,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 6,
-      'description': 'Merge credits into loans (Ledger)',
+      'version': 7,
+      'description': 'Unified transaction model: new types + lending fields',
     });
 
     // Seed default categories
@@ -515,6 +522,70 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 6,
         'description': 'Merge credits into loans (Ledger)',
+      });
+    }
+    if (oldVersion < 7) {
+      // Add new unified transaction columns
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN linked_transaction_id INTEGER');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN due_date TEXT');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN interest_rate REAL');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN interest_type TEXT');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN repayment_frequency TEXT');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN total_installments INTEGER');
+      await db.execute(
+          'ALTER TABLE transactions ADD COLUMN emi_amount REAL');
+
+      // Create index for settlement linking
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)');
+
+      // Migrate old type values in transactions table
+      await db.execute(
+          "UPDATE transactions SET type = 'lent' WHERE type = 'credit_given'");
+      await db.execute(
+          "UPDATE transactions SET type = 'borrowed' WHERE type = 'credit_received'");
+      await db.execute(
+          "UPDATE transactions SET type = 'borrowed' WHERE type = 'loan_taken'");
+      await db.execute(
+          "UPDATE transactions SET type = 'paid_back' WHERE type = 'loan_repayment'");
+
+      // Migrate active loans into transactions table (lent/borrowed)
+      await db.execute('''
+        INSERT INTO transactions (
+          amount, date, type, mode, category,
+          party_name, due_date, interest_rate, interest_type,
+          repayment_frequency, total_installments, emi_amount,
+          notes, created_at, updated_at
+        )
+        SELECT
+          principal_amount,
+          loan_date,
+          CASE WHEN direction = 'lent' THEN 'lent' ELSE 'borrowed' END,
+          'personal',
+          CASE WHEN direction = 'lent' THEN 'Lent' ELSE 'Borrowed' END,
+          lender_name,
+          due_date,
+          interest_rate,
+          interest_type,
+          repayment_frequency,
+          total_emis,
+          emi_amount,
+          notes,
+          created_at,
+          updated_at
+        FROM loans
+        WHERE deleted_at IS NULL AND is_cleared = 0
+      ''');
+
+      await db.insert('schema_version', {
+        'version': 7,
+        'description': 'Unified transaction model: new types + lending fields',
       });
     }
   }

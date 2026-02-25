@@ -129,7 +129,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('income', 'credit_received', 'loan_taken') "
+      "WHERE deleted_at IS NULL AND type IN ('income', 'received_back', 'redeemed') "
       "AND date >= ? AND date <= ? $modeClause",
       args,
     );
@@ -144,7 +144,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('expense', 'credit_given', 'loan_repayment') "
+      "WHERE deleted_at IS NULL AND type IN ('expense', 'paid_back') "
       "AND date >= ? AND date <= ? $modeClause",
       args,
     );
@@ -175,7 +175,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('income', 'credit_received', 'loan_taken') "
+      "WHERE deleted_at IS NULL AND type IN ('income', 'received_back', 'redeemed') "
       "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
       args,
@@ -192,7 +192,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('expense', 'credit_given', 'loan_repayment') "
+      "WHERE deleted_at IS NULL AND type IN ('expense', 'paid_back') "
       "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
       args,
@@ -208,8 +208,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT date(date) as day, "
-      "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
-      "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
+      "SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as income, "
+      "SUM(CASE WHEN type IN ('expense', 'paid_back') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
       "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
       "GROUP BY day ORDER BY day",
@@ -236,8 +236,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SELECT "
       "CAST(strftime('%Y', date) AS INTEGER) as yr, "
       "CAST(strftime('%m', date) AS INTEGER) as mo, "
-      "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
-      "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
+      "SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as income, "
+      "SUM(CASE WHEN type IN ('expense', 'paid_back') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
       "WHERE deleted_at IS NULL AND date >= ? $modeClause"
       "GROUP BY yr, mo ORDER BY yr, mo",
@@ -297,5 +297,74 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<List<Transaction>> getRecent({int limit = 10}) async {
     return getAll(limit: limit);
+  }
+
+  @override
+  Future<List<LedgerPartyEntry>> getPartyLedgerSummaries() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT party_name, "
+      "SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END) as total_lent, "
+      "SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END) as total_borrowed, "
+      "SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END) as total_received_back, "
+      "SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END) as total_paid_back, "
+      "SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END) as total_invested, "
+      "SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END) as total_redeemed, "
+      "COUNT(*) as cnt, MAX(date) as last_date "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != '' "
+      "AND type IN ('lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed') "
+      "GROUP BY party_name "
+      "ORDER BY MAX(date) DESC",
+    );
+    return rows.map((r) => LedgerPartyEntry(
+      partyName: r['party_name'] as String,
+      totalLent: (r['total_lent'] as num).toDouble(),
+      totalBorrowed: (r['total_borrowed'] as num).toDouble(),
+      totalReceivedBack: (r['total_received_back'] as num).toDouble(),
+      totalPaidBack: (r['total_paid_back'] as num).toDouble(),
+      totalInvested: (r['total_invested'] as num).toDouble(),
+      totalRedeemed: (r['total_redeemed'] as num).toDouble(),
+      transactionCount: (r['cnt'] as num).toInt(),
+      lastTransactionDate: r['last_date'] != null
+          ? DateTime.tryParse(r['last_date'] as String)
+          : null,
+    )).toList();
+  }
+
+  @override
+  Future<List<Transaction>> getTransactionsByParty(String partyName) async {
+    final db = await _db;
+    final rows = await db.query(
+      'transactions',
+      where: 'deleted_at IS NULL AND party_name = ? AND type IN (?, ?, ?, ?, ?, ?)',
+      whereArgs: [partyName, 'lent', 'borrowed', 'received_back', 'paid_back', 'invested', 'redeemed'],
+      orderBy: 'date DESC',
+    );
+    return rows.map((r) => Transaction.fromMap(Map<String, dynamic>.from(r))).toList();
+  }
+
+  @override
+  Future<double> getTotalOutstandingLent() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT "
+      "COALESCE(SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END), 0) - "
+      "COALESCE(SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END), 0) as net "
+      "FROM transactions WHERE deleted_at IS NULL",
+    );
+    return (rows.first['net'] as num).toDouble();
+  }
+
+  @override
+  Future<double> getTotalOutstandingBorrowed() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT "
+      "COALESCE(SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END), 0) - "
+      "COALESCE(SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END), 0) as net "
+      "FROM transactions WHERE deleted_at IS NULL",
+    );
+    return (rows.first['net'] as num).toDouble();
   }
 }

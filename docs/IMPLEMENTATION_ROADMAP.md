@@ -1,8 +1,8 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
+**Version:** 2.0  
+**Date:** February 25, 2026  
 **Duration:** 6 months (26 weeks)
 
 ---
@@ -178,18 +178,46 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-## Phase 2: Scale Features (Weeks 7-10)
+## Phase 1.5: Unified Transaction Model (Week 7)
 
-### Week 7: Money Management
+### Week 7: Architecture Redesign
+**Goal:** Unify all financial events (income, expense, lending, borrowing, investment, settlement) into a single Transaction model with progressive disclosure form
+
+**Tasks:**
+- [ ] Expand TransactionType enum: `income, expense, lent, borrowed, invested, receivedBack, paidBack, redeemed`
+- [ ] Add nullable lending fields to Transaction model (dueDate, interestRate, interestType, repaymentFrequency, totalInstallments, emiAmount, linkedTransactionId)
+- [ ] DB migration V6→V7: add columns to transactions table, migrate loans data, update type enum values
+- [ ] Remove separate Loan model, loan_repository, loan_provider
+- [ ] Update SMS parser with keyword→type detection (EMI→paidBack, SIP→invested, loan disbursed→borrowed)
+- [ ] Rebuild Add/Edit Transaction screen with progressive disclosure (2-3 fields default, expanding based on type)
+- [ ] Rebuild Ledger screen as grouped aggregation view (GROUP BY party from transactions table)
+- [ ] Update Home dashboard, search, and providers to use unified model
+- [ ] Update all tests for new transaction types
+
+**Deliverables:**
+- Single Transaction model for ALL financial events
+- Progressive form: select type → relevant fields appear
+- Ledger tab shows net positions per party (who owes what)
+- Sections in Ledger: People (receivables/payables), Investments, Loans
+- Settlement linking: paying back auto-links to original lent/borrowed entry
+- No separate Credits/Loans screens — everything is a transaction
+
+**Time Estimate:** 50 hours
+
+---
+
+## Phase 2: Scale Features (Weeks 8-11)
+
+### Week 8: Money Management
 **Goal:** Add budget tracking and savings goals
 
 **Tasks:**
 - [ ] Implement category-wise budgets
 - [ ] Add budget vs actual tracking
-- [ ] Build budget alerts (80%, 100%,exceeded)
+- [ ] Build budget alerts (80%, 100%, exceeded)
 - [ ] Create savings goals feature
 - [ ] Add spending insights
-- [ ] Build weekly summary email/notification
+- [ ] Build weekly summary notification
 
 **Deliverables:**
 - Can set monthly budgets per category
@@ -200,7 +228,7 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-### Week 8: Complete Financial View
+### Week 9: Complete Financial View
 **Goal:** Parse all financial SMS, not just UPI
 
 **Tasks:**
@@ -220,7 +248,7 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-### Week 9: Smart Features
+### Week 10: Smart Features
 **Goal:** Handle edge cases and advanced scenarios
 
 **Tasks:**
@@ -242,7 +270,7 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-### Week 10: UX Polish
+### Week 11: UX Polish
 **Goal:** Make experience delightful
 
 **Tasks:**
@@ -609,8 +637,9 @@ This roadmap follows a **core-first, iterative approach**:
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
 
 **Codebase:** 68 Dart files in `lib/`, 0 lint issues  
-**Database:** SQLite v3 (10+ tables including credit_payments, recurring_transactions, settings)  
-**Phase 1 MVP:** COMPLETE
+**Database:** SQLite v6 (10+ tables) → v7 migration pending (unified transaction model)  
+**Phase 1 MVP:** COMPLETE  
+**Phase 1.5:** IN PROGRESS (Unified Transaction Model)
 
 ### This Quarter (Weeks 1-12)
 - Launch MVP

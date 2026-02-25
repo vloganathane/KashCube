@@ -1,8 +1,8 @@
 # SMS Parsing Specification
 # Kash Cube SMS Parser
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
+**Version:** 2.0  
+**Date:** February 25, 2026  
 **Supported:** India (UPI, Banks, Credit Cards)
 
 ---
@@ -776,17 +776,58 @@ class OptimizedParser {
 
 ---
 
-## 10. Roadmap
+## 10. Smart Type Inference (Unified Transaction Model)
+
+### 10.1 Type Detection from SMS Keywords
+
+The SMS parser now maps parsed transactions to the expanded `TransactionType` values. SMS can detect the **event** but not always the **intent** — the user can reclassify with one tap.
+
+| SMS Keyword/Pattern | Suggested Type | Confidence |
+|---------------------|---------------|------------|
+| "salary", "credited from employer" | `income` | HIGH |
+| "debited", merchant name detected | `expense` | HIGH |
+| "EMI", "loan", "instalment" | `paidBack` | HIGH |
+| "SIP", "mutual fund", "FD booked" | `invested` | HIGH |
+| "loan disbursed", "sanctioned" | `borrowed` | HIGH |
+| "FD matured", "redemption" | `redeemed` | MEDIUM |
+| UPI to a person (no merchant) | `expense` (default) | LOW — could be `lent` |
+| UPI from a person | `income` (default) | LOW — could be `receivedBack` |
+
+### 10.2 Cross-Reference with Existing Parties
+
+When a payment is received from a person:
+1. Check if that person has pending `lent` transactions (you gave them money earlier)
+2. If YES → Suggest `receivedBack` type and link to original `lent` entry
+3. If NO → Default to `income`
+
+Similarly for payments sent to a person:
+1. Check if that person has pending `borrowed` transactions (you borrowed from them)
+2. If YES → Suggest `paidBack` type and link to original `borrowed` entry
+3. If NO → Default to `expense`
+
+### 10.3 Important Rules
+
+- **Never auto-confirm** lending/borrowing — always needs user confirmation
+- UPI payment to a friend could be expense OR lent — user decides
+- Default to simpler type (income/expense) when uncertain
+- Show "Change Type" button in confirmation notification
+
+---
+
+## 11. Roadmap
 
 ### Phase 1 (MVP) - Covered in this spec
 - UPI (top 4 apps)
 - Credit cards (top 5 banks)
 - Basic bank transactions
+- Smart type inference to expanded TransactionType values
 
 ### Phase 2
 - More banks (20+ total)
 - Wallet transactions
-- Investment transactions (MF, stocks)
+- Investment transactions (MF SIP, FD, stocks)
+- EMI/loan repayment detection
+- Settlement linking (cross-reference pending lent/borrowed)
 - Bill payments
 
 ### Phase 3

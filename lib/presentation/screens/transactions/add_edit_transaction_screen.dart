@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
 import '../../../data/models/transaction.dart';
@@ -19,14 +20,24 @@ import '../../widgets/bill_picker.dart';
 /// Screen for adding or editing a transaction.
 ///
 /// Pass [transaction] to edit an existing one; omit for new entry.
+/// Use [initialType] to pre-select the transaction type (e.g., from Ledger screen).
+/// Use [initialPartyName] to pre-fill the party name field.
 class AddEditTransactionScreen extends ConsumerStatefulWidget {
   const AddEditTransactionScreen({
     super.key,
     this.transaction,
+    this.initialType,
+    this.initialPartyName,
   });
 
   /// If non-null, we're editing this transaction.
   final Transaction? transaction;
+
+  /// Pre-select this type when creating a new transaction.
+  final TransactionType? initialType;
+
+  /// Pre-fill the party name field when creating a new transaction.
+  final String? initialPartyName;
 
   bool get isEditing => transaction != null;
 
@@ -41,6 +52,7 @@ class _AddEditTransactionScreenState
   final _amountController = TextEditingController();
   final _partyNameController = TextEditingController();
   final _notesController = TextEditingController();
+  final _interestRateController = TextEditingController();
 
   late TransactionType _type;
   late TransactionMode _mode;
@@ -48,6 +60,10 @@ class _AddEditTransactionScreenState
   late PaymentMethod _paymentMethod;
   late DateTime _date;
   late TimeOfDay _time;
+
+  // Lending / investment extra fields
+  DateTime? _dueDate;
+  InterestType _interestType = InterestType.none;
 
   bool _isSaving = false;
 
@@ -76,15 +92,23 @@ class _AddEditTransactionScreenState
       _paymentMethod = txn.paymentMethod;
       _date = txn.date;
       _time = TimeOfDay.fromDateTime(txn.date);
+      _dueDate = txn.dueDate;
+      _interestType = txn.interestType ?? InterestType.none;
+      if (txn.interestRate != null) {
+        _interestRateController.text = txn.interestRate!.toStringAsFixed(1);
+      }
       // Load existing bill for this transaction
       _loadExistingBill(txn.id!);
     } else {
-      _type = TransactionType.expense;
+      _type = widget.initialType ?? TransactionType.expense;
       _mode = TransactionMode.personal;
       _category = AppConstants.defaultCategories.first;
       _paymentMethod = PaymentMethod.upi;
       _date = DateTime.now();
       _time = TimeOfDay.now();
+      if (widget.initialPartyName != null) {
+        _partyNameController.text = widget.initialPartyName!;
+      }
     }
   }
 
@@ -93,6 +117,7 @@ class _AddEditTransactionScreenState
     _amountController.dispose();
     _partyNameController.dispose();
     _notesController.dispose();
+    _interestRateController.dispose();
     super.dispose();
   }
 
@@ -107,6 +132,9 @@ class _AddEditTransactionScreenState
   List<String> get _categoriesForType {
     if (_type == TransactionType.income) {
       return AppConstants.incomeCategories;
+    }
+    if (_type.isLending || _type.isSettlement || _type.isInvestment) {
+      return ['Lending / Credit', 'Investment', 'Other'];
     }
     return AppConstants.defaultCategories;
   }
@@ -131,13 +159,13 @@ class _AddEditTransactionScreenState
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.base),
           children: [
-            // Transaction Type Toggle
-            _TypeToggle(
+            // Transaction type selector — progressive disclosure chips
+            _TypeSelector(
               selected: _type,
               onChanged: (type) {
                 setState(() {
                   _type = type;
-                  // Reset category when switching type
+                  // Reset category when type group changes
                   final cats = _categoriesForType;
                   if (!cats.contains(_category)) {
                     _category = cats.first;
@@ -175,24 +203,28 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Category Dropdown
-            DropdownButtonFormField<String>(
-              initialValue: _categoriesForType.contains(_category) ? _category : _categoriesForType.first,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                prefixIcon: Icon(Icons.category_outlined),
+            // Category — only for income / expense
+            if (_type.isIncome || _type.isExpense) ...[
+              DropdownButtonFormField<String>(
+                initialValue: _categoriesForType.contains(_category)
+                    ? _category
+                    : _categoriesForType.first,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  prefixIcon: Icon(Icons.category_outlined),
+                ),
+                items: _categoriesForType
+                    .map((cat) => DropdownMenuItem(
+                          value: cat,
+                          child: Text(cat),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _category = value);
+                },
               ),
-              items: _categoriesForType
-                  .map((cat) => DropdownMenuItem(
-                        value: cat,
-                        child: Text(cat),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _category = value);
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Party Name with Autocomplete
             _buildPartyNameField(),
@@ -201,6 +233,23 @@ class _AddEditTransactionScreenState
             if (_activeSuggestion != null && !_suggestionApplied)
               _buildSuggestionChip(),
             const SizedBox(height: AppSpacing.lg),
+
+            // Due date — for lent / borrowed
+            if (_type == TransactionType.lent || _type == TransactionType.borrowed) ...[
+              _DueDateField(
+                dueDate: _dueDate,
+                onChanged: (d) => setState(() => _dueDate = d),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Interest section
+              _InterestSection(
+                selectedType: _interestType,
+                rateController: _interestRateController,
+                onTypeChanged: (t) => setState(() => _interestType = t),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Date & Time Row
             Row(
@@ -222,24 +271,28 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Payment Method
-            DropdownButtonFormField<PaymentMethod>(
-              initialValue: _paymentMethod,
-              decoration: const InputDecoration(
-                labelText: 'Payment Method',
-                prefixIcon: Icon(Icons.payment_outlined),
+            // Payment Method — for income / expense / settlement only
+            if (_type.isIncome ||
+                _type.isExpense ||
+                _type.isSettlement) ...[
+              DropdownButtonFormField<PaymentMethod>(
+                initialValue: _paymentMethod,
+                decoration: const InputDecoration(
+                  labelText: 'Payment Method',
+                  prefixIcon: Icon(Icons.payment_outlined),
+                ),
+                items: PaymentMethod.values
+                    .map((method) => DropdownMenuItem(
+                          value: method,
+                          child: Text(method.label),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _paymentMethod = value);
+                },
               ),
-              items: PaymentMethod.values
-                  .map((method) => DropdownMenuItem(
-                        value: method,
-                        child: Text(method.label),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) setState(() => _paymentMethod = value);
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // Mode Toggle
             _ModeChips(
@@ -263,9 +316,12 @@ class _AddEditTransactionScreenState
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Bill Attachment
-            _buildBillSection(),
-            const SizedBox(height: AppSpacing.xxl),
+            // Bill Attachment — only for income / expense
+            if (_type.isIncome || _type.isExpense) ...[
+              _buildBillSection(),
+              const SizedBox(height: AppSpacing.xxl),
+            ] else
+              const SizedBox(height: AppSpacing.xxl),
 
             // Save Button
             FilledButton.icon(
@@ -315,16 +371,35 @@ class _AddEditTransactionScreenState
           }
         });
 
+        final partyRequired = _type.requiresParty;
+        final partyLabel = switch (_type) {
+          TransactionType.lent => 'Borrower Name *',
+          TransactionType.borrowed => 'Lender Name *',
+          TransactionType.invested => 'Institution / Fund *',
+          TransactionType.redeemed => 'Institution / Fund *',
+          TransactionType.receivedBack => 'Party Name *',
+          TransactionType.paidBack => 'Party Name *',
+          _ => 'Party / Merchant (optional)',
+        };
+        final partyHint = switch (_type) {
+          TransactionType.lent => 'e.g. Ramesh, Priya',
+          TransactionType.borrowed => 'e.g. Bank, Friend',
+          TransactionType.invested => 'e.g. Zerodha, SBI MF',
+          _ => 'e.g. Swiggy, Ramesh',
+        };
         return TextFormField(
           controller: controller,
           focusNode: focusNode,
-          decoration: const InputDecoration(
-            labelText: 'Party / Merchant (optional)',
-            prefixIcon: Icon(Icons.person_outline),
-            hintText: 'e.g. Swiggy, Ramesh',
+          decoration: InputDecoration(
+            labelText: partyLabel,
+            prefixIcon: const Icon(Icons.person_outline),
+            hintText: partyHint,
           ),
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
+          validator: partyRequired
+              ? (v) => v == null || v.trim().isEmpty ? 'Required' : null
+              : null,
           onEditingComplete: () {
             onFieldSubmitted();
             if (controller.text.isNotEmpty) {
@@ -471,6 +546,12 @@ class _AddEditTransactionScreenState
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
           : null,
+      // Lending / investment fields
+      dueDate: _dueDate,
+      interestType: _interestType,
+      interestRate: _interestRateController.text.isNotEmpty
+          ? double.tryParse(_interestRateController.text)
+          : null,
       // Preserve existing fields when editing
       partyId: widget.transaction?.partyId,
       phoneNumber: widget.transaction?.phoneNumber,
@@ -482,8 +563,7 @@ class _AddEditTransactionScreenState
       referenceId: widget.transaction?.referenceId,
       autoDetected: widget.transaction?.autoDetected ?? false,
       verified: true,
-      creditId: widget.transaction?.creditId,
-      loanId: widget.transaction?.loanId,
+      linkedTransactionId: widget.transaction?.linkedTransactionId,
       parentTransactionId: widget.transaction?.parentTransactionId,
       dedupeHash: widget.transaction?.dedupeHash,
       tags: widget.transaction?.tags,
@@ -653,38 +733,54 @@ class _AddEditTransactionScreenState
 // Sub-widgets
 // ---------------------------------------------------------------------------
 
-/// Income / Expense toggle using SegmentedButton.
-class _TypeToggle extends StatelessWidget {
+/// Progressive chip selector for all 8 transaction types.
+class _TypeSelector extends StatelessWidget {
   final TransactionType selected;
   final ValueChanged<TransactionType> onChanged;
 
-  const _TypeToggle({required this.selected, required this.onChanged});
+  const _TypeSelector({required this.selected, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return SegmentedButton<TransactionType>(
-      segments: const [
-        ButtonSegment(
-          value: TransactionType.expense,
-          label: Text('Expense'),
-          icon: Icon(Icons.arrow_upward),
-        ),
-        ButtonSegment(
-          value: TransactionType.income,
-          label: Text('Income'),
-          icon: Icon(Icons.arrow_downward),
-        ),
-      ],
-      selected: {selected},
-      onSelectionChanged: (set) => onChanged(set.first),
-      style: ButtonStyle(
-        visualDensity: VisualDensity.comfortable,
-        shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+    // Group definitions: label, icon, types
+    final groups = [
+      (TransactionType.expense, Icons.arrow_upward, 'Spent'),
+      (TransactionType.income, Icons.arrow_downward, 'Earned'),
+      (TransactionType.lent, Icons.person_add_alt_1, 'Lent'),
+      (TransactionType.borrowed, Icons.person_remove_alt_1, 'Borrowed'),
+      (TransactionType.invested, Icons.trending_up, 'Invested'),
+      (TransactionType.redeemed, Icons.redeem, 'Redeemed'),
+      (TransactionType.receivedBack, Icons.call_received, 'Got back'),
+      (TransactionType.paidBack, Icons.call_made, 'Paid back'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'What happened?',
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: groups.map((g) {
+            final (type, icon, label) = g;
+            final isSelected = selected == type;
+            return ChoiceChip(
+              label: Text(label),
+              avatar: Icon(icon, size: 16),
+              selected: isSelected,
+              showCheckmark: false,
+              onSelected: (_) => onChanged(type),
+              visualDensity: VisualDensity.compact,
+            );
+          }).toList(),
+        ),
+      ],
     );
   }
 }
@@ -753,7 +849,106 @@ class _DateField extends StatelessWidget {
   }
 }
 
-/// Tappable time field that opens a TimePicker.
+// ---------------------------------------------------------------------------
+// Due date field
+// ---------------------------------------------------------------------------
+
+class _DueDateField extends StatelessWidget {
+  const _DueDateField({required this.dueDate, required this.onChanged});
+
+  final DateTime? dueDate;
+  final ValueChanged<DateTime?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate:
+              dueDate ?? DateTime.now().add(const Duration(days: 30)),
+          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+          lastDate: DateTime.now().add(const Duration(days: 3650)),
+        );
+        onChanged(picked);
+      },
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'Due Date (optional)',
+          prefixIcon: const Icon(Icons.event_outlined),
+          suffixIcon: dueDate != null
+              ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => onChanged(null),
+                )
+              : null,
+        ),
+        child: Text(
+          dueDate != null ? DateFormatter.format(dueDate!) : 'Not set',
+          style: context.textTheme.bodyLarge,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Interest section (for lent / borrowed)
+// ---------------------------------------------------------------------------
+
+class _InterestSection extends StatelessWidget {
+  const _InterestSection({
+    required this.selectedType,
+    required this.rateController,
+    required this.onTypeChanged,
+  });
+
+  final InterestType selectedType;
+  final TextEditingController rateController;
+  final ValueChanged<InterestType> onTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Interest',
+          style: context.textTheme.bodySmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          children: InterestType.values.map((t) {
+            return ChoiceChip(
+              label: Text(t.label),
+              selected: selectedType == t,
+              showCheckmark: false,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => onTypeChanged(t),
+            );
+          }).toList(),
+        ),
+        if (selectedType != InterestType.none) ...[
+          const SizedBox(height: AppSpacing.md),
+          TextFormField(
+            controller: rateController,
+            decoration: const InputDecoration(
+              labelText: 'Interest Rate (%)',
+              prefixIcon: Icon(Icons.percent),
+              suffixText: '%',
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+          ),
+        ],
+      ],
+    );
+  }
+}/// Tappable time field that opens a TimePicker.
 class _TimeField extends StatelessWidget {
   final TimeOfDay time;
   final ValueChanged<TimeOfDay> onChanged;

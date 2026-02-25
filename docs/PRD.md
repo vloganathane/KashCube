@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 # Kash Cube - Privacy-First Financial Tracker for India
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
-**Status:** Planning Phase  
+**Version:** 2.0  
+**Date:** February 25, 2026  
+**Status:** Active Development  
 **Author:** Loganathan EV
 
 ---
@@ -16,15 +16,18 @@ Kash Cube is a privacy-first financial tracking application specifically designe
 ### 1.2 Problem Statement
 **Who:** Small business owners, freelancers, and privacy-conscious individuals in India  
 **Problem:** Struggle to track mixed personal and business finances across multiple UPI apps, manually maintain credit records (khata), and fear sharing bank credentials with apps  
-**Current Solutions:** Either too complex (accounting software), too simple (expense trackers), or privacy-invasive (bank linking required)
+**Current Solutions:** Either too complex (accounting software with debit/credit jargon), too simple (basic expense trackers), or privacy-invasive (bank linking required)
 
 ### 1.3 Solution
 A mobile app that:
 - Auto-captures transactions from UPI, bank, and credit card SMS (local parsing)
-- Intelligently categorizes income and expenses
-- Tracks credits given to customers and loans taken
-- Auto-links repayments to outstanding credits
-- Separates personal and business finances
+- **Unified transaction model** — income, expenses, lending, borrowing, and investments all in one place
+- **One progressive-disclosure form** — 2-3 fields for simple entries, optional interest/EMI/due-date for complex ones
+- **Automatic double-entry ledger** — user taps "Lent ₹5K to Ramesh", app silently creates journal + ledger entries
+- **Ledger tab** — grouped summary by party/account showing net balances (who owes what)
+- Auto-links repayments to outstanding lent/borrowed amounts
+- Separates personal, business, and investment finances
+- **ITR-ready financial summaries** — Income, Deductions (80C/80D), Assets & Liabilities
 - Provides daily business dashboard
 - **Never uploads data to cloud** (privacy-first)
 
@@ -87,11 +90,12 @@ A mobile app that:
 - 10% conversion to Pro plan
 
 ### 3.3 Non-Goals (Initial Phase)
-- ❌ Investment portfolio tracking
-- ❌ Full accounting software features
-- ❌ Tax filing automation
+- ❌ Auto-file ITR (requires network calls)
+- ❌ Full double-entry UI (user never sees debit/credit jargon)
+- ❌ GST compliance or business accounting
 - ❌ Bill payment integration
 - ❌ Social features or comparison with others
+- ❌ Cloud sync or server communication
 
 ---
 
@@ -188,15 +192,24 @@ A mobile app that:
 - ✅ 90%+ accuracy in parsing
 - ✅ Handle malformed SMS gracefully
 
-#### 5.1.2 Transaction Types
-- Income (Business)
-- Income (Personal)
-- Expense (Business)
-- Expense (Personal)
-- Credit Given (Udhar)
-- Credit Received (Repayment)
-- Loan Taken
-- Loan Repayment
+#### 5.1.2 Transaction Types (Unified Model)
+
+All financial events are recorded as transactions with expanded types:
+
+| Type | User Label | Money Flow | Ledger Effect |
+|------|-----------|------------|---------------|
+| `income` | Earned | Money In | Credit: Income account |
+| `expense` | Spent | Money Out | Debit: Expense account |
+| `lent` | Lent (Diya) | Money Out | Debit: Receivable (party) |
+| `borrowed` | Borrowed (Liya) | Money In | Credit: Payable (party) |
+| `invested` | Invested | Money Out | Debit: Investment asset |
+| `receivedBack` | Received Back | Money In | Credit: Receivable (party) |
+| `paidBack` | Paid Back | Money Out | Debit: Payable (party) |
+| `redeemed` | Redeemed | Money In | Credit: Investment asset |
+
+**Key Design Principle:** The user never sees "debit" or "credit". They see simple labels like "Spent", "Earned", "Lent". The app handles double-entry accounting silently behind the scenes.
+
+Each transaction type can be combined with a mode (personal/business/investment) for further classification.
 
 #### 5.1.3 Smart Categorization
 - **Description:** Automatically suggest category based on merchant name
@@ -234,58 +247,56 @@ A mobile app that:
 - **Priority:** P0 (Critical)
 - Quick entry form with smart defaults
 
-### 5.2 Credit Management (Udhar/Khata)
+### 5.2 Unified Transaction Form (Progressive Disclosure)
 
-#### 5.2.1 Give Credit
-- **Description:** Record when customer takes goods/services on credit
+#### 5.2.1 Core Form
+- **Description:** Single form for ALL transaction types with progressive disclosure
 - **Priority:** P0 (Critical)
+- **Design Principle:** Start with 2-3 fields, reveal more based on type selection
 
-**Fields:**
-- Customer name (autocomplete existing)
-- Amount
-- Due date (optional)
-- Interest rate (optional)
-- Notes
+**Minimum fields (all types):**
+- Transaction type selector: Spent | Earned | Lent | Borrowed | Invested | Settlement
+- Amount (₹)
+- Date (default: today)
 
-#### 5.2.2 Auto-Link Repayments
-- **Description:** When money is received from customer with pending credit, suggest linking to credit
+**Progressive fields by type:**
+
+| Type | Additional Fields Shown |
+|------|------------------------|
+| Spent/Earned | Category, Party, Payment method, Notes |
+| Lent/Borrowed | Direction toggle (Diya/Liya), Party name (autocomplete), Phone, Due date, Interest (rate + type), Repayment schedule (frequency + installments), Notes |
+| Invested | Where (autocomplete), Category (FD/MF/Stocks/Gold), Returns/interest, Maturity date, Notes |
+| Settlement | Party (shows only parties with pending), Shows context (original amount, remaining), Settle amount (with "Full" button), Links to original transaction |
+
+#### 5.2.2 Auto-Link Settlements
+- **Description:** When money is received from someone with pending lent amount, suggest linking as settlement
 - **Priority:** P0 (Critical)
 
 **Flow:**
-1. SMS: "Received ₹500 from Ramesh"
-2. Check: Does Ramesh have pending credit?
-3. Show: "Apply ₹500 to Ramesh's ₹4,000 credit?"
-4. User confirms → Pending reduced to ₹3,500
+1. SMS: "Received ₹2,000 from Ramesh"
+2. Check: Does Ramesh have pending lent entries?
+3. Show: "Link as repayment? Ramesh owes ₹5,000. After this: ₹3,000"
+4. User confirms → Creates `receivedBack` transaction linked to original `lent` entry
 
-#### 5.2.3 Collections Dashboard
-- **Description:** View all pending credits with status
+### 5.3 Ledger Tab (Grouped Summary View)
+
+#### 5.3.1 Party/Account Summaries
+- **Description:** Ledger tab shows transactions grouped by party/account with net balances
 - **Priority:** P0 (Critical)
+- **Concept:** Transactions tab = Journal (chronological). Ledger tab = Book of final entry (grouped by account)
 
-**Features:**
-- Overdue credits (highlighted in red)
-- Due soon (yellow)
-- Total outstanding amount
-- Sort by: amount, date, customer
-- Customer detail view with payment history
+**Sections:**
+- **People:** Ramesh (₹3,000 pending — you lent), Priya (₹10,000 — you owe)
+- **Investments:** SBI FD (₹1,00,000 active), Mutual Fund (₹50,000)
+- **Loans:** HDFC Home Loan (₹15L remaining)
 
-### 5.3 Loan Management
+**Each entry expandable:** Shows timeline of all linked transactions (T-account style, but visual)
 
-#### 5.3.1 Record Loan
-- **Description:** Track loans taken from friends, family, or lenders
-- **Priority:** P1 (Important)
-
-**Fields:**
-- Lender name
-- Principal amount
-- Interest rate
-- Repayment schedule (EMI or lumpsum)
-- Due date
-
-#### 5.3.2 EMI Tracking
-- Auto-mark EMI when payment made
-- Track remaining EMIs
-- Calculate interest
-- Next EMI reminder
+#### 5.3.2 Interest & EMI Tracking
+- Loan/credit fields (interest, EMI, schedule) stored as nullable fields on the transaction
+- Interest accrual calculated on display
+- EMI schedule auto-generated from frequency + installments
+- Next payment reminder support
 
 ### 5.4 Business Dashboard
 
@@ -322,6 +333,14 @@ A mobile app that:
 - Month-by-month comparison
 - Yearly totals
 - Growth trends
+
+#### 5.5.4 ITR-Ready Financial Summaries (Phase 2)
+- **Income Summary:** Total salary, interest, rental, other income (FY Apr-Mar)
+- **Deductions Summary:** 80C (LIC, PPF, ELSS), 80D (health insurance), Section 24 (home loan interest)
+- **Assets & Liabilities Snapshot:** Investments + Receivables vs Loans + Payables = Net Worth
+- **Party-wise Ledger:** All transactions with a specific party (exportable PDF)
+- **Export:** PDF summary for CA, CSV for Tally import
+- Tax section tags on categories (auto-suggested, editable): "LIC Premium" → Section 80C
 
 ### 5.6 Search & Filter
 - **Priority:** P0 (Critical)
@@ -605,3 +624,4 @@ A mobile app that:
 
 ### 13.3 Version History
 - v1.0 (Feb 24, 2026): Initial PRD
+- v2.0 (Feb 25, 2026): Unified transaction model — merged credits/loans into transactions, progressive disclosure form, ledger as grouped summary, ITR-ready reports

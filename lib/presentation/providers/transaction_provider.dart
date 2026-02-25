@@ -88,3 +88,75 @@ class RecentTransactionsNotifier extends StateNotifier<AsyncValue<List<Transacti
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Ledger providers
+// ---------------------------------------------------------------------------
+
+/// Party-level ledger summaries (lent / borrowed / invested grouped by party).
+final ledgerSummariesProvider =
+    StateNotifierProvider<LedgerSummariesNotifier, AsyncValue<List<LedgerPartyEntry>>>(
+  (ref) => LedgerSummariesNotifier(ref.read(transactionRepositoryProvider)),
+);
+
+/// Total outstanding lent amount (lent - received_back).
+final totalOutstandingLentProvider = FutureProvider<double>((ref) async {
+  // Re-derive whenever ledger summaries reload.
+  ref.watch(ledgerSummariesProvider);
+  return ref.read(transactionRepositoryProvider).getTotalOutstandingLent();
+});
+
+/// Total outstanding borrowed amount (borrowed - paid_back).
+final totalOutstandingBorrowedProvider = FutureProvider<double>((ref) async {
+  ref.watch(ledgerSummariesProvider);
+  return ref.read(transactionRepositoryProvider).getTotalOutstandingBorrowed();
+});
+
+/// Transactions for a single party (detail drill-down).
+final partyTransactionsProvider =
+    StateNotifierProvider.family<PartyTransactionsNotifier, AsyncValue<List<Transaction>>, String>(
+  (ref, partyName) => PartyTransactionsNotifier(
+    ref.read(transactionRepositoryProvider),
+    partyName,
+  ),
+);
+
+class LedgerSummariesNotifier extends StateNotifier<AsyncValue<List<LedgerPartyEntry>>> {
+  final TransactionRepository _repository;
+
+  LedgerSummariesNotifier(this._repository) : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  Future<void> load() async {
+    state = const AsyncValue.loading();
+    try {
+      final entries = await _repository.getPartyLedgerSummaries();
+      state = AsyncValue.data(entries);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> refresh() => load();
+}
+
+class PartyTransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> {
+  final TransactionRepository _repository;
+  final String _partyName;
+
+  PartyTransactionsNotifier(this._repository, this._partyName)
+      : super(const AsyncValue.loading()) {
+    load();
+  }
+
+  Future<void> load() async {
+    state = const AsyncValue.loading();
+    try {
+      final txns = await _repository.getTransactionsByParty(_partyName);
+      state = AsyncValue.data(txns);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+}

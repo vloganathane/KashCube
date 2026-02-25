@@ -1,9 +1,9 @@
 # Screen Flows & User Journeys
 # Kash Cube Navigation Map
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
-**Status:** Design Phase
+**Version:** 2.0  
+**Date:** February 25, 2026  
+**Status:** Implementation Phase
 
 ---
 
@@ -25,13 +25,13 @@
 │  ┌──────────────────────────────────────────────┐        │
 │  │          Bottom Navigation Bar                │        │
 │  ├──────────┬──────────┬──────────┬─────────────┤        │
-│  │  Home    │  Trans-  │ Credits  │  Reports    │        │
+│  │  Home    │  Trans-  │ Ledger   │  Reports    │        │
 │  │  Screen  │  actions │ Screen   │  Screen     │        │
 │  └────┬─────┴────┬─────┴────┬─────┴──────┬──────┘        │
 │       │          │          │            │                │
 │       ▼          ▼          ▼            ▼                │
-│   [Details]  [Add/Edit] [Customer]  [Filters]            │
-│                           [Detail]                        │
+│   [Details]  [Add/Edit] [Party     [Filters]              │
+│                          Detail]                          │
 │                                                          │
 │  Global: FAB (+) → Add Transaction                       │
 │  Global: AppBar → Search, Settings                       │
@@ -50,10 +50,9 @@
 | 6 | Add Transaction | `/transactions/add` | FAB button |
 | 7 | Edit Transaction | `/transactions/edit/:id` | Transaction tile |
 | 8 | Transaction Detail | `/transactions/:id` | Transaction tile tap |
-| 9 | Credits | `/credits` | Bottom nav tab 3 |
-| 10 | Give Credit | `/credits/add` | Credits screen |
-| 11 | Customer Detail | `/credits/customer/:id` | Customer tile tap |
-| 12 | Reports | `/reports` | Bottom nav tab 4 |
+| 9 | Ledger | `/ledger` | Bottom nav tab 3 |
+| 10 | Party Detail | `/ledger/party/:name` | Party tile tap |
+| 11 | Reports | `/reports` | Bottom nav tab 4 |
 | 13 | Search | `/search` | AppBar search icon |
 | 14 | Settings | `/settings` | AppBar settings icon |
 | 15 | Backup/Restore | `/settings/backup` | Settings |
@@ -259,9 +258,9 @@ Credits Screen
   └─────────────────────────────┘
 ```
 
-### 3.4 Flow: Auto-Link Repayment
+### 3.4 Flow: Auto-Link Settlement
 
-**Trigger:** UPI payment received from someone with pending credit  
+**Trigger:** UPI payment received from someone with pending lent transaction  
 **User Involvement:** Confirm/reject link suggestion
 
 ```
@@ -275,7 +274,7 @@ SMS Received: "Rs.2000 from RAMESH KUMAR via PhonePe"
          │
          ▼
 ┌─────────────────┐
-│  Credit Matcher  │  Search pending credits for
+│  Party Matcher   │  Search pending lent txns for
 │                  │  "Ramesh" (fuzzy match)
 └────────┬────────┘
          │
@@ -283,24 +282,25 @@ SMS Received: "Rs.2000 from RAMESH KUMAR via PhonePe"
 ┌─────────────────────────────────────┐
 │  Notification / In-App Dialog       │
 │                                     │
-│  "Link payment to credit?"          │
+│  "Settlement detected?"             │
 │                                     │
 │  ₹2,000 received from Ramesh Kumar │
 │                                     │
-│  Pending credit: ₹5,000            │
-│  This payment:   ₹2,000            │
-│  Remaining:      ₹3,000            │
+│  Pending lent:    ₹5,000            │
+│  This settlement: ₹2,000            │
+│  Remaining:       ₹3,000            │
 │                                     │
-│  ┌──────────┐  ┌──────────────┐    │
-│  │  Ignore   │  │  ✓ Link It   │    │
-│  └──────────┘  └──────────────┘    │
+│  ┌───────────┐  ┌──────────────┐   │
+│  │  Just      │  │  ✓ Link as   │   │
+│  │  Income    │  │  Settlement  │   │
+│  └───────────┘  └──────────────┘   │
 └─────────────────────────────────────┘
          │
-         │ User taps "Link It"
+         │ User taps "Link as Settlement"
          ▼
-Credit updated:
-  Ramesh Kumar: ₹5,000 → ₹3,000 pending
-  Repayment logged with UPI reference
+Transaction saved as type `receivedBack`
+linkedTransactionId = original lent txn ID
+Ledger updated: Ramesh ₹5,000 → ₹3,000
 ```
 
 ### 3.5 Flow: View Reports
@@ -449,8 +449,8 @@ Settings Screen
 │                                          │
 │                  [+]  ←── FAB            │
 ├──────────┬──────────┬──────────┬─────────┤
-│  🏠      │  📋      │  💰      │  📊     │
-│  Home    │  Trans.  │  Credits │ Reports │
+│  🏠      │  📋      │  �      │  📊     │
+│  Home    │  Trans.  │  Ledger  │ Reports │
 │          │          │          │         │
 └──────────┴──────────┴──────────┴─────────┘
 ```
@@ -459,7 +459,7 @@ Settings Screen
 - Bottom nav always visible (except modals and detail screens)
 - FAB visible on Home and Transactions tabs
 - Tab state preserved when switching (no data loss)
-- Badge on Credits tab shows pending count
+- Badge on Ledger tab shows count of parties with pending amounts
 
 ### 4.2 Screen Transitions
 
@@ -479,7 +479,7 @@ Settings Screen
 | Home | Exit app (with confirmation) |
 | Transaction Detail | → Transactions List |
 | Add Transaction | → Previous screen (discard warning if unsaved) |
-| Customer Detail | → Credits Screen |
+| Customer Detail | → Ledger Screen |
 | Settings | → Previous screen |
 | Search | → Previous screen |
 
@@ -509,29 +509,28 @@ Settings Screen
                └─────────┘ └──────────┘
 ```
 
-### 5.2 Credit States
+### 5.2 Ledger Entry States (Derived from Transactions)
 
 ```
-                    ┌──────────┐
-  Give Credit ────► │  PENDING  │
-                    └────┬─────┘
-                         │
-               Partial / Full Payment
-                    ┌────┴─────┐
-                    │          │
-             ┌──────▼────┐ ┌──▼────────┐
-             │  PARTIAL   │ │  CLEARED   │
-             │  (₹ remaining) │ (₹0 owed) │
-             └──────┬────┘ └───────────┘
-                    │
-              More payments
-                    │
-             ┌──────▼────┐
-             │  CLEARED   │
-             └───────────┘
+User lends money:
+  Transaction(type: lent) created
+         │
+         ▼
+  Ledger shows: Party X owes ₹5,000
+         │
+  User records settlement:
+  Transaction(type: receivedBack, linkedTransactionId: original)
+         │
+         ▼
+  ┌──────────────┐
+  │ Partial?     │
+  │ YES → Ledger shows reduced amount
+  │ NO  → Ledger shows ₹0 (settled)
+  └──────────────┘
 
   Overdue Detection:
-  PENDING + past due_date = OVERDUE (visual badge)
+  lent/borrowed txn with dueDate < today
+  AND no full settlement = OVERDUE badge
 ```
 
 ### 5.3 App Lock States
@@ -578,19 +577,19 @@ Settings Screen
 └───────────────────────────────┘
 ```
 
-**Credits Screen (No Credits):**
+**Ledger Screen (No Entries):**
 ```
 ┌───────────────────────────────┐
 │                               │
-│          💰                   │
+│          📒                   │
 │                               │
-│   "No credits given yet"      │
+│   "No ledger entries yet"     │
 │                               │
-│   Track money you've lent     │
-│   to customers. We'll auto-   │
-│   detect when they pay back.  │
+│   Lend, borrow, or invest     │
+│   to see summaries here.      │
+│   Tap + to add a transaction. │
 │                               │
-│   [+ Give Credit]             │
+│   [+ Add Transaction]         │
 │                               │
 └───────────────────────────────┘
 ```
@@ -761,7 +760,7 @@ Settings Screen
 | Transaction List | Swipe left | Delete (with undo snackbar) |
 | Home | Pull down | Refresh / re-parse recent SMS |
 | Reports | Swipe left/right | Previous/next month |
-| Credits | Tap customer | Open customer detail |
+| Credits → Ledger | Tap party | Open party detail |
 | Pie Chart | Tap segment | Show category detail |
 | Any form | Tap outside keyboard | Dismiss keyboard |
 
@@ -771,8 +770,7 @@ Settings Screen
 |--------|---------|------|
 | Transaction added | "Transaction saved ✓" | - |
 | Transaction deleted | "Transaction deleted" | [Undo] |
-| Credit given | "Credit recorded ✓" | - |
-| Payment linked | "Payment linked to credit ✓" | [Undo] |
+| Settlement linked | "Settlement linked to original ✓" | [Undo] |
 | Backup saved | "Backup saved to Downloads ✓" | - |
 | Category changed | "Category updated ✓" | [Undo] |
 
@@ -787,14 +785,14 @@ Morning:
   Open App → PIN → Home (see yesterday's summary)
   │
   ▼
-  Check Credits tab → See pending amounts
+  Check Ledger tab → See who owes what, investments
   │
   ▼
 Throughout Day:
   SMS arrives → Auto-captured → Shows in Home
   │
   ▼
-  Customer pays credit → Notification → Link payment
+  Customer pays back → Notification → Link as settlement
   │
   ▼
 Evening:
@@ -852,7 +850,7 @@ Monthly backup to personal drive
 | Link | Screen | Use Case |
 |------|--------|----------|
 | `kashcube://add` | Add Transaction | Quick add from widget |
-| `kashcube://credits` | Credits Screen | Notification tap |
+| `kashcube://ledger` | Ledger Screen | Notification tap |
 | `kashcube://reports/monthly` | Monthly Report | Scheduled reminder |
 | `kashcube://transaction/:id` | Transaction Detail | SMS notification tap |
 

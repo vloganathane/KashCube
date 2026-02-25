@@ -27,7 +27,6 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardAsync = ref.watch(dashboardSummaryProvider);
     final recentAsync = ref.watch(recentTransactionsProvider);
-    final totalPendingLoans = ref.watch(totalPendingLoanProvider).valueOrNull ?? 0.0;
 
     return Scaffold(
       body: RefreshIndicator(
@@ -35,6 +34,9 @@ class HomeScreen extends ConsumerWidget {
           ref.read(dashboardSummaryProvider.notifier).loadSummary();
           ref.read(recentTransactionsProvider.notifier).loadRecent();
           ref.invalidate(totalPendingLoanProvider);
+          ref.invalidate(totalPendingLentProvider);
+          ref.invalidate(totalPendingBorrowedProvider);
+          ref.invalidate(totalMonthlyBillsProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -82,11 +84,7 @@ class HomeScreen extends ConsumerWidget {
                 delegate: SliverChildListDelegate([
                   // Dashboard Card Deck
                   dashboardAsync.when(
-                    data: (summary) => _DashboardDeck(
-                      summary: summary,
-                      totalPendingLoans: totalPendingLoans,
-                      ref: ref,
-                    ),
+                    data: (summary) => _DashboardDeck(summary: summary),
                     loading: () => const _DashboardCardsLoading(),
                     error: (e, _) => Center(
                       child: Text('Error: $e', style: TextStyle(color: context.colorScheme.error)),
@@ -153,372 +151,349 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-/// Expandable card-deck dashboard.
-///
-/// **Collapsed:** Balance + compact summary row (Income / Expense / Invest).
-/// **Expanded:** Full Income/Expense/Invest cards + Loans/Recurring cards.
-class _DashboardDeck extends StatefulWidget {
+/// Dashboard card deck — swipeable PageView: Overview / Personal / Business.
+class _DashboardDeck extends ConsumerStatefulWidget {
   final DashboardSummary summary;
-  final double totalPendingLoans;
-  final WidgetRef ref;
 
-  const _DashboardDeck({
-    required this.summary,
-    required this.totalPendingLoans,
-    required this.ref,
-  });
+  const _DashboardDeck({required this.summary});
 
   @override
-  State<_DashboardDeck> createState() => _DashboardDeckState();
+  ConsumerState<_DashboardDeck> createState() => _DashboardDeckState();
 }
 
-class _DashboardDeckState extends State<_DashboardDeck>
-    with SingleTickerProviderStateMixin {
-  bool _expanded = false;
+class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
+  final _controller = PageController(viewportFraction: 0.92);
+  int _page = 0;
 
-  void _toggle() => setState(() => _expanded = !_expanded);
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.kashColors;
     final summary = widget.summary;
-    final balance = summary.balance + widget.totalPendingLoans;
+    final colors = context.kashColors;
 
     return Card(
-      child: InkWell(
-        onTap: _toggle,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          child: Column(
-            children: [
-              // ── Top: Month + Balance ──
-              Text(
-                DateFormatter.formatMonthYear(DateTime.now()),
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.base),
+        child: Column(
+          children: [
+            // Month + Balance
+            Text(
+              DateFormatter.formatMonthYear(DateTime.now()),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                CurrencyFormatter.format(balance),
-                style: context.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'RobotoMono',
-                ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              CurrencyFormatter.format(summary.balance),
+              style: context.textTheme.headlineLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontFamily: 'RobotoMono',
               ),
-              const SizedBox(height: AppSpacing.xs),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Balance',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Swipeable cards
+            SizedBox(
+              height: 148,
+              child: PageView(
+                controller: _controller,
+                onPageChanged: (i) => setState(() => _page = i),
                 children: [
-                  Text(
-                    'Balance',
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: context.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      size: AppSpacing.iconMd,
-                      color: context.colorScheme.outline,
-                    ),
-                  ),
+                  _OverviewCard(summary: summary, colors: colors),
+                  _PersonalCard(summary: summary, colors: colors),
+                  _BusinessCard(summary: summary, colors: colors),
                 ],
               ),
+            ),
 
-              // ── Collapsed: compact summary pills ──
-              AnimatedCrossFade(
-                duration: const Duration(milliseconds: 250),
-                crossFadeState: _expanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                firstChild: _CollapsedSummary(
-                  summary: summary,
-                  totalPendingLoans: widget.totalPendingLoans,
-                  colors: colors,
-                ),
-                secondChild: _ExpandedDetails(
-                  summary: summary,
-                  totalPendingLoans: widget.totalPendingLoans,
-                  colors: colors,
-                  ref: widget.ref,
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(height: AppSpacing.sm),
+            // Page dots
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(3, (i) {
+                final active = i == _page;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: active ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: active
+                        ? context.colorScheme.primary
+                        : context.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Compact single-row summary shown when the card deck is collapsed.
-class _CollapsedSummary extends StatelessWidget {
+// ─── Card 1: Overview ────────────────────────────────────────────────────────
+
+class _OverviewCard extends ConsumerWidget {
+  const _OverviewCard({required this.summary, required this.colors});
   final DashboardSummary summary;
-  final double totalPendingLoans;
   final KashCubeColors colors;
 
-  const _CollapsedSummary({
-    required this.summary,
-    required this.totalPendingLoans,
-    required this.colors,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.md),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _MiniMetric(
-            icon: Icons.arrow_downward,
-            color: colors.income,
-            value: CurrencyFormatter.formatCompact(summary.totalIncome),
-          ),
-          _MiniMetric(
-            icon: Icons.arrow_upward,
-            color: colors.expense,
-            value: CurrencyFormatter.formatCompact(summary.totalExpense),
-          ),
-          if (summary.totalInvestment > 0)
-            _MiniMetric(
-              icon: Icons.trending_up,
-              color: colors.investment,
-              value: CurrencyFormatter.formatCompact(summary.totalInvestment),
-            ),
-          if (totalPendingLoans > 0)
-            _MiniMetric(
-              icon: Icons.account_balance,
-              color: colors.expense,
-              value: CurrencyFormatter.formatCompact(totalPendingLoans),
-            ),
-        ],
-      ),
-    );
-  }
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
+    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
 
-/// Small icon + value used in the collapsed summary row.
-class _MiniMetric extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final String value;
-
-  const _MiniMetric({
-    required this.icon,
-    required this.color,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: color),
-        const SizedBox(width: 2),
-        Text(
-          value,
-          style: context.textTheme.bodySmall?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'RobotoMono',
-          ),
+    return _SwipeCard(
+      label: 'Overview',
+      icon: Icons.grid_view_rounded,
+      color: context.colorScheme.primaryContainer,
+      onLabelColor: context.colorScheme.onPrimaryContainer,
+      statsRow: [
+        _CardStat(
+          icon: Icons.arrow_downward, label: 'Income',
+          value: CurrencyFormatter.formatCompact(summary.totalIncome),
+          color: colors.income,
+        ),
+        _CardStat(
+          icon: Icons.arrow_upward, label: 'Expense',
+          value: CurrencyFormatter.formatCompact(summary.totalExpense),
+          color: colors.expense,
+        ),
+        _CardStat(
+          icon: Icons.trending_up, label: 'Invest',
+          value: CurrencyFormatter.formatCompact(summary.totalInvestment),
+          color: colors.investment,
+        ),
+      ],
+      footerTiles: [
+        _CardFooterTile(
+          icon: Icons.receipt_long, label: 'Bills',
+          value: totalBillsAsync.maybeWhen(
+            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          suffix: '/mo',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BillsScreen())),
+        ),
+        _CardFooterTile(
+          icon: Icons.repeat, label: 'Recurring',
+          value: CurrencyFormatter.formatCompact(
+              (recurringSummary.expense + recurringSummary.income).abs()),
+          suffix: '/mo',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen())),
+        ),
+        _CardFooterTile(
+          icon: Icons.account_balance_wallet, label: 'Ledger',
+          value: totalLoanAsync.maybeWhen(
+            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
         ),
       ],
     );
   }
 }
 
-/// Full detail view shown when the card deck is expanded.
-class _ExpandedDetails extends StatelessWidget {
-  final DashboardSummary summary;
-  final double totalPendingLoans;
-  final KashCubeColors colors;
-  final WidgetRef ref;
+// ─── Card 2: Personal ────────────────────────────────────────────────────────
 
-  const _ExpandedDetails({
-    required this.summary,
-    required this.totalPendingLoans,
-    required this.colors,
-    required this.ref,
-  });
+class _PersonalCard extends ConsumerWidget {
+  const _PersonalCard({required this.summary, required this.colors});
+  final DashboardSummary summary;
+  final KashCubeColors colors;
 
   @override
-  Widget build(BuildContext context) {
-    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
-    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
-    final recurringNet = recurringSummary.expense + recurringSummary.income;
+  Widget build(BuildContext context, WidgetRef ref) {
     final totalBillsAsync = ref.watch(totalMonthlyBillsProvider);
-
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.md),
-      child: Column(
-        children: [
-          // Income / Expense / Invest
-          Row(
-            children: [
-              _DetailTile(
-                icon: Icons.arrow_downward,
-                label: 'Income',
-                value: CurrencyFormatter.formatCompact(summary.totalIncome),
-                color: colors.income,
-              ),
-              _DetailTile(
-                icon: Icons.arrow_upward,
-                label: 'Expense',
-                value: CurrencyFormatter.formatCompact(summary.totalExpense),
-                color: colors.expense,
-              ),
-              _DetailTile(
-                icon: Icons.trending_up,
-                label: 'Invest',
-                value: CurrencyFormatter.formatCompact(summary.totalInvestment),
-                color: colors.investment,
-              ),
-            ],
-          ),
-
-          // Personal / Business split — only when business activity exists
-          if (summary.hasBusinessActivity) ...[
-            const SizedBox(height: AppSpacing.sm),
-            _ModeTabCard(summary: summary, colors: colors),
-          ],
-
-          const SizedBox(height: AppSpacing.sm),
-          // Loans / Bills / Recurring
-          Row(
-            children: [
-              Expanded(
-                child: _ActionTile(
-                  icon: Icons.account_balance_wallet,
-                  label: 'Ledger',
-                  value: totalLoanAsync.when(
-                    data: (v) => CurrencyFormatter.formatCompact(v),
-                    loading: () => '…',
-                    error: (e, st) => '–',
-                  ),
-                  color: colors.expense,
-                  onTap: () {
-                    // Switch to Ledger tab (index 2)
-                    ref.read(currentTabIndexProvider.notifier).state = 2;
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _ActionTile(
-                  icon: Icons.receipt_long,
-                  label: 'Bills',
-                  value: totalBillsAsync.when(
-                    data: (v) => CurrencyFormatter.formatCompact(v),
-                    loading: () => '…',
-                    error: (e, st) => '–',
-                  ),
-                  suffix: '/mo',
-                  color: context.colorScheme.tertiary,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const BillsScreen()),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _ActionTile(
-                  icon: Icons.repeat,
-                  label: 'Recurring',
-                  value: CurrencyFormatter.formatCompact(recurringNet),
-                  suffix: '/mo',
-                  color: context.colorScheme.primary,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const RecurringTransactionsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tabbed card for Personal / Business breakdown in the expanded deck.
-class _ModeTabCard extends StatefulWidget {
-  const _ModeTabCard({required this.summary, required this.colors});
-
-  final DashboardSummary summary;
-  final KashCubeColors colors;
-
-  @override
-  State<_ModeTabCard> createState() => _ModeTabCardState();
-}
-
-class _ModeTabCardState extends State<_ModeTabCard> {
-  bool _isBusiness = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final income = _isBusiness
-        ? (widget.summary.businessIncome ?? 0)
-        : (widget.summary.personalIncome ?? 0);
-    final expense = _isBusiness
-        ? (widget.summary.businessExpense ?? 0)
-        : (widget.summary.personalExpense ?? 0);
-    final pnl = _isBusiness ? widget.summary.businessPnl : widget.summary.personalPnl;
-    final pnlColor = pnl >= 0 ? widget.colors.income : widget.colors.expense;
+    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final income = summary.personalIncome ?? 0;
+    final expense = summary.personalExpense ?? 0;
+    final pnl = summary.personalPnl;
+    final pnlColor = pnl >= 0 ? colors.income : colors.expense;
     final pnlPrefix = pnl >= 0 ? '+' : '';
 
-    return Material(
-      color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
-      borderRadius: BorderRadius.circular(10),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.sm,
+    return _SwipeCard(
+      label: 'Personal',
+      icon: Icons.person_outline,
+      color: context.colorScheme.secondaryContainer,
+      onLabelColor: context.colorScheme.onSecondaryContainer,
+      statsRow: [
+        _CardStat(
+          icon: Icons.arrow_downward, label: 'Income',
+          value: CurrencyFormatter.formatCompact(income),
+          color: colors.income,
         ),
-        child: Row(
+        _CardStat(
+          icon: Icons.arrow_upward, label: 'Expense',
+          value: CurrencyFormatter.formatCompact(expense),
+          color: colors.expense,
+        ),
+        _CardStat(
+          icon: Icons.balance, label: 'Net',
+          value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
+          color: pnlColor,
+        ),
+      ],
+      footerTiles: [
+        _CardFooterTile(
+          icon: Icons.receipt_long, label: 'Bills',
+          value: totalBillsAsync.maybeWhen(
+            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          suffix: '/mo',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BillsScreen())),
+        ),
+        _CardFooterTile(
+          icon: Icons.repeat, label: 'Recurring',
+          value: CurrencyFormatter.formatCompact(
+              (recurringSummary.expense + recurringSummary.income).abs()),
+          suffix: '/mo',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen())),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Card 3: Business ────────────────────────────────────────────────────────
+
+class _BusinessCard extends ConsumerWidget {
+  const _BusinessCard({required this.summary, required this.colors});
+  final DashboardSummary summary;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lentAsync = ref.watch(totalPendingLentProvider);
+    final borrowedAsync = ref.watch(totalPendingBorrowedProvider);
+    final income = summary.businessIncome ?? 0;
+    final expense = summary.businessExpense ?? 0;
+    final pnl = summary.businessPnl;
+    final pnlColor = pnl >= 0 ? colors.income : colors.expense;
+    final pnlPrefix = pnl >= 0 ? '+' : '';
+
+    return _SwipeCard(
+      label: 'Business',
+      icon: Icons.business_center_outlined,
+      color: context.colorScheme.tertiaryContainer,
+      onLabelColor: context.colorScheme.onTertiaryContainer,
+      statsRow: [
+        _CardStat(
+          icon: Icons.arrow_downward, label: 'Income',
+          value: CurrencyFormatter.formatCompact(income),
+          color: colors.income,
+        ),
+        _CardStat(
+          icon: Icons.arrow_upward, label: 'Expense',
+          value: CurrencyFormatter.formatCompact(expense),
+          color: colors.expense,
+        ),
+        _CardStat(
+          icon: Icons.balance, label: 'Net',
+          value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
+          color: pnlColor,
+        ),
+      ],
+      footerTiles: [
+        _CardFooterTile(
+          icon: Icons.call_made, label: 'Lent out',
+          value: lentAsync.maybeWhen(
+            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
+        ),
+        _CardFooterTile(
+          icon: Icons.call_received, label: 'Borrowed',
+          value: borrowedAsync.maybeWhen(
+            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Shared card shell ────────────────────────────────────────────────────────
+
+class _SwipeCard extends StatelessWidget {
+  const _SwipeCard({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onLabelColor,
+    required this.statsRow,
+    required this.footerTiles,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final Color onLabelColor;
+  final List<_CardStat> statsRow;
+  final List<_CardFooterTile> footerTiles;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      child: Container(
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Tab toggle
-            _ModeToggle(
-              isBusiness: _isBusiness,
-              onChanged: (v) => setState(() => _isBusiness = v),
+            // Card label
+            Row(
+              children: [
+                Icon(icon, size: 13, color: onLabelColor.withAlpha(180)),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: context.textTheme.labelMedium?.copyWith(
+                    color: onLabelColor.withAlpha(200),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppSpacing.md),
-            // Stats
-            Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _ModeStat(
-                    icon: Icons.arrow_downward,
-                    value: CurrencyFormatter.formatCompact(income),
-                    color: widget.colors.income,
-                  ),
-                  _ModeStat(
-                    icon: Icons.arrow_upward,
-                    value: CurrencyFormatter.formatCompact(expense),
-                    color: widget.colors.expense,
-                  ),
-                  _ModeStat(
-                    label: 'Net',
-                    value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
-                    color: pnlColor,
-                    bold: true,
-                  ),
-                ],
-              ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Stats row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: statsRow,
+            ),
+
+            const SizedBox(height: AppSpacing.sm),
+            Divider(height: 1, color: onLabelColor.withAlpha(40)),
+            const SizedBox(height: AppSpacing.sm),
+
+            // Footer tiles
+            Row(
+              mainAxisAlignment: footerTiles.length <= 2
+                  ? MainAxisAlignment.spaceEvenly
+                  : MainAxisAlignment.spaceAround,
+              children: footerTiles,
             ),
           ],
         ),
@@ -527,125 +502,42 @@ class _ModeTabCardState extends State<_ModeTabCard> {
   }
 }
 
-class _ModeToggle extends StatelessWidget {
-  const _ModeToggle({required this.isBusiness, required this.onChanged});
-
-  final bool isBusiness;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _ToggleChip(
-            icon: Icons.person_outline,
-            label: 'Personal',
-            selected: !isBusiness,
-            onTap: () => onChanged(false),
-          ),
-          _ToggleChip(
-            icon: Icons.business_center_outlined,
-            label: 'Business',
-            selected: isBusiness,
-            onTap: () => onChanged(true),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ToggleChip extends StatelessWidget {
-  const _ToggleChip({
+class _CardStat extends StatelessWidget {
+  const _CardStat({
     required this.icon,
     required this.label,
-    required this.selected,
-    required this.onTap,
+    required this.value,
+    required this.color,
   });
 
   final IconData icon;
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = context.colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: selected ? scheme.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 12,
-              color: selected ? scheme.onPrimary : scheme.outline,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              label,
-              style: context.textTheme.labelSmall?.copyWith(
-                color: selected ? scheme.onPrimary : scheme.outline,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ModeStat extends StatelessWidget {
-  const _ModeStat({
-    this.icon,
-    this.label,
-    required this.value,
-    required this.color,
-    this.bold = false,
-  });
-
-  final IconData? icon;
-  final String? label;
   final String value;
   final Color color;
-  final bool bold;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (icon != null)
-          Icon(icon, size: 11, color: color)
-        else
-          Text(
-            label!,
-            style: context.textTheme.labelSmall?.copyWith(color: color),
-          ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 10, color: color.withAlpha(200)),
+            const SizedBox(width: 2),
+            Text(
+              label,
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: color.withAlpha(180)),
+            ),
+          ],
+        ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: context.textTheme.labelMedium?.copyWith(
+          style: context.textTheme.titleSmall?.copyWith(
             color: color,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: FontWeight.w700,
             fontFamily: 'RobotoMono',
           ),
         ),
@@ -654,117 +546,64 @@ class _ModeStat extends StatelessWidget {
   }
 }
 
-/// Single metric tile used in the expanded 3-column row.
-class _DetailTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _DetailTile({
+class _CardFooterTile extends StatelessWidget {
+  const _CardFooterTile({
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
+    this.suffix,
+    required this.onTap,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: [
-          Icon(icon, size: AppSpacing.iconSm, color: color),
-          const SizedBox(height: 2),
-          Text(label, style: context.textTheme.labelSmall),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: context.textTheme.titleSmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'RobotoMono',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tappable action tile for Loans / Recurring in the expanded view.
-class _ActionTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
   final String? suffix;
-  final Color color;
   final VoidCallback onTap;
-
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.onTap,
-    this.suffix,
-  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: context.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: AppSpacing.iconSm, color: color),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              Text(
+                label,
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                  fontSize: 10,
+                ),
+              ),
+              RichText(
+                text: TextSpan(
                   children: [
-                    Text(label, style: context.textTheme.labelSmall),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            value,
-                            style: context.textTheme.titleSmall?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'RobotoMono',
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (suffix != null)
-                          Text(
-                            suffix!,
-                            style: context.textTheme.labelSmall?.copyWith(
-                              color: context.colorScheme.outline,
-                            ),
-                          ),
-                      ],
+                    TextSpan(
+                      text: value,
+                      style: context.textTheme.labelMedium?.copyWith(
+                        fontFamily: 'RobotoMono',
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
+                    if (suffix != null)
+                      TextSpan(
+                        text: suffix,
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.colorScheme.outline,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right,
-                size: AppSpacing.iconSm,
-                color: context.colorScheme.outline,
-              ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

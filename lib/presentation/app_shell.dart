@@ -15,6 +15,9 @@ import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_screen.dart';
 import 'widgets/sms_confirmation_sheet.dart';
 
+/// Provider for the current bottom navigation tab index.
+final currentTabIndexProvider = StateProvider<int>((ref) => 0);
+
 /// App shell with bottom navigation bar, FAB, and SMS listener.
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key});
@@ -24,7 +27,6 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
-  int _currentIndex = 0;
   bool _smsListenerStarted = false;
 
   static const _screens = [
@@ -121,22 +123,23 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    final showFab = _currentIndex == 0 || _currentIndex == 1;
+    final currentIndex = ref.watch(currentTabIndexProvider);
+    final showFab = currentIndex == 0 || currentIndex == 1;
 
     return Scaffold(
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _screens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
+        selectedIndex: currentIndex,
         onDestinationSelected: (index) {
           if (index == 3) {
             ref.invalidate(monthlyPnLProvider);
             ref.invalidate(monthlyTotalsProvider);
             ref.invalidate(dailyTotalsProvider);
           }
-          setState(() => _currentIndex = index);
+          ref.read(currentTabIndexProvider.notifier).state = index;
         },
         destinations: const [
           NavigationDestination(

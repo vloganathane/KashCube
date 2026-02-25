@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -10,6 +11,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../app_shell.dart';
 import '../loans/loans_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
@@ -65,21 +67,18 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // Dashboard Summary Cards
+                  // Dashboard Card Deck
                   dashboardAsync.when(
-                    data: (summary) => _DashboardCards(
+                    data: (summary) => _DashboardDeck(
                       summary: summary,
                       totalPendingLoans: totalPendingLoans,
+                      ref: ref,
                     ),
                     loading: () => const _DashboardCardsLoading(),
                     error: (e, _) => Center(
                       child: Text('Error: $e', style: TextStyle(color: context.colorScheme.error)),
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Quick Actions – Loans & Recurring with values
-                  _QuickActionCards(ref: ref),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Recent Transactions Header
@@ -94,7 +93,8 @@ class HomeScreen extends ConsumerWidget {
                       ),
                       TextButton(
                         onPressed: () {
-                          // Navigate handled by parent shell
+                          // Switch to Transactions tab (index 1)
+                          ref.read(currentTabIndexProvider.notifier).state = 1;
                         },
                         child: const Text('See All'),
                       ),
@@ -140,156 +140,393 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardCards extends StatelessWidget {
+/// Expandable card-deck dashboard.
+///
+/// **Collapsed:** Balance + compact summary row (Income / Expense / Invest).
+/// **Expanded:** Full Income/Expense/Invest cards + Loans/Recurring cards.
+class _DashboardDeck extends StatefulWidget {
   final DashboardSummary summary;
   final double totalPendingLoans;
-  const _DashboardCards({
+  final WidgetRef ref;
+
+  const _DashboardDeck({
     required this.summary,
-    this.totalPendingLoans = 0,
+    required this.totalPendingLoans,
+    required this.ref,
   });
+
+  @override
+  State<_DashboardDeck> createState() => _DashboardDeckState();
+}
+
+class _DashboardDeckState extends State<_DashboardDeck>
+    with SingleTickerProviderStateMixin {
+  bool _expanded = false;
+
+  void _toggle() => setState(() => _expanded = !_expanded);
 
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
+    final summary = widget.summary;
+    final balance = summary.balance + widget.totalPendingLoans;
 
-    return Column(
-      children: [
-        // Balance Card
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              children: [
-                Text(
-                  DateFormatter.formatMonthYear(DateTime.now()),
-                  style: context.textTheme.bodySmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
+    return Card(
+      child: InkWell(
+        onTap: _toggle,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            children: [
+              // ── Top: Month + Balance ──
+              Text(
+                DateFormatter.formatMonthYear(DateTime.now()),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  CurrencyFormatter.format(
-                    summary.balance + totalPendingLoans,
-                  ),
-                  style: context.textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'RobotoMono',
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                CurrencyFormatter.format(balance),
+                style: context.textTheme.headlineLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'RobotoMono',
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Balance',
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (totalPendingLoans > 0) ...[
-                  const SizedBox(height: AppSpacing.xs),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Text(
-                    'Incl. loans ${CurrencyFormatter.formatCompact(totalPendingLoans)}',
-                    style: context.textTheme.bodySmall?.copyWith(
+                    'Balance',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  AnimatedRotation(
+                    turns: _expanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      size: AppSpacing.iconMd,
                       color: context.colorScheme.outline,
                     ),
                   ),
                 ],
-              ],
-            ),
+              ),
+
+              // ── Collapsed: compact summary pills ──
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 250),
+                crossFadeState: _expanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: _CollapsedSummary(
+                  summary: summary,
+                  totalPendingLoans: widget.totalPendingLoans,
+                  colors: colors,
+                ),
+                secondChild: _ExpandedDetails(
+                  summary: summary,
+                  totalPendingLoans: widget.totalPendingLoans,
+                  colors: colors,
+                  ref: widget.ref,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: AppSpacing.md),
+      ),
+    );
+  }
+}
 
-        // Income / Expense / Investment Row
-        Row(
-          children: [
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_downward, color: colors.income, size: AppSpacing.iconMd),
-                          const SizedBox(width: AppSpacing.xs),
-                          Flexible(child: Text('Income', style: context.textTheme.bodySmall)),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        CurrencyFormatter.formatCompact(summary.totalIncome),
-                        style: context.textTheme.titleMedium?.copyWith(
-                          color: colors.income,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'RobotoMono',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+/// Compact single-row summary shown when the card deck is collapsed.
+class _CollapsedSummary extends StatelessWidget {
+  final DashboardSummary summary;
+  final double totalPendingLoans;
+  final KashCubeColors colors;
+
+  const _CollapsedSummary({
+    required this.summary,
+    required this.totalPendingLoans,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _MiniMetric(
+            icon: Icons.arrow_downward,
+            color: colors.income,
+            value: CurrencyFormatter.formatCompact(summary.totalIncome),
+          ),
+          _MiniMetric(
+            icon: Icons.arrow_upward,
+            color: colors.expense,
+            value: CurrencyFormatter.formatCompact(summary.totalExpense),
+          ),
+          if (summary.totalInvestment > 0)
+            _MiniMetric(
+              icon: Icons.trending_up,
+              color: colors.investment,
+              value: CurrencyFormatter.formatCompact(summary.totalInvestment),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.arrow_upward, color: colors.expense, size: AppSpacing.iconMd),
-                          const SizedBox(width: AppSpacing.xs),
-                          Flexible(child: Text('Expense', style: context.textTheme.bodySmall)),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        CurrencyFormatter.formatCompact(summary.totalExpense),
-                        style: context.textTheme.titleMedium?.copyWith(
-                          color: colors.expense,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'RobotoMono',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          if (totalPendingLoans > 0)
+            _MiniMetric(
+              icon: Icons.account_balance,
+              color: colors.expense,
+              value: CurrencyFormatter.formatCompact(totalPendingLoans),
             ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.trending_up, color: colors.investment, size: AppSpacing.iconMd),
-                          const SizedBox(width: AppSpacing.xs),
-                          Flexible(child: Text('Invest', style: context.textTheme.bodySmall)),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        CurrencyFormatter.formatCompact(summary.totalInvestment),
-                        style: context.textTheme.titleMedium?.copyWith(
-                          color: colors.investment,
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'RobotoMono',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Small icon + value used in the collapsed summary row.
+class _MiniMetric extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String value;
+
+  const _MiniMetric({
+    required this.icon,
+    required this.color,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 2),
+        Text(
+          value,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'RobotoMono',
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// Full detail view shown when the card deck is expanded.
+class _ExpandedDetails extends StatelessWidget {
+  final DashboardSummary summary;
+  final double totalPendingLoans;
+  final KashCubeColors colors;
+  final WidgetRef ref;
+
+  const _ExpandedDetails({
+    required this.summary,
+    required this.totalPendingLoans,
+    required this.colors,
+    required this.ref,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
+    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final recurringNet = recurringSummary.expense + recurringSummary.income;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Column(
+        children: [
+          // Income / Expense / Invest
+          Row(
+            children: [
+              _DetailTile(
+                icon: Icons.arrow_downward,
+                label: 'Income',
+                value: CurrencyFormatter.formatCompact(summary.totalIncome),
+                color: colors.income,
+              ),
+              _DetailTile(
+                icon: Icons.arrow_upward,
+                label: 'Expense',
+                value: CurrencyFormatter.formatCompact(summary.totalExpense),
+                color: colors.expense,
+              ),
+              _DetailTile(
+                icon: Icons.trending_up,
+                label: 'Invest',
+                value: CurrencyFormatter.formatCompact(summary.totalInvestment),
+                color: colors.investment,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          // Loans / Recurring
+          Row(
+            children: [
+              Expanded(
+                child: _ActionTile(
+                  icon: Icons.account_balance,
+                  label: 'Loans',
+                  value: totalLoanAsync.when(
+                    data: (v) => CurrencyFormatter.formatCompact(v),
+                    loading: () => '…',
+                    error: (e, st) => '–',
+                  ),
+                  color: colors.expense,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const LoansScreen()),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _ActionTile(
+                  icon: Icons.repeat,
+                  label: 'Recurring',
+                  value: CurrencyFormatter.formatCompact(recurringNet),
+                  suffix: '/mo',
+                  color: context.colorScheme.primary,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const RecurringTransactionsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Single metric tile used in the expanded 3-column row.
+class _DetailTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _DetailTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: AppSpacing.iconSm, color: color),
+          const SizedBox(height: 2),
+          Text(label, style: context.textTheme.labelSmall),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: context.textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable action tile for Loans / Recurring in the expanded view.
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? suffix;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ActionTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.onTap,
+    this.suffix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: AppSpacing.iconSm, color: color),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label, style: context.textTheme.labelSmall),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            value,
+                            style: context.textTheme.titleSmall?.copyWith(
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (suffix != null)
+                          Text(
+                            suffix!,
+                            style: context.textTheme.labelSmall?.copyWith(
+                              color: context.colorScheme.outline,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: AppSpacing.iconSm,
+                color: context.colorScheme.outline,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -422,128 +659,4 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _QuickActionCards extends StatelessWidget {
-  const _QuickActionCards({required this.ref});
-  final WidgetRef ref;
 
-  @override
-  Widget build(BuildContext context) {
-    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
-    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
-    final recurringNet = recurringSummary.expense + recurringSummary.income;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.account_balance,
-            label: 'Loans',
-            value: totalLoanAsync.when(
-              data: (v) => CurrencyFormatter.formatCompact(v),
-              loading: () => '…',
-              error: (e, st) => '–',
-            ),
-            valueColor: context.kashColors.expense,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const LoansScreen()),
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: _QuickActionCard(
-            icon: Icons.repeat,
-            label: 'Recurring',
-            value: CurrencyFormatter.formatCompact(recurringNet),
-            subtitle: '/mo',
-            valueColor: context.colorScheme.primary,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const RecurringTransactionsScreen(),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.onTap,
-    this.subtitle,
-    this.valueColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final String? subtitle;
-  final Color? valueColor;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, size: AppSpacing.iconMd, color: valueColor),
-                  const SizedBox(width: AppSpacing.xs),
-                  Text(label, style: context.textTheme.bodySmall),
-                  const Spacer(),
-                  Icon(
-                    Icons.chevron_right,
-                    size: AppSpacing.iconSm,
-                    color: context.colorScheme.outline,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Flexible(
-                    child: Text(
-                      value,
-                      style: context.textTheme.titleLarge?.copyWith(
-                        color: valueColor,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'RobotoMono',
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle!,
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

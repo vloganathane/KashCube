@@ -1,9 +1,20 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.1  
+**Version:** 2.5  
 **Date:** February 26, 2026  
 **Duration:** 6 months (26 weeks)
+
+---
+
+## Design Philosophy — Dead Simple
+
+> **Every feature must pass the 5-second test:** can a new user understand what it does in 5 seconds without reading anything? If not, it's too complex for the core app.
+
+- **Core nav never changes:** Home · Transactions · Ledger · Reports — that's it
+- **Business Mode toggle** in Settings (off by default) — enables billing/POS features; invisible to personal finance users
+- **Every new feature is additive** — never replaces something simpler
+- **No feature for its own sake** — if it doesn't help track or understand money faster, it doesn't ship
 
 ---
 
@@ -258,23 +269,60 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-### Week 9: Complete Financial View
-**Goal:** Parse all financial SMS, not just UPI
+### Week 9: Complete Financial View + Party Management
+**Goal:** Parse all financial SMS and make parties first-class citizens
 
-**Tasks:**
+#### Part A — SMS Completeness
 - [ ] Add credit card SMS parsing (HDFC, ICICI, SBI, Axis)
 - [ ] Add debit card SMS parsing
 - [ ] Add bank account SMS parsing (NEFT, RTGS, balance updates)
-- [x] Implement account management (track multiple accounts) ← done in Week 7 extension
 - [ ] Add duplicate transaction detection
 - [ ] Build account balance tracking (per-account running balance)
 
-**Deliverables:**
-- Parses SMS from major banks and cards
-- Tracks balances across accounts
-- Eliminates duplicate entries
+#### Part B — Customer / Vendor Management
 
-**Time Estimate:** 45 hours
+**DB migration:** add `phone`, `email`, `notes` columns to existing `parties` table — one migration, zero breaking changes.
+
+**Privacy approach:**
+- No `READ_CONTACTS` permission — never
+- "Pick from Contacts" uses a one-shot `Intent.ACTION_PICK` OS picker; the system contacts app opens, user selects one person, only that name + number is returned. KashCube never sees the rest of the phonebook.
+
+**Tasks:**
+- [ ] DB migration: add `phone TEXT`, `email TEXT`, `notes TEXT` to `parties` table
+- [ ] Rebuild Parties screen: add/edit with name, phone, email, type (Customer / Vendor / Individual), GSTIN (optional), notes
+- [ ] "Pick from Contacts" one-shot OS picker button on party form (no permission needed)
+- [ ] Party detail screen: unified history — transactions + credits/loans + scheduled payments all in one view
+- [ ] Autocomplete on party name field across all entry screens (already partially there)
+- [ ] Send reminder actions on credits and loans: bottom sheet → WhatsApp / SMS / Email
+  - WhatsApp: `wa.me/91XXXXXXXXXX?text=...` deep link
+  - SMS: `sms:+91XXXXXXXXXX?body=...` Android intent
+  - Email: `mailto:...?subject=...&body=...` intent
+  - All three are OS intents — KashCube never touches the network
+  - User reviews and edits the pre-filled message before sending
+  - Log "reminder sent" timestamp on the credit/loan record after dispatch
+
+**Message templates (locally generated, user-editable before send):**
+```
+Udhar / Credit reminder:
+  "Hi [Name], friendly reminder — ₹[amount] is due
+   (since [date]). Let me know. — [Your name]"
+
+Loan overdue:
+  "Hi [Name], ₹[amount] (due [date]) is still pending.
+   Please pay when convenient. — [Your name]"
+```
+
+- [ ] Add `reminderSentAt` field to credits and loans tables
+
+**Deliverables:**
+- Parties are full profiles with contact details
+- One-shot contact picker: zero permissions, full convenience
+- WhatsApp/SMS/Email reminders from any credit or loan — all OS intents, no network
+- Party detail shows complete financial relationship at a glance
+- SMS parsing covers major Indian banks and cards
+- Duplicate transaction detection active
+
+**Time Estimate:** 55 hours
 
 ---
 
@@ -347,22 +395,56 @@ This roadmap follows a **core-first, iterative approach**:
 ## Phase 3: Beta Release (Weeks 11-14)
 
 ### Week 11: Beta Preparation
-**Goal:** Prepare for wider testing
+**Goal:** Prepare for wider testing — first impression must be instant and trustworthy
 
 **Tasks:**
-- [ ] Create comprehensive onboarding flow
-- [ ] Write in-app help documentation
-- [ ] Set up crash reporting (local logging only)
-- [ ] Build feedback mechanism
-- [ ] Create beta test plan
-- [ ] Prepare beta distribution (Play Store Beta)
+
+#### Setup Screen (3 screens, always skippable)
+
+```
+Screen 1 — Welcome
+  Headline: "Your money. Your phone. Nobody else."
+  Subtext:  "KashCube reads your SMS locally and never
+             sends anything anywhere."
+  CTA: Get Started  (skip link bottom-right)
+
+Screen 2 — Permissions
+  [ ] Read SMS      "Auto-captures UPI & bank transactions"
+  [ ] Notifications "Reminds you before bills are due"
+  Biometric lock    optional toggle (on by default if hardware present)
+  → Grant & Continue  (triggers Android system dialogs in sequence)
+  Note: if denied, explains how to grant later from Settings
+
+Screen 3 — How do you use money?
+  ○ Personal only         (default — Business Mode off)
+  ○ Business + Personal   (enables Business Mode in Settings)
+  Optional: monthly income range  (pre-seeds budget thresholds)
+  → Start Tracking
+```
+
+**Rules:**
+- Skip button always visible on all 3 screens — never block entry
+- No account creation, no email, no sign-in — ever
+- No feature walkthroughs or tooltips — users learn by doing
+- Skipping everything still gives a fully working app
+- `setupCompletedProvider` boolean in Settings — shows setup only on first launch
+
+- [ ] Build 3-screen setup flow (Welcome → Permissions → Profile)
+- [ ] Wire SMS + notification permission dialogs to Screen 2
+- [ ] Save `businessModeEnabled` + income range from Screen 3 to Settings
+- [ ] Gate setup on first-launch flag; never show again after completion
+- [ ] Set up local crash logging (write to file, shareable via Settings)
+- [ ] Build in-app feedback sheet (text + optional log attachment, shared via `share_plus`)
+- [ ] Create beta test plan doc
+- [ ] Prepare Play Store Beta track
 
 **Deliverables:**
-- Smooth onboarding (<60 sec)
-- In-app help for all features
+- Setup completes in <30 seconds including permission dialogs
+- SMS permission granted rate >80% (context-first approach)
+- Business Mode correctly set at onboarding, changeable in Settings
 - Beta track on Play Store
 
-**Time Estimate:** 35 hours
+**Time Estimate:** 45 hours
 
 ---
 
@@ -475,85 +557,170 @@ This roadmap follows a **core-first, iterative approach**:
 
 ## Phase 5: Growth & Monetization (Weeks 19-26)
 
-### Week 19-20: Pro Features
-**Goal:** Build monetization features
+### Week 19-20: Pro Tier
+**Goal:** Simple monetisation — one upgrade, clear value
+
+**Guiding rule:** Pro features enhance what's already useful; they don't add complexity to the free tier.
 
 **Tasks:**
-- [ ] Implement in-app purchase (Google Play Billing)
-- [ ] Build Pro upgrade flow
-- [ ] Add advanced reports (Pro only)
-- [ ] Add GST reports (Pro only)
-- [ ] Implement PDF export with branding
-- [ ] Add budget tracking to Pro tier
-- [ ] Test payment flow thoroughly
+- [ ] Implement in-app purchase (Google Play Billing — one-time or annual)
+- [ ] Build Pro upgrade flow (single screen, clear value props)
+- [ ] Advanced reports: custom date ranges, category drill-down (Pro)
+- [ ] PDF export with branded invoice/statement layout (Pro, uses `pdf` package — 100% local)
+- [ ] Month-over-month comparison chart (Pro)
+- [ ] Budget tracking with category limits + visual progress bars (Pro)
+- [ ] Test payment flow end-to-end
 
 **Deliverables:**
-- Pro plan available for purchase
-- Upgrade flow smooth
-- Pro features working
+- Pro plan purchasable from Settings
+- 3–4 Pro features clearly surfaced behind a paywall
+- Free tier remains fully functional for core tracking
 
-**Time Estimate:** 50 hours
+**Time Estimate:** 45 hours
 
 ---
 
-### Week 21-22: Business Features
-**Goal:** Add features for business users
+### Week 21-22: Business Mode — Billing & Invoicing
+**Goal:** Opt-in business layer; zero impact on personal finance users
+
+**Guiding rule:** Business Mode is a toggle in Settings. When off, none of these screens or nav items appear. The core 4-tab nav never changes.
+
+**Architecture:**
+```
+item_catalog     (name, unit_price, tax_pct, hsn_code*, is_active)
+quotes           (customer_party_id, status, valid_until, total, notes)
+quote_items      (quote_id, item_name, qty, unit_price, discount_pct, line_total)
+invoices         (quote_id?, invoice_no, status, due_date, total, paid_amount)
+invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
+```
+*hsn_code stored but not validated until GST scope opens
 
 **Tasks:**
-- [ ] Build invoice generation
-- [ ] Add customer management (advanced)
-- [ ] Implement payment reminders (SMS/WhatsApp templates)
-- [ ] Add multi-user profiles
-- [ ] Build accountant view
-- [ ] Add inventory tracking (basic)
+- [ ] Add `businessModeEnabled` to Settings
+- [ ] Item catalog screen: add/edit products & services with price + tax %
+- [ ] Quote builder: pick customer (from parties), add items, apply discount, save draft
+- [ ] Quote → Invoice conversion (one tap; auto-assign INV-YYYY-NNN)
+- [ ] Invoice payment recording → auto-creates `Transaction(type: income)` in main ledger
+- [ ] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue)
+- [ ] Share invoice as PDF (offline, `pdf` + `share_plus`)
+- [ ] Basic GST line items: CGST + SGST / IGST split shown on invoice (no GSTIN validation yet)
+- [ ] Send quote/invoice via WhatsApp / SMS / Email (OS intents, same pattern as Week 9 credit reminders)
+
+**Message templates for billing (locally generated, user-editable):**
+```
+Quote:
+  "Hi [Name], here's your quote #[QT-001] for ₹[amount].
+   Valid until [date]. — [Business Name]"
+
+Invoice due:
+  "Hi [Name], invoice #[INV-001] of ₹[amount] is due on
+   [date]. — [Business Name]"
+
+Invoice overdue:
+  "Hi [Name], invoice #[INV-001] (₹[amount]) was due on
+   [date] and is still pending. — [Business Name]"
+```
+
+**Explicitly out of scope this sprint:**
+- Stock / inventory management ← additive column later
+- GSTIN validation ← regex check, add when needed
+- e-Invoicing / IRN ← requires network call, deferred indefinitely
+- Recurring invoices ← hook exists via ScheduledPayment, wire up later
+- Multi-currency ← Indian market first
+- Payment gateway ← UPI deep-link workaround sufficient for now
 
 **Deliverables:**
-- Business Pro plan features ready
-- Invoice generation working
-- Multi-user access functional
+- Business Mode off by default — personal users see nothing new
+- Full quote → invoice → payment → ledger pipeline working locally
+- PDF invoice shareable via WhatsApp / email
+- Transaction bridge: paid invoice = income entry in main dashboard
 
 **Time Estimate:** 60 hours
 
 ---
 
-### Week 23-24: Growth Features
-**Goal:** Improve retention and virality
+### Week 23-24: Retention & Reach
+**Goal:** Make the app stickier without adding complexity
+
+**Guiding rule:** Only ship retention features that work passively — no features that require the user to change their behaviour.
 
 **Tasks:**
-- [ ] Add referral program
-- [ ] Build import from other apps
-- [ ] Add bank statement CSV import
-- [ ] Implement smart notifications
-- [ ] Build comparison reports (month-over-month)
-- [ ] Add spending predictions
+- [ ] Smart due-date notifications (loans, bills) — already architected, tune thresholds
+- [ ] Monthly summary notification ("Here's your February: spent ₹X, saved ₹Y")
+- [ ] Bank statement CSV import (map columns → transactions; handles HDFC, SBI, ICICI formats)
+- [ ] Month-over-month comparison in Reports (already deferred from Pro tier if not done)
+- [ ] Play Store rating prompt (after 10th transaction, not on launch)
+- [ ] Referral / share card ("I track finances with Kash Cube — try it")
+
+**Explicitly not doing:**
+- Spending predictions (needs 3+ months data; backlogged)
+- Referral rewards / gamification (adds complexity, deferred)
+- Import from other finance apps (low priority, backlogged)
 
 **Deliverables:**
-- Referral program live
-- CSV import working
-- Improved retention features
+- Passive notifications that drive daily opens
+- CSV import covering top 3 Indian banks
+- Organic growth hook via share card
 
-**Time Estimate:** 50 hours
+**Time Estimate:** 40 hours
 
 ---
 
 ### Week 25-26: Scale & Optimize
-**Goal:** Prepare for growth
+**Goal:** Prepare for growth — keep it fast and small
 
 **Tasks:**
-- [ ] Performance optimization for 50k+ transactions
-- [ ] Build admin dashboard (internal)
-- [ ] Add Hindi language support
-- [ ] Implement regional language framework
+- [ ] Performance optimization for 50k+ transactions (pagination, query indexing)
+- [ ] Add Hindi language support (intl ARB files)
 - [ ] Optimize app size (<20MB)
-- [ ] Add advanced analytics
 - [ ] Plan iOS version
+- [ ] Review and cut any feature that fails the 5-second test
 
 **Deliverables:**
 - App handles scale gracefully
 - Hindi support live
 - iOS development plan ready
 
-**Time Estimate:** 60 hours
+**Time Estimate:** 50 hours
+
+---
+
+## Future Backlog (Post Week 26 — demand-driven)
+
+These features are **intentionally deferred**. Each is additive with no architectural rework needed. Ship only when real user demand justifies the complexity cost.
+
+### Business Mode Extensions
+
+| Feature | Effort | Prerequisites | Notes |
+|---------|--------|---------------|-------|
+| Stock / Inventory management | M | Business Mode live | Add `stock_qty` + `track_stock` to `item_catalog`; decrement on invoice paid |
+| GSTIN validation | S | Business Mode live | Regex only — 100% local, no API |
+| HSN code display on invoices | S | Business Mode live | Column already in schema, just surface in UI |
+| GSTR-1 CSV export | M | HSN codes | Group invoices by HSN; same pattern as existing CSV export |
+| Recurring invoices | S | Business Mode live | Wire `ScheduledPayment(autoCreate=true)` to generate invoices instead of transactions |
+| UPI collect deep-link | S | Invoice screen | Pre-fill PhonePe/GPay collect URL; user completes in their UPI app |
+| Multi-currency invoicing | L | — | Add `currency` column; manual exchange rates; ledger always stays INR |
+
+### Core App Extensions
+
+| Feature | Effort | Prerequisites | Notes |
+|---------|--------|---------------|-------|
+| Bank statement CSV/PDF import | M | — | Parse common bank statement formats; map to transactions |
+| Voice input for manual entry | M | — | On-device speech-to-text via Android SpeechRecognizer |
+| Home screen widget (Android) | M | — | Glance/AppWidget: today's balance + quick add |
+| Net worth dashboard | S | Account balances | Sum all account balances minus outstanding loans |
+| Spending predictions | L | 3+ months data | Simple linear trend on category spend; fully local |
+| Multi-user profiles | L | — | Separate SQLite DBs per profile; PIN-protected switch |
+
+### Compliance (Deferred Indefinitely)
+
+| Feature | Why Deferred |
+|---------|-------------|
+| e-Invoicing / IRN generation | Requires network call to NIC IRP portal — breaks privacy architecture; only relevant for >₹5Cr turnover businesses |
+| Full GSTR filing | Rabbit hole; dedicated CA software handles this better |
+| Payment gateway (Razorpay, PayU) | Requires network + SDK that phones home; use UPI deep-link workaround instead |
+
+> **Rule:** Before picking anything from this backlog, ask — does removing this feature make the app meaningfully worse for the majority of users? If the answer is no, leave it here.
 
 ---
 

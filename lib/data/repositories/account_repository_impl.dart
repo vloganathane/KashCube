@@ -1,10 +1,12 @@
+import 'package:sqflite/sqflite.dart';
+
 import '../../data/models/account.dart';
 import '../../data/services/database_helper.dart';
 import '../../domain/repositories/account_repository.dart';
 
 /// SQLite implementation of [AccountRepository].
 class AccountRepositoryImpl implements AccountRepository {
-  final Future<dynamic> _db = DatabaseHelper.instance.database;
+  final Future<Database> _db = DatabaseHelper.instance.database;
 
   @override
   Future<List<Account>> getAll({bool activeOnly = true}) async {

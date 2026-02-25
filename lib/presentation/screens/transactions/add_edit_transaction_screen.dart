@@ -159,6 +159,39 @@ class _AddEditTransactionScreenState
   Widget build(BuildContext context) {
     final title = widget.isEditing ? 'Edit Transaction' : 'Add Transaction';
 
+    // Loan-linked transactions are managed via the Loans screen — show read-only.
+    if (widget.isEditing && (widget.transaction?.isLoanLinked ?? false)) {
+      return Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.lock_outline,
+                    size: 48,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'Managed by Loan contract',
+                  style: Theme.of(context).textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'This transaction was auto-created from a Loan. Edit it from the Loans screen instead.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     // Pre-fill default account for new transactions once the provider loads.
     if (!widget.isEditing) {
       ref.listen<int?>(defaultAccountIdProvider, (_, next) {
@@ -622,6 +655,7 @@ class _AddEditTransactionScreenState
       verified: true,
       linkedTransactionId: widget.transaction?.linkedTransactionId,
       parentTransactionId: widget.transaction?.parentTransactionId,
+      loanId: widget.transaction?.loanId,
       dedupeHash: widget.transaction?.dedupeHash,
       tags: widget.transaction?.tags,
       createdAt: widget.transaction?.createdAt,

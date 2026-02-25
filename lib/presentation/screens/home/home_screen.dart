@@ -13,6 +13,7 @@ import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../app_shell.dart';
 import '../bills/bills_screen.dart';
+import '../loans/loans_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
@@ -393,7 +394,8 @@ class _OverviewCard extends ConsumerWidget {
         _CardFooterTile(
           icon: Icons.account_balance_wallet, label: 'Ledger',
           value: CurrencyFormatter.formatCompact(totalOutstanding),
-          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LoansScreen())),
         ),
       ],
     );

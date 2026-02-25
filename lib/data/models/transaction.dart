@@ -242,6 +242,7 @@ class Transaction extends Equatable {
     this.linkedTransactionId,
     this.parentTransactionId,
     // Lending/borrowing fields
+    this.loanId,
     this.dueDate,
     this.interestRate,
     this.interestType,
@@ -303,6 +304,10 @@ class Transaction extends Equatable {
 
   /// Per-installment EMI amount.
   final double? emiAmount;
+
+  /// Foreign key to the [loans] table when this transaction was auto-created by a Loan contract.
+  /// Null for regular transactions. Set to prevent manual editing.
+  final int? loanId;
 
   final String? dedupeHash;
   final String? notes;
@@ -369,6 +374,7 @@ class Transaction extends Equatable {
     RepaymentFrequency? repaymentFrequency,
     int? totalInstallments,
     double? emiAmount,
+    int? loanId,
     String? dedupeHash,
     String? notes,
     List<String>? tags,
@@ -404,6 +410,7 @@ class Transaction extends Equatable {
       repaymentFrequency: repaymentFrequency ?? this.repaymentFrequency,
       totalInstallments: totalInstallments ?? this.totalInstallments,
       emiAmount: emiAmount ?? this.emiAmount,
+      loanId: loanId ?? this.loanId,
       dedupeHash: dedupeHash ?? this.dedupeHash,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
@@ -443,6 +450,7 @@ class Transaction extends Equatable {
       'repayment_frequency': repaymentFrequency?.dbValue,
       'total_installments': totalInstallments,
       'emi_amount': emiAmount,
+      'loan_id': loanId,
       'dedupe_hash': dedupeHash,
       'notes': notes,
       'tags': tags?.join(','),
@@ -489,6 +497,7 @@ class Transaction extends Equatable {
           RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
       totalInstallments: map['total_installments'] as int?,
       emiAmount: (map['emi_amount'] as num?)?.toDouble(),
+      loanId: map['loan_id'] as int?,
       dedupeHash: map['dedupe_hash'] as String?,
       notes: map['notes'] as String?,
       tags: (map['tags'] as String?)
@@ -506,6 +515,9 @@ class Transaction extends Equatable {
           : null,
     );
   }
+
+  /// Whether this transaction was auto-created by a Loan contract.
+  bool get isLoanLinked => loanId != null;
 
   @override
   List<Object?> get props => [id, amount, date, type, category, dedupeHash];

@@ -101,23 +101,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'fab_ledger',
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const AddEditTransactionScreen(
-                initialType: TransactionType.lent,
-              ),
-            ),
-          );
-          if (mounted) {
-            ref.read(ledgerSummariesProvider.notifier).refresh();
-          }
-        },
-      ),
     );
   }
 

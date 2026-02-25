@@ -1,8 +1,9 @@
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' hide Transaction;
 
 import '../../domain/repositories/loan_repository.dart';
 import '../models/loan.dart';
 import '../models/loan_payment.dart';
+import '../models/transaction.dart' as tx;
 import '../services/database_helper.dart';
 import '../services/schedule_generator.dart';
 
@@ -91,6 +92,29 @@ class LoanRepositoryImpl implements LoanRepository {
     final db = await _db;
     final loanId = await db.insert('loans', loan.toMap());
 
+    // Auto-create a transaction representing this loan creation
+    final txType = loan.isLent ? tx.TransactionType.lent : tx.TransactionType.borrowed;
+    final linkedTx = tx.Transaction(
+      amount: loan.principalAmount,
+      date: loan.loanDate,
+      type: txType,
+      category: loan.isLent ? 'Lent' : 'Borrowed',
+      partyName: loan.lenderName,
+      phoneNumber: loan.phoneNumber,
+      dueDate: loan.dueDate,
+      interestRate: loan.interestRate,
+      interestType: loan.interestType == InterestType.none
+          ? null
+          : tx.InterestType.fromDb(loan.interestType.dbValue),
+      repaymentFrequency:
+          tx.RepaymentFrequency.fromDb(loan.repaymentFrequency?.dbValue),
+      totalInstallments: loan.totalEmis,
+      emiAmount: loan.emiAmount,
+      loanId: loanId,
+      notes: loan.notes,
+    );
+    await db.insert('transactions', linkedTx.toMap());
+
     // Auto-generate repayment schedule if frequency is set
     if (loan.repaymentFrequency != null &&
         loan.emiAmount != null &&
@@ -118,15 +142,45 @@ class LoanRepositoryImpl implements LoanRepository {
     final map = loan.toMap();
     map['updated_at'] = DateTime.now().toIso8601String();
     await db.update('loans', map, where: 'id = ?', whereArgs: [loan.id]);
+
+    // Sync the auto-created creation transaction (amount, party, dates may change)
+    if (loan.id != null) {
+      await db.update(
+        'transactions',
+        {
+          'amount': loan.principalAmount,
+          'party_name': loan.lenderName,
+          'phone_number': loan.phoneNumber,
+          'due_date': loan.dueDate?.toIso8601String(),
+          'interest_rate': loan.interestRate,
+          'interest_type': loan.interestType.dbValue,
+          'repayment_frequency': loan.repaymentFrequency?.dbValue,
+          'total_installments': loan.totalEmis,
+          'emi_amount': loan.emiAmount,
+          'notes': loan.notes,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'loan_id = ? AND type IN (?, ?) AND deleted_at IS NULL',
+        whereArgs: [loan.id, tx.TransactionType.lent.dbValue, tx.TransactionType.borrowed.dbValue],
+      );
+    }
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db;
+    final now = DateTime.now().toIso8601String();
     await db.update(
       'loans',
-      {'deleted_at': DateTime.now().toIso8601String()},
+      {'deleted_at': now},
       where: 'id = ?',
+      whereArgs: [id],
+    );
+    // Soft-delete all transactions linked to this loan
+    await db.update(
+      'transactions',
+      {'deleted_at': now},
+      where: 'loan_id = ? AND deleted_at IS NULL',
       whereArgs: [id],
     );
   }
@@ -189,6 +243,18 @@ class LoanRepositoryImpl implements LoanRepository {
       where: 'id = ?',
       whereArgs: [loanId],
     );
+
+    // Auto-create a repayment transaction so it appears in Khata/reports
+    final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;
+    final repayTx = tx.Transaction(
+      amount: amount,
+      date: DateTime.now(),
+      type: repayType,
+      category: loan.isLent ? 'Received Back' : 'Paid Back',
+      partyName: loan.lenderName,
+      loanId: loanId,
+    );
+    await db.insert('transactions', repayTx.toMap());
   }
 
   @override
@@ -223,6 +289,18 @@ class LoanRepositoryImpl implements LoanRepository {
       where: 'id = ?',
       whereArgs: [loanId],
     );
+
+    // Auto-create a repayment transaction so it appears in Khata/reports
+    final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;
+    final repayTx2 = tx.Transaction(
+      amount: amount,
+      date: DateTime.now(),
+      type: repayType,
+      category: loan.isLent ? 'Received Back' : 'Paid Back',
+      partyName: loan.lenderName,
+      loanId: loanId,
+    );
+    await db.insert('transactions', repayTx2.toMap());
   }
 
   @override

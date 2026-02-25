@@ -35,6 +35,10 @@ dependencies:
   # Share/Export
   share_plus: ^10.1.4
 
+  # Local Notifications (no network — 100% on-device)
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.1
+
   # Utilities
   equatable: ^2.0.7
   uuid: ^4.5.1

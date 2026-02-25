@@ -3,12 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
+import 'data/services/notification_service.dart';
 import 'presentation/app_shell.dart';
+import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialise local notifications before the first frame.
+  // 100% on-device — no network calls.
+  await NotificationService.instance.initialize();
+  await NotificationService.instance.requestPermission();
+
   runApp(const ProviderScope(child: KashCubeApp()));
 }
 
@@ -18,6 +26,9 @@ class KashCubeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Activate the scheduler so notifications stay in sync with upcoming items.
+    ref.watch(notificationSchedulerProvider);
+
     return MaterialApp(
       title: 'Kash Cube',
       debugShowCheckedModeBanner: false,

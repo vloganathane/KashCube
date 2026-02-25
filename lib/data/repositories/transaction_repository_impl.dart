@@ -122,80 +122,98 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<double> getTotalIncome(DateTime start, DateTime end) async {
+  Future<double> getTotalIncome(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
       "WHERE deleted_at IS NULL AND type IN ('income', 'credit_received', 'loan_taken') "
-      "AND date >= ? AND date <= ?",
-      [start.toIso8601String(), end.toIso8601String()],
+      "AND date >= ? AND date <= ? $modeClause",
+      args,
     );
     return (result.first['total'] as num).toDouble();
   }
 
   @override
-  Future<double> getTotalExpense(DateTime start, DateTime end) async {
+  Future<double> getTotalExpense(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
       "WHERE deleted_at IS NULL AND type IN ('expense', 'credit_given', 'loan_repayment') "
-      "AND date >= ? AND date <= ?",
-      [start.toIso8601String(), end.toIso8601String()],
+      "AND date >= ? AND date <= ? $modeClause",
+      args,
     );
     return (result.first['total'] as num).toDouble();
   }
 
   @override
-  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end) async {
+  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? "
+      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
-      [start.toIso8601String(), end.toIso8601String()],
+      args,
     );
     return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
   }
 
   @override
   Future<Map<String, double>> getIncomeByCategorySummary(
-      DateTime start, DateTime end) async {
+      DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
       "WHERE deleted_at IS NULL AND type IN ('income', 'credit_received', 'loan_taken') "
-      "AND date >= ? AND date <= ? "
+      "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
-      [start.toIso8601String(), end.toIso8601String()],
+      args,
     );
     return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
   }
 
   @override
   Future<Map<String, double>> getExpenseByCategorySummary(
-      DateTime start, DateTime end) async {
+      DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
       "WHERE deleted_at IS NULL AND type IN ('expense', 'credit_given', 'loan_repayment') "
-      "AND date >= ? AND date <= ? "
+      "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
-      [start.toIso8601String(), end.toIso8601String()],
+      args,
     );
     return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
   }
 
   @override
-  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end) async {
+  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT date(date) as day, "
       "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
       "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? "
+      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
       "GROUP BY day ORDER BY day",
-      [start.toIso8601String(), end.toIso8601String()],
+      args,
     );
     return rows
         .map((r) => DailyTotal(
@@ -207,10 +225,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6}) async {
+  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6, String? mode}) async {
     final db = await _db;
     final now = DateTime.now();
     final start = DateTime(now.year, now.month - months + 1, 1);
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String()];
+    if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT "
       "CAST(strftime('%Y', date) AS INTEGER) as yr, "
@@ -218,9 +239,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SUM(CASE WHEN type IN ('income', 'credit_received', 'loan_taken') THEN amount ELSE 0 END) as income, "
       "SUM(CASE WHEN type IN ('expense', 'credit_given', 'loan_repayment') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? "
+      "WHERE deleted_at IS NULL AND date >= ? $modeClause"
       "GROUP BY yr, mo ORDER BY yr, mo",
-      [start.toIso8601String()],
+      args,
     );
     return rows
         .map((r) => MonthlyTotal(
@@ -237,15 +258,20 @@ class TransactionRepositoryImpl implements TransactionRepository {
     DateTime start,
     DateTime end, {
     int limit = 10,
+    String? mode,
   }) async {
     final db = await _db;
+    final modeClause = mode != null ? "AND mode = ? " : "";
+    final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
+    if (mode != null) args.add(mode);
+    args.add(limit);
     final rows = await db.rawQuery(
       "SELECT party_name, SUM(amount) as total, COUNT(*) as cnt "
       "FROM transactions "
       "WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != '' "
-      "AND date >= ? AND date <= ? "
+      "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY party_name ORDER BY total DESC LIMIT ?",
-      [start.toIso8601String(), end.toIso8601String(), limit],
+      args,
     );
     return rows
         .map((r) => PartyTotal(

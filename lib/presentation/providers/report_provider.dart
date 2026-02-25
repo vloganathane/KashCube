@@ -9,6 +9,9 @@ final reportMonthProvider = StateProvider<DateTime>((ref) {
   return DateTime(now.year, now.month);
 });
 
+/// Tracks which mode filter is active: null = All, 'personal', 'business', 'investment'.
+final reportModeProvider = StateProvider<String?>((ref) => null);
+
 /// Monthly P&L summary for the selected month.
 class MonthlyPnL {
   final double totalIncome;
@@ -33,15 +36,17 @@ final monthlyPnLProvider =
     StateNotifierProvider<MonthlyPnLNotifier, AsyncValue<MonthlyPnL>>(
   (ref) {
     final month = ref.watch(reportMonthProvider);
-    return MonthlyPnLNotifier(TransactionRepositoryImpl(), month);
+    final mode = ref.watch(reportModeProvider);
+    return MonthlyPnLNotifier(TransactionRepositoryImpl(), month, mode);
   },
 );
 
 class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
   final TransactionRepository _repo;
   final DateTime _month;
+  final String? _mode;
 
-  MonthlyPnLNotifier(this._repo, this._month)
+  MonthlyPnLNotifier(this._repo, this._month, this._mode)
       : super(const AsyncValue.loading()) {
     load();
   }
@@ -52,11 +57,11 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
       final end = DateTime(_month.year, _month.month + 1, 0, 23, 59, 59);
 
       final results = await Future.wait([
-        _repo.getTotalIncome(start, end),
-        _repo.getTotalExpense(start, end),
-        _repo.getIncomeByCategorySummary(start, end),
-        _repo.getExpenseByCategorySummary(start, end),
-        _repo.getTopParties(start, end),
+        _repo.getTotalIncome(start, end, mode: _mode),
+        _repo.getTotalExpense(start, end, mode: _mode),
+        _repo.getIncomeByCategorySummary(start, end, mode: _mode),
+        _repo.getExpenseByCategorySummary(start, end, mode: _mode),
+        _repo.getTopParties(start, end, mode: _mode),
       ]);
 
       final income = results[0] as double;
@@ -82,20 +87,24 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
 /// Monthly totals for the trend chart (last 6 months).
 final monthlyTotalsProvider =
     StateNotifierProvider<MonthlyTotalsNotifier, AsyncValue<List<MonthlyTotal>>>(
-  (ref) => MonthlyTotalsNotifier(TransactionRepositoryImpl()),
+  (ref) {
+    final mode = ref.watch(reportModeProvider);
+    return MonthlyTotalsNotifier(TransactionRepositoryImpl(), mode);
+  },
 );
 
 class MonthlyTotalsNotifier
     extends StateNotifier<AsyncValue<List<MonthlyTotal>>> {
   final TransactionRepository _repo;
+  final String? _mode;
 
-  MonthlyTotalsNotifier(this._repo) : super(const AsyncValue.loading()) {
+  MonthlyTotalsNotifier(this._repo, this._mode) : super(const AsyncValue.loading()) {
     load();
   }
 
   Future<void> load() async {
     try {
-      final totals = await _repo.getMonthlyTotals(months: 6);
+      final totals = await _repo.getMonthlyTotals(months: 6, mode: _mode);
       state = AsyncValue.data(totals);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -108,15 +117,17 @@ final dailyTotalsProvider =
     StateNotifierProvider<DailyTotalsNotifier, AsyncValue<List<DailyTotal>>>(
   (ref) {
     final month = ref.watch(reportMonthProvider);
-    return DailyTotalsNotifier(TransactionRepositoryImpl(), month);
+    final mode = ref.watch(reportModeProvider);
+    return DailyTotalsNotifier(TransactionRepositoryImpl(), month, mode);
   },
 );
 
 class DailyTotalsNotifier extends StateNotifier<AsyncValue<List<DailyTotal>>> {
   final TransactionRepository _repo;
   final DateTime _month;
+  final String? _mode;
 
-  DailyTotalsNotifier(this._repo, this._month)
+  DailyTotalsNotifier(this._repo, this._month, this._mode)
       : super(const AsyncValue.loading()) {
     load();
   }
@@ -125,7 +136,7 @@ class DailyTotalsNotifier extends StateNotifier<AsyncValue<List<DailyTotal>>> {
     try {
       final start = DateTime(_month.year, _month.month, 1);
       final end = DateTime(_month.year, _month.month + 1, 0, 23, 59, 59);
-      final totals = await _repo.getDailyTotals(start, end);
+      final totals = await _repo.getDailyTotals(start, end, mode: _mode);
       state = AsyncValue.data(totals);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

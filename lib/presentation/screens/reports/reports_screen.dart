@@ -19,6 +19,7 @@ class ReportsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final month = ref.watch(reportMonthProvider);
+    final mode = ref.watch(reportModeProvider);
     final pnlAsync = ref.watch(monthlyPnLProvider);
 
     return Scaffold(
@@ -28,6 +29,7 @@ class ReportsScreen extends ConsumerWidget {
       body: Column(
         children: [
           _MonthSelector(month: month),
+          _ModeFilter(selectedMode: mode),
           Expanded(
             child: pnlAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -37,6 +39,65 @@ class ReportsScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Personal / Business / All filter chips.
+class _ModeFilter extends ConsumerWidget {
+  const _ModeFilter({required this.selectedMode});
+
+  final String? selectedMode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+      child: Row(
+        children: [
+          _ModeChip(
+            label: 'All',
+            selected: selectedMode == null,
+            onSelected: () => ref.read(reportModeProvider.notifier).state = null,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _ModeChip(
+            label: 'Personal',
+            selected: selectedMode == 'personal',
+            onSelected: () =>
+                ref.read(reportModeProvider.notifier).state = 'personal',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _ModeChip(
+            label: 'Business',
+            selected: selectedMode == 'business',
+            onSelected: () =>
+                ref.read(reportModeProvider.notifier).state = 'business',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModeChip extends StatelessWidget {
+  const _ModeChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
     );
   }
 }

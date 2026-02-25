@@ -29,35 +29,35 @@ abstract class TransactionRepository {
   /// Search transactions by party name or notes.
   Future<List<Transaction>> search(String query);
 
-  /// Get total income for a date range.
-  Future<double> getTotalIncome(DateTime start, DateTime end);
+  /// Get total income for a date range, optionally filtered by mode.
+  Future<double> getTotalIncome(DateTime start, DateTime end, {String? mode});
 
-  /// Get total expense for a date range.
-  Future<double> getTotalExpense(DateTime start, DateTime end);
+  /// Get total expense for a date range, optionally filtered by mode.
+  Future<double> getTotalExpense(DateTime start, DateTime end, {String? mode});
 
   /// Get category-wise spending summary for a date range.
-  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end);
+  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end, {String? mode});
 
   /// Get category-wise income summary for a date range.
   Future<Map<String, double>> getIncomeByCategorySummary(
-      DateTime start, DateTime end);
+      DateTime start, DateTime end, {String? mode});
 
   /// Get category-wise expense summary for a date range.
   Future<Map<String, double>> getExpenseByCategorySummary(
-      DateTime start, DateTime end);
+      DateTime start, DateTime end, {String? mode});
 
   /// Get daily totals for a date range (for trend charts).
-  /// Returns a map of date string (yyyy-MM-dd) -> { 'income': X, 'expense': Y }
-  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end);
+  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end, {String? mode});
 
   /// Get monthly totals for the last N months.
-  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6});
+  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6, String? mode});
 
   /// Get top parties by transaction amount for a date range.
   Future<List<PartyTotal>> getTopParties(
     DateTime start,
     DateTime end, {
     int limit = 10,
+    String? mode,
   });
 
   /// Check if a transaction with this dedupe hash already exists.

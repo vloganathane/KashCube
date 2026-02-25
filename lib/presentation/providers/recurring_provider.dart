@@ -86,6 +86,52 @@ class RecurringTransactionsNotifier
 }
 
 // ---------------------------------------------------------------------------
+// Derived – monthly total of active recurring transactions
+// ---------------------------------------------------------------------------
+
+/// Returns a map with 'income' and 'expense' monthly totals from active
+/// recurring transactions (amounts normalised to monthly).
+final recurringMonthlySummaryProvider =
+    Provider<({double income, double expense})>((ref) {
+  final asyncList = ref.watch(recurringTransactionsProvider);
+  return asyncList.when(
+    data: (items) {
+      double income = 0;
+      double expense = 0;
+      for (final item in items) {
+        if (!item.isActive) continue;
+        final monthly = _toMonthly(item.amount, item.frequency);
+        if (item.type == 'income') {
+          income += monthly;
+        } else {
+          expense += monthly;
+        }
+      }
+      return (income: income, expense: expense);
+    },
+    loading: () => (income: 0.0, expense: 0.0),
+    error: (e, st) => (income: 0.0, expense: 0.0),
+  );
+});
+
+double _toMonthly(double amount, RecurringFrequency freq) {
+  switch (freq) {
+    case RecurringFrequency.daily:
+      return amount * 30;
+    case RecurringFrequency.weekly:
+      return amount * 4;
+    case RecurringFrequency.biweekly:
+      return amount * 2;
+    case RecurringFrequency.monthly:
+      return amount;
+    case RecurringFrequency.quarterly:
+      return amount / 3;
+    case RecurringFrequency.yearly:
+      return amount / 12;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Auto-generation service
 // ---------------------------------------------------------------------------
 

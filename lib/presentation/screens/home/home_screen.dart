@@ -7,6 +7,8 @@ import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/loan_provider.dart';
+import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../loans/loans_screen.dart';
 import '../recurring/recurring_transactions_screen.dart';
@@ -71,39 +73,8 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  // Quick Actions
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _QuickActionChip(
-                          icon: Icons.account_balance,
-                          label: 'Loans',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const LoansScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: _QuickActionChip(
-                          icon: Icons.repeat,
-                          label: 'Recurring',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    const RecurringTransactionsScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
+                  // Quick Actions – Loans & Recurring with values
+                  _QuickActionCards(ref: ref),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Recent Transactions Header
@@ -402,23 +373,128 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _QuickActionChip extends StatelessWidget {
-  const _QuickActionChip({
+class _QuickActionCards extends StatelessWidget {
+  const _QuickActionCards({required this.ref});
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalLoanAsync = ref.watch(totalPendingLoanProvider);
+    final recurringSummary = ref.watch(recurringMonthlySummaryProvider);
+    final recurringNet = recurringSummary.expense + recurringSummary.income;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.account_balance,
+            label: 'Loans',
+            value: totalLoanAsync.when(
+              data: (v) => CurrencyFormatter.formatCompact(v),
+              loading: () => '…',
+              error: (e, st) => '–',
+            ),
+            valueColor: context.kashColors.expense,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LoansScreen()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: _QuickActionCard(
+            icon: Icons.repeat,
+            label: 'Recurring',
+            value: CurrencyFormatter.formatCompact(recurringNet),
+            subtitle: '/mo',
+            valueColor: context.colorScheme.primary,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const RecurringTransactionsScreen(),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
     required this.icon,
     required this.label,
+    required this.value,
     required this.onTap,
+    this.subtitle,
+    this.valueColor,
   });
 
   final IconData icon;
   final String label;
+  final String value;
+  final String? subtitle;
+  final Color? valueColor;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      avatar: Icon(icon, size: AppSpacing.iconSm),
-      label: Text(label),
-      onPressed: onTap,
+    return Card(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: AppSpacing.iconMd, color: valueColor),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(label, style: context.textTheme.bodySmall),
+                  const Spacer(),
+                  Icon(
+                    Icons.chevron_right,
+                    size: AppSpacing.iconSm,
+                    color: context.colorScheme.outline,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Flexible(
+                    child: Text(
+                      value,
+                      style: context.textTheme.titleLarge?.copyWith(
+                        color: valueColor,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'RobotoMono',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle!,
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

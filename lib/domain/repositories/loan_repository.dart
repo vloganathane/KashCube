@@ -55,6 +55,10 @@ abstract class LoanRepository {
   /// Unlike [recordPayment], this does NOT auto-mark installments.
   Future<void> addPaymentAmount(int loanId, double amount);
 
+  /// Reverse a previously recorded installment payment.
+  /// Decreases paid_amount, recalculates pending, and resets next_emi_date.
+  Future<void> reversePaymentAmount(int loanId, double amount);
+
   /// Get total pending loan amount.
   Future<double> getTotalPending();
 

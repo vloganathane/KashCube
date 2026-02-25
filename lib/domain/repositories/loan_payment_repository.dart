@@ -20,6 +20,9 @@ abstract class LoanPaymentRepository {
   /// Mark a payment as paid (fully or partially).
   Future<void> markPaid(int paymentId, double amount);
 
+  /// Reverse a paid installment back to unpaid (resets paid_amount and paid_date).
+  Future<void> markUnpaid(int paymentId);
+
   /// Delete all payments for a loan (when regenerating schedule).
   Future<void> deleteByLoanId(int loanId);
 

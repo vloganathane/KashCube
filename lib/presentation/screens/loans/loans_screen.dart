@@ -695,7 +695,12 @@ class _InstallmentTile extends ConsumerWidget {
           style: TextStyle(color: statusColor),
         ),
         trailing: payment.isPaid
-            ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+            ? IconButton(
+                icon: const Icon(Icons.check_circle,
+                    color: Colors.green, size: 20),
+                tooltip: 'Mark as unpaid',
+                onPressed: () => _confirmMarkUnpaid(context, ref),
+              )
             : TextButton(
                 onPressed: () => _markPaid(context, ref),
                 child: const Text('Mark Paid'),
@@ -717,6 +722,42 @@ class _InstallmentTile extends ConsumerWidget {
     if (context.mounted) {
       context.showSnackBar(
           '${CurrencyFormatter.format(payment.amount)} marked paid');
+    }
+  }
+
+  Future<void> _confirmMarkUnpaid(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Mark as Unpaid?'),
+        content: Text(
+          'Reverse payment #${payment.installmentNumber} of '
+          '${CurrencyFormatter.format(payment.amount)}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Mark Unpaid'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await ref
+        .read(loanPaymentRepositoryProvider)
+        .markUnpaid(payment.id!);
+    await ref
+        .read(activeLoansProvider.notifier)
+        .reversePaymentAmount(loan.id!, payment.paidAmount);
+    _invalidateAll(ref);
+    ref.invalidate(loanPaymentsProvider(loan.id!));
+    if (context.mounted) {
+      context.showSnackBar(
+          'Payment #${payment.installmentNumber} marked as unpaid');
     }
   }
 }

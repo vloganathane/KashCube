@@ -102,6 +102,21 @@ class LoanPaymentRepositoryImpl implements LoanPaymentRepository {
   }
 
   @override
+  Future<void> markUnpaid(int paymentId) async {
+    final db = await _db;
+    await db.update(
+      'loan_payments',
+      {
+        'is_paid': 0,
+        'paid_date': null,
+        'paid_amount': 0.0,
+      },
+      where: 'id = ?',
+      whereArgs: [paymentId],
+    );
+  }
+
+  @override
   Future<void> deleteByLoanId(int loanId) async {
     final db = await _db;
     await db.delete(

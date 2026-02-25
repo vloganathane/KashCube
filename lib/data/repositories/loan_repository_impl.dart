@@ -356,6 +356,58 @@ class LoanRepositoryImpl implements LoanRepository {
   }
 
   @override
+  Future<void> reversePaymentAmount(int loanId, double amount) async {
+    final db = await _db;
+    final loan = await getById(loanId);
+    if (loan == null) return;
+
+    final newPaid = (loan.paidAmount - amount).clamp(0.0, double.infinity);
+    final newPending = (loan.principalAmount - newPaid).clamp(0.0, double.infinity);
+
+    // Recount paid installments after the reversal (is_paid already reset by caller)
+    final countResult = await db.rawQuery(
+      'SELECT COUNT(*) as cnt FROM loan_payments '
+      'WHERE loan_id = ? AND is_paid = 1',
+      [loanId],
+    );
+    final paidEmis = (countResult.first['cnt'] as int?) ?? 0;
+
+    await db.update(
+      'loans',
+      {
+        'paid_amount': newPaid,
+        'pending_amount': newPending,
+        'paid_emis': paidEmis,
+        'is_cleared': 0,
+        'cleared_date': null,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [loanId],
+    );
+
+    // Recalculate next_emi_date to the earliest remaining unpaid installment
+    if (loan.repaymentFrequency != null) {
+      final nextRow = await db.query(
+        'loan_payments',
+        columns: ['due_date'],
+        where: 'loan_id = ? AND is_paid = 0',
+        whereArgs: [loanId],
+        orderBy: 'due_date ASC',
+        limit: 1,
+      );
+      final nextEmi =
+          nextRow.isNotEmpty ? nextRow.first['due_date'] as String? : null;
+      await db.update(
+        'loans',
+        {'next_emi_date': nextEmi},
+        where: 'id = ?',
+        whereArgs: [loanId],
+      );
+    }
+  }
+
+  @override
   Future<double> getTotalPending() async {
     final db = await _db;
     final result = await db.rawQuery(

@@ -56,6 +56,12 @@ class LoansNotifier extends StateNotifier<AsyncValue<List<Loan>>> {
     await _repo.addPaymentAmount(loanId, amount);
     await loadActive();
   }
+
+  /// Reverse a previously paid installment (mark as unpaid).
+  Future<void> reversePaymentAmount(int loanId, double amount) async {
+    await _repo.reversePaymentAmount(loanId, amount);
+    await loadActive();
+  }
 }
 
 /// Loan by ID (family provider).

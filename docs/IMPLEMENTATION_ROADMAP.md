@@ -1,7 +1,7 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.7  
+**Version:** 2.8  
 **Date:** February 26, 2026  
 **Duration:** 6 months (26 weeks)
 
@@ -723,9 +723,38 @@ Delivered:        "Order #[no] delivered ✓ Thank you! — [biz]"
 **Explicitly NOT in Year 2 scope:**
 - Kitchen display / table management
 - Thermal printer (Android print API exists, wire up in Year 3)
-- Multi-device real-time sync
 
 **Effort:** ~3 weeks on top of working billing (Week 21-22)
+
+---
+
+### Year 2: Multi-Device Sync — Tier 3 (P2P Cross-Network)
+
+> **Prerequisites:** Tier 1 (same-network sync) must be live and battle-tested first. Tier 3 is a philosophical compromise — it requires a minimal rendezvous node to punch through NATs. The node is open-source and self-hostable; the app still works fully without it.
+
+**Why not earlier:** Tier 1 covers 80% of real use cases (family, shop WiFi). Tier 3 only matters when devices are on different networks at the same time.
+
+**Architecture:**
+```
+Device A ──┐                    ┌── Device B
+           └── STUN/relay node ─┘
+                (self-hosted or
+                 community node)
+```
+- libp2p or WebRTC with STUN for NAT traversal
+- Relay node is stateless — only brokers the initial handshake, never sees data
+- All data is encrypted end-to-end (same keys from Tier 1 pairing)
+- Sync protocol identical to Tier 1 — just the transport changes
+- App works 100% offline if relay is unreachable
+
+**Permission model:** unchanged from Tier 1 — signed grants, scoped keys.
+
+**Honest constraints:**
+- "Zero network calls" rule is relaxed to "zero data leaves the device unencrypted"
+- User must agree to this explicitly in Settings (opt-in, default off)
+- Self-hostable relay means power users can run their own
+
+**Effort:** ~3 months (transport layer swap on top of Tier 1 event log)
 
 ---
 
@@ -751,6 +780,72 @@ Delivered:        "Order #[no] delivered ✓ Thank you! — [biz]"
 | Net worth dashboard | S | Account balances | Sum all account balances minus outstanding loans |
 | Spending predictions | L | 3+ months data | Simple linear trend on category spend; fully local |
 | Multi-user profiles | L | — | Separate SQLite DBs per profile; PIN-protected switch |
+
+### Multi-Device Sync — Tier 1 (Post Week 26, ~6 weeks)
+
+> **Use cases:** Family members on same home WiFi, shop owner + cashier on same shop WiFi. No internet, no server, fully offline.
+
+**How it works:**
+```
+Device A (Owner)                Device B (Staff/Family)
+   |                                  |
+   |── mDNS broadcast ──────────────> |
+   |<─ mDNS response ────────────────|
+   |── QR code pairing ─────────────>|  (one-time key exchange)
+   |── signed permission grant ─────>|  (role: staff/viewer/co-owner)
+   |                                  |
+   |<═══════ TCP socket sync ════════>|  (exchange event log deltas)
+```
+
+**DB additions:**
+```sql
+sync_devices  (device_id, name, public_key, role, granted_at, last_seen)
+sync_events   (id, table_name, row_id, operation, payload_json,
+               vector_clock, device_id, created_at)
+               -- append-only; never deleted; this IS the source of truth
+```
+
+**Permission roles:**
+| Role | Can do |
+|---|---|
+| Owner | Full read/write, manage devices |
+| Co-owner | Full read/write, no device management |
+| Staff | Add transactions, view dashboard; no credits/loans |
+| Viewer | Read-only; no sensitive data |
+| Accountant | Export only |
+
+**Conflict resolution:** Last-write-wins per row (vector clock timestamp). Edge cases surfaced as UI prompt — user picks winner.
+
+**Explicitly out of scope:**
+- Cross-network sync (different WiFi) → Tier 2/3
+- Real-time collaborative editing → not needed for financial data
+
+**Effort:** ~6 weeks. Requires `sync_events` event log architecture decision before Week 21-22 DB work (additive, no rework).
+
+---
+
+### Multi-Device Sync — Tier 2 (6 Months Post-Launch, ~4 weeks)
+
+> **Use cases:** Share data with accountant, sync between home and office, async family sync when not on same WiFi. No automatic sync — user-initiated.
+
+**How it works:**
+```
+Device A: Export → encrypted .kashcube sync package
+   → User sends via WhatsApp / email / USB / AirDrop
+Device B: Import → decrypt with own key → merge event log
+```
+
+- Encrypted with recipient device's public key (from Tier 1 pairing)
+- Permission scope baked into the package — a Viewer key can only decrypt their scope
+- Merge is identical to Tier 1 (event log replay) — just async instead of live
+- Works across any network, any distance, zero server
+- No automatic background sync — fully intentional
+
+**This is the privacy purist's version of cross-network sync:** you choose exactly when data leaves the device and to whom.
+
+**Effort:** ~4 weeks on top of Tier 1 event log (transport is file I/O instead of TCP socket).
+
+---
 
 ### Compliance (Deferred Indefinitely)
 

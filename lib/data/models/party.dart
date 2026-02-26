@@ -30,6 +30,9 @@ class Party extends Equatable {
     this.email,
     this.gstin,
     this.address,
+    this.city,
+    this.state,
+    this.pincode,
     required this.partyType,
     this.totalTransactions = 0,
     this.totalTransactionAmount = 0,
@@ -48,8 +51,14 @@ class Party extends Equatable {
   final String? email;
   /// GST Identification Number — stored locally, never validated via network.
   final String? gstin;
-  /// Physical address — stored locally, never transmitted.
+  /// Physical address (street) — stored locally, never transmitted.
   final String? address;
+  /// City — stored locally, never transmitted.
+  final String? city;
+  /// State — stored locally, never transmitted.
+  final String? state;
+  /// Pincode — stored locally, never transmitted.
+  final String? pincode;
   final PartyType partyType;
   final int totalTransactions;
   final double totalTransactionAmount;
@@ -71,6 +80,9 @@ class Party extends Equatable {
     String? email,
     String? gstin,
     String? address,
+    String? city,
+    String? state,
+    String? pincode,
     PartyType? partyType,
     int? totalTransactions,
     double? totalTransactionAmount,
@@ -89,6 +101,9 @@ class Party extends Equatable {
       email: email ?? this.email,
       gstin: gstin ?? this.gstin,
       address: address ?? this.address,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      pincode: pincode ?? this.pincode,
       partyType: partyType ?? this.partyType,
       totalTransactions: totalTransactions ?? this.totalTransactions,
       totalTransactionAmount: totalTransactionAmount ?? this.totalTransactionAmount,
@@ -110,6 +125,9 @@ class Party extends Equatable {
       'email': email,
       'gstin': gstin,
       'address': address,
+      'city': city,
+      'state': state,
+      'pincode': pincode,
       'party_type': partyType.name,
       'total_transactions': totalTransactions,
       'total_transaction_amount': totalTransactionAmount,
@@ -131,6 +149,9 @@ class Party extends Equatable {
       email: map['email'] as String?,
       gstin: map['gstin'] as String?,
       address: map['address'] as String?,
+      city: map['city'] as String?,
+      state: map['state'] as String?,
+      pincode: map['pincode'] as String?,
       partyType: PartyType.values.firstWhere(
         (e) => e.name == (map['party_type'] as String? ?? 'customer'),
         orElse: () => PartyType.customer,

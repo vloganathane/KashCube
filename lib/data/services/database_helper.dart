@@ -938,6 +938,18 @@ class DatabaseHelper {
         'description': 'Add business_id to invoices and quotes for multi-business support',
       });
     }
+
+    if (oldVersion < 17) {
+      // Split address into city, state, pincode for parties (like business addresses)
+      await db.execute('ALTER TABLE parties ADD COLUMN city TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN state TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN pincode TEXT');
+      
+      await db.insert('schema_version', {
+        'version': 17,
+        'description': 'Add city, state, pincode to parties for structured addresses',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

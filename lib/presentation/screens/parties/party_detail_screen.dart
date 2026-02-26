@@ -762,6 +762,9 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
   late final TextEditingController _email;
   late final TextEditingController _gstin;
   late final TextEditingController _address;
+  late final TextEditingController _city;
+  late final TextEditingController _state;
+  late final TextEditingController _pincode;
   late final TextEditingController _notes;
   late PartyType _type;
 
@@ -797,6 +800,9 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
     _email = TextEditingController(text: p.email ?? '');
     _gstin = TextEditingController(text: p.gstin ?? '');
     _address = TextEditingController(text: p.address ?? '');
+    _city = TextEditingController(text: p.city ?? '');
+    _state = TextEditingController(text: p.state ?? '');
+    _pincode = TextEditingController(text: p.pincode ?? '');
     _notes = TextEditingController(text: p.notes ?? '');
     _type = p.partyType;
   }
@@ -808,6 +814,9 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
     _email.dispose();
     _gstin.dispose();
     _address.dispose();
+    _city.dispose();
+    _state.dispose();
+    _pincode.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -929,16 +938,58 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // Address
+              // Street Address
               TextFormField(
                 controller: _address,
                 decoration: const InputDecoration(
-                  labelText: 'Address',
+                  labelText: 'Street Address',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.location_on_outlined),
                 ),
-                textCapitalization: TextCapitalization.sentences,
+                textCapitalization: TextCapitalization.words,
                 maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // City + State + Pincode
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _city,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _state,
+                      decoration: const InputDecoration(
+                        labelText: 'State',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _pincode,
+                      decoration: const InputDecoration(
+                        labelText: 'Pincode',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.sm),
 
@@ -971,6 +1022,15 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
                     address: _address.text.trim().isEmpty
                         ? null
                         : _address.text.trim(),
+                    city: _city.text.trim().isEmpty
+                        ? null
+                        : _city.text.trim(),
+                    state: _state.text.trim().isEmpty
+                        ? null
+                        : _state.text.trim(),
+                    pincode: _pincode.text.trim().isEmpty
+                        ? null
+                        : _pincode.text.trim(),
                     partyType: _type,
                     notes: _notes.text.trim().isEmpty
                         ? null

@@ -1,7 +1,9 @@
 import '../../data/models/invoice.dart';
 import '../../data/models/quote.dart';
+import '../../data/models/transaction.dart';
 import '../../data/services/database_helper.dart';
 import '../../domain/repositories/invoice_repository.dart';
+import '../../domain/repositories/transaction_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Quote
@@ -127,7 +129,11 @@ class QuoteRepositoryImpl implements QuoteRepository {
 // ---------------------------------------------------------------------------
 
 class InvoiceRepositoryImpl implements InvoiceRepository {
+  InvoiceRepositoryImpl({required TransactionRepository transactionRepo})
+      : _transactionRepo = transactionRepo;
+
   final _db = DatabaseHelper.instance;
+  final TransactionRepository _transactionRepo;
 
   @override
   Future<List<Invoice>> getAll() async {
@@ -219,15 +225,32 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final newStatus = newPaid >= inv.total
         ? InvoiceStatus.paid.dbValue
         : InvoiceStatus.partiallyPaid.dbValue;
+    
+    final now = DateTime.now();
     await db.update(
       'invoices',
       {
         'paid_amount': newPaid,
         'status': newStatus,
-        'updated_at': DateTime.now().toIso8601String(),
+        'updated_at': now.toIso8601String(),
       },
       where: 'id = ?',
       whereArgs: [invoiceId],
     );
+
+    // Create income transaction in main ledger
+    final transaction = Transaction(
+      type: TransactionType.income,
+      mode: TransactionMode.business,
+      amount: amount,
+      category: 'Invoice Payment',
+      partyName: inv.customerName,
+      partyId: inv.customerPartyId,
+      notes: 'Payment for invoice ${inv.invoiceNo}',
+      date: now,
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _transactionRepo.insert(transaction);
   }
 }

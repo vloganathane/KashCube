@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/invoice.dart';
+import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import 'quote_builder_screen.dart';
@@ -191,13 +193,38 @@ class _InvoiceDetailView extends ConsumerWidget {
     }
   }
 
-  void _shareInvoice(BuildContext context, String businessName) {
-    final due = invoice.dueDate != null ? DateFormatter.format(invoice.dueDate!) : '';
-    final dueStr = due.isNotEmpty ? ' due $due.' : '.';
-    final msg = 'Hi ${invoice.customerName}, '
-        'invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(invoice.total)}'
-        '$dueStr — $businessName';
-    Share.share(msg, subject: 'Invoice ${invoice.invoiceNo}');
+  Future<void> _shareInvoice(BuildContext context, String businessName) async {
+    // Show loading indicator
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice);
+      
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show share options bottom sheet
+      await showModalBottomSheet(
+         context: context,
+        builder: (ctx) => _ShareOptionsSheet(
+          invoice: invoice,
+          businessName: businessName,
+          pdfFile: pdfFile,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
   }
 
   void _editInvoice(BuildContext context) {
@@ -579,5 +606,140 @@ class _NotesCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Share Options Sheet ───────────────────────────────────────────────────────
+
+class _ShareOptionsSheet extends StatelessWidget {
+  const _ShareOptionsSheet({
+    required this.invoice,
+    required this.businessName,
+    required this.pdfFile,
+  });
+
+  final Invoice invoice;
+  final String businessName;
+  final dynamic pdfFile; // File
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Share Invoice',
+              style: Theme.of(context).textTheme.titleLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            
+            // Share PDF via system share sheet
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('Share PDF'),
+              subtitle: const Text('Share via any app'),
+              onTap: () async {
+                Navigator.pop(context);
+                await Share.shareXFiles(
+                  [XFile(pdfFile.path)],
+                  subject: 'Invoice ${invoice.invoiceNo}',
+                  text: _generateMessage(),
+                );
+              },
+            ),
+            
+            const Divider(),
+            
+            // WhatsApp
+            ListTile(
+              leading: const Icon(Icons.chat_outlined, color: Colors.green),
+              title: const Text('WhatsApp'),
+              subtitle: const Text('Send via WhatsApp'),
+              onTap: () async {
+                Navigator.pop(context);
+                final msg = Uri.encodeComponent(_generateMessage());
+                final url = Uri.parse('https://wa.me/?text=$msg');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('WhatsApp not available')),
+                    );
+                  }
+                }
+              },
+            ),
+            
+            // SMS
+            ListTile(
+              leading: const Icon(Icons.sms_outlined, color: Colors.blue),
+              title: const Text('SMS'),
+              subtitle: const Text('Send via text message'),
+              onTap: () async {
+                Navigator.pop(context);
+                final msg = Uri.encodeComponent(_generateMessage());
+                final url = Uri.parse('sms:?body=$msg');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('SMS not available')),
+                    );
+                  }
+                }
+              },
+            ),
+            
+            // Email
+            ListTile(
+              leading: const Icon(Icons.email_outlined, color: Colors.orange),
+              title: const Text('Email'),
+              subtitle: const Text('Send via email'),
+              onTap: () async {
+                Navigator.pop(context);
+                final subject = Uri.encodeComponent('Invoice ${invoice.invoiceNo}');
+                final body = Uri.encodeComponent(_generateMessage());
+                final url = Uri.parse('mailto:?subject=$subject&body=$body');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Email not available')),
+                    );
+                  }
+                }
+              },
+            ),
+            
+            const SizedBox(height: AppSpacing.sm),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _generateMessage() {
+    final due = invoice.dueDate != null 
+        ? DateFormatter.format(invoice.dueDate!) 
+        : '';
+    final dueStr = due.isNotEmpty ? ' due $due' : '';
+    return 'Hi ${invoice.customerName},\n\n'
+        'Invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(invoice.total)}'
+        '$dueStr.\n\n'
+        'Thank you for your business!\n'
+        '— $businessName';
   }
 }

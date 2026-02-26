@@ -8,6 +8,8 @@ import '../../data/repositories/item_catalog_repository_impl.dart';
 import '../../data/services/invoice_number_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
+import '../../domain/repositories/transaction_repository.dart';
+import 'transaction_provider.dart';
 
 // ── Repository providers ─────────────────────────────────────────────────────
 
@@ -20,7 +22,9 @@ final quoteRepositoryProvider = Provider<QuoteRepository>(
 );
 
 final invoiceRepositoryProvider = Provider<InvoiceRepository>(
-  (_) => InvoiceRepositoryImpl(),
+  (ref) => InvoiceRepositoryImpl(
+    transactionRepo: ref.read(transactionRepositoryProvider),
+  ),
 );
 
 // ── Filter ───────────────────────────────────────────────────────────────────

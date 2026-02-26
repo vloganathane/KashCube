@@ -898,6 +898,30 @@ class DatabaseHelper {
         'description': 'Add businesses table (multiple business profiles)',
       });
     }
+
+    if (oldVersion < 15) {
+      // Enhanced item catalog with categories, SKU, favorites, usage tracking, and business linkage
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN business_id INTEGER');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN sku TEXT');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN category TEXT DEFAULT "product"');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN last_used_at TEXT');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN usage_count INTEGER NOT NULL DEFAULT 0');
+      
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_item_catalog_business ON item_catalog(business_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_item_catalog_category ON item_catalog(category)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_item_catalog_favorite ON item_catalog(is_favorite)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_item_catalog_last_used ON item_catalog(last_used_at)');
+      
+      await db.insert('schema_version', {
+        'version': 15,
+        'description': 'Enhanced item catalog: business_id, categories, SKU, favorites, usage tracking',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

@@ -15,9 +15,12 @@ import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../loans/loans_screen.dart';
+import '../invoices/invoices_screen.dart';
+import '../invoices/quote_builder_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
+import '../../providers/settings_provider.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -66,6 +69,54 @@ class HomeScreen extends ConsumerWidget {
                     );
                   },
                 ),
+                if (ref.watch(businessModeProvider))
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: 'More',
+                    onSelected: (value) {
+                      if (value == 'invoices') {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const InvoicesScreen(),
+                        ));
+                      } else if (value == 'new_quote') {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const QuoteBuilderScreen(),
+                        ));
+                      } else if (value == 'new_invoice') {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => const QuoteBuilderScreen(
+                              docType: DocumentType.invoice),
+                        ));
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'invoices',
+                        child: ListTile(
+                          leading: Icon(Icons.receipt_long_outlined),
+                          title: Text('Invoices & Quotes'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'new_invoice',
+                        child: ListTile(
+                          leading: Icon(Icons.add_circle_outline),
+                          title: Text('New Invoice'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'new_quote',
+                        child: ListTile(
+                          leading: Icon(Icons.request_quote_outlined),
+                          title: Text('New Quote'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
                 IconButton(
                   icon: const Icon(Icons.settings_outlined),
                   tooltip: 'Settings',

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../providers/invoice_provider.dart';
@@ -140,7 +141,8 @@ class _StatusFilterBar extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         itemCount: statuses.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+        separatorBuilder: (context, index) =>
+            const SizedBox(width: AppSpacing.sm),
         itemBuilder: (_, i) {
           final s = statuses[i];
           final label = s?.label ?? 'All';
@@ -161,9 +163,12 @@ class _InvoiceTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final statusColor = _statusColor(invoice.status, context);
     return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -171,34 +176,93 @@ class _InvoiceTile extends ConsumerWidget {
           ),
         ).then((_) => ref.invalidate(invoicesProvider)),
         onLongPress: () => _confirmDelete(context, ref),
-        leading: CircleAvatar(
-          backgroundColor:
-              _statusColor(invoice.status, context).withOpacity(0.12),
-          child: Icon(
-            Icons.receipt_outlined,
-            color: _statusColor(invoice.status, context),
-          ),
-        ),
-        title: Text(invoice.invoiceNo,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-          invoice.customerName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              CurrencyFormatter.format(invoice.total),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.receipt_outlined,
+                        color: statusColor, size: 20),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  // Invoice no + customer
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          invoice.invoiceNo,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          invoice.customerName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: cs.onSurface.withValues(alpha: 0.65),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  // Amount
+                  Text(
+                    CurrencyFormatter.format(invoice.total),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            _StatusChip(status: invoice.status),
-          ],
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Icon(Icons.calendar_today_outlined,
+                      size: 13,
+                      color: cs.onSurface.withValues(alpha: 0.45)),
+                  const SizedBox(width: 4),
+                  Text(
+                    DateFormatter.format(invoice.issueDate),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: cs.onSurface.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  if (invoice.dueDate != null) ...[
+                    Text(
+                      '  ·  Due ${DateFormatter.format(invoice.dueDate!)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: invoice.isOverdue
+                            ? const Color(0xFFC62828)
+                            : cs.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  _StatusChip(status: invoice.status),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -254,7 +318,7 @@ class _StatusChip extends StatelessWidget {
       padding:
           const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -310,8 +374,9 @@ class _QuoteTile extends ConsumerWidget {
       QuoteStatus.draft => cs.outline,
     };
     return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: ListTile(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -319,42 +384,95 @@ class _QuoteTile extends ConsumerWidget {
           ),
         ).then((_) => ref.invalidate(quotesProvider)),
         onLongPress: () => _confirmDelete(context, ref),
-        leading: CircleAvatar(
-          backgroundColor: statusColor.withOpacity(0.12),
-          child: Icon(Icons.description_outlined, color: statusColor),
-        ),
-        title: Text(quote.quoteNo,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-          quote.customerName,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              CurrencyFormatter.format(quote.total),
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.description_outlined,
+                        color: statusColor, size: 20),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          quote.quoteNo,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          quote.customerName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: cs.onSurface.withValues(alpha: 0.65),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    CurrencyFormatter.format(quote.total),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
               ),
-              child: Text(
-                quote.status.label,
-                style: TextStyle(
-                    color: statusColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  if (quote.validUntil != null) ...[
+                    Icon(Icons.calendar_today_outlined,
+                        size: 13,
+                        color: cs.onSurface.withValues(alpha: 0.45)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Valid till ${DateFormatter.format(quote.validUntil!)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      quote.status.label,
+                      style: TextStyle(
+                          color: statusColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

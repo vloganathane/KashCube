@@ -13,7 +13,6 @@ import '../../providers/transaction_provider.dart';
 import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
-import '../invoices/invoices_screen.dart';
 import 'businesses_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
@@ -186,32 +185,16 @@ class SettingsScreen extends ConsumerWidget {
               Consumer(builder: (context, ref, _) {
                 final enabled = ref.watch(businessModeProvider);
                 if (!enabled) return const SizedBox.shrink();
-                return Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.receipt_long_outlined),
-                      title: const Text('Invoices'),
-                      subtitle: const Text('Manage quotes & invoices'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const InvoicesScreen()),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.business_outlined),
-                      title: const Text('Business Profiles'),
-                      subtitle: const Text(
-                          'Name, address, GST, logo & more'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const BusinessesScreen()),
-                      ),
-                    ),
-                  ],
+                return ListTile(
+                  leading: const Icon(Icons.business_outlined),
+                  title: const Text('Business Profiles'),
+                  subtitle: const Text('Name, address, GST, logo & more'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const BusinessesScreen()),
+                  ),
                 );
               }),
             ],

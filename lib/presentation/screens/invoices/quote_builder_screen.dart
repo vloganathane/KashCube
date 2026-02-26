@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/invoice_number_service.dart';
@@ -13,9 +14,18 @@ import '../../providers/invoice_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import 'item_catalog_screen.dart';
 
+enum DocumentType { quote, invoice }
+
 class QuoteBuilderScreen extends ConsumerStatefulWidget {
-  const QuoteBuilderScreen({super.key, this.quoteId});
+  const QuoteBuilderScreen({
+    super.key,
+    this.quoteId,
+    this.invoiceId,
+    this.docType = DocumentType.quote,
+  });
   final int? quoteId;
+  final int? invoiceId;
+  final DocumentType docType;
 
   @override
   ConsumerState<QuoteBuilderScreen> createState() =>
@@ -26,22 +36,37 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _formKey = GlobalKey<FormState>();
   String _customerName = '';
   int? _customerPartyId;
+  // Quote fields
   DateTime _validUntil = DateTime.now().add(const Duration(days: 30));
+  // Invoice fields
+  DateTime _issueDate = DateTime.now();
+  DateTime? _dueDate;
+
   final List<_LineItem> _items = [];
   final _notesController = TextEditingController();
   late final TextEditingController _customerCtrl;
 
   Quote? _existingQuote;
+  Invoice? _existingInvoice;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     _customerCtrl = TextEditingController();
-    if (widget.quoteId != null) {
-      _loadQuote();
+    if (widget.docType == DocumentType.invoice) {
+      if (widget.invoiceId != null) {
+        _loadInvoice();
+      } else {
+        _dueDate = DateTime.now().add(const Duration(days: 30));
+        _items.add(const _LineItem());
+      }
     } else {
-      _items.add(const _LineItem());
+      if (widget.quoteId != null) {
+        _loadQuote();
+      } else {
+        _items.add(const _LineItem());
+      }
     }
   }
 
@@ -67,6 +92,33 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           unitPrice: qi.unitPrice,
           taxPct: qi.taxPct,
           discountPct: qi.discountPct,
+        ),
+      ));
+    });
+  }
+
+  Future<void> _loadInvoice() async {
+    final invoice =
+        await ref.read(invoiceRepositoryProvider).getById(widget.invoiceId!);
+    if (invoice == null) return;
+    if (!mounted) return;
+    setState(() {
+      _existingInvoice = invoice;
+      _customerName = invoice.customerName;
+      _customerCtrl.text = invoice.customerName;
+      _customerPartyId = invoice.customerPartyId;
+      _issueDate = invoice.issueDate;
+      _dueDate = invoice.dueDate;
+      _notesController.text = invoice.notes ?? '';
+      _items.clear();
+      _items.addAll(invoice.items.map(
+        (ii) => _LineItem(
+          itemName: ii.itemName,
+          description: ii.description ?? '',
+          qty: ii.qty,
+          unitPrice: ii.unitPrice,
+          taxPct: ii.taxPct,
+          discountPct: ii.discountPct,
         ),
       ));
     });
@@ -106,7 +158,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           discountPct: li.discountPct,
         );
         return QuoteItem(
-          quoteId: 0, // set by repository on insert
+          quoteId: 0,
           itemName: li.itemName,
           description: li.description.isEmpty ? null : li.description,
           qty: li.qty,
@@ -114,6 +166,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           taxPct: li.taxPct,
           discountPct: li.discountPct,
           lineTotal: lineTotal,
+        );
+      }).toList();
+
+  List<InvoiceItem> get _invoiceItems => _items.map((li) {
+        final lt = li.qty *
+            li.unitPrice *
+            (1 + li.taxPct / 100) *
+            (1 - li.discountPct / 100);
+        return InvoiceItem(
+          invoiceId: 0,
+          itemName: li.itemName,
+          description: li.description.isEmpty ? null : li.description,
+          qty: li.qty,
+          unitPrice: li.unitPrice,
+          taxPct: li.taxPct,
+          discountPct: li.discountPct,
+          lineTotal: lt,
         );
       }).toList();
 
@@ -135,50 +204,88 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     setState(() => _isSaving = true);
 
     try {
-      final status =
-          send ? QuoteStatus.sent : QuoteStatus.draft;
-      final quote = Quote(
-        id: _existingQuote?.id,
-        quoteNo: _existingQuote?.quoteNo ??
-            await InvoiceNumberService.instance.nextQuoteNo(),
-        customerPartyId: _customerPartyId,
-        customerName: _customerName,
-        status: status,
-        validUntil: _validUntil,
-        subtotal: _subtotal,
-        taxTotal: _taxTotal,
-        discountPct: 0,
-        total: _total,
-        notes: _notesController.text.trim().isEmpty
-            ? null
-            : _notesController.text.trim(),
-        items: _quoteItems,
-        createdAt: _existingQuote?.createdAt ?? DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      if (_existingQuote != null) {
-        await ref
-            .read(quotesProvider.notifier)
-            .edit(quote, _quoteItems);
+      if (widget.docType == DocumentType.invoice) {
+        await _saveInvoice(send: send);
       } else {
-        await ref
-            .read(quotesProvider.notifier)
-            .add(quote, _quoteItems);
+        await _saveQuote(send: send);
       }
-
-      if (send) {
-        final bizName =
-            ref.read(activeBusinessProvider)?.name ?? 'My Business';
-        final msg =
-            'Hi $_customerName, quote #${quote.quoteNo} for ${CurrencyFormatter.format(_total)}. '
-            'Valid till ${DateFormatter.format(_validUntil)}. — $bizName';
-        Share.share(msg, subject: 'Quote ${quote.quoteNo}');
-      }
-
       if (mounted) Navigator.pop(context);
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _saveQuote({bool send = false}) async {
+    final status = send ? QuoteStatus.sent : QuoteStatus.draft;
+    final quote = Quote(
+      id: _existingQuote?.id,
+      quoteNo: _existingQuote?.quoteNo ??
+          await InvoiceNumberService.instance.nextQuoteNo(),
+      customerPartyId: _customerPartyId,
+      customerName: _customerName,
+      status: status,
+      validUntil: _validUntil,
+      subtotal: _subtotal,
+      taxTotal: _taxTotal,
+      discountPct: 0,
+      total: _total,
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      items: _quoteItems,
+      createdAt: _existingQuote?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    if (_existingQuote != null) {
+      await ref.read(quotesProvider.notifier).edit(quote, _quoteItems);
+    } else {
+      await ref.read(quotesProvider.notifier).add(quote, _quoteItems);
+    }
+    if (send) {
+      final bizName =
+          ref.read(activeBusinessProvider)?.name ?? 'My Business';
+      final msg =
+          'Hi $_customerName, quote #${quote.quoteNo} for ${CurrencyFormatter.format(_total)}. '
+          'Valid till ${DateFormatter.format(_validUntil)}. — $bizName';
+      Share.share(msg, subject: 'Quote ${quote.quoteNo}');
+    }
+  }
+
+  Future<void> _saveInvoice({bool send = false}) async {
+    final status = send ? InvoiceStatus.sent : InvoiceStatus.draft;
+    final invoice = Invoice(
+      id: _existingInvoice?.id,
+      invoiceNo: _existingInvoice?.invoiceNo ??
+          await InvoiceNumberService.instance.nextInvoiceNo(),
+      customerPartyId: _customerPartyId,
+      customerName: _customerName,
+      status: status,
+      issueDate: _issueDate,
+      dueDate: _dueDate,
+      subtotal: _subtotal,
+      taxTotal: _taxTotal,
+      discountPct: 0,
+      total: _total,
+      paidAmount: _existingInvoice?.paidAmount ?? 0,
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      items: _invoiceItems,
+      createdAt: _existingInvoice?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    if (_existingInvoice != null) {
+      await ref.read(invoicesProvider.notifier).edit(invoice, _invoiceItems);
+    } else {
+      await ref.read(invoicesProvider.notifier).add(invoice, _invoiceItems);
+    }
+    if (send) {
+      final bizName =
+          ref.read(activeBusinessProvider)?.name ?? 'My Business';
+      final msg =
+          'Hi $_customerName, invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(_total)}. '
+          '${_dueDate != null ? 'Due ${DateFormatter.format(_dueDate!)}. ' : ''}— $bizName';
+      Share.share(msg, subject: 'Invoice ${invoice.invoiceNo}');
     }
   }
 
@@ -216,12 +323,20 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = _existingQuote != null;
+    final isInvoice = widget.docType == DocumentType.invoice;
+    final isEdit = isInvoice ? _existingInvoice != null : _existingQuote != null;
+    String title;
+    if (isInvoice) {
+      title = isEdit ? 'Edit Invoice' : 'New Invoice';
+    } else {
+      title = isEdit ? 'Edit Quote' : 'New Quote';
+    }
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit Quote' : 'New Quote'),
+        title: Text(title),
         actions: [
-          if (isEdit &&
+          if (!isInvoice &&
+              isEdit &&
               _existingQuote?.status != QuoteStatus.accepted)
             TextButton.icon(
               icon: const Icon(Icons.receipt_long_outlined, size: 18),
@@ -249,12 +364,25 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             ),
             const SizedBox(height: AppSpacing.base),
 
-            // Valid Until
-            _DateField(
-              label: 'Valid Until',
-              value: _validUntil,
-              onChanged: (d) => setState(() => _validUntil = d),
-            ),
+            // Date fields
+            if (isInvoice) ...[  
+              _DateField(
+                label: 'Issue Date',
+                value: _issueDate,
+                onChanged: (d) => setState(() => _issueDate = d),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              _OptionalDateField(
+                label: 'Due Date (optional)',
+                value: _dueDate,
+                onChanged: (d) => setState(() => _dueDate = d),
+              ),
+            ] else
+              _DateField(
+                label: 'Valid Until',
+                value: _validUntil,
+                onChanged: (d) => setState(() => _validUntil = d),
+              ),
             const SizedBox(height: AppSpacing.base),
 
             // Line items
@@ -303,21 +431,20 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               minLines: 2,
               maxLines: 4,
             ),
-            const SizedBox(height: AppSpacing.xxxl),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Save button — inside scroll so keyboard never hides it
+            FilledButton(
+              onPressed: _isSaving ? null : () => _save(),
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(isInvoice ? 'Save Invoice' : 'Save as Draft'),
+            ),
+            const SizedBox(height: AppSpacing.xl),
           ],
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xl),
-        child: FilledButton(
-          onPressed: _isSaving ? null : () => _save(),
-          child: _isSaving
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('Save as Draft'),
         ),
       ),
     );
@@ -551,7 +678,7 @@ class _LineItemRowState extends State<_LineItemRow> {
             ),
             onChanged: (_) => _emit(),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Expanded(
@@ -565,10 +692,14 @@ class _LineItemRowState extends State<_LineItemRow> {
                 flex: 2,
                 child: _NumField(
                     ctrl: _priceCtrl,
-                    label: 'Price (₹)',
+                    label: 'Unit Price (₹)',
                     onChanged: (_) => _emit()),
               ),
-              const SizedBox(width: AppSpacing.sm),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
               Expanded(
                 child: _NumField(
                     ctrl: _taxCtrl,
@@ -579,7 +710,7 @@ class _LineItemRowState extends State<_LineItemRow> {
               Expanded(
                 child: _NumField(
                     ctrl: _discCtrl,
-                    label: 'Disc %',
+                    label: 'Discount %',
                     onChanged: (_) => _emit()),
               ),
             ],
@@ -631,7 +762,7 @@ class _DateField extends StatelessWidget {
         final d = await showDatePicker(
           context: context,
           initialDate: value,
-          firstDate: DateTime.now(),
+          firstDate: DateTime(2020),
           lastDate: DateTime.now().add(const Duration(days: 730)),
         );
         if (d != null) onChanged(d);
@@ -643,6 +774,58 @@ class _DateField extends StatelessWidget {
           suffixIcon: const Icon(Icons.calendar_today_outlined),
         ),
         child: Text(DateFormatter.format(value)),
+      ),
+    );
+  }
+}
+
+/// Nullable date field — shows a placeholder when no date is set.
+class _OptionalDateField extends StatelessWidget {
+  const _OptionalDateField(
+      {required this.label, required this.value, required this.onChanged});
+  final String label;
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () async {
+        final d = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime.now().add(const Duration(days: 30)),
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now().add(const Duration(days: 730)),
+        );
+        if (d != null) onChanged(d);
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (value != null)
+                IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () => onChanged(null),
+                  padding: EdgeInsets.zero,
+                ),
+              const Icon(Icons.calendar_today_outlined),
+            ],
+          ),
+        ),
+        child: Text(
+          value != null ? DateFormatter.format(value!) : 'Not set',
+          style: value == null
+              ? TextStyle(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.4))
+              : null,
+        ),
       ),
     );
   }

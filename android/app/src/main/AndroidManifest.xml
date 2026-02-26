@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE" />
     <application
-        android:label="kash_cube"
+        android:label="Kash Cube"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

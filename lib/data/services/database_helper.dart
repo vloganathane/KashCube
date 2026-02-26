@@ -74,6 +74,7 @@ class DatabaseHelper {
         dedupe_hash TEXT UNIQUE,
         notes TEXT,
         tags TEXT,
+        reminder_sent_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
@@ -92,6 +93,7 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_transactions_to_account ON transactions(to_account_id)');
     await db.execute('CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)');
     await db.execute('CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)');
 
     // -- credits table
     await db.execute('''

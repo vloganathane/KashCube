@@ -92,9 +92,10 @@ class _AddEditTransactionScreenState
     super.initState();
     final txn = widget.transaction;
     if (txn != null) {
-      _amountController.text = txn.amount.toStringAsFixed(
+      final rawAmount = txn.amount.toStringAsFixed(
         txn.amount == txn.amount.roundToDouble() ? 0 : 2,
       );
+      _amountController.text = IndianCurrencyInputFormatter.format(rawAmount);
       _partyNameController.text = txn.partyName ?? '';
       _notesController.text = txn.notes ?? '';
       _type = txn.type;
@@ -262,9 +263,7 @@ class _AddEditTransactionScreenState
                 fontFamily: 'RobotoMono',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
-              ],
+              inputFormatters: [IndianCurrencyInputFormatter()],
               validator: Validators.validateAmount,
               autofocus: !widget.isEditing,
               textInputAction: TextInputAction.next,
@@ -1150,5 +1149,83 @@ class _TimeField extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Formats amount input with Indian comma grouping (e.g. 1,23,456.78)
+class IndianCurrencyInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    // Strip commas to get the raw string
+    final stripped = text.replaceAll(',', '');
+
+    // Reject anything that isn't digits + optional single dot
+    if (!RegExp(r'^\d*\.?\d*$').hasMatch(stripped)) return oldValue;
+
+    final dotIndex = stripped.indexOf('.');
+    final intPart = dotIndex == -1 ? stripped : stripped.substring(0, dotIndex);
+    final decPart = dotIndex == -1 ? '' : stripped.substring(dotIndex + 1);
+    final hasDot = dotIndex != -1;
+
+    final formattedInt = _formatInteger(intPart);
+    final result = hasDot ? '$formattedInt.$decPart' : formattedInt;
+
+    // Preserve cursor: count non-comma chars after cursor in the pre-format text
+    final cursorPos = newValue.selection.end.clamp(0, text.length);
+    final sigCharsAfterCursor = text.substring(cursorPos).replaceAll(',', '').length;
+
+    // Find matching position in formatted result by counting back
+    int newCursor = result.length;
+    if (sigCharsAfterCursor > 0) {
+      int count = 0;
+      for (int i = result.length - 1; i >= 0; i--) {
+        if (result[i] != ',') count++;
+        if (count == sigCharsAfterCursor) {
+          newCursor = i;
+          break;
+        }
+      }
+    }
+
+    return TextEditingValue(
+      text: result,
+      selection: TextSelection.collapsed(
+        offset: newCursor.clamp(0, result.length),
+      ),
+    );
+  }
+
+  static String _formatInteger(String digits) {
+    if (digits.length <= 3) return digits;
+    final lastThree = digits.substring(digits.length - 3);
+    final remaining = digits.substring(0, digits.length - 3);
+    final buffer = StringBuffer();
+    // First group: remaining.length % 2 chars (1 or 2), then groups of 2
+    int idx = remaining.length % 2;
+    if (idx > 0) buffer.write(remaining.substring(0, idx));
+    while (idx < remaining.length) {
+      if (buffer.isNotEmpty) buffer.write(',');
+      buffer.write(remaining.substring(idx, idx + 2));
+      idx += 2;
+    }
+    buffer.write(',');
+    buffer.write(lastThree);
+    return buffer.toString();
+  }
+
+  /// Format a plain numeric string with Indian commas (for initial values).
+  static String format(String raw) {
+    final stripped = raw.replaceAll(',', '');
+    final dotIndex = stripped.indexOf('.');
+    final intPart = dotIndex == -1 ? stripped : stripped.substring(0, dotIndex);
+    final decPart = dotIndex == -1 ? '' : stripped.substring(dotIndex + 1);
+    final formatted = _formatInteger(intPart);
+    return decPart.isEmpty ? formatted : '$formatted.$decPart';
   }
 }

@@ -8,7 +8,9 @@ import 'providers/scheduled_payment_provider.dart';
 import 'providers/report_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/bills/bills_and_payments_screen.dart';
+import 'screens/invoices/quote_builder_screen.dart';
 import 'screens/ledger/ledger_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/loans/loans_screen.dart';
@@ -184,6 +186,7 @@ class _SpeedDialFab extends ConsumerStatefulWidget {
 
 class _SpeedDialFabState extends ConsumerState<_SpeedDialFab>
     with SingleTickerProviderStateMixin {
+
   bool _open = false;
   late final AnimationController _ctrl;
   late final Animation<double> _expandAnim;
@@ -236,12 +239,56 @@ class _SpeedDialFabState extends ConsumerState<_SpeedDialFab>
     );
   }
 
+  void _openNewInvoice() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const QuoteBuilderScreen(docType: DocumentType.invoice),
+      ),
+    );
+  }
+
+  void _openNewQuote() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const QuoteBuilderScreen()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
+        // ── Option: Invoice (business mode only) ──────────────────────────
+        if (ref.watch(businessModeProvider)) ...[  
+          ScaleTransition(
+            scale: _expandAnim,
+            child: FadeTransition(
+              opacity: _expandAnim,
+              child: _SpeedDialOption(
+                icon: Icons.receipt_outlined,
+                label: 'Invoice',
+                onTap: _openNewInvoice,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ScaleTransition(
+            scale: _expandAnim,
+            child: FadeTransition(
+              opacity: _expandAnim,
+              child: _SpeedDialOption(
+                icon: Icons.request_quote_outlined,
+                label: 'Quote',
+                onTap: _openNewQuote,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
         // ── Option: Bills & Payments ───────────────────────────────────────
         ScaleTransition(
           scale: _expandAnim,

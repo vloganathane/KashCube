@@ -374,15 +374,17 @@ class InvoicePdfService {
   }) {
     return pw.Padding(
       padding: const pw.EdgeInsets.all(8),
-      child: pw.Text(
-        content is String ? content : content.toString(),
-        style: pw.TextStyle(
-          fontSize: isHeader ? 10 : 11,
-          fontWeight: (isHeader || isBold) ? pw.FontWeight.bold : pw.FontWeight.normal,
-          color: isHeader ? PdfColors.grey700 : PdfColors.black,
-        ),
-        textAlign: align,
-      ),
+      child: content is pw.Widget
+          ? content
+          : pw.Text(
+              content.toString(),
+              style: pw.TextStyle(
+                fontSize: isHeader ? 10 : 11,
+                fontWeight: (isHeader || isBold) ? pw.FontWeight.bold : pw.FontWeight.normal,
+                color: isHeader ? PdfColors.grey700 : PdfColors.black,
+              ),
+              textAlign: align,
+            ),
     );
   }
 
@@ -470,7 +472,7 @@ class InvoicePdfService {
         ),
         pw.SizedBox(height: 8),
         pw.Text(
-          'Generated on ${DateFormatter.format(DateTime.now())}',
+          'Generated on ${DateFormatter.formatFull(DateTime.now())}',
           style: const pw.TextStyle(
             fontSize: 8,
             color: PdfColors.grey500,
@@ -767,7 +769,7 @@ class InvoicePdfService {
         ),
         pw.SizedBox(height: 8),
         pw.Text(
-          'Generated on ${DateFormatter.format(DateTime.now())}',
+          'Generated on ${DateFormatter.formatFull(DateTime.now())}',
           style: const pw.TextStyle(
             fontSize: 8,
             color: PdfColors.grey500,

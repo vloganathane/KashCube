@@ -498,9 +498,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             PartyPickerField(
               controller: _customerCtrl,
               labelText: 'Customer',
-              onSelected: (name) => setState(() {
-                _customerName = name;
-              }),
+              onSelected: (name) async {
+                setState(() {
+                  _customerName = name;
+                });
+                // Look up party by name to get party ID
+                final parties = await ref.read(partyRepositoryProvider).getAll();
+                final party = parties.cast<Party?>().firstWhere(
+                  (p) => p!.name.trim().toLowerCase() == name.trim().toLowerCase(),
+                  orElse: () => null,
+                );
+                if (party != null && mounted) {
+                  setState(() {
+                    _customerPartyId = party.id;
+                  });
+                }
+              },
             ),
             const SizedBox(height: AppSpacing.base),
 

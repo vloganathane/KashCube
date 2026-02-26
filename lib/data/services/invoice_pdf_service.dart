@@ -152,7 +152,7 @@ class InvoicePdfService {
                       pw.Text(
                         [business.phone, business.email]
                             .where((e) => e != null && e.isNotEmpty)
-                            .join(' • '),
+                            .join(' | '),
                         style: pw.TextStyle(
                           fontSize: 10,
                           color: PdfColors.grey600,
@@ -538,7 +538,7 @@ class InvoicePdfService {
                       pw.Text(
                         [business.phone, business.email]
                             .where((e) => e != null && e.isNotEmpty)
-                            .join(' • '),
+                            .join(' | '),
                         style: pw.TextStyle(
                           fontSize: 10,
                           color: PdfColors.grey600,

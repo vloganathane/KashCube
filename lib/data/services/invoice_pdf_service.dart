@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 
+import '../models/business.dart';
 import '../models/invoice.dart';
 import '../models/quote.dart';
 import '../../core/utils/currency_formatter.dart';
@@ -15,7 +16,7 @@ class InvoicePdfService {
   static final instance = InvoicePdfService._();
 
   /// Generate PDF for an invoice with GST breakdown.
-  Future<File> generateInvoicePdf(Invoice invoice) async {
+  Future<File> generateInvoicePdf(Invoice invoice, {Business? business}) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -23,7 +24,7 @@ class InvoicePdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          _buildInvoiceHeader(invoice),
+          _buildInvoiceHeader(invoice, business: business),
           pw.SizedBox(height: 24),
           _buildInvoiceDetails(invoice),
           pw.SizedBox(height: 24),
@@ -40,7 +41,7 @@ class InvoicePdfService {
   }
 
   /// Generate PDF for a quote.
-  Future<File> generateQuotePdf(Quote quote) async {
+  Future<File> generateQuotePdf(Quote quote, {Business? business}) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -48,7 +49,7 @@ class InvoicePdfService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          _buildQuoteHeader(quote),
+          _buildQuoteHeader(quote, business: business),
           pw.SizedBox(height: 24),
           _buildQuoteDetails(quote),
           pw.SizedBox(height: 24),
@@ -66,38 +67,101 @@ class InvoicePdfService {
 
   // ── Invoice Components ─────────────────────────────────────────────────────
 
-  pw.Widget _buildInvoiceHeader(Invoice invoice) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+  pw.Widget _buildInvoiceHeader(Invoice invoice, {Business? business}) {
+    return pw.Column(
       children: [
-        pw.Column(
+        // Business info if available
+        if (business != null) ..[
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Container(
+                width: 300,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      business.name,
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    if (business.gstNo != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'GSTIN: ${business.gstNo}',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                    if (business.address != null || business.city != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        [business.address, business.city, business.state]
+                            .where((e) => e != null && e.isNotEmpty)
+                            .join(', '),
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
+                    if (business.phone != null || business.email != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        [business.phone, business.email]
+                            .where((e) => e != null && e.isNotEmpty)
+                            .join(' • '),
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 24),
+          pw.Divider(),
+          pw.SizedBox(height: 16),
+        ],
+        // Invoice header
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(
-              'INVOICE',
-              style: pw.TextStyle(
-                fontSize: 28,
-                fontWeight: pw.FontWeight.bold,
-              ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'INVOICE',
+                  style: pw.TextStyle(
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  invoice.invoiceNo,
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+              ],
             ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              invoice.invoiceNo,
-              style: pw.TextStyle(
-                fontSize: 16,
-                color: PdfColors.grey700,
-              ),
-            ),
-          ],
-        ),
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            pw.Text(
-              'Date: ${DateFormatter.format(invoice.issueDate)}',
-              style: const pw.TextStyle(fontSize: 12),
-            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text(
+                  'Date: ${DateFormatter.format(invoice.issueDate)}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
             if (invoice.dueDate != null)
               pw.Text(
                 'Due: ${DateFormatter.format(invoice.dueDate!)}',
@@ -372,38 +436,101 @@ class InvoicePdfService {
 
   // ── Quote Components ───────────────────────────────────────────────────────
 
-  pw.Widget _buildQuoteHeader(Quote quote) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
+  pw.Widget _buildQuoteHeader(Quote quote, {Business? business}) {
+    return pw.Column(
       children: [
-        pw.Column(
+        // Business info if available
+        if (business != null) ..[
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Container(
+                width: 300,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      business.name,
+                      style: pw.TextStyle(
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    if (business.gstNo != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'GSTIN: ${business.gstNo}',
+                        style: pw.TextStyle(
+                          fontSize: 11,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                    if (business.address != null || business.city != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        [business.address, business.city, business.state]
+                            .where((e) => e != null && e.isNotEmpty)
+                            .join(', '),
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
+                    if (business.phone != null || business.email != null) ..[
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        [business.phone, business.email]
+                            .where((e) => e != null && e.isNotEmpty)
+                            .join(' • '),
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 24),
+          pw.Divider(),
+          pw.SizedBox(height: 16),
+        ],
+        // Quote header
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text(
-              'QUOTE',
-              style: pw.TextStyle(
-                fontSize: 28,
-                fontWeight: pw.FontWeight.bold,
-              ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'QUOTE',
+                  style: pw.TextStyle(
+                    fontSize: 28,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  '#${quote.id}',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    color: PdfColors.grey700,
+                  ),
+                ),
+              ],
             ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              '#${quote.id}',
-              style: pw.TextStyle(
-                fontSize: 16,
-                color: PdfColors.grey700,
-              ),
-            ),
-          ],
-        ),
-        pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.end,
-          children: [
-            pw.Text(
-              'Date: ${DateFormatter.format(quote.createdAt)}',
-              style: const pw.TextStyle(fontSize: 12),
-            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text(
+                  'Date: ${DateFormatter.format(quote.createdAt)}',
+                  style: const pw.TextStyle(fontSize: 12),
+                ),
             if (quote.validUntil != null)
               pw.Text(
                 'Valid Until: ${DateFormatter.format(quote.validUntil!)}',

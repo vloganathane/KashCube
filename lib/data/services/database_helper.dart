@@ -922,6 +922,22 @@ class DatabaseHelper {
         'description': 'Enhanced item catalog: business_id, categories, SKU, favorites, usage tracking',
       });
     }
+
+    if (oldVersion < 16) {
+      // Add business_id to invoices and quotes for multi-business support
+      await db.execute('ALTER TABLE invoices ADD COLUMN business_id INTEGER');
+      await db.execute('ALTER TABLE quotes ADD COLUMN business_id INTEGER');
+      
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_invoices_business ON invoices(business_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_quotes_business ON quotes(business_id)');
+      
+      await db.insert('schema_version', {
+        'version': 16,
+        'description': 'Add business_id to invoices and quotes for multi-business support',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

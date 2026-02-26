@@ -135,6 +135,7 @@ class Quote extends Equatable {
   const Quote({
     this.id,
     required this.quoteNo,
+    this.businessId,
     this.customerPartyId,
     required this.customerName,
     this.status = QuoteStatus.draft,
@@ -151,6 +152,7 @@ class Quote extends Equatable {
 
   final int? id;
   final String quoteNo;
+  final int? businessId;
   final int? customerPartyId;
   final String customerName;
   final QuoteStatus status;
@@ -167,6 +169,7 @@ class Quote extends Equatable {
   Quote copyWith({
     int? id,
     String? quoteNo,
+    int? businessId,
     int? customerPartyId,
     String? customerName,
     QuoteStatus? status,
@@ -183,6 +186,7 @@ class Quote extends Equatable {
     return Quote(
       id: id ?? this.id,
       quoteNo: quoteNo ?? this.quoteNo,
+      businessId: businessId ?? this.businessId,
       customerPartyId: customerPartyId ?? this.customerPartyId,
       customerName: customerName ?? this.customerName,
       status: status ?? this.status,
@@ -201,6 +205,7 @@ class Quote extends Equatable {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'quote_no': quoteNo,
+        'business_id': businessId,
         'customer_party_id': customerPartyId,
         'customer_name': customerName,
         'status': status.dbValue,
@@ -219,6 +224,7 @@ class Quote extends Equatable {
       Quote(
         id: map['id'] as int?,
         quoteNo: map['quote_no'] as String,
+        businessId: map['business_id'] as int?,
         customerPartyId: map['customer_party_id'] as int?,
         customerName: map['customer_name'] as String,
         status: QuoteStatusExt.fromDb(map['status'] as String?),

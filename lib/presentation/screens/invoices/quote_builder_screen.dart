@@ -6,9 +6,11 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/models/quote.dart';
+import '../../../data/repositories/business_repository.dart';
 import '../../../data/services/invoice_number_service.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
@@ -38,6 +40,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _formKey = GlobalKey<FormState>();
   String _customerName = '';
   int? _customerPartyId;
+  int? _selectedBusinessId;
   // Quote fields
   DateTime _validUntil = DateTime.now().add(const Duration(days: 30));
   // Invoice fields
@@ -82,6 +85,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _customerName = quote.customerName;
       _customerCtrl.text = quote.customerName;
       _customerPartyId = quote.customerPartyId;
+      _selectedBusinessId = quote.businessId;
       _validUntil = quote.validUntil ??
           DateTime.now().add(const Duration(days: 30));
       _notesController.text = quote.notes ?? '';
@@ -109,6 +113,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _customerName = invoice.customerName;
       _customerCtrl.text = invoice.customerName;
       _customerPartyId = invoice.customerPartyId;
+      _selectedBusinessId = invoice.businessId;
       _issueDate = invoice.issueDate;
       _dueDate = invoice.dueDate;
       _notesController.text = invoice.notes ?? '';
@@ -219,10 +224,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _saveQuote({bool send = false}) async {
     final status = send ? QuoteStatus.sent : QuoteStatus.draft;
+    final activeBusiness = ref.read(activeBusinessProvider);
+    final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final quote = Quote(
       id: _existingQuote?.id,
       quoteNo: _existingQuote?.quoteNo ??
           await InvoiceNumberService.instance.nextQuoteNo(),
+      businessId: businessId,
       customerPartyId: _customerPartyId,
       customerName: _customerName,
       status: status,
@@ -255,10 +263,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _saveInvoice({bool send = false}) async {
     final status = send ? InvoiceStatus.sent : InvoiceStatus.draft;
+    final activeBusiness = ref.read(activeBusinessProvider);
+    final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final invoice = Invoice(
       id: _existingInvoice?.id,
       invoiceNo: _existingInvoice?.invoiceNo ??
           await InvoiceNumberService.instance.nextInvoiceNo(),
+      businessId: businessId,
       customerPartyId: _customerPartyId,
       customerName: _customerName,
       status: status,
@@ -335,8 +346,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     );
 
     try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (_existingQuote!.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(_existingQuote!);
+      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(_existingQuote!, business: business);
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -370,8 +387,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     );
 
     try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (_existingInvoice!.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(_existingInvoice!);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(_existingInvoice!, business: business);
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -441,6 +464,90 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               }),
             ),
             const SizedBox(height: AppSpacing.base),
+
+            // Business selector
+            Consumer(
+              builder: (context, ref, child) {
+                final businessesAsync = ref.watch(businessesProvider);
+                return businessesAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (businesses) {
+                    if (businesses.isEmpty) return const SizedBox.shrink();
+                    // If only one business, don't show selector
+                    if (businesses.length == 1) {
+                      // Auto-select if not already set
+                      if (_selectedBusinessId == null) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _selectedBusinessId = businesses.first.id;
+                            });
+                          }
+                        });
+                      }
+                      return const SizedBox.shrink();
+                    }
+
+                    // Multiple businesses - show dropdown
+                    final activeBusiness = ref.watch(activeBusinessProvider);
+                    final selectedId = _selectedBusinessId ?? activeBusiness?.id;
+                    
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        DropdownButtonFormField<int>(
+                          value: selectedId,
+                          decoration: const InputDecoration(
+                            labelText: 'Business',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.business_outlined),
+                          ),
+                          items: businesses.map((biz) {
+                            return DropdownMenuItem(
+                              value: biz.id,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    biz.name,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  if (biz.gstNo != null)
+                                    Text(
+                                      'GST: ${biz.gstNo}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedBusinessId = value;
+                            });
+                          },
+                          validator: (value) {
+                            if (value == null) {
+                              return 'Please select a business';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: AppSpacing.base),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
 
             // Date fields
             if (isInvoice) ...[  

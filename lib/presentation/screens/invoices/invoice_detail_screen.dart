@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
+import '../../../data/repositories/business_repository.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
@@ -209,8 +211,14 @@ class _InvoiceDetailView extends ConsumerWidget {
     );
 
     try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (invoice.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice, business: business);
       
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -242,8 +250,14 @@ class _InvoiceDetailView extends ConsumerWidget {
     );
 
     try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (invoice.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice, business: business);
       
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog

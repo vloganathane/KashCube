@@ -136,6 +136,7 @@ class Invoice extends Equatable {
     this.id,
     required this.invoiceNo,
     this.quoteId,
+    this.businessId,
     this.customerPartyId,
     required this.customerName,
     this.status = InvoiceStatus.draft,
@@ -155,6 +156,7 @@ class Invoice extends Equatable {
   final int? id;
   final String invoiceNo;
   final int? quoteId;
+  final int? businessId;
   final int? customerPartyId;
   final String customerName;
   final InvoiceStatus status;
@@ -180,6 +182,7 @@ class Invoice extends Equatable {
     int? id,
     String? invoiceNo,
     int? quoteId,
+    int? businessId,
     int? customerPartyId,
     String? customerName,
     InvoiceStatus? status,
@@ -199,6 +202,7 @@ class Invoice extends Equatable {
       id: id ?? this.id,
       invoiceNo: invoiceNo ?? this.invoiceNo,
       quoteId: quoteId ?? this.quoteId,
+      businessId: businessId ?? this.businessId,
       customerPartyId: customerPartyId ?? this.customerPartyId,
       customerName: customerName ?? this.customerName,
       status: status ?? this.status,
@@ -220,6 +224,7 @@ class Invoice extends Equatable {
         if (id != null) 'id': id,
         'invoice_no': invoiceNo,
         'quote_id': quoteId,
+        'business_id': businessId,
         'customer_party_id': customerPartyId,
         'customer_name': customerName,
         'status': status.dbValue,
@@ -241,6 +246,7 @@ class Invoice extends Equatable {
         id: map['id'] as int?,
         invoiceNo: map['invoice_no'] as String,
         quoteId: map['quote_id'] as int?,
+        businessId: map['business_id'] as int?,
         customerPartyId: map['customer_party_id'] as int?,
         customerName: map['customer_name'] as String,
         status: InvoiceStatusExt.fromDb(map['status'] as String?),

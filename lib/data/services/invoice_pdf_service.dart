@@ -309,6 +309,10 @@ class InvoicePdfService {
   }
 
   pw.Widget _buildItemsTable(List<InvoiceItem> items) {
+    // Check if we need to show tax and discount columns
+    final hasTax = items.any((item) => item.taxPct > 0);
+    final hasDiscount = items.any((item) => item.discountPct > 0);
+
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300),
       children: [
@@ -319,8 +323,8 @@ class InvoicePdfService {
             _tableCell('Item', isHeader: true),
             _tableCell('Qty', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Rate', isHeader: true, align: pw.TextAlign.right),
-            _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
-            _tableCell('Disc %', isHeader: true, align: pw.TextAlign.center),
+            if (hasTax) _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
+            if (hasDiscount) _tableCell('Disc %', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Amount', isHeader: true, align: pw.TextAlign.right),
           ],
         ),
@@ -332,9 +336,9 @@ class InvoicePdfService {
                     align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
-                _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
+                if (hasTax) _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
-                _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
+                if (hasDiscount) _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.lineTotal),
                     align: pw.TextAlign.right,
@@ -687,6 +691,10 @@ class InvoicePdfService {
   }
 
   pw.Widget _buildQuoteItemsTable(List<QuoteItem> items) {
+    // Check if we need to show tax and discount columns
+    final hasTax = items.any((item) => item.taxPct > 0);
+    final hasDiscount = items.any((item) => item.discountPct > 0);
+
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300),
       children: [
@@ -697,8 +705,8 @@ class InvoicePdfService {
             _tableCell('Item', isHeader: true),
             _tableCell('Qty', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Rate', isHeader: true, align: pw.TextAlign.right),
-            _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
-            _tableCell('Disc %', isHeader: true, align: pw.TextAlign.center),
+            if (hasTax) _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
+            if (hasDiscount) _tableCell('Disc %', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Amount', isHeader: true, align: pw.TextAlign.right),
           ],
         ),
@@ -710,9 +718,9 @@ class InvoicePdfService {
                     align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
-                _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
+                if (hasTax) _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
-                _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
+                if (hasDiscount) _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.lineTotal),
                     align: pw.TextAlign.right,

@@ -93,7 +93,7 @@ class InvoicePdfService {
       ),
     );
 
-    return _savePdf(pdf, 'Quote_${quote.id}.pdf');
+    return _savePdf(pdf, 'Quote_${quote.quoteNo}.pdf');
   }
 
   // ── Invoice Components ─────────────────────────────────────────────────────
@@ -573,7 +573,7 @@ class InvoicePdfService {
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
-                  '#${quote.id}',
+                  quote.quoteNo,
                   style: pw.TextStyle(
                     fontSize: 16,
                     color: PdfColors.grey700,

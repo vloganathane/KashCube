@@ -49,6 +49,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final List<_LineItem> _items = [];
   final _notesController = TextEditingController();
   late final TextEditingController _customerCtrl;
+  late final TextEditingController _documentNoCtrl;
 
   Quote? _existingQuote;
   Invoice? _existingInvoice;
@@ -58,19 +59,31 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   void initState() {
     super.initState();
     _customerCtrl = TextEditingController();
+    _documentNoCtrl = TextEditingController();
     if (widget.docType == DocumentType.invoice) {
       if (widget.invoiceId != null) {
         _loadInvoice();
       } else {
         _dueDate = DateTime.now().add(const Duration(days: 30));
         _items.add(const _LineItem());
+        _initDocumentNumber();
       }
     } else {
       if (widget.quoteId != null) {
         _loadQuote();
       } else {
         _items.add(const _LineItem());
+        _initDocumentNumber();
       }
+    }
+  }
+
+  Future<void> _initDocumentNumber() async {
+    final number = widget.docType == DocumentType.invoice
+        ? await InvoiceNumberService.instance.nextInvoiceNo()
+        : await InvoiceNumberService.instance.nextQuoteNo();
+    if (mounted) {
+      _documentNoCtrl.text = number;
     }
   }
 
@@ -83,6 +96,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _existingQuote = quote;
       _customerName = quote.customerName;
       _customerCtrl.text = quote.customerName;
+      _documentNoCtrl.text = quote.quoteNo;
       _customerPartyId = quote.customerPartyId;
       _selectedBusinessId = quote.businessId;
       _validUntil = quote.validUntil ??
@@ -111,6 +125,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _existingInvoice = invoice;
       _customerName = invoice.customerName;
       _customerCtrl.text = invoice.customerName;
+      _documentNoCtrl.text = invoice.invoiceNo;
       _customerPartyId = invoice.customerPartyId;
       _selectedBusinessId = invoice.businessId;
       _issueDate = invoice.issueDate;
@@ -134,6 +149,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   void dispose() {
     _notesController.dispose();
     _customerCtrl.dispose();
+    _documentNoCtrl.dispose();
     super.dispose();
   }
 
@@ -227,8 +243,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final quote = Quote(
       id: _existingQuote?.id,
-      quoteNo: _existingQuote?.quoteNo ??
-          await InvoiceNumberService.instance.nextQuoteNo(),
+      quoteNo: _documentNoCtrl.text.trim().isEmpty
+          ? await InvoiceNumberService.instance.nextQuoteNo()
+          : _documentNoCtrl.text.trim(),
       businessId: businessId,
       customerPartyId: _customerPartyId,
       customerName: _customerName,
@@ -266,8 +283,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final invoice = Invoice(
       id: _existingInvoice?.id,
-      invoiceNo: _existingInvoice?.invoiceNo ??
-          await InvoiceNumberService.instance.nextInvoiceNo(),
+      invoiceNo: _documentNoCtrl.text.trim().isEmpty
+          ? await InvoiceNumberService.instance.nextInvoiceNo()
+          : _documentNoCtrl.text.trim(),
       businessId: businessId,
       customerPartyId: _customerPartyId,
       customerName: _customerName,
@@ -547,6 +565,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 );
               },
             ),
+
+            // Document number
+            TextFormField(
+              controller: _documentNoCtrl,
+              decoration: InputDecoration(
+                labelText: isInvoice ? 'Invoice Number' : 'Quote Number',
+                hintText: isInvoice ? 'INV-2026-001' : 'QUO-2026-001',
+                prefixIcon: const Icon(Icons.confirmation_number_outlined),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter ${isInvoice ? 'invoice' : 'quote'} number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.base),
 
             // Date fields
             if (isInvoice) ...[  

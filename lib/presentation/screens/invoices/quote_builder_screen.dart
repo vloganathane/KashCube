@@ -645,12 +645,25 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               onChanged: () => setState(() {}),
               onAddFromCatalog: (item) {
                 setState(() {
-                  _items.add(_LineItem(
-                    itemName: item.name,
-                    description: item.description ?? '',
-                    unitPrice: item.unitPrice,
-                    taxPct: item.taxPct,
-                  ));
+                  // If first item is empty, replace it instead of adding new one
+                  if (_items.length == 1 && 
+                      _items[0].itemName.isEmpty && 
+                      _items[0].unitPrice == 0) {
+                    _items[0] = _LineItem(
+                      itemName: item.name,
+                      description: item.description ?? '',
+                      unitPrice: item.unitPrice,
+                      taxPct: item.taxPct,
+                    );
+                  } else {
+                    // Otherwise add as new item
+                    _items.add(_LineItem(
+                      itemName: item.name,
+                      description: item.description ?? '',
+                      unitPrice: item.unitPrice,
+                      taxPct: item.taxPct,
+                    ));
+                  }
                 });
                 // Track usage for smart sorting
                 if (item.id != null) {
@@ -877,6 +890,25 @@ class _LineItemRowState extends State<_LineItemRow> {
     _taxCtrl.dispose();
     _discCtrl.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_LineItemRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update controllers when item changes (e.g., from catalog selection)
+    if (oldWidget.item != widget.item) {
+      _nameCtrl.text = widget.item.itemName;
+      _qtyCtrl.text = widget.item.qty.toString();
+      _priceCtrl.text = widget.item.unitPrice == 0
+          ? ''
+          : widget.item.unitPrice.toStringAsFixed(2);
+      _taxCtrl.text = widget.item.taxPct == 0
+          ? ''
+          : widget.item.taxPct.toStringAsFixed(1);
+      _discCtrl.text = widget.item.discountPct == 0
+          ? ''
+          : widget.item.discountPct.toStringAsFixed(1);
+    }
   }
 
   void _emit() {

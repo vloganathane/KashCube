@@ -815,110 +815,146 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.base,
-        right: AppSpacing.base,
-        top: AppSpacing.base,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.base,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('Edit Party',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            // ── Pick from contacts ─────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base, AppSpacing.base, AppSpacing.base, AppSpacing.xl),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle indicator
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.base),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Edit Party',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              // Pick from contacts
+              OutlinedButton.icon(
                 onPressed: _pickFromContacts,
                 icon: const Icon(Icons.contacts_outlined, size: 18),
                 label: const Text('Pick from Contacts'),
-                style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact),
               ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.sm,
-              children: PartyType.values.map((t) {
-                final selected = _type == t;
-                return ChoiceChip(
-                  label: Text(t.label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _type = t),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextFormField(
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
+              const SizedBox(height: AppSpacing.base),
+
+              // Party Type
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: PartyType.values.map((t) {
+                  final selected = _type == t;
+                  return ChoiceChip(
+                    label: Text(t.label),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _type = t),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              // Party Name
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(
                   labelText: 'Name *',
-                  prefixIcon: Icon(Icons.person_outline)),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                  labelText: 'Phone',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                  prefixText: '+91 '),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email_outlined)),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _gstin,
-              textCapitalization: TextCapitalization.characters,
-              maxLength: 15,
-              decoration: const InputDecoration(
+                  hintText: 'e.g. Ajay Kumar',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Phone + Email
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _phone,
+                      decoration: const InputDecoration(
+                        labelText: 'Phone',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.phone_outlined),
+                        prefixText: '+91 ',
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _email,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.email_outlined),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // GSTIN
+              TextFormField(
+                controller: _gstin,
+                decoration: const InputDecoration(
                   labelText: 'GSTIN',
+                  hintText: '22AAAAA0000A1Z5',
+                  border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.receipt_long_outlined),
-                  counterText: ''),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _address,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 2,
-              decoration: const InputDecoration(
+                  counterText: '',
+                ),
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 15,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Address
+              TextFormField(
+                controller: _address,
+                decoration: const InputDecoration(
                   labelText: 'Address',
-                  prefixIcon: Icon(Icons.location_on_outlined)),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _notes,
-              maxLines: 2,
-              decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Notes
+              TextFormField(
+                controller: _notes,
+                decoration: const InputDecoration(
                   labelText: 'Notes',
-                  prefixIcon: Icon(Icons.notes_outlined)),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+                maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              FilledButton(
                 onPressed: () {
                   if (!_formKey.currentState!.validate()) return;
                   final updated = widget.existing.copyWith(
@@ -946,8 +982,8 @@ class _EditPartySheetState extends ConsumerState<_EditPartySheet> {
                 },
                 child: const Text('Save Changes'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

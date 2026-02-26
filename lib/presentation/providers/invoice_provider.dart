@@ -57,6 +57,16 @@ class CatalogNotifier
     await _repo.delete(id);
     await load();
   }
+
+  Future<void> trackUsage(int itemId) async {
+    await _repo.trackUsage(itemId);
+    // Refresh list to reflect updated sort order (recently used items move up)
+    await load();
+  }
+
+  Future<String> generateNextSku(ItemCategory category) async {
+    return _repo.generateNextSku(category);
+  }
 }
 
 final catalogProvider =

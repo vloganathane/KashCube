@@ -19,6 +19,7 @@ class ItemCatalogScreen extends ConsumerStatefulWidget {
 class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
   String _search = '';
   final _searchCtrl = TextEditingController();
+  ItemCategory? _categoryFilter;
 
   @override
   void dispose() {
@@ -35,7 +36,13 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
         title:
             Text(widget.pickMode ? 'Pick Item' : 'Item Catalog'),
         actions: [
-          if (!widget.pickMode)
+          if (widget.pickMode)
+            TextButton.icon(
+              icon: const Icon(Icons.add_circle_outline, size: 20),
+              label: const Text('Create New'),
+              onPressed: () => _showItemSheet(context),
+            )
+          else
             IconButton(
               icon: const Icon(Icons.add),
               tooltip: 'Add Item',
@@ -75,6 +82,32 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
               onChanged: (v) => setState(() => _search = v),
             ),
           ),
+          // Category filter chips
+          SizedBox(
+            height: 48,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+              scrollDirection: Axis.horizontal,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: FilterChip(
+                    label: const Text('All'),
+                    selected: _categoryFilter == null,
+                    onSelected: (_) => setState(() => _categoryFilter = null),
+                  ),
+                ),
+                ...ItemCategory.values.map((cat) => Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                  child: FilterChip(
+                    label: Text(_categoryLabel(cat)),
+                    selected: _categoryFilter == cat,
+                    onSelected: (_) => setState(() => _categoryFilter = cat),
+                  ),
+                )),
+              ],
+            ),
+          ),
           Expanded(
             child: catalogAsync.when(
               loading: () =>
@@ -82,16 +115,27 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
               error: (e, _) =>
                   Center(child: Text('Error: $e')),
               data: (items) {
-                final filtered = _search.isEmpty
-                    ? items
-                    : items
-                        .where((i) =>
-                            i.name.toLowerCase().contains(
-                                _search.toLowerCase()) ||
-                            (i.description ?? '')
-                                .toLowerCase()
-                                .contains(_search.toLowerCase()))
-                        .toList();
+                // Apply filters: search + category
+                var filtered = items;
+                
+                // Search filter
+                if (_search.isNotEmpty) {
+                  filtered = filtered
+                      .where((i) =>
+                          i.name.toLowerCase().contains(
+                              _search.toLowerCase()) ||
+                          (i.description ?? '')
+                              .toLowerCase()
+                              .contains(_search.toLowerCase()))
+                      .toList();
+                }
+                
+                // Category filter
+                if (_categoryFilter != null) {
+                  filtered = filtered
+                      .where((i) => i.category == _categoryFilter)
+                      .toList();
+                }
 
                 if (filtered.isEmpty) {
                   return _EmptyState(
@@ -122,6 +166,23 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
         ],
       ),
     );
+  }
+
+  String _categoryLabel(ItemCategory cat) {
+    switch (cat) {
+      case ItemCategory.product:
+        return 'Products';
+      case ItemCategory.service:
+        return 'Services';
+      case ItemCategory.material:
+        return 'Materials';
+      case ItemCategory.labor:
+        return 'Labor';
+      case ItemCategory.equipment:
+        return 'Equipment';
+      case ItemCategory.other:
+        return 'Other';
+    }
   }
 
   Future<void> _showItemSheet(BuildContext context,
@@ -231,23 +292,26 @@ class _CatalogTile extends StatelessWidget {
 
 // ── Item Form Sheet ───────────────────────────────────────────────────────────
 
-class _ItemFormSheet extends StatefulWidget {
+class _ItemFormSheet extends ConsumerStatefulWidget {
   const _ItemFormSheet({this.item, required this.onSave});
   final ItemCatalog? item;
   final Future<void> Function(ItemCatalog) onSave;
 
   @override
-  State<_ItemFormSheet> createState() => _ItemFormSheetState();
+  ConsumerState<_ItemFormSheet> createState() => _ItemFormSheetState();
 }
 
-class _ItemFormSheetState extends State<_ItemFormSheet> {
+class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _skuCtrl;
   late final TextEditingController _unitCtrl;
   late final TextEditingController _priceCtrl;
   late final TextEditingController _taxCtrl;
   late final TextEditingController _hsnCtrl;
+  late ItemCategory _category;
+  late bool _isFavorite;
   bool _saving = false;
 
   @override
@@ -257,6 +321,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     _nameCtrl = TextEditingController(text: item?.name ?? '');
     _descCtrl =
         TextEditingController(text: item?.description ?? '');
+    _skuCtrl = TextEditingController(text: item?.sku ?? '');
     _unitCtrl = TextEditingController(text: item?.unit ?? '');
     _priceCtrl = TextEditingController(
         text: item == null ? '' : item.unitPrice.toStringAsFixed(2));
@@ -267,6 +332,20 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                 ? ''
                 : item.taxPct.toStringAsFixed(1)));
     _hsnCtrl = TextEditingController(text: item?.hsnCode ?? '');
+    _category = item?.category ?? ItemCategory.product;
+    _isFavorite = item?.isFavorite ?? false;
+    
+    // Auto-generate SKU for new items
+    if (item == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final sku = await ref
+            .read(catalogProvider.notifier)
+            .generateNextSku(_category);
+        if (mounted) {
+          _skuCtrl.text = sku;
+        }
+      });
+    }
   }
 
   @override
@@ -274,6 +353,7 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
     for (final c in [
       _nameCtrl,
       _descCtrl,
+      _skuCtrl,
       _unitCtrl,
       _priceCtrl,
       _taxCtrl,
@@ -294,6 +374,9 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       description: _descCtrl.text.trim().isEmpty
           ? null
           : _descCtrl.text.trim(),
+      sku: _skuCtrl.text.trim().isEmpty
+          ? null
+          : _skuCtrl.text.trim(),
       unit: _unitCtrl.text.trim().isEmpty
           ? 'pcs'
           : _unitCtrl.text.trim(),
@@ -302,11 +385,36 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
       hsnCode: _hsnCtrl.text.trim().isEmpty
           ? null
           : _hsnCtrl.text.trim(),
+      category: _category,
+      isFavorite: _isFavorite,
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
     await widget.onSave(item);
     if (mounted) Navigator.pop(context);
+  }
+
+  String _categoryDisplayName(ItemCategory cat) {
+    switch (cat) {
+      case ItemCategory.product:
+        return 'Product';
+      case ItemCategory.service:
+        return 'Service';
+      case ItemCategory.material:
+        return 'Material';
+      case ItemCategory.labor:
+        return 'Labor';
+      case ItemCategory.equipment:
+        return 'Equipment';
+      case ItemCategory.other:
+        return 'Other';
+    }
+  }
+
+  bool _isAutoGeneratedSku(String sku) {
+    // Check if SKU matches auto-generated pattern: PREFIX-NNN
+    final pattern = RegExp(r'^(PROD|SERV|MATL|LABR|EQUP|OTHR)-\d{3}$');
+    return pattern.hasMatch(sku);
   }
 
   @override
@@ -338,12 +446,49 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
+                controller: _skuCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'SKU / Item Code',
+                  border: OutlineInputBorder(),
+                  hintText: 'e.g., PROD-001',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
                 controller: _descCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Description',
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              DropdownButtonFormField<ItemCategory>(
+                value: _category,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: ItemCategory.values.map((cat) {
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text(_categoryDisplayName(cat)),
+                  );
+                }).toList(),
+                onChanged: (val) async {
+                  if (val != null) {
+                    setState(() => _category = val);
+                    // Auto-update SKU if it's still in auto-generated format
+                    if (_isAutoGeneratedSku(_skuCtrl.text)) {
+                      final newSku = await ref
+                          .read(catalogProvider.notifier)
+                          .generateNextSku(val);
+                      if (mounted) {
+                        _skuCtrl.text = newSku;
+                      }
+                    }
+                  }
+                },
               ),
               const SizedBox(height: AppSpacing.sm),
               Row(
@@ -404,6 +549,14 @@ class _ItemFormSheetState extends State<_ItemFormSheet> {
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                value: _isFavorite,
+                onChanged: (val) => setState(() => _isFavorite = val),
+                title: const Text('Mark as Favorite'),
+                subtitle: const Text('Show this item at the top of the list'),
+                contentPadding: EdgeInsets.zero,
+              ),
               const SizedBox(height: AppSpacing.base),
               FilledButton(
                 onPressed: _saving ? null : _submit,
@@ -458,16 +611,16 @@ class _EmptyState extends StatelessWidget {
               hasSearch
                   ? 'Try a different search.'
                   : pickMode
-                      ? 'Add items from the catalog screen.'
+                      ? 'Create your first item to get started.'
                       : 'Add products or services you frequently bill.',
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
-            if (!pickMode && !hasSearch) ...[
+            if (!hasSearch) ...[
               const SizedBox(height: AppSpacing.xl),
               FilledButton.icon(
                 icon: const Icon(Icons.add),
-                label: const Text('Add First Item'),
+                label: Text(pickMode ? 'Create Item' : 'Add First Item'),
                 onPressed: onAdd,
               ),
             ],

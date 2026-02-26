@@ -389,14 +389,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             _LineItemsSection(
               items: _items,
               onChanged: () => setState(() {}),
-              onAddFromCatalog: (item) => setState(() {
-                _items.add(_LineItem(
-                  itemName: item.name,
-                  description: item.description ?? '',
-                  unitPrice: item.unitPrice,
-                  taxPct: item.taxPct,
-                ));
-              }),
+              onAddFromCatalog: (item) {
+                setState(() {
+                  _items.add(_LineItem(
+                    itemName: item.name,
+                    description: item.description ?? '',
+                    unitPrice: item.unitPrice,
+                    taxPct: item.taxPct,
+                  ));
+                });
+                // Track usage for smart sorting
+                if (item.id != null) {
+                  ref
+                      .read(catalogProvider.notifier)
+                      .trackUsage(item.id!);
+                }
+              },
             ),
             const SizedBox(height: AppSpacing.base),
 

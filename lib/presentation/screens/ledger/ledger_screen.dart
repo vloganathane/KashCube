@@ -74,11 +74,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               MaterialPageRoute(builder: (_) => const PartiesScreen()),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-            onPressed: () => ref.read(ledgerSummariesProvider.notifier).refresh(),
-          ),
         ],
         bottom: TabBar(
           controller: _tabController,

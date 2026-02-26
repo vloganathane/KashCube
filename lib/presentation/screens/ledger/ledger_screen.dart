@@ -41,6 +41,32 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   _LedgerFilter _filter = _LedgerFilter.all;
   late final TabController _tabController;
   _ModeTab get _modeTab => _ModeTab.values[_tabController.index];
+  
+  // Search and filter state
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+  
+  // Advanced filters
+  double? _minBalance;
+  double? _maxBalance;
+  int? _minTransactionCount;
+  bool? _onlyOutstanding;
+
+  bool get _hasAdvancedFilters =>
+      _minBalance != null ||
+      _maxBalance != null ||
+      _minTransactionCount != null ||
+      _onlyOutstanding != null;
+
+  void _clearAdvancedFilters() {
+    setState(() {
+      _minBalance = null;
+      _maxBalance = null;
+      _minTransactionCount = null;
+      _onlyOutstanding = null;
+    });
+  }
 
   @override
   void initState() {
@@ -56,6 +82,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -65,8 +92,38 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ledger'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search parties...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              )
+            : const Text('Ledger'),
         actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+              });
+            },
+          ),
+          Badge(
+            isLabelVisible: _hasAdvancedFilters,
+            child: IconButton(
+              icon: const Icon(Icons.tune),
+              tooltip: 'Filters',
+              onPressed: () => _showFilterSheet(context),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.people_outline),
             tooltip: 'Manage Parties',
@@ -154,7 +211,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   }
 
   List<LedgerPartyEntry> _applyFilter(List<LedgerPartyEntry> all) {
-    return switch (_filter) {
+    var filtered = switch (_filter) {
       _LedgerFilter.all         => all,
       _LedgerFilter.outstanding => all.where((e) => e.hasOutstanding).toList(),
       _LedgerFilter.lent        => all.where((e) => e.netLendingBalance > 0.01).toList(),
@@ -162,9 +219,74 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
       _LedgerFilter.investments => all.where((e) => e.netInvestment > 0.01).toList(),
       _LedgerFilter.cleared     => all.where((e) => e.isCleared).toList(),
     };
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((e) {
+        return e.partyName.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Apply advanced filters
+    if (_minBalance != null) {
+      filtered = filtered.where((e) {
+        final balance = (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment).abs();
+        return balance >= _minBalance!;
+      }).toList();
+    }
+    if (_maxBalance != null) {
+      filtered = filtered.where((e) {
+        final balance = (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment).abs();
+        return balance <= _maxBalance!;
+      }).toList();
+    }
+    if (_minTransactionCount != null) {
+      filtered = filtered.where((e) => e.transactionCount >= _minTransactionCount!).toList();
+    }
+    if (_onlyOutstanding == true) {
+      filtered = filtered.where((e) => e.hasOutstanding).toList();
+    }
+
+    return filtered;
   }
 
   Widget _buildEmpty() {
+    // Show search/filter specific message
+    if (_searchQuery.isNotEmpty || _hasAdvancedFilters) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 64,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              Text(
+                'No matching parties',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Try a different search term or filter',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final modeLabel = switch (_modeTab) {
       _ModeTab.all      => '',
       _ModeTab.personal => 'personal ',
@@ -207,6 +329,214 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showFilterSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _LedgerAdvancedFilterSheet(
+        minBalance: _minBalance,
+        maxBalance: _maxBalance,
+        minTransactionCount: _minTransactionCount,
+        onlyOutstanding: _onlyOutstanding,
+        onApply: (minBal, maxBal, minTxn, onlyOut) {
+          setState(() {
+            _minBalance = minBal;
+            _maxBalance = maxBal;
+            _minTransactionCount = minTxn;
+            _onlyOutstanding = onlyOut;
+          });
+        },
+        onClear: _clearAdvancedFilters,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Advanced filter bottom sheet
+// ---------------------------------------------------------------------------
+
+class _LedgerAdvancedFilterSheet extends StatefulWidget {
+  const _LedgerAdvancedFilterSheet({
+    required this.minBalance,
+    required this.maxBalance,
+    required this.minTransactionCount,
+    required this.onlyOutstanding,
+    required this.onApply,
+    required this.onClear,
+  });
+
+  final double? minBalance;
+  final double? maxBalance;
+  final int? minTransactionCount;
+  final bool? onlyOutstanding;
+  final void Function(double?, double?, int?, bool?) onApply;
+  final VoidCallback onClear;
+
+  @override
+  State<_LedgerAdvancedFilterSheet> createState() =>
+      _LedgerAdvancedFilterSheetState();
+}
+
+class _LedgerAdvancedFilterSheetState
+    extends State<_LedgerAdvancedFilterSheet> {
+  late double? _minBalance;
+  late double? _maxBalance;
+  late int? _minTransactionCount;
+  late bool? _onlyOutstanding;
+
+  final _minBalanceController = TextEditingController();
+  final _maxBalanceController = TextEditingController();
+  final _minTxnController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _minBalance = widget.minBalance;
+    _maxBalance = widget.maxBalance;
+    _minTransactionCount = widget.minTransactionCount;
+    _onlyOutstanding = widget.onlyOutstanding;
+
+    if (_minBalance != null) {
+      _minBalanceController.text = _minBalance!.toStringAsFixed(0);
+    }
+    if (_maxBalance != null) {
+      _maxBalanceController.text = _maxBalance!.toStringAsFixed(0);
+    }
+    if (_minTransactionCount != null) {
+      _minTxnController.text = _minTransactionCount.toString();
+    }
+  }
+
+  @override
+  void dispose() {
+    _minBalanceController.dispose();
+    _maxBalanceController.dispose();
+    _minTxnController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: AppSpacing.base,
+        right: AppSpacing.base,
+        top: AppSpacing.base,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.base,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Advanced Filters',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              TextButton(
+                onPressed: () {
+                  widget.onClear();
+                  Navigator.pop(context);
+                },
+                child: const Text('Clear All'),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Balance range
+          Text(
+            'Balance Range',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _minBalanceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Min ₹',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (val) {
+                    _minBalance = double.tryParse(val);
+                  },
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: TextField(
+                  controller: _maxBalanceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Max ₹',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (val) {
+                    _maxBalance = double.tryParse(val);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Min transaction count
+          Text(
+            'Minimum Transactions',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: _minTxnController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Min transaction count',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (val) {
+              _minTransactionCount = int.tryParse(val);
+            },
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Only outstanding
+          CheckboxListTile(
+            value: _onlyOutstanding ?? false,
+            onChanged: (val) {
+              setState(() {
+                _onlyOutstanding = val;
+              });
+            },
+            title: const Text('Only Outstanding Balances'),
+            contentPadding: EdgeInsets.zero,
+            controlAffinity: ListTileControlAffinity.leading,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Apply button
+          FilledButton(
+            onPressed: () {
+              widget.onApply(
+                _minBalance,
+                _maxBalance,
+                _minTransactionCount,
+                _onlyOutstanding,
+              );
+              Navigator.pop(context);
+            },
+            child: const Text('Apply Filters'),
+          ),
+        ],
       ),
     );
   }

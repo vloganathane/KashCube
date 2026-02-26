@@ -116,7 +116,7 @@ class InvoicePdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: pw.BoxDecoration(
-        color: color.withAlpha(50),
+        color: PdfColors.grey200,
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Text(
@@ -422,7 +422,7 @@ class InvoicePdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: pw.BoxDecoration(
-        color: color.withAlpha(50),
+        color: PdfColors.grey200,
         borderRadius: pw.BorderRadius.circular(4),
       ),
       child: pw.Text(

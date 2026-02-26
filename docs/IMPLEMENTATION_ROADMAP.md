@@ -589,7 +589,14 @@ invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
 
 **Tasks:**
 - [ ] Add `businessModeEnabled` to Settings
-- [ ] Item catalog screen: add/edit products & services with price + tax %
+- [x] Item catalog screen: add/edit products & services with price + tax % + SKU + categories
+  - [x] 6 category types (Product, Service, Material, Labor, Equipment, Other)
+  - [x] Auto-SKU generation (PROD-001, SERV-001 format)
+  - [x] Category filter chips in catalog view
+  - [x] Smart sorting: favorites → recently used → most used → alphabetical
+  - [x] Usage tracking when items picked in quotes
+  - [x] Item picker with "Create New" button in pickMode
+  - [x] Favorite toggle for frequently used items
 - [ ] Quote builder: pick customer (from parties), add items, apply discount, save draft
 - [ ] Quote → Invoice conversion (one tap; auto-assign INV-YYYY-NNN)
 - [ ] Invoice payment recording → auto-creates `Transaction(type: income)` in main ledger
@@ -615,11 +622,13 @@ Invoice overdue: "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pendin
 
 **Deliverables:**
 - Business Mode off by default — personal users see nothing new
+- ✅ Item catalog complete: 6 categories, auto-SKU (PROD-001 format), smart sorting, usage tracking
+- ✅ Category filters and favorites in catalog view
 - Full quote → invoice → payment → ledger pipeline working locally
 - PDF invoice shareable via WhatsApp / email
 - Transaction bridge: paid invoice = income entry in main dashboard
 
-**Time Estimate:** 60 hours
+**Time Estimate:** 60 hours (catalog: 15h complete, remaining: 45h)
 
 ---
 
@@ -940,11 +949,11 @@ Device B: Import → decrypt with own key → merge event log
 9. ✅ Week 6 tasks (Data & Security) — complete
 10. ✅ Week 7 tasks (Unified Transaction Model, Transfer type, multi-account) — complete
 11. ✅ Week 7.5 tasks (Bills & Payments unification, ScheduledPayment model, DB v10) — complete
-12. Begin Week 9 Part B — Party Management (phone/email/contact picker/reminders)
-13. Then Week 21-22 — Billing & Invoicing
-14. Week 8 Budgets → folded into Pro tier (Week 19-20)
+12. ✅ Item Catalog with auto-SKU, categories, smart sorting, usage tracking — complete
+13. 🔄 Continue Week 21-22 — Quote builder, invoice conversion, PDF export
+14. Week 9 Part B — Party Management (deferred until after billing basics)
 
-### This Month (Weeks 1-7)
+### This Month (Weeks 1-7+)
 - ✅ Complete transaction foundation (Week 1-2)
 - ✅ Build credit management (Week 3-4)
 - ✅ Reports, search, filters, loan tracking (Week 5)
@@ -953,7 +962,8 @@ Device B: Import → decrypt with own key → merge event log
 - ✅ Unified Transaction Model v7+v8, Transfer type, multi-account (Week 7)
 - ✅ Phase 1.5 — Complete
 - ✅ Bills & Payments UX Overhaul (Week 7.5) — Complete
-- 🔜 Week 9 Part B: Party Management → then Billing (Week 21-22)
+- ✅ Item Catalog: categories, auto-SKU, smart sorting, usage tracking
+- 🔄 Week 21-22: Quote builder, invoice conversion, PDF sharing (in progress)
 
 ### Overall Progress
 | Week | Status | Key Deliverables |
@@ -966,12 +976,13 @@ Device B: Import → decrypt with own key → merge event log
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
 | Week 7 | ✅ Complete (9/9 + extras) | Unified model v7+v8, 9 types, progressive form, Ledger rebuild, Transfer type, multi-account, custom icon |
 | Week 7.5 | ✅ Complete | ScheduledPayment model, BillsAndPaymentsScreen, speed-dial FAB, DB v10 |
+| Week 21-22 (partial) | 🔄 In Progress (2/9) | Item catalog with categories, auto-SKU, smart sorting, usage tracking |
 
-**Codebase:** ~85 Dart files in `lib/`, 0 lint issues  
-**Database:** SQLite v10 (transactions + accounts + scheduled_payments + 9 other tables)  
+**Codebase:** ~90 Dart files in `lib/`, 0 lint issues  
+**Database:** SQLite v10 (transactions + accounts + scheduled_payments + item_catalog + 8 other tables)  
 **Phase 1 MVP:** COMPLETE  
 **Phase 1.5 (Unified Model + Bills & Payments):** COMPLETE  
-**Current Phase:** Phase 2 (Scale Features) — starting Week 8
+**Current Phase:** Phase 2 (Scale Features) + Week 21-22 (Billing) in progress
 
 ### This Quarter (Weeks 1-12)
 - Launch MVP

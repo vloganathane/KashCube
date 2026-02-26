@@ -301,6 +301,13 @@ Add/Edit Catalog Item screen:
 
 **Design Principle:** Invoice payment → Transaction creation is fully automatic. Zero manual entry, impossible to forget.
 
+> **📋 Note:** This is an **invoice-layer enhancement** (Week 21-22) that benefits bookings and all invoice types. The bookings feature simply triggers invoice creation; the automatic transaction creation is universal and works for:
+> - ✅ Booking invoices (from [Complete & Paid])
+> - ✅ Quote invoices (converted quote → [Mark as Paid])
+> - ✅ Standalone invoices (created directly → [Mark as Paid])
+>
+> This design lives here because bookings are the **primary driver** for this enhancement — service businesses can't afford manual transaction entry after every appointment.
+
 #### Flow 1: [Complete & Paid] (One-Tap Payment Recording)
 
 ```dart

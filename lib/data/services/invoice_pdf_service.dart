@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -6,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import '../models/business.dart';
 import '../models/invoice.dart';
 import '../models/quote.dart';
-import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_formatter.dart';
 
 /// Service for generating PDF documents for invoices and quotes.
@@ -15,16 +15,46 @@ class InvoicePdfService {
   InvoicePdfService._();
   static final instance = InvoicePdfService._();
 
+  // PDF-friendly currency formatter (uses "Rs." instead of ₹ symbol)
+  static final _indianFormat = NumberFormat.currency(
+    locale: 'en_IN',
+    symbol: 'Rs.',
+    decimalDigits: 0,
+  );
+
+  /// Format amount for PDF (using Rs. prefix that renders correctly)
+  String _formatCurrency(double amount) {
+    return _indianFormat.format(amount.abs());
+  }
+
+  /// Load business logo from file system if available
+  Future<pw.MemoryImage?> _loadBusinessLogo(Business business) async {
+    if (business.logoPath == null || business.logoPath!.isEmpty) {
+      return null;
+    }
+    try {
+      final file = File(business.logoPath!);
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        return pw.MemoryImage(bytes);
+      }
+    } catch (e) {
+      // Logo load failed, continue without it
+    }
+    return null;
+  }
+
   /// Generate PDF for an invoice with GST breakdown.
   Future<File> generateInvoicePdf(Invoice invoice, {Business? business}) async {
     final pdf = pw.Document();
+    final logo = business != null ? await _loadBusinessLogo(business) : null;
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          _buildInvoiceHeader(invoice, business: business),
+          _buildInvoiceHeader(invoice, business: business, logo: logo),
           pw.SizedBox(height: 24),
           _buildInvoiceDetails(invoice),
           pw.SizedBox(height: 24),
@@ -43,13 +73,14 @@ class InvoicePdfService {
   /// Generate PDF for a quote.
   Future<File> generateQuotePdf(Quote quote, {Business? business}) async {
     final pdf = pw.Document();
+    final logo = business != null ? await _loadBusinessLogo(business) : null;
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(32),
         build: (context) => [
-          _buildQuoteHeader(quote, business: business),
+          _buildQuoteHeader(quote, business: business, logo: logo),
           pw.SizedBox(height: 24),
           _buildQuoteDetails(quote),
           pw.SizedBox(height: 24),
@@ -67,7 +98,7 @@ class InvoicePdfService {
 
   // ── Invoice Components ─────────────────────────────────────────────────────
 
-  pw.Widget _buildInvoiceHeader(Invoice invoice, {Business? business}) {
+  pw.Widget _buildInvoiceHeader(Invoice invoice, {Business? business, pw.MemoryImage? logo}) {
     return pw.Column(
       children: [
         // Business info if available
@@ -75,18 +106,25 @@ class InvoicePdfService {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Container(
-                width: 300,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      business.name,
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (logo != null) ...[
+                    pw.Image(logo, width: 60, height: 60),
+                    pw.SizedBox(width: 16),
+                  ],
+                  pw.Container(
+                    width: logo != null? 240 : 300,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          business.name,
+                          style: pw.TextStyle(
+                            fontSize: 18,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                     if (business.gstNo != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
@@ -126,12 +164,14 @@ class InvoicePdfService {
               ),
             ],
           ),
-          pw.SizedBox(height: 24),
-          pw.Divider(),
-          pw.SizedBox(height: 16),
         ],
-        // Invoice header
-        pw.Row(
+      ),
+      pw.SizedBox(height: 24),
+      pw.Divider(),
+      pw.SizedBox(height: 16),
+    ],
+    // Invoice header
+    pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -290,13 +330,13 @@ class InvoicePdfService {
                 _tableCell(_buildItemName(item.itemName, item.description)),
                 _tableCell(item.qty.toString(),
                     align: pw.TextAlign.center),
-                _tableCell(CurrencyFormatter.format(item.unitPrice),
+                _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
                 _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
                 _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
-                _tableCell(CurrencyFormatter.format(item.lineTotal),
+                _tableCell(_formatCurrency(item.lineTotal),
                     align: pw.TextAlign.right,
                     isBold: true),
               ],
@@ -401,7 +441,7 @@ class InvoicePdfService {
             ),
           ),
           pw.Text(
-            CurrencyFormatter.format(amount),
+            _formatCurrency(amount),
             style: pw.TextStyle(
               fontSize: isLarge ? 16 : 12,
               fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
@@ -438,7 +478,7 @@ class InvoicePdfService {
 
   // ── Quote Components ───────────────────────────────────────────────────────
 
-  pw.Widget _buildQuoteHeader(Quote quote, {Business? business}) {
+  pw.Widget _buildQuoteHeader(Quote quote, {Business? business, pw.MemoryImage? logo}) {
     return pw.Column(
       children: [
         // Business info if available
@@ -446,18 +486,25 @@ class InvoicePdfService {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Container(
-                width: 300,
-                child: pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      business.name,
-                      style: pw.TextStyle(
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (logo != null) ...[
+                    pw.Image(logo, width: 60, height: 60),
+                    pw.SizedBox(width: 16),
+                  ],
+                  pw.Container(
+                    width: logo != null ? 240 : 300,
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          business.name,
+                          style: pw.TextStyle(
+                            fontSize: 18,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
                     if (business.gstNo != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
@@ -497,12 +544,14 @@ class InvoicePdfService {
               ),
             ],
           ),
-          pw.SizedBox(height: 24),
-          pw.Divider(),
-          pw.SizedBox(height: 16),
         ],
-        // Quote header
-        pw.Row(
+      ),
+      pw.SizedBox(height: 24),
+      pw.Divider(),
+      pw.SizedBox(height: 16),
+    ],
+    // Quote header
+    pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
@@ -659,13 +708,13 @@ class InvoicePdfService {
                 _tableCell(_buildItemName(item.itemName, item.description)),
                 _tableCell(item.qty.toString(),
                     align: pw.TextAlign.center),
-                _tableCell(CurrencyFormatter.format(item.unitPrice),
+                _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
                 _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
                 _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
                     align: pw.TextAlign.center),
-                _tableCell(CurrencyFormatter.format(item.lineTotal),
+                _tableCell(_formatCurrency(item.lineTotal),
                     align: pw.TextAlign.right,
                     isBold: true),
               ],

@@ -197,10 +197,10 @@ class _HeaderCard extends StatelessWidget {
                   _InfoRow(
                       icon: Icons.receipt_long_outlined,
                       text: party.gstin!),
-                if (party.address != null)
+                if (party.formattedAddress != null)
                   _InfoRow(
                       icon: Icons.location_on_outlined,
-                      text: party.address!),
+                      text: party.formattedAddress!),
                 if (party.notes != null)
                   _InfoRow(
                       icon: Icons.notes_outlined, text: party.notes!),

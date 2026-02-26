@@ -73,6 +73,17 @@ class Party extends Equatable {
   /// Net credit balance for this party (given - received).
   double get netCredit => totalCreditGiven - totalCreditReceived;
 
+  /// Formatted full address for display (street, city, state, pincode).
+  String? get formattedAddress {
+    final parts = <String>[
+      if (address != null && address!.isNotEmpty) address!,
+      if (city != null && city!.isNotEmpty) city!,
+      if (state != null && state!.isNotEmpty) state!,
+      if (pincode != null && pincode!.isNotEmpty) pincode!,
+    ];
+    return parts.isEmpty ? null : parts.join(', ');
+  }
+
   Party copyWith({
     int? id,
     String? name,

@@ -7,6 +7,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/recurring_transaction.dart';
 import '../../providers/recurring_provider.dart';
+import '../../widgets/party_picker_field.dart';
 
 final _dateFormat = DateFormat('dd MMM yyyy');
 final _currencyFormat = NumberFormat.currency(
@@ -436,12 +437,9 @@ class _AddRecurringTransactionScreenState
             const SizedBox(height: AppSpacing.base),
 
             // Party name
-            TextFormField(
+            PartyPickerField(
               controller: _partyController,
-              decoration: const InputDecoration(
-                labelText: 'Party (optional)',
-                border: OutlineInputBorder(),
-              ),
+              labelText: 'Party (optional)',
             ),
             const SizedBox(height: AppSpacing.base),
 

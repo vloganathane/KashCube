@@ -10,6 +10,7 @@ import '../../../data/models/loan_payment.dart';
 import '../../providers/loan_payment_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/party_picker_field.dart';
 
 // ---------------------------------------------------------------------------
 // Loans Screen
@@ -842,7 +843,6 @@ class _AddLedgerEntryScreenState
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
-    final partyNamesAsync = ref.watch(loanPartyNamesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -965,45 +965,14 @@ class _AddLedgerEntryScreenState
             ),
             const SizedBox(height: AppSpacing.base),
 
-            // Party name with autocomplete
-            Autocomplete<String>(
-              initialValue:
-                  TextEditingValue(text: _nameController.text),
-              optionsBuilder: (textEditingValue) {
-                final names = partyNamesAsync.valueOrNull ?? [];
-                if (textEditingValue.text.isEmpty) {
-                  return names.take(5);
-                }
-                return names.where((n) => n
-                    .toLowerCase()
-                    .contains(textEditingValue.text.toLowerCase()));
-              },
-              onSelected: (selection) {
-                _nameController.text = selection;
-              },
-              fieldViewBuilder:
-                  (context, controller, focusNode, onFieldSubmitted) {
-                _nameController.text = controller.text;
-                controller.addListener(() {
-                  _nameController.text = controller.text;
-                });
-                return TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  decoration: InputDecoration(
-                    labelText: _direction == LoanDirection.lent
-                        ? 'Borrower Name *'
-                        : 'Lender Name *',
-                    border: const OutlineInputBorder(),
-                    prefixIcon:
-                        const Icon(Icons.person_outline),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                  validator: (v) => v == null || v.trim().isEmpty
-                      ? 'Required'
-                      : null,
-                );
-              },
+            // Party name with picker
+            PartyPickerField(
+              controller: _nameController,
+              labelText: _direction == LoanDirection.lent
+                  ? 'Borrower Name *'
+                  : 'Lender Name *',
+              validator: (v) =>
+                  v == null || v.trim().isEmpty ? 'Required' : null,
             ),
             const SizedBox(height: AppSpacing.base),
 

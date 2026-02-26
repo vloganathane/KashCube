@@ -44,7 +44,9 @@ class HomeScreen extends ConsumerWidget {
               title: Row(
                 children: [
                   Image.asset(
-                    'assets/logo.png',
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/logo-white.png'
+                        : 'assets/logo.png',
                     height: 28,
                     width: 28,
                   ),

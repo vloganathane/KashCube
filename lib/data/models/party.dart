@@ -28,6 +28,8 @@ class Party extends Equatable {
     required this.name,
     this.phoneNumber,
     this.email,
+    this.gstin,
+    this.address,
     required this.partyType,
     this.totalTransactions = 0,
     this.totalTransactionAmount = 0,
@@ -44,6 +46,10 @@ class Party extends Equatable {
   final String name;
   final String? phoneNumber;
   final String? email;
+  /// GST Identification Number — stored locally, never validated via network.
+  final String? gstin;
+  /// Physical address — stored locally, never transmitted.
+  final String? address;
   final PartyType partyType;
   final int totalTransactions;
   final double totalTransactionAmount;
@@ -63,6 +69,8 @@ class Party extends Equatable {
     String? name,
     String? phoneNumber,
     String? email,
+    String? gstin,
+    String? address,
     PartyType? partyType,
     int? totalTransactions,
     double? totalTransactionAmount,
@@ -79,6 +87,8 @@ class Party extends Equatable {
       name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       email: email ?? this.email,
+      gstin: gstin ?? this.gstin,
+      address: address ?? this.address,
       partyType: partyType ?? this.partyType,
       totalTransactions: totalTransactions ?? this.totalTransactions,
       totalTransactionAmount: totalTransactionAmount ?? this.totalTransactionAmount,
@@ -98,6 +108,8 @@ class Party extends Equatable {
       'name': name,
       'phone_number': phoneNumber,
       'email': email,
+      'gstin': gstin,
+      'address': address,
       'party_type': partyType.name,
       'total_transactions': totalTransactions,
       'total_transaction_amount': totalTransactionAmount,
@@ -117,6 +129,8 @@ class Party extends Equatable {
       name: map['name'] as String,
       phoneNumber: map['phone_number'] as String?,
       email: map['email'] as String?,
+      gstin: map['gstin'] as String?,
+      address: map['address'] as String?,
       partyType: PartyType.values.firstWhere(
         (e) => e.name == (map['party_type'] as String? ?? 'customer'),
         orElse: () => PartyType.customer,

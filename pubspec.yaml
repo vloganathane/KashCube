@@ -34,10 +34,16 @@ dependencies:
 
   # Share/Export
   share_plus: ^10.1.4
+  pdf: ^3.11.0
+  printing: ^5.13.0
 
   # Local Notifications (no network — 100% on-device)
   flutter_local_notifications: ^18.0.1
   timezone: ^0.10.1
+
+  # URL launching (WhatsApp/SMS/Email OS intents — no network calls made by app)
+  url_launcher: ^6.3.1
+  flutter_contacts: ^1.1.9+2  # One-shot OS picker + pre-filled insert — zero READ/WRITE_CONTACTS permission
 
   # Utilities
   equatable: ^2.0.7
@@ -63,6 +69,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/logo-white.png
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:

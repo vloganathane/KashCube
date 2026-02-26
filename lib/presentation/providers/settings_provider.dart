@@ -26,6 +26,8 @@ class SettingsKeys {
   static const biometricEnabled = 'biometric_enabled';
   static const themeMode = 'theme_mode';
   static const defaultAccountId = 'default_account_id';
+  static const businessModeEnabled = 'business_mode_enabled';
+  static const businessName = 'business_name';
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +143,55 @@ final backupListProvider = FutureProvider<List<BackupInfo>>((ref) async {
 
 final csvExportServiceProvider = Provider<CsvExportService>(
   (_) => CsvExportService.instance,
+);
+
+// ---------------------------------------------------------------------------
+// Business Mode
+// ---------------------------------------------------------------------------
+
+class BusinessModeNotifier extends StateNotifier<bool> {
+  BusinessModeNotifier(this._repo) : super(false) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    final v = await _repo.get(SettingsKeys.businessModeEnabled);
+    state = v == 'true';
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    await _repo.set(SettingsKeys.businessModeEnabled, enabled.toString());
+    state = enabled;
+  }
+}
+
+final businessModeProvider =
+    StateNotifierProvider<BusinessModeNotifier, bool>(
+  (ref) => BusinessModeNotifier(ref.read(settingsRepositoryProvider)),
+);
+
+class BusinessNameNotifier extends StateNotifier<String> {
+  BusinessNameNotifier(this._repo) : super('') {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    state = await _repo.get(SettingsKeys.businessName) ?? '';
+  }
+
+  Future<void> setName(String name) async {
+    await _repo.set(SettingsKeys.businessName, name);
+    state = name;
+  }
+}
+
+final businessNameProvider =
+    StateNotifierProvider<BusinessNameNotifier, String>(
+  (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
 );
 
 

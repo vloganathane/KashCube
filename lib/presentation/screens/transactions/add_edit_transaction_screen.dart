@@ -17,6 +17,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/suggestion_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/party_picker_field.dart';
 import '../../widgets/account_picker_sheet.dart';
 import '../../widgets/bill_picker.dart';
 
@@ -435,94 +436,30 @@ class _AddEditTransactionScreenState
   }
 
   Widget _buildPartyNameField() {
-    final knownNamesAsync = ref.watch(knownPartyNamesProvider);
-    final knownNames = knownNamesAsync.valueOrNull ?? [];
-
-    return Autocomplete<String>(
-      initialValue: _partyNameController.value,
-      optionsBuilder: (textEditingValue) {
-        if (textEditingValue.text.isEmpty) return const [];
-        final query = textEditingValue.text.toLowerCase();
-        return knownNames
-            .where((name) => name.toLowerCase().contains(query))
-            .take(5);
-      },
-      onSelected: (selected) {
-        _partyNameController.text = selected;
-        _fetchSuggestionForParty(selected);
-      },
-      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-        // Sync the external controller
-        controller.text = _partyNameController.text;
-        controller.addListener(() {
-          if (_partyNameController.text != controller.text) {
-            _partyNameController.text = controller.text;
-          }
-        });
-
-        final partyRequired = _type.requiresParty;
-        final partyLabel = switch (_type) {
-          TransactionType.lent => 'Borrower Name *',
-          TransactionType.borrowed => 'Lender Name *',
-          TransactionType.invested => 'Institution / Fund *',
-          TransactionType.redeemed => 'Institution / Fund *',
-          TransactionType.receivedBack => 'Party Name *',
-          TransactionType.paidBack => 'Party Name *',
-          _ => 'Party / Merchant (optional)',
-        };
-        final partyHint = switch (_type) {
-          TransactionType.lent => 'e.g. Ramesh, Priya',
-          TransactionType.borrowed => 'e.g. Bank, Friend',
-          TransactionType.invested => 'e.g. Zerodha, SBI MF',
-          _ => 'e.g. Swiggy, Ramesh',
-        };
-        return TextFormField(
-          controller: controller,
-          focusNode: focusNode,
-          decoration: InputDecoration(
-            labelText: partyLabel,
-            prefixIcon: const Icon(Icons.person_outline),
-            hintText: partyHint,
-          ),
-          textCapitalization: TextCapitalization.words,
-          textInputAction: TextInputAction.next,
-          validator: partyRequired
-              ? (v) => v == null || v.trim().isEmpty ? 'Required' : null
-              : null,
-          onEditingComplete: () {
-            onFieldSubmitted();
-            if (controller.text.isNotEmpty) {
-              _fetchSuggestionForParty(controller.text);
-            }
-          },
-        );
-      },
-      optionsViewBuilder: (context, onSelected, options) {
-        return Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options.elementAt(index);
-                  return ListTile(
-                    dense: true,
-                    title: Text(option),
-                    leading: const Icon(Icons.history, size: 18),
-                    onTap: () => onSelected(option),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
+    final partyRequired = _type.requiresParty;
+    final partyLabel = switch (_type) {
+      TransactionType.lent => 'Borrower Name *',
+      TransactionType.borrowed => 'Lender Name *',
+      TransactionType.invested => 'Institution / Fund *',
+      TransactionType.redeemed => 'Institution / Fund *',
+      TransactionType.receivedBack => 'Party Name *',
+      TransactionType.paidBack => 'Party Name *',
+      _ => 'Party / Merchant (optional)',
+    };
+    final partyHint = switch (_type) {
+      TransactionType.lent => 'e.g. Ramesh, Priya',
+      TransactionType.borrowed => 'e.g. Bank, Friend',
+      TransactionType.invested => 'e.g. Zerodha, SBI MF',
+      _ => 'e.g. Swiggy, Ramesh',
+    };
+    return PartyPickerField(
+      controller: _partyNameController,
+      labelText: partyLabel,
+      hintText: partyHint,
+      onSelected: _fetchSuggestionForParty,
+      validator: partyRequired
+          ? (v) => v == null || v.trim().isEmpty ? 'Required' : null
+          : null,
     );
   }
 

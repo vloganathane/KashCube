@@ -13,6 +13,8 @@ import '../../providers/transaction_provider.dart';
 import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
+import '../invoices/invoices_screen.dart';
+import 'businesses_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
 class SettingsScreen extends ConsumerWidget {
@@ -163,6 +165,55 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: const Text('Export transactions to CSV'),
                 onTap: () => _exportCsv(context, ref),
               ),
+            ],
+          ),
+
+          // -- Business Mode --
+          _SettingsSection(
+            title: 'Business Mode',
+            children: [
+              Consumer(builder: (context, ref, _) {
+                final enabled = ref.watch(businessModeProvider);
+                return SwitchListTile(
+                  secondary: const Icon(Icons.storefront_outlined),
+                  title: const Text('Enable Business Mode'),
+                  subtitle: const Text('Unlock invoicing & item catalog'),
+                  value: enabled,
+                  onChanged: (v) =>
+                      ref.read(businessModeProvider.notifier).setEnabled(v),
+                );
+              }),
+              Consumer(builder: (context, ref, _) {
+                final enabled = ref.watch(businessModeProvider);
+                if (!enabled) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.receipt_long_outlined),
+                      title: const Text('Invoices'),
+                      subtitle: const Text('Manage quotes & invoices'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const InvoicesScreen()),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.business_outlined),
+                      title: const Text('Business Profiles'),
+                      subtitle: const Text(
+                          'Name, address, GST, logo & more'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const BusinessesScreen()),
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ],
           ),
 

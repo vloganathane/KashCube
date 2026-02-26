@@ -83,20 +83,38 @@ class SuggestionService {
 
   /// Get a list of known party names for autocomplete.
   ///
-  /// Returns distinct party names sorted by frequency (most used first).
+  /// Returns distinct party names from both the parties table and transaction
+  /// history, sorted by frequency (most-used transaction parties first,
+  /// then saved parties not yet in transactions).
   Future<List<String>> getKnownPartyNames({int limit = 50}) async {
     final db = await _dbHelper.database;
-    final rows = await db.rawQuery(
+    // Frequency-ranked names from transaction history
+    final txRows = await db.rawQuery(
       'SELECT party_name, COUNT(*) as cnt '
       'FROM transactions '
       'WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != "" '
-      'GROUP BY party_name '
+      'GROUP BY party_name COLLATE NOCASE '
       'ORDER BY cnt DESC '
       'LIMIT ?',
       [limit],
     );
+    final txNames = txRows.map((r) => r['party_name'] as String).toList();
+    final txNamesLower = txNames.map((n) => n.toLowerCase()).toSet();
 
-    return rows.map((r) => r['party_name'] as String).toList();
+    // Names saved in the parties table not already captured above
+    final partyRows = await db.rawQuery(
+      'SELECT name FROM parties '
+      'WHERE deleted_at IS NULL AND name IS NOT NULL AND name != "" '
+      'ORDER BY name COLLATE NOCASE '
+      'LIMIT ?',
+      [limit],
+    );
+    final extraNames = partyRows
+        .map((r) => r['name'] as String)
+        .where((n) => !txNamesLower.contains(n.toLowerCase()))
+        .toList();
+
+    return [...txNames, ...extraNames];
   }
 }
 

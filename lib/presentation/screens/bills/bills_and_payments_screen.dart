@@ -8,6 +8,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/scheduled_payment.dart';
 import '../../providers/scheduled_payment_provider.dart';
+import '../../widgets/party_picker_field.dart';
 
 final _dateFmt = DateFormat('dd MMM yyyy');
 final _currFmt = NumberFormat.currency(
@@ -828,13 +829,9 @@ class _AddEditScheduledPaymentScreenState
             const SizedBox(height: AppSpacing.base),
 
             // ── Party ──────────────────────────────────────────────────────
-            TextFormField(
+            PartyPickerField(
               controller: _partyCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Party / Payee (optional)',
-                prefixIcon: Icon(Icons.person_outline),
-                border: OutlineInputBorder(),
-              ),
+              labelText: 'Party / Payee (optional)',
             ),
             const SizedBox(height: AppSpacing.base),
 

@@ -252,6 +252,7 @@ class Transaction extends Equatable {
     this.dedupeHash,
     this.notes,
     this.tags,
+    this.reminderSentAt,
     this.createdAt,
     this.updatedAt,
     this.deletedAt,
@@ -312,6 +313,9 @@ class Transaction extends Equatable {
   final String? dedupeHash;
   final String? notes;
   final List<String>? tags;
+  /// When the last reminder (WhatsApp/SMS/Email) was sent for this transaction.
+  /// Only set on [TransactionType.lent] and [TransactionType.borrowed] transactions.
+  final DateTime? reminderSentAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
@@ -378,6 +382,7 @@ class Transaction extends Equatable {
     String? dedupeHash,
     String? notes,
     List<String>? tags,
+    DateTime? reminderSentAt,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
@@ -414,6 +419,7 @@ class Transaction extends Equatable {
       dedupeHash: dedupeHash ?? this.dedupeHash,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
+      reminderSentAt: reminderSentAt ?? this.reminderSentAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -454,6 +460,7 @@ class Transaction extends Equatable {
       'dedupe_hash': dedupeHash,
       'notes': notes,
       'tags': tags?.join(','),
+      'reminder_sent_at': reminderSentAt?.toIso8601String(),
       'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
@@ -504,6 +511,9 @@ class Transaction extends Equatable {
           ?.split(',')
           .where((t) => t.isNotEmpty)
           .toList(),
+      reminderSentAt: map['reminder_sent_at'] != null
+          ? DateTime.parse(map['reminder_sent_at'] as String)
+          : null,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
           : null,

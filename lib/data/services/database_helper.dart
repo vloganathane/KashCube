@@ -744,6 +744,158 @@ class DatabaseHelper {
         'description': 'Ensure scheduled_payments table exists (v9 safety)',
       });
     }
+
+    if (oldVersion < 11) {
+      // Add GSTIN to parties (stored locally, never validated via network)
+      await db.execute('ALTER TABLE parties ADD COLUMN gstin TEXT');
+
+      // Add reminder_sent_at to transactions (tracks last WhatsApp/SMS/Email
+      // reminder sent for lent/borrowed transactions)
+      await db.execute('ALTER TABLE transactions ADD COLUMN reminder_sent_at TEXT');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)');
+
+      await db.insert('schema_version', {
+        'version': 11,
+        'description': 'Add gstin to parties, reminder_sent_at to transactions',
+      });
+    }
+
+    if (oldVersion < 12) {
+      // Add address to parties (stored locally, never transmitted)
+      await db.execute('ALTER TABLE parties ADD COLUMN address TEXT');
+
+      await db.insert('schema_version', {
+        'version': 12,
+        'description': 'Add address to parties',
+      });
+    }
+
+    if (oldVersion < 13) {
+      // Business Mode — Billing & Invoicing (all local, never transmitted)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS item_catalog (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          unit TEXT DEFAULT 'pcs',
+          unit_price REAL NOT NULL DEFAULT 0,
+          tax_pct REAL NOT NULL DEFAULT 0,
+          hsn_code TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS quotes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          quote_no TEXT NOT NULL UNIQUE,
+          customer_party_id INTEGER,
+          customer_name TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'draft',
+          valid_until TEXT,
+          subtotal REAL NOT NULL DEFAULT 0,
+          tax_total REAL NOT NULL DEFAULT 0,
+          discount_pct REAL NOT NULL DEFAULT 0,
+          total REAL NOT NULL DEFAULT 0,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS quote_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          quote_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          description TEXT,
+          qty REAL NOT NULL DEFAULT 1,
+          unit_price REAL NOT NULL DEFAULT 0,
+          tax_pct REAL NOT NULL DEFAULT 0,
+          discount_pct REAL NOT NULL DEFAULT 0,
+          line_total REAL NOT NULL DEFAULT 0,
+          FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS invoices (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_no TEXT NOT NULL UNIQUE,
+          quote_id INTEGER,
+          customer_party_id INTEGER,
+          customer_name TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'draft',
+          issue_date TEXT NOT NULL,
+          due_date TEXT,
+          subtotal REAL NOT NULL DEFAULT 0,
+          tax_total REAL NOT NULL DEFAULT 0,
+          discount_pct REAL NOT NULL DEFAULT 0,
+          total REAL NOT NULL DEFAULT 0,
+          paid_amount REAL NOT NULL DEFAULT 0,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS invoice_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          description TEXT,
+          qty REAL NOT NULL DEFAULT 1,
+          unit_price REAL NOT NULL DEFAULT 0,
+          tax_pct REAL NOT NULL DEFAULT 0,
+          discount_pct REAL NOT NULL DEFAULT 0,
+          line_total REAL NOT NULL DEFAULT 0,
+          FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_invoices_due ON invoices(due_date)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status)');
+
+      await db.insert('schema_version', {
+        'version': 13,
+        'description': 'Business mode: item_catalog, quotes, quote_items, invoices, invoice_items',
+      });
+    }
+
+    if (oldVersion < 14) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS businesses (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          address TEXT,
+          city TEXT,
+          state TEXT,
+          pincode TEXT,
+          phone TEXT,
+          email TEXT,
+          gst_no TEXT,
+          logo_path TEXT,
+          is_active INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_businesses_active ON businesses(is_active)');
+      await db.insert('schema_version', {
+        'version': 14,
+        'description': 'Add businesses table (multiple business profiles)',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

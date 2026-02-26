@@ -10,6 +10,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/transaction_provider.dart';
+import '../parties/parties_screen.dart';
 import '../transactions/add_edit_transaction_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,13 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       appBar: AppBar(
         title: const Text('Ledger'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.people_outline),
+            tooltip: 'Manage Parties',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PartiesScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',

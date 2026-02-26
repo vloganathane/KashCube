@@ -8,6 +8,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/speed_dial_fab.dart';
 import 'invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -57,18 +58,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'invoices_fab',
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const QuoteBuilderScreen()),
-        ).then((_) {
-          ref.invalidate(quotesProvider);
-          ref.invalidate(invoicesProvider);
-        }),
-        tooltip: 'New Quote',
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: const SpeedDialFab(showAllOptions: false),
       body: TabBarView(
         controller: _tabController,
         children: const [
@@ -112,6 +102,7 @@ class _InvoicesTab extends ConsumerWidget {
                     padding: const EdgeInsets.only(
                       left: AppSpacing.base,
                       right: AppSpacing.base,
+                      top: AppSpacing.base,
                       bottom: 80,
                     ),
                     itemCount: list.length,
@@ -133,12 +124,12 @@ class _StatusFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final statuses = [null, ...InvoiceStatus.values];
     return SizedBox(
-      height: 44,
+      height: 52,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.base,
-          vertical: AppSpacing.xs,
+          vertical: AppSpacing.sm,
         ),
         itemCount: statuses.length,
         separatorBuilder: (context, index) =>
@@ -350,7 +341,7 @@ class _QuotesTab extends ConsumerWidget {
               padding: const EdgeInsets.only(
                 left: AppSpacing.base,
                 right: AppSpacing.base,
-                top: AppSpacing.sm,
+                top: AppSpacing.base,
                 bottom: 80,
               ),
               itemCount: list.length,

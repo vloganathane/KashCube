@@ -14,9 +14,10 @@ import '../parties/parties_screen.dart';
 import '../transactions/add_edit_transaction_screen.dart';
 
 // ---------------------------------------------------------------------------
-// Filter enum
+// Mode / filter enums
 // ---------------------------------------------------------------------------
 
+enum _ModeTab { all, personal, business }
 enum _LedgerFilter { all, outstanding, lent, borrowed, investments, cleared }
 
 // ---------------------------------------------------------------------------
@@ -35,14 +36,28 @@ class LedgerScreen extends ConsumerStatefulWidget {
   ConsumerState<LedgerScreen> createState() => _LedgerScreenState();
 }
 
-class _LedgerScreenState extends ConsumerState<LedgerScreen> {
-  _LedgerFilter _filter = _LedgerFilter.outstanding;
+class _LedgerScreenState extends ConsumerState<LedgerScreen>
+    with SingleTickerProviderStateMixin {
+  _LedgerFilter _filter = _LedgerFilter.all;
+  late final TabController _tabController;
+  _ModeTab get _modeTab => _ModeTab.values[_tabController.index];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this)
+      ..addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final summariesAsync = ref.watch(ledgerSummariesProvider);
-    final lentAsync     = ref.watch(totalOutstandingLentProvider);
-    final borrowedAsync = ref.watch(totalOutstandingBorrowedProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -61,13 +76,18 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
             onPressed: () => ref.read(ledgerSummariesProvider.notifier).refresh(),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'All'),
+            Tab(text: 'Personal'),
+            Tab(text: 'Business'),
+          ],
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Outstanding summary ─────────────────────────────────────────
-          _SummaryCard(lentAsync: lentAsync, borrowedAsync: borrowedAsync),
-
           // ── Filter chips ────────────────────────────────────────────────
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -113,7 +133,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   }
 
   Widget _buildList(List<LedgerPartyEntry> entries) {
-    final filtered = _applyFilter(entries);
+    final modeFiltered = switch (_modeTab) {
+      _ModeTab.all      => entries,
+      _ModeTab.personal => entries.where((e) => e.personalCount > 0).toList(),
+      _ModeTab.business => entries.where((e) => e.businessCount > 0).toList(),
+    };
+    final filtered = _applyFilter(modeFiltered);
     if (filtered.isEmpty) return _buildEmpty();
     return RefreshIndicator(
       onRefresh: () => ref.read(ledgerSummariesProvider.notifier).refresh(),
@@ -141,13 +166,18 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   }
 
   Widget _buildEmpty() {
+    final modeLabel = switch (_modeTab) {
+      _ModeTab.all      => '',
+      _ModeTab.personal => 'personal ',
+      _ModeTab.business => 'business ',
+    };
     final message = switch (_filter) {
-      _LedgerFilter.all         => 'No ledger entries yet',
-      _LedgerFilter.outstanding => 'No outstanding balances',
-      _LedgerFilter.lent        => "You haven't lent anything",
-      _LedgerFilter.borrowed    => "You haven't borrowed anything",
-      _LedgerFilter.investments => 'No investments tracked',
-      _LedgerFilter.cleared     => 'No cleared entries',
+      _LedgerFilter.all         => 'No ${modeLabel}ledger entries yet',
+      _LedgerFilter.outstanding => 'No ${modeLabel}outstanding balances',
+      _LedgerFilter.lent        => "You haven't lent anything ($modeLabel)",
+      _LedgerFilter.borrowed    => "You haven't borrowed anything ($modeLabel)",
+      _LedgerFilter.investments => 'No ${modeLabel}investments tracked',
+      _LedgerFilter.cleared     => 'No ${modeLabel}cleared entries',
     };
     return Center(
       child: Padding(
@@ -184,103 +214,6 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Summary card  (outstanding amounts only)
-// ---------------------------------------------------------------------------
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.lentAsync, required this.borrowedAsync});
-
-  final AsyncValue<double> lentAsync;
-  final AsyncValue<double> borrowedAsync;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<KashCubeColors>()!;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Card(
-      margin: const EdgeInsets.fromLTRB(
-        AppSpacing.base, AppSpacing.base, AppSpacing.base, AppSpacing.xs,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base,
-          vertical: AppSpacing.md,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _SummaryItem(
-                label: 'To receive',
-                value: lentAsync.valueOrNull,
-                color: colors.income,
-                icon: Icons.arrow_downward_rounded,
-              ),
-            ),
-            Container(width: 1, height: 40, color: scheme.outlineVariant),
-            Expanded(
-              child: _SummaryItem(
-                label: 'To pay',
-                value: borrowedAsync.valueOrNull,
-                color: colors.expense,
-                icon: Icons.arrow_upward_rounded,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryItem extends StatelessWidget {
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  final String label;
-  final double? value;
-  final Color color;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: color),
-            const SizedBox(width: 4),
-            Text(
-              value != null ? CurrencyFormatter.format(value!) : '—',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.55),
-              ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Party tile
 // ---------------------------------------------------------------------------
 
@@ -302,25 +235,29 @@ class _PartyTile extends ConsumerWidget {
         ? colors.income
         : isOwedByMe
             ? colors.expense
-            : scheme.onSurface.withValues(alpha: 0.4);
+            : scheme.onSurface.withValues(alpha: 0.45);
 
-    final balanceLabel = isOwedByThem
+    final statusLabel = isOwedByThem
         ? 'owes you'
         : isOwedByMe
             ? 'you owe'
-            : entry.hasRegularActivity
-                ? 'settled'
-                : 'no balance';
+            : 'settled';
 
-    // Subtitle: show relationship types present
-    final parts = <String>[];
-    if (entry.totalIncome > 0) parts.add('income');
-    if (entry.totalExpense > 0) parts.add('expense');
-    if (entry.netInvestment > 0.01) parts.add('investment');
-    final subtitleExtra = parts.isNotEmpty ? ' · ${parts.join(', ')}' : '';
+    // Determine dominant activity type for avatar color
+    final hasLending = entry.netLendingBalance > 0.01 || entry.netBorrowingBalance > 0.01;
+    final avatarBg = hasLending
+        ? colors.credit.withValues(alpha: 0.2)
+        : entry.totalIncome >= entry.totalExpense
+            ? colors.income.withValues(alpha: 0.18)
+            : colors.expense.withValues(alpha: 0.18);
+    final avatarFg = hasLending
+        ? colors.credit
+        : entry.totalIncome >= entry.totalExpense
+            ? colors.income
+            : colors.expense;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.of(context).push(
@@ -330,75 +267,229 @@ class _PartyTile extends ConsumerWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
-              CircleAvatar(
-                backgroundColor: scheme.primaryContainer,
-                child: Text(
-                  entry.partyName.isNotEmpty
-                      ? entry.partyName[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-
-              // Party name + meta
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      entry.partyName,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      '${entry.lastTransactionDate != null ? DateFormatter.format(entry.lastTransactionDate!) : ''}$subtitleExtra',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-
-              // Balance
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              // ── Row 1: avatar + name + chevron ───────────────────────
+              Row(
                 children: [
-                  if (entry.hasOutstanding)
-                    Text(
-                      CurrencyFormatter.format(net.abs()),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: balanceColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: avatarBg,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                  Text(
-                    balanceLabel,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: balanceColor.withValues(alpha: 0.8),
+                    child: Center(
+                      child: Text(
+                        entry.partyName.isNotEmpty
+                            ? entry.partyName[0].toUpperCase()
+                            : '?',
+                        style: TextStyle(
+                          color: avatarFg,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
                         ),
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          entry.partyName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (entry.lastTransactionDate != null)
+                          Text(
+                            'Last: ${DateFormatter.format(entry.lastTransactionDate!)} · ${entry.transactionCount} txn${entry.transactionCount == 1 ? '' : 's'}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurface.withValues(alpha: 0.45),
+                                ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      color: scheme.onSurface.withValues(alpha: 0.3)),
                 ],
               ),
 
-              const SizedBox(width: AppSpacing.xs),
-              Icon(Icons.chevron_right,
-                  color: scheme.onSurface.withValues(alpha: 0.3)),
+              const SizedBox(height: AppSpacing.md),
+              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              const SizedBox(height: AppSpacing.md),
+
+              // ── Row 2: stat pills ────────────────────────────────────
+              Row(
+                children: [
+                  if (entry.totalIncome > 0) ...[
+                    _StatPill(
+                      label: 'Received',
+                      amount: entry.totalIncome,
+                      color: colors.income,
+                      icon: Icons.south_west_rounded,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  if (entry.totalExpense > 0) ...[
+                    _StatPill(
+                      label: 'Paid',
+                      amount: entry.totalExpense,
+                      color: colors.expense,
+                      icon: Icons.north_east_rounded,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  if (entry.netLendingBalance > 0.01) ...[
+                    _StatPill(
+                      label: 'Lent',
+                      amount: entry.netLendingBalance,
+                      color: colors.credit,
+                      icon: Icons.call_made_rounded,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  if (entry.netBorrowingBalance > 0.01) ...[
+                    _StatPill(
+                      label: 'Borrowed',
+                      amount: entry.netBorrowingBalance,
+                      color: colors.expense,
+                      icon: Icons.call_received_rounded,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                  ],
+                  if (entry.netInvestment > 0.01)
+                    _StatPill(
+                      label: 'Invested',
+                      amount: entry.netInvestment,
+                      color: scheme.primary,
+                      icon: Icons.trending_up_rounded,
+                    ),
+                  // Mode tag
+                  if (entry.isMixed) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    _ModePill(label: 'Personal + Business'),
+                  ] else if (entry.isBusinessOnly) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    _ModePill(label: 'Business', color: scheme.primary),
+                  ],
+                  const Spacer(),
+                  // Status badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: balanceColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      entry.hasOutstanding
+                          ? '${CurrencyFormatter.format(net.abs())} $statusLabel'
+                          : statusLabel,
+                      style: TextStyle(
+                        color: balanceColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.label,
+    required this.amount,
+    required this.color,
+    required this.icon,
+  });
+
+  final String label;
+  final double amount;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 3),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                    fontSize: 9,
+                    color: color.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w500),
+              ),
+              Text(
+                CurrencyFormatter.format(amount),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: color,
+                    fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Mode pill (Personal / Business / Personal + Business tag)
+// ---------------------------------------------------------------------------
+
+class _ModePill extends StatelessWidget {
+  const _ModePill({required this.label, this.color});
+
+  final String label;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final c = color ?? scheme.secondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: c.withValues(alpha: 0.3), width: 0.8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 9,
+          color: c,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.2,
         ),
       ),
     );

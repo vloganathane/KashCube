@@ -324,8 +324,6 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<List<LedgerPartyEntry>> getPartyLedgerSummaries() async {
     final db = await _db;
-    // Include ALL transaction types that reference a party so the khata
-    // view shows the full financial relationship (not just lent/borrowed).
     final rows = await db.rawQuery(
       "SELECT t.party_name, "
       "COALESCE(p.party_type, 'person') as party_type, "
@@ -337,7 +335,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SUM(CASE WHEN t.type = 'redeemed'       THEN t.amount ELSE 0 END) as total_redeemed, "
       "SUM(CASE WHEN t.type = 'income'         THEN t.amount ELSE 0 END) as total_income, "
       "SUM(CASE WHEN t.type = 'expense'        THEN t.amount ELSE 0 END) as total_expense, "
-      "COUNT(*) as cnt, MAX(t.date) as last_date "
+      "COUNT(*) as cnt, MAX(t.date) as last_date, "
+      "SUM(CASE WHEN t.mode = 'personal' THEN 1 ELSE 0 END) as personal_cnt, "
+      "SUM(CASE WHEN t.mode = 'business' THEN 1 ELSE 0 END) as business_cnt "
       "FROM transactions t "
       "LEFT JOIN parties p ON LOWER(TRIM(p.name)) = LOWER(TRIM(t.party_name)) "
       "WHERE t.deleted_at IS NULL AND t.party_name IS NOT NULL AND t.party_name != '' "
@@ -357,6 +357,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
       totalIncome:        (r['total_income']          as num).toDouble(),
       totalExpense:       (r['total_expense']         as num).toDouble(),
       transactionCount:   (r['cnt'] as num).toInt(),
+      personalCount:      (r['personal_cnt'] as num).toInt(),
+      businessCount:      (r['business_cnt'] as num).toInt(),
       lastTransactionDate: r['last_date'] != null
           ? DateTime.tryParse(r['last_date'] as String)
           : null,

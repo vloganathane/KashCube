@@ -143,6 +143,8 @@ class LedgerPartyEntry {
     required this.totalIncome,
     required this.totalExpense,
     required this.transactionCount,
+    this.personalCount = 0,
+    this.businessCount = 0,
     this.lastTransactionDate,
     this.partyType = 'person',
   });
@@ -166,6 +168,10 @@ class LedgerPartyEntry {
   final double totalExpense;
 
   final int transactionCount;
+  /// Number of personal-mode transactions with this party.
+  final int personalCount;
+  /// Number of business-mode transactions with this party.
+  final int businessCount;
   final DateTime? lastTransactionDate;
   /// 'person' or 'vendor' — sourced from the parties table.
   final String partyType;
@@ -193,4 +199,13 @@ class LedgerPartyEntry {
 
   /// True when there are regular income/expense transactions with this party.
   bool get hasRegularActivity => totalIncome > 0 || totalExpense > 0;
+
+  /// Whether this party has only personal transactions.
+  bool get isPersonalOnly => personalCount > 0 && businessCount == 0;
+
+  /// Whether this party has only business transactions.
+  bool get isBusinessOnly => businessCount > 0 && personalCount == 0;
+
+  /// Whether this party has both personal and business transactions.
+  bool get isMixed => personalCount > 0 && businessCount > 0;
 }

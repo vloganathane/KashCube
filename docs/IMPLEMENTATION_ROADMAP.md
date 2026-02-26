@@ -1,9 +1,11 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 2.9  
-**Date:** February 26, 2026  
-**Duration:** 6 months (26 weeks)
+**Version:** 3.0  
+**Date:** February 27, 2026  
+**Duration:** 6 months (30 weeks)
+
+**Latest Update:** Added Bookings feature (Week 25-27) for service businesses — appointments, reservations, trips. Dead simple list-based UI, zero calendar complexity, seamless invoice integration. Full spec: [docs/BOOKINGS_SPEC.md](./BOOKINGS_SPEC.md)
 
 ---
 
@@ -256,8 +258,8 @@ This roadmap follows a **core-first, iterative approach**:
 
 ---
 
-### Week 9: Complete Financial View + Party Management
-**Goal:** Parse all financial SMS and make parties first-class citizens
+### Week 9: Complete Financial View
+**Goal:** Parse all financial SMS
 
 #### Part A — SMS Completeness
 - [ ] Add credit card SMS parsing (HDFC, ICICI, SBI, Axis)
@@ -266,50 +268,11 @@ This roadmap follows a **core-first, iterative approach**:
 - [ ] Add duplicate transaction detection
 - [ ] Build account balance tracking (per-account running balance)
 
-#### Part B — Customer / Vendor Management
+#### Part B — Customer / Vendor Management → **DEFERRED to Week 23-24**
 
-**DB migration:** add `phone`, `email`, `notes` columns to existing `parties` table — one migration, zero breaking changes.
+**Rationale:** Billing (Week 21-22) needs party phone/email. Moving Party Management to Week 23-24 (post-billing) makes dependency chain clearer. SMS completeness (Part A) can proceed independently.
 
-**Privacy approach:**
-- No `READ_CONTACTS` permission — never
-- "Pick from Contacts" uses a one-shot `Intent.ACTION_PICK` OS picker; the system contacts app opens, user selects one person, only that name + number is returned. KashCube never sees the rest of the phonebook.
-
-**Tasks:**
-- [ ] DB migration: add `phone TEXT`, `email TEXT`, `notes TEXT` to `parties` table
-- [ ] Rebuild Parties screen: add/edit with name, phone, email, type (Customer / Vendor / Individual), GSTIN (optional), notes
-- [ ] "Pick from Contacts" one-shot OS picker button on party form (no permission needed)
-- [ ] Party detail screen: unified history — transactions + credits/loans + scheduled payments all in one view
-- [ ] Autocomplete on party name field across all entry screens (already partially there)
-- [ ] Send reminder actions on credits and loans: bottom sheet → WhatsApp / SMS / Email
-  - WhatsApp: `wa.me/91XXXXXXXXXX?text=...` deep link
-  - SMS: `sms:+91XXXXXXXXXX?body=...` Android intent
-  - Email: `mailto:...?subject=...&body=...` intent
-  - All three are OS intents — KashCube never touches the network
-  - User reviews and edits the pre-filled message before sending
-  - Log "reminder sent" timestamp on the credit/loan record after dispatch
-
-**Message templates (locally generated, user-editable before send):**
-```
-Udhar / Credit reminder:
-  "Hi [Name], friendly reminder — ₹[amount] is due
-   (since [date]). Let me know. — [Your name]"
-
-Loan overdue:
-  "Hi [Name], ₹[amount] (due [date]) is still pending.
-   Please pay when convenient. — [Your name]"
-```
-
-- [ ] Add `reminderSentAt` field to credits and loans tables
-
-**Deliverables:**
-- Parties are full profiles with contact details
-- One-shot contact picker: zero permissions, full convenience
-- WhatsApp/SMS/Email reminders from any credit or loan — all OS intents, no network
-- Party detail shows complete financial relationship at a glance
-- SMS parsing covers major Indian banks and cards
-- Duplicate transaction detection active
-
-**Time Estimate:** 55 hours
+**Part B scope moved to Week 23-24** — see that section for full details.
 
 ---
 
@@ -597,11 +560,31 @@ invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
   - [x] Usage tracking when items picked in quotes
   - [x] Item picker with "Create New" button in pickMode
   - [x] Favorite toggle for frequently used items
-- [ ] Quote builder: pick customer (from parties), add items, apply discount, save draft
-- [ ] Quote → Invoice conversion (one tap; auto-assign INV-YYYY-NNN)
-- [ ] Invoice payment recording → auto-creates `Transaction(type: income)` in main ledger
+- [x] Quote builder: pick customer (from parties), add items (with catalog integration), apply discount, save draft
+  - [x] Progressive form with customer picker (party autocomplete with party ID linking)
+  - [x] Business selector dropdown (multi-business support)
+  - [x] Line items section with add/remove/edit
+  - [x] Catalog integration: replace empty item instead of appending
+  - [x] TextEditingController sync via didUpdateWidget when item changes
+  - [x] Real-time subtotal/tax/discount/total calculations
+  - [x] Auto-invoice/quote numbering (INV-YYYY-NNN, QUO-YYYY-NNN)
+- [x] Quote → Invoice conversion (one tap; auto-assign INV number)
+- [ ] **Automatic Transaction Creation (Universal Invoice Payment Flow)**
+  - [ ] Add DB columns: `transactions.linked_invoice_id`, `transactions.linked_booking_id`, `transactions.business_id`
+  - [ ] Add DB columns: `invoices.paid_at`, `invoices.payment_method`, `invoices.paid_amount`
+  - [ ] Implement `Invoice.markAsPaid()` with event-driven auto-transaction creation
+  - [ ] Quick payment method picker bottom sheet (Cash*/UPI/Card/Bank with smart defaults)
+  - [ ] [Mark as Paid] action in invoice detail screen (all invoice types)
+  - [ ] Smart payment method memory per customer (SharedPreferences)
+  - [ ] Partial payment support (multiple transactions per invoice, paid_amount tracking)
+  - [ ] Lock paid invoices from editing (show warning, prevent amount/item changes)
+  - [ ] Bidirectional links in detail screens (invoice ↔ transaction ↔ booking)
+  - [ ] Transaction deletion warning when linked to invoice
 - [ ] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue)
-- [ ] Share invoice as PDF (offline, `pdf` + `share_plus`)
+- [x] Share invoice as PDF (offline, `pdf` + `share_plus`)
+  - [x] PDF preview for invoices (invoice_detail_screen)
+  - [x] PDF sharing with WhatsApp/SMS/Email options
+  - [x] PDF preview for quotes (quote_builder_screen)
 - [ ] Basic GST line items: CGST + SGST / IGST split shown on invoice (no GSTIN validation yet)
 - [ ] Send quote/invoice via WhatsApp / SMS / Email (OS intents, same pattern as Week 9)
 
@@ -624,15 +607,127 @@ Invoice overdue: "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pendin
 - Business Mode off by default — personal users see nothing new
 - ✅ Item catalog complete: 6 categories, auto-SKU (PROD-001 format), smart sorting, usage tracking
 - ✅ Category filters and favorites in catalog view
-- Full quote → invoice → payment → ledger pipeline working locally
-- PDF invoice shareable via WhatsApp / email
-- Transaction bridge: paid invoice = income entry in main dashboard
+- ✅ Quote builder UI complete with customer picker, business selector, line items section
+- ✅ Catalog integration: smart item replacement prevents duplicate empty items
+- ✅ Complete party details in Invoice/Quote PDFs (phone, email, GSTIN, address)
+- ✅ Quote → invoice conversion (one-tap convert button working)
+- ✅ PDF preview and sharing for invoices (preview + share via WhatsApp/SMS/Email)
+- ✅ PDF preview for quotes
+- 🔄 **Universal automatic transaction creation:** Invoice payment → Transaction auto-created (all invoice types)
+  - [Mark as Paid] action with quick payment method picker (2 taps: action + method)
+  - Smart defaults: payment method memory, date = today (95% zero input)
+  - Partial payment support, bidirectional linking, data integrity locks
+  - Applies to: booking invoices, quote invoices, standalone invoices
+- 🔄 GST line items: CGST + SGST split on invoice PDFs (pending)
 
-**Time Estimate:** 60 hours (catalog: 15h complete, remaining: 45h)
+**Time Estimate:** 79 hours (completed: ~50h, remaining: ~29h — automatic transaction creation +19h)
 
 ---
 
-### Week 23-24: Retention & Reach
+### Week 23-24: Party Management Complete (Week 9B)
+**Goal:** Make parties first-class citizens with full contact details
+
+**Context:** Originally Week 9 Part B, moved here because billing (Week 21-22) needs party phone/email for invoices + reminders.
+
+**Tasks:**
+- [ ] DB migration: add `phone TEXT`, `email TEXT`, `notes TEXT`, `gstin TEXT` to `parties` table
+- [ ] Rebuild Parties screen: add/edit with name, phone, email, type (Customer/Vendor/Individual), GSTIN (optional), notes
+- [ ] "Pick from Contacts" one-shot OS picker button on party form (no READ_CONTACTS permission)
+- [ ] Party detail screen: unified history — transactions + credits/loans + scheduled payments + invoices in one view
+- [ ] Autocomplete on party name field across all entry screens
+- [ ] Send reminder actions on credits and loans: bottom sheet → WhatsApp / SMS / Email
+  - WhatsApp: `wa.me/91XXXXXXXXXX?text=...` deep link
+  - SMS: `sms:+91XXXXXXXXXX?body=...` Android intent
+  - Email: `mailto:...?subject=...&body=...` intent
+  - All OS intents — zero network calls
+  - User reviews and edits pre-filled message before sending
+  - Log `reminderSentAt` timestamp on credit/loan record
+
+**Message templates (locally generated, user-editable):**
+```
+Credit reminder:   "Hi [Name], friendly reminder — ₹[amount] is due (since [date]). — [Your name]"
+Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please pay when convenient. — [Your name]"
+```
+
+**Deliverables:**
+- Parties are full profiles with contact details
+- One-shot contact picker: zero permissions, full convenience
+- WhatsApp/SMS/Email reminders from any credit or loan
+- Party detail shows complete financial relationship at a glance
+
+**Time Estimate:** 40 hours
+
+---
+
+### Week 25-27: Business Mode — Bookings (Dead Simple)
+**Goal:** Time-based service scheduling for doctors, homestays, cabs, travel agencies
+
+**Target verticals:** Doctor/clinic appointments, homestay reservations, cab trips, tour packages
+
+**Architecture:** Single `bookings` table, smart UI adapts based on service duration (< 3hrs = appointment time picker, ≥ 24hrs = date range picker). Status flow: pending → confirmed → completed → invoiced. Zero new bottom nav tabs — accessed via speed-dial FAB + Reports card.
+
+**Tasks:**
+
+*Phase 1 — Core Bookings (Week 25-26):*
+- [ ] DB migration v11: `bookings` table with indexes
+- [ ] Extend `item_catalog`: add `duration_minutes`, `is_bookable` columns
+- [ ] Booking model + repository (domain + data layers)
+- [ ] BookingsProvider (Riverpod StateNotifier)
+- [ ] Bookings list screen:
+  - Date-grouped (TODAY, TOMORROW, THIS WEEK, PAST)
+  - Status as text labels ("Confirmed", "Pending"), not just colored dots
+  - Primary action button visible on each card ([Complete & Invoice], [Send Confirmation])
+  - Swipe actions: swipe left = cancel, swipe right = complete
+  - Filter options (All, Today, Upcoming, Confirmed, Pending)
+- [ ] Booking detail screen with action buttons (Confirm, Complete & Invoice, Cancel, No-show)
+- [ ] Create booking bottom sheet (2 fields: customer, service + smart date buttons)
+- [ ] Status flow: pending → confirmed → completed
+- [ ] Booking reference generation (BK-YYYY-NNN format)
+
+*Phase 2 — Integrations (Week 26):*
+- [ ] Catalog item form: "Enable bookings" checkbox + duration field
+- [ ] "Complete & Invoice" creates draft invoice (pre-filled from booking, navigates to InvoiceDetailScreen)
+- [ ] Link `invoice.booking_id` foreign key, auto-update booking status when invoice paid
+- [ ] Party detail: add "Bookings" tab (upcoming, past, no-show rate, stats)
+- [ ] [Confirm] button → WhatsApp OS intent with template message
+- [ ] Invoice deducts advance payment amount
+
+*Phase 3 — Notifications & Polish (Week 27):*
+- [ ] BookingNotificationService using `flutter_local_notifications`
+- [ ] Schedule reminder 24h before start_datetime when status → confirmed
+- [ ] Cancel notification when booking cancelled/completed
+- [ ] Extend global search to include bookings (customer, service, ref)
+- [ ] "Bookings Overview" card in Reports tab (completed count/amount, pipeline, no-show rate, top services)
+- [ ] Speed-dial FAB: add "New Booking" action when Business Mode enabled
+- [ ] Empty states, loading states, confirmation dialogs
+- [ ] Multi-day duration display (e.g., "3 nights" for homestays)
+
+**Deliverables:**
+- List-based booking management (no calendar view in v1)
+- Smart defaults: status auto-progression, service type inferred from duration
+- One-tap invoice creation from completed bookings
+- Confirmation/reminder messages via WhatsApp/SMS (OS intents)
+- Works for appointments, reservations, trips, packages (single table, adaptive UI)
+- Zero configuration beyond "enable bookings" checkbox in catalog
+
+**Explicitly NOT included (add Phase 4 if validated):**
+- Calendar visual view (list is simpler, faster to build — add +15h if users demand it)
+- Recurring bookings (manual duplicate works for v1)
+- Staff assignment (single-person businesses first)
+- Device calendar sync (privacy constraint, write-only "Add to Calendar" acceptable)
+
+**Time Estimate:** 75 hours (Phase 1: 40h, Phase 2: 20h, Phase 3: 15h)
+
+**Full specification:** See [docs/BOOKINGS_SPEC.md](./BOOKINGS_SPEC.md)
+
+---
+
+### Week 28-29: Retention & Reach
+**Goal:** Make the app stickier without adding complexity
+
+**Guiding rule:** Only ship retention features that work passively — no features that require the user to change their behaviour.
+
+### Week 28-29: Retention & Reach
 **Goal:** Make the app stickier without adding complexity
 
 **Guiding rule:** Only ship retention features that work passively — no features that require the user to change their behaviour.
@@ -659,7 +754,7 @@ Invoice overdue: "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pendin
 
 ---
 
-### Week 25-26: Scale & Optimize
+### Week 30: Scale & Optimize
 **Goal:** Prepare for growth — keep it fast and small
 
 **Tasks:**
@@ -761,6 +856,8 @@ Device A ──┐                    ┌── Device B
 
 | Feature | Effort | Prerequisites | Notes |
 |---------|--------|---------------|-------|
+| **Bookings calendar view** | S | Bookings list complete | Week/month visual calendar with drag-drop; uses `table_calendar` package; add only if users demand it |
+| **Recurring bookings** | S | Bookings core | "Repeat weekly" generates booking series; validates demand first |
 | Stock / Inventory management | M | Business Mode live | Add `stock_qty` + `track_stock` to `item_catalog`; decrement on invoice paid |
 | GSTIN validation | S | Business Mode live | Regex only — 100% local, no API |
 | HSN code display on invoices | S | Business Mode live | Column already in schema, just surface in UI |
@@ -768,6 +865,7 @@ Device A ──┐                    ┌── Device B
 | Recurring invoices | S | Business Mode live | Wire `ScheduledPayment(autoCreate=true)` to generate invoices instead of transactions |
 | UPI collect deep-link | S | Invoice screen | Pre-fill PhonePe/GPay collect URL; user completes in their UPI app |
 | Multi-currency invoicing | L | — | Add `currency` column; manual exchange rates; ledger always stays INR |
+| **Bookings staff assignment** | M | Bookings core | Multi-staff businesses; filter by staff; calendar view per staff |
 
 ### Core App Extensions
 
@@ -950,8 +1048,9 @@ Device B: Import → decrypt with own key → merge event log
 10. ✅ Week 7 tasks (Unified Transaction Model, Transfer type, multi-account) — complete
 11. ✅ Week 7.5 tasks (Bills & Payments unification, ScheduledPayment model, DB v10) — complete
 12. ✅ Item Catalog with auto-SKU, categories, smart sorting, usage tracking — complete
-13. 🔄 Continue Week 21-22 — Quote builder, invoice conversion, PDF export
-14. Week 9 Part B — Party Management (deferred until after billing basics)
+13. ✅ Quote/Invoice builder with catalog integration, PDF preview/sharing, conversion — complete
+14. 🔄 Continue Week 21-22 — **Automatic transaction creation** (invoice payment → income transaction), GST line items, invoice/quote list screen
+15. 📋 Next up: Week 23-24 (Party Management) then Week 25-27 (Bookings)
 
 ### This Month (Weeks 1-7+)
 - ✅ Complete transaction foundation (Week 1-2)
@@ -963,7 +1062,20 @@ Device B: Import → decrypt with own key → merge event log
 - ✅ Phase 1.5 — Complete
 - ✅ Bills & Payments UX Overhaul (Week 7.5) — Complete
 - ✅ Item Catalog: categories, auto-SKU, smart sorting, usage tracking
-- 🔄 Week 21-22: Quote builder, invoice conversion, PDF sharing (in progress)
+- ✅ Quote/Invoice builder: customer picker, line items, catalog integration, calculations
+- ✅ PDF generation: preview + share for invoices, preview for quotes
+- ✅ Quote → Invoice conversion
+- ✅ Complete party details in PDFs (phone, email, GSTIN, address)
+- 🔄 This week: **Automatic transaction creation** (invoice payment → income transaction with 2-tap flow, smart defaults, partial payments), GST line items, invoice/quote list screen
+
+### Next Quarter (Weeks 8-30)
+- Week 9: Complete SMS parsing (banks, cards, duplicate detection)
+- Week 10-11: Smart features (refunds, cashback, receipt OCR)
+- Week 21-22: Complete billing (remainder: payment recording, GST, list screens)
+- **Week 23-24: Party Management** (phone, email, WhatsApp/SMS reminders, unified history)
+- **Week 25-27: Bookings** (appointments, reservations, trips — dead simple UI)
+- Week 28-29: Retention features (CSV import, notifications, referrals)
+- Week 30: Scale & optimize (Hindi support, performance)
 
 ### Overall Progress
 | Week | Status | Key Deliverables |
@@ -976,13 +1088,25 @@ Device B: Import → decrypt with own key → merge event log
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
 | Week 7 | ✅ Complete (9/9 + extras) | Unified model v7+v8, 9 types, progressive form, Ledger rebuild, Transfer type, multi-account, custom icon |
 | Week 7.5 | ✅ Complete | ScheduledPayment model, BillsAndPaymentsScreen, speed-dial FAB, DB v10 |
-| Week 21-22 (partial) | 🔄 In Progress (2/9) | Item catalog with categories, auto-SKU, smart sorting, usage tracking |
+| Week 21-22 (partial) | 🔄 In Progress (6/9+10) | Item catalog ✓, quote/invoice builder ✓, PDF preview/sharing ✓, conversion ✓, **automatic transaction creation next** (10 subtasks) |
+| Week 9 (SMS) | ⏳ Pending | Credit/debit card parsing, bank SMS, duplicate detection |
+| Week 23-24 (Parties) | 📋 Planned | Contact details, WhatsApp/SMS reminders, unified history |
+| Week 25-27 (Bookings) | 📋 Planned | Appointments, reservations, trips — dead simple list-based UI |
 
-**Codebase:** ~90 Dart files in `lib/`, 0 lint issues  
-**Database:** SQLite v10 (transactions + accounts + scheduled_payments + item_catalog + 8 other tables)  
+**Codebase:** ~95 Dart files in `lib/`, 0 critical lint issues  
+**Database:** SQLite v10 (current), v11 planned (adds bookings table)
 **Phase 1 MVP:** COMPLETE  
 **Phase 1.5 (Unified Model + Bills & Payments):** COMPLETE  
-**Current Phase:** Phase 2 (Scale Features) + Week 21-22 (Billing) in progress
+**Current Phase:** Phase 2 (Scale Features) + Week 21-22 (Billing) — 6/19 tasks complete  
+**Completed:** Catalog, Quote/Invoice builder, PDF preview/sharing, Quote→Invoice conversion, Party details in PDFs  
+**Next 3 milestones:**
+  1. Complete billing (**automatic transaction creation** [10 subtasks], GST, list screens)
+  2. Party Management (contact details, reminders) — Week 23-24
+  3. Bookings feature (appointments/reservations) — Week 25-27
+**Recent Commits:**
+- `d1baa43` fix(billing): replace empty item when adding from catalog + update controllers
+- `d62f929` fix(billing): link customer party ID when party is selected  
+- `dbb4c3d` feat(billing): show complete party details in Invoice/Quote PDFs
 
 ### This Quarter (Weeks 1-12)
 - Launch MVP
@@ -1025,4 +1149,7 @@ dependencies:
 
 ---
 
-**Next Document:** [Technical Architecture](./TECHNICAL_ARCHITECTURE.md)
+**Related Documents:**
+- [Technical Architecture](./TECHNICAL_ARCHITECTURE.md)
+- [SMS Parsing Specification](./SMS_PARSING_SPEC.md)
+- [Bookings Feature Specification](./BOOKINGS_SPEC.md)

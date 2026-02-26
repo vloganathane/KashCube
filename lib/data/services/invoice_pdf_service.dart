@@ -71,7 +71,7 @@ class InvoicePdfService {
     return pw.Column(
       children: [
         // Business info if available
-        if (business != null) ..[
+        if (business != null) ...[
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -87,7 +87,7 @@ class InvoicePdfService {
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
-                    if (business.gstNo != null) ..[
+                    if (business.gstNo != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         'GSTIN: ${business.gstNo}',
@@ -97,7 +97,7 @@ class InvoicePdfService {
                         ),
                       ),
                     ],
-                    if (business.address != null || business.city != null) ..[
+                    if (business.address != null || business.city != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         [business.address, business.city, business.state]
@@ -109,7 +109,7 @@ class InvoicePdfService {
                         ),
                       ),
                     ],
-                    if (business.phone != null || business.email != null) ..[
+                    if (business.phone != null || business.email != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         [business.phone, business.email]
@@ -162,13 +162,15 @@ class InvoicePdfService {
                   'Date: ${DateFormatter.format(invoice.issueDate)}',
                   style: const pw.TextStyle(fontSize: 12),
                 ),
-            if (invoice.dueDate != null)
-              pw.Text(
-                'Due: ${DateFormatter.format(invoice.dueDate!)}',
-                style: const pw.TextStyle(fontSize: 12),
-              ),
-            pw.SizedBox(height: 4),
-            _buildStatusBadge(invoice.status),
+                if (invoice.dueDate != null)
+                  pw.Text(
+                    'Due: ${DateFormatter.format(invoice.dueDate!)}',
+                    style: const pw.TextStyle(fontSize: 12),
+                  ),
+                pw.SizedBox(height: 4),
+                _buildStatusBadge(invoice.status),
+              ],
+            ),
           ],
         ),
       ],
@@ -440,7 +442,7 @@ class InvoicePdfService {
     return pw.Column(
       children: [
         // Business info if available
-        if (business != null) ..[
+        if (business != null) ...[
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
@@ -456,7 +458,7 @@ class InvoicePdfService {
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
-                    if (business.gstNo != null) ..[
+                    if (business.gstNo != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         'GSTIN: ${business.gstNo}',
@@ -466,7 +468,7 @@ class InvoicePdfService {
                         ),
                       ),
                     ],
-                    if (business.address != null || business.city != null) ..[
+                    if (business.address != null || business.city != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         [business.address, business.city, business.state]
@@ -478,7 +480,7 @@ class InvoicePdfService {
                         ),
                       ),
                     ],
-                    if (business.phone != null || business.email != null) ..[
+                    if (business.phone != null || business.email != null) ...[
                       pw.SizedBox(height: 4),
                       pw.Text(
                         [business.phone, business.email]
@@ -531,13 +533,15 @@ class InvoicePdfService {
                   'Date: ${DateFormatter.format(quote.createdAt)}',
                   style: const pw.TextStyle(fontSize: 12),
                 ),
-            if (quote.validUntil != null)
-              pw.Text(
-                'Valid Until: ${DateFormatter.format(quote.validUntil!)}',
-                style: const pw.TextStyle(fontSize: 12),
-              ),
-            pw.SizedBox(height: 4),
-            _buildQuoteStatusBadge(quote.status),
+                if (quote.validUntil != null)
+                  pw.Text(
+                    'Valid Until: ${DateFormatter.format(quote.validUntil!)}',
+                    style: const pw.TextStyle(fontSize: 12),
+                  ),
+                pw.SizedBox(height: 4),
+                _buildQuoteStatusBadge(quote.status),
+              ],
+            ),
           ],
         ),
       ],

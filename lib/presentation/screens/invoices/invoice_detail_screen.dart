@@ -9,7 +9,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
-import '../../../data/repositories/business_repository.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
@@ -55,12 +54,12 @@ class _InvoiceDetailView extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.visibility_outlined),
             tooltip: 'Preview PDF',
-            onPressed: () => _previewInvoice(context),
+            onPressed: () => _previewInvoice(context, ref),
           ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
-            onPressed: () => _shareInvoice(context, businessName),
+            onPressed: () => _shareInvoice(context, businessName, ref),
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -201,7 +200,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     }
   }
 
-  Future<void> _previewInvoice(BuildContext context) async {
+  Future<void> _previewInvoice(BuildContext context, WidgetRef ref) async {
     // Show loading indicator
     if (!context.mounted) return;
     showDialog(
@@ -240,7 +239,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     }
   }
 
-  Future<void> _shareInvoice(BuildContext context, String businessName) async {
+  Future<void> _shareInvoice(BuildContext context, String businessName, WidgetRef ref) async {
     // Show loading indicator
     if (!context.mounted) return;
     showDialog(

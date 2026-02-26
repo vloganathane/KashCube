@@ -8,6 +8,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/invoice.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
+import 'quote_builder_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
   const InvoiceDetailScreen({super.key, required this.invoiceId});
@@ -50,6 +51,54 @@ class _InvoiceDetailView extends ConsumerWidget {
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
             onPressed: () => _shareInvoice(context, businessName),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              switch (value) {
+                case 'edit':
+                  _editInvoice(context);
+                case 'void':
+                  _voidInvoice(context, ref);
+                case 'duplicate':
+                  _duplicateInvoice(context, ref);
+              }
+            },
+            itemBuilder: (context) => [
+              if (invoice.status == InvoiceStatus.draft)
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined),
+                      SizedBox(width: 12),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+              if (invoice.status == InvoiceStatus.sent ||
+                  invoice.status == InvoiceStatus.overdue)
+                const PopupMenuItem(
+                  value: 'void',
+                  child: Row(
+                    children: [
+                      Icon(Icons.cancel_outlined),
+                      SizedBox(width: 12),
+                      Text('Void Invoice'),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'duplicate',
+                child: Row(
+                  children: [
+                    Icon(Icons.content_copy_outlined),
+                    SizedBox(width: 12),
+                    Text('Duplicate'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -150,6 +199,91 @@ class _InvoiceDetailView extends ConsumerWidget {
         '$dueStr — $businessName';
     Share.share(msg, subject: 'Invoice ${invoice.invoiceNo}');
   }
+
+  void _editInvoice(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuoteBuilderScreen(
+          invoiceId: invoice.id!,
+          docType: DocumentType.invoice,
+        ),
+      ),
+    ).then((_) {
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    });
+  }
+
+  Future<void> _voidInvoice(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Void Invoice?'),
+        content: Text(
+          'This will void invoice ${invoice.invoiceNo}. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Void'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      await ref.read(invoicesProvider.notifier).remove(invoice.id!);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invoice ${invoice.invoiceNo} voided')),
+        );
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<void> _duplicateInvoice(BuildContext context, WidgetRef ref) async {
+    if (!context.mounted) return;
+    
+    final now = DateTime.now();
+    final newInvoice = invoice.copyWith(
+      id: null,
+      invoiceNo: '', // Will be auto-generated
+      status: InvoiceStatus.draft,
+      issueDate: now,
+      dueDate: now.add(const Duration(days: 30)),
+      paidAmount: 0,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final newId = await ref.read(invoicesProvider.notifier).add(newInvoice, invoice.items);
+    
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invoice duplicated as draft')),
+      );
+      // Navigate to the new draft invoice for editing
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => QuoteBuilderScreen(
+            invoiceId: newId,
+            docType: DocumentType.invoice,
+          ),
+        ),
+      );
+    }
+  }
 }
 
 // ── Header Card ───────────────────────────────────────────────────────────────
@@ -188,7 +322,7 @@ class _HeaderCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(

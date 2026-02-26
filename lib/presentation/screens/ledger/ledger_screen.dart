@@ -47,6 +47,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this)
       ..addListener(() => setState(() {}));
+    // Auto-refresh ledger data when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(ledgerSummariesProvider.notifier).refresh();
+    });
   }
 
   @override

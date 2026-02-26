@@ -107,7 +107,7 @@ class InvoicePdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   if (logo != null) ...[
                     pw.Image(logo, width: 60, height: 60),
@@ -491,7 +491,7 @@ class InvoicePdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   if (logo != null) ...[
                     pw.Image(logo, width: 60, height: 60),

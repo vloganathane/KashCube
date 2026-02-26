@@ -9,11 +9,13 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
+import '../../../data/models/party.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/invoice_number_service.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/party_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import 'item_catalog_screen.dart';
 
@@ -369,8 +371,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
       }
       
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (_existingQuote!.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(_existingQuote!, business: business);
+      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
+        _existingQuote!,
+        business: business,
+        customerParty: customerParty,
+      );
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -410,8 +422,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
       }
       
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (_existingInvoice!.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(_existingInvoice!, business: business);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
+        _existingInvoice!,
+        business: business,
+        customerParty: customerParty,
+      );
       
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog

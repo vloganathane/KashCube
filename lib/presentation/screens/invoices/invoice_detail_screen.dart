@@ -9,9 +9,11 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
+import '../../../data/models/party.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/party_provider.dart';
 import 'quote_builder_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
@@ -216,8 +218,18 @@ class _InvoiceDetailView extends ConsumerWidget {
         business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
       }
       
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (invoice.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice, business: business);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
+        invoice,
+        business: business,
+        customerParty: customerParty,
+      );
       
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -255,8 +267,18 @@ class _InvoiceDetailView extends ConsumerWidget {
         business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
       }
       
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (invoice.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
+      }
+      
       // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice, business: business);
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
+        invoice,
+        business: business,
+        customerParty: customerParty,
+      );
       
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog

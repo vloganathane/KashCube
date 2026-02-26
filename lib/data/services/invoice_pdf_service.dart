@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../models/business.dart';
 import '../models/invoice.dart';
+import '../models/party.dart';
 import '../models/quote.dart';
 import '../../core/utils/date_formatter.dart';
 
@@ -45,7 +46,7 @@ class InvoicePdfService {
   }
 
   /// Generate PDF for an invoice with GST breakdown.
-  Future<File> generateInvoicePdf(Invoice invoice, {Business? business}) async {
+  Future<File> generateInvoicePdf(Invoice invoice, {Business? business, Party? customerParty}) async {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
@@ -56,7 +57,7 @@ class InvoicePdfService {
         build: (context) => [
           _buildInvoiceHeader(invoice, business: business, logo: logo),
           pw.SizedBox(height: 24),
-          _buildInvoiceDetails(invoice),
+          _buildInvoiceDetails(invoice, customerParty: customerParty),
           pw.SizedBox(height: 24),
           _buildItemsTable(invoice.items),
           pw.SizedBox(height: 16),
@@ -71,7 +72,7 @@ class InvoicePdfService {
   }
 
   /// Generate PDF for a quote.
-  Future<File> generateQuotePdf(Quote quote, {Business? business}) async {
+  Future<File> generateQuotePdf(Quote quote, {Business? business, Party? customerParty}) async {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
@@ -82,7 +83,7 @@ class InvoicePdfService {
         build: (context) => [
           _buildQuoteHeader(quote, business: business, logo: logo),
           pw.SizedBox(height: 24),
-          _buildQuoteDetails(quote),
+          _buildQuoteDetails(quote, customerParty: customerParty),
           pw.SizedBox(height: 24),
           _buildQuoteItemsTable(quote.items),
           pw.SizedBox(height: 16),
@@ -251,7 +252,7 @@ class InvoicePdfService {
     }
   }
 
-  pw.Widget _buildInvoiceDetails(Invoice invoice) {
+  pw.Widget _buildInvoiceDetails(Invoice invoice, {Party? customerParty}) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -275,6 +276,7 @@ class InvoicePdfService {
                 fontWeight: pw.FontWeight.bold,
               ),
             ),
+            if (customerParty != null) ..._buildPartyDetails(customerParty),
           ],
         ),
         if (invoice.notes != null && invoice.notes!.isNotEmpty)
@@ -635,7 +637,7 @@ class InvoicePdfService {
     }
   }
 
-  pw.Widget _buildQuoteDetails(Quote quote) {
+  pw.Widget _buildQuoteDetails(Quote quote, {Party? customerParty}) {
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -659,6 +661,7 @@ class InvoicePdfService {
                 fontWeight: pw.FontWeight.bold,
               ),
             ),
+            if (customerParty != null) ..._buildPartyDetails(customerParty),
           ],
         ),
         if (quote.notes != null && quote.notes!.isNotEmpty)
@@ -690,6 +693,56 @@ class InvoicePdfService {
           ),
       ],
     );
+  }
+
+  /// Build party contact details (phone, email, address) for PDF
+  List<pw.Widget> _buildPartyDetails(Party party) {
+    final details = <pw.Widget>[];
+    
+    if (party.phoneNumber != null && party.phoneNumber!.isNotEmpty) {
+      details.add(pw.SizedBox(height: 4));
+      details.add(
+        pw.Text(
+          '+91 ${party.phoneNumber!}',
+          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+        ),
+      );
+    }
+    
+    if (party.email != null && party.email!.isNotEmpty) {
+      details.add(pw.SizedBox(height: 2));
+      details.add(
+        pw.Text(
+          party.email!,
+          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+        ),
+      );
+    }
+    
+    if (party.gstin != null && party.gstin!.isNotEmpty) {
+      details.add(pw.SizedBox(height: 2));
+      details.add(
+        pw.Text(
+          'GSTIN: ${party.gstin!}',
+          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+        ),
+      );
+    }
+    
+    if (party.formattedAddress != null) {
+      details.add(pw.SizedBox(height: 4));
+      details.add(
+        pw.Container(
+          constraints: const pw.BoxConstraints(maxWidth: 250),
+          child: pw.Text(
+            party.formattedAddress!,
+            style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+          ),
+        ),
+      );
+    }
+    
+    return details;
   }
 
   pw.Widget _buildQuoteItemsTable(List<QuoteItem> items) {

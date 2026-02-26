@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
@@ -9,6 +10,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/invoice_number_service.dart';
+import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../widgets/party_picker_field.dart';
@@ -321,6 +323,76 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
+  Future<void> _previewQuote() async {
+    if (_existingQuote == null) return;
+    
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(_existingQuote!);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Open PDF in system viewer
+      final result = await OpenFile.open(pdfFile.path);
+      
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open PDF: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _previewInvoice() async {
+    if (_existingInvoice == null) return;
+    
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(_existingInvoice!);
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Open PDF in system viewer
+      final result = await OpenFile.open(pdfFile.path);
+      
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open PDF: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isInvoice = widget.docType == DocumentType.invoice;
@@ -335,6 +407,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
+          if (isEdit)
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined),
+              tooltip: 'Preview PDF',
+              onPressed: () => isInvoice ? _previewInvoice() : _previewQuote(),
+            ),
           if (!isInvoice &&
               isEdit &&
               _existingQuote?.status != QuoteStatus.accepted)

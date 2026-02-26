@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -49,6 +50,11 @@ class _InvoiceDetailView extends ConsumerWidget {
       appBar: AppBar(
         title: Text(invoice.invoiceNo),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.visibility_outlined),
+            tooltip: 'Preview PDF',
+            onPressed: () => _previewInvoice(context),
+          ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
@@ -190,6 +196,39 @@ class _InvoiceDetailView extends ConsumerWidget {
           Navigator.pop(context);
         }
       }
+    }
+  }
+
+  Future<void> _previewInvoice(BuildContext context) async {
+    // Show loading indicator
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(invoice);
+      
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Open PDF in system viewer
+      final result = await OpenFile.open(pdfFile.path);
+      
+      if (result.type != ResultType.done && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open PDF: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
     }
   }
 

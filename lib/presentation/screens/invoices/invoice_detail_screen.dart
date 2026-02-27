@@ -16,7 +16,9 @@ import '../../../data/services/payment_preferences_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/transaction_provider.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
+import '../transactions/transaction_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
@@ -160,6 +162,11 @@ class _InvoiceDetailView extends ConsumerWidget {
           _LineItemsCard(invoice: invoice),
           const SizedBox(height: AppSpacing.base),
           _TotalsCard(invoice: invoice),
+          if (invoice.status == InvoiceStatus.paid ||
+              invoice.status == InvoiceStatus.partiallyPaid) ..[
+            const SizedBox(height: AppSpacing.base),
+            _PaymentHistoryCard(invoiceId: invoice.id!),
+          ],
           if (invoice.notes != null && invoice.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.base),
             _NotesCard(notes: invoice.notes!),
@@ -874,5 +881,98 @@ class _ShareOptionsSheet extends StatelessWidget {
         '$dueStr.\n\n'
         'Thank you for your business!\n'
         '— $businessName';
+  }
+}
+// ── Payment History ───────────────────────────────────────────────────────────
+
+class _PaymentHistoryCard extends ConsumerWidget {
+  const _PaymentHistoryCard({required this.invoiceId});
+  final int invoiceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync = ref.watch(transactionsProvider);
+
+    return transactionsAsync.when(
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.base),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (e, _) => const SizedBox.shrink(),
+      data: (allTransactions) {
+        // Filter transactions linked to this invoice
+        final linkedTransactions = allTransactions
+            .where((t) => t.linkedInvoiceId == invoiceId)
+            .toList();
+
+        if (linkedTransactions.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.base),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.payment_outlined,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Payment History',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Spacer(),
+                    Chip(
+                      label: Text('${linkedTransactions.length}'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ...linkedTransactions.map((txn) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.account_balance_wallet_outlined,
+                        color: Theme.of(context).colorScheme.tertiary,
+                      ),
+                      title: Text(
+                        CurrencyFormatter.format(txn.amount),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TransactionDetailScreen(
+                              transactionId: txn.id!,
+                            ),
+                          ),
+                        );
+                      },
+                    )),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

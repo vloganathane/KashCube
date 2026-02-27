@@ -10,6 +10,7 @@ import '../../providers/bill_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/bill_picker.dart';
+import '../invoices/invoice_detail_screen.dart';
 import 'add_edit_transaction_screen.dart';
 import 'bill_viewer_screen.dart';
 
@@ -176,6 +177,65 @@ class _TransactionDetailContent extends ConsumerWidget {
                     label: 'Tags',
                     value: transaction.tags!.join(', '),
                   ),
+
+                // Linked Records (Invoice/Booking)
+                if (transaction.linkedInvoiceId != null ||
+                    transaction.linkedBookingId != null) ..[
+                  const Divider(height: AppSpacing.xxl),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Linked Records',
+                      style: context.textTheme.labelLarge?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (transaction.linkedInvoiceId != null)
+                    Card(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.receipt_long_outlined,
+                          color: context.colorScheme.primary,
+                        ),
+                        title: const Text('Invoice Payment'),
+                        subtitle: Text('Invoice ID: ${transaction.linkedInvoiceId}'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InvoiceDetailScreen(
+                                invoiceId: transaction.linkedInvoiceId!,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  if (transaction.linkedBookingId != null)
+                    Card(
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.event_available_outlined,
+                          color: context.colorScheme.secondary,
+                        ),
+                        title: const Text('Booking Payment'),
+                        subtitle: Text('Booking ID: ${transaction.linkedBookingId}'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () {
+                          // TODO: Navigate to booking detail screen when implemented
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Booking detail screen coming soon'),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                ],
 
                 // Auto-detected badge
                 if (transaction.autoDetected) ...[

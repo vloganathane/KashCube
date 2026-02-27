@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/invoice.dart';
 import '../../data/models/item_catalog.dart';
 import '../../data/models/quote.dart';
+import '../../data/models/transaction.dart';
 import '../../data/repositories/invoice_repository_impl.dart';
 import '../../data/repositories/item_catalog_repository_impl.dart';
 import '../../data/services/invoice_number_service.dart';
@@ -151,9 +152,24 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
     await load();
   }
 
-  Future<void> recordPayment(int invoiceId, double amount) async {
-    await _repo.recordPayment(invoiceId, amount);
-    await load();
+  /// Mark invoice as paid and automatically create transaction.
+  /// Returns the created transaction ID.
+  Future<int> markAsPaid({
+    required Invoice invoice,
+    required PaymentMethod paymentMethod,
+    required DateTime paidDate,
+    double? partialAmount,
+    int? bookingId,
+  }) async {
+    final transactionId = await _repo.markAsPaid(
+      invoice: invoice,
+      paymentMethod: paymentMethod,
+      paidDate: paidDate,
+      partialAmount: partialAmount,
+      bookingId: bookingId,
+    );
+    await load(); // Refresh invoice list
+    return transactionId;
   }
 }
 

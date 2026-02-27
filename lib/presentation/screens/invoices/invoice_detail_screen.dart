@@ -10,10 +10,12 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../../data/models/transaction.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import 'quote_builder_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
@@ -137,68 +139,83 @@ class _InvoiceDetailView extends ConsumerWidget {
                       AppSpacing.base,
                       AppSpacing.xl),
                   child: FilledButton.icon(
-                    icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Record Payment'),
-                    onPressed: () =>
-                        _showPaymentDialog(context, ref),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: Text(invoice.status == InvoiceStatus.partiallyPaid
+                        ? 'Record Final Payment'
+                        : 'Mark as Paid'),
+                    onPressed: () => _markAsPaid(context, ref),
                   ),
                 )
               : null,
     );
   }
 
-  Future<void> _showPaymentDialog(
-      BuildContext context, WidgetRef ref) async {
-    final controller =
-        TextEditingController(text: invoice.balanceDue.toStringAsFixed(2));
-    final ok = await showDialog<bool>(
+  Future<void> _markAsPaid(BuildContext context, WidgetRef ref) async {
+    // TODO: Load last used payment method for this customer from SharedPreferences
+    // For now, use null (no smart default)
+    PaymentMethod? lastUsedMethod;
+
+    // Show payment method picker
+    final result = await showPaymentMethodPicker(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Record Payment'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-                'Balance Due: ${CurrencyFormatter.format(invoice.balanceDue)}'),
-            const SizedBox(height: AppSpacing.base),
-            TextField(
-              controller: controller,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Amount Received (₹)',
-                border: OutlineInputBorder(),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save')),
-        ],
-      ),
+      amount: invoice.balanceDue,
+      customerName: invoice.customerName,
+      lastUsedMethod: lastUsedMethod,
+      defaultDate: DateTime.now(),
     );
-    if (ok == true) {
-      final amount = double.tryParse(controller.text);
-      if (amount != null && amount > 0) {
-        await ref
-            .read(invoicesProvider.notifier)
-            .recordPayment(invoice.id!, amount);
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(
-                    'Payment of ${CurrencyFormatter.format(amount)} recorded')),
+
+    if (result == null) return; // User cancelled
+
+    final paymentMethod = result['method'] as PaymentMethod;
+    final paidDate = result['date'] as DateTime;
+
+    // Show loading
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Call markAsPaid - this auto-creates transaction
+      await ref.read(invoicesProvider.notifier).markAsPaid(
+            invoice: invoice,
+            paymentMethod: paymentMethod,
+            paidDate: paidDate,
           );
-          Navigator.pop(context);
-        }
-      }
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading
+
+      // TODO: Save payment method preference for this customer to SharedPreferences
+
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Payment recorded: ${CurrencyFormatter.format(invoice.balanceDue)} via ${paymentMethod.label}',
+          ),
+          action: SnackBarAction(
+            label: 'View Transactions',
+            onPressed: () {
+              // TODO: Navigate to transactions screen filtered to this invoice
+            },
+          ),
+        ),
+      );
+
+      // Pop back to previous screen (invoice now paid)
+      Navigator.pop(context);
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error recording payment: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 

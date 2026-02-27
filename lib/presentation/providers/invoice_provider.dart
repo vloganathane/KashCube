@@ -9,7 +9,6 @@ import '../../data/repositories/item_catalog_repository_impl.dart';
 import '../../data/services/invoice_number_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
-import 'transaction_provider.dart';
 
 // ── Repository providers ─────────────────────────────────────────────────────
 

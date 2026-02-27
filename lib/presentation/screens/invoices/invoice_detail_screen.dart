@@ -163,7 +163,7 @@ class _InvoiceDetailView extends ConsumerWidget {
           const SizedBox(height: AppSpacing.base),
           _TotalsCard(invoice: invoice),
           if (invoice.status == InvoiceStatus.paid ||
-              invoice.status == InvoiceStatus.partiallyPaid) ..[
+              invoice.status == InvoiceStatus.partiallyPaid) ...[
             const SizedBox(height: AppSpacing.base),
             _PaymentHistoryCard(invoiceId: invoice.id!),
           ],

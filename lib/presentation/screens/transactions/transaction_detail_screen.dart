@@ -180,7 +180,7 @@ class _TransactionDetailContent extends ConsumerWidget {
 
                 // Linked Records (Invoice/Booking)
                 if (transaction.linkedInvoiceId != null ||
-                    transaction.linkedBookingId != null) ..[
+                    transaction.linkedBookingId != null) ...[
                   const Divider(height: AppSpacing.xxl),
                   Align(
                     alignment: Alignment.centerLeft,

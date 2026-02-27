@@ -185,7 +185,7 @@ class _InvoiceDetailView extends ConsumerWidget {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.check_circle_outline),
                     label: Text(invoice.status == InvoiceStatus.partiallyPaid
-                        ? 'Record Final Payment'
+                        ? 'Record Payment (${CurrencyFormatter.format(invoice.balanceDue)} remaining)'
                         : 'Mark as Paid'),
                     onPressed: () => _markAsPaid(context, ref),
                   ),

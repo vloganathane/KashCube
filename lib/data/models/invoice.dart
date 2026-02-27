@@ -147,6 +147,8 @@ class Invoice extends Equatable {
     this.discountPct = 0,
     this.total = 0,
     this.paidAmount = 0,
+    this.paidAt,
+    this.paymentMethod,
     this.notes,
     this.items = const [],
     required this.createdAt,
@@ -167,6 +169,10 @@ class Invoice extends Equatable {
   final double discountPct;
   final double total;
   final double paidAmount;
+  /// When the invoice was marked as paid (null if not paid).
+  final DateTime? paidAt;
+  /// Payment method used (null if not paid). Stored as PaymentMethod enum name.
+  final String? paymentMethod;
   final String? notes;
   final List<InvoiceItem> items;
   final DateTime createdAt;
@@ -193,6 +199,8 @@ class Invoice extends Equatable {
     double? discountPct,
     double? total,
     double? paidAmount,
+    DateTime? paidAt,
+    String? paymentMethod,
     String? notes,
     List<InvoiceItem>? items,
     DateTime? createdAt,
@@ -213,6 +221,8 @@ class Invoice extends Equatable {
       discountPct: discountPct ?? this.discountPct,
       total: total ?? this.total,
       paidAmount: paidAmount ?? this.paidAmount,
+      paidAt: paidAt ?? this.paidAt,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       notes: notes ?? this.notes,
       items: items ?? this.items,
       createdAt: createdAt ?? this.createdAt,
@@ -235,6 +245,8 @@ class Invoice extends Equatable {
         'discount_pct': discountPct,
         'total': total,
         'paid_amount': paidAmount,
+        'paid_at': paidAt?.toIso8601String(),
+        'payment_method': paymentMethod,
         'notes': notes,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
@@ -259,6 +271,10 @@ class Invoice extends Equatable {
         discountPct: (map['discount_pct'] as num?)?.toDouble() ?? 0,
         total: (map['total'] as num?)?.toDouble() ?? 0,
         paidAmount: (map['paid_amount'] as num?)?.toDouble() ?? 0,
+        paidAt: map['paid_at'] != null
+            ? DateTime.parse(map['paid_at'] as String)
+            : null,
+        paymentMethod: map['payment_method'] as String?,
         notes: map['notes'] as String?,
         items: items,
         createdAt: DateTime.parse(map['created_at'] as String),

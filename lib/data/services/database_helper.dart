@@ -950,6 +950,29 @@ class DatabaseHelper {
         'description': 'Add city, state, pincode to parties for structured addresses',
       });
     }
+
+    if (oldVersion < 18) {
+      // Automatic transaction creation: link transactions to invoices/bookings
+      await db.execute('ALTER TABLE transactions ADD COLUMN linked_invoice_id INTEGER');
+      await db.execute('ALTER TABLE transactions ADD COLUMN linked_booking_id INTEGER');
+      await db.execute('ALTER TABLE transactions ADD COLUMN business_id INTEGER');
+      
+      // Track invoice payment details
+      await db.execute('ALTER TABLE invoices ADD COLUMN paid_at TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN payment_method TEXT');
+      
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)');
+      
+      await db.insert('schema_version', {
+        'version': 18,
+        'description': 'Automatic transaction creation: link transactions to invoices/bookings, track payment details',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

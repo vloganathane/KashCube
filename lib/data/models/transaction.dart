@@ -241,6 +241,9 @@ class Transaction extends Equatable {
     this.verified = false,
     this.linkedTransactionId,
     this.parentTransactionId,
+    this.linkedInvoiceId,
+    this.linkedBookingId,
+    this.businessId,
     // Lending/borrowing fields
     this.loanId,
     this.dueDate,
@@ -285,6 +288,15 @@ class Transaction extends Equatable {
 
   /// For recurring / split transactions.
   final int? parentTransactionId;
+
+  /// Links this transaction to an invoice (for automatic invoice payment recording).
+  final int? linkedInvoiceId;
+
+  /// Links this transaction to a booking (for automatic booking payment recording).
+  final int? linkedBookingId;
+
+  /// Business ID for multi-business accounting (matches invoice.businessId).
+  final int? businessId;
 
   // --- Lending / Borrowing fields (nullable) ---
 
@@ -372,6 +384,9 @@ class Transaction extends Equatable {
     bool? verified,
     int? linkedTransactionId,
     int? parentTransactionId,
+    int? linkedInvoiceId,
+    int? linkedBookingId,
+    int? businessId,
     DateTime? dueDate,
     double? interestRate,
     InterestType? interestType,
@@ -409,6 +424,9 @@ class Transaction extends Equatable {
       verified: verified ?? this.verified,
       linkedTransactionId: linkedTransactionId ?? this.linkedTransactionId,
       parentTransactionId: parentTransactionId ?? this.parentTransactionId,
+      linkedInvoiceId: linkedInvoiceId ?? this.linkedInvoiceId,
+      linkedBookingId: linkedBookingId ?? this.linkedBookingId,
+      businessId: businessId ?? this.businessId,
       dueDate: dueDate ?? this.dueDate,
       interestRate: interestRate ?? this.interestRate,
       interestType: interestType ?? this.interestType,
@@ -450,6 +468,9 @@ class Transaction extends Equatable {
       'verified': verified ? 1 : 0,
       'linked_transaction_id': linkedTransactionId,
       'parent_transaction_id': parentTransactionId,
+      'linked_invoice_id': linkedInvoiceId,
+      'linked_booking_id': linkedBookingId,
+      'business_id': businessId,
       'due_date': dueDate?.toIso8601String(),
       'interest_rate': interestRate,
       'interest_type': interestType?.dbValue,
@@ -495,6 +516,9 @@ class Transaction extends Equatable {
       verified: (map['verified'] as int? ?? 0) == 1,
       linkedTransactionId: map['linked_transaction_id'] as int?,
       parentTransactionId: map['parent_transaction_id'] as int?,
+      linkedInvoiceId: map['linked_invoice_id'] as int?,
+      linkedBookingId: map['linked_booking_id'] as int?,
+      businessId: map['business_id'] as int?,
       dueDate: map['due_date'] != null
           ? DateTime.parse(map['due_date'] as String)
           : null,

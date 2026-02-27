@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/constants/app_spacing.dart';
 import '../../core/theme/kash_cube_colors.dart';
-import '../../core/theme/kash_cube_spacing.dart';
 import '../../data/models/transaction.dart';
 
 /// Quick payment method picker bottom sheet.
@@ -82,7 +82,7 @@ class _PaymentMethodPickerBottomSheetState
         color: theme.scaffoldBackgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      padding: const EdgeInsets.all(KashCubeSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -98,7 +98,7 @@ class _PaymentMethodPickerBottomSheetState
               ),
             ),
           ),
-          const SizedBox(height: KashCubeSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
 
           // Title
           Text(
@@ -107,7 +107,7 @@ class _PaymentMethodPickerBottomSheetState
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: KashCubeSpacing.xs),
+          const SizedBox(height: AppSpacing.xs),
 
           // Amount
           Text(
@@ -119,16 +119,16 @@ class _PaymentMethodPickerBottomSheetState
           ),
 
           if (widget.customerName != null) ...[
-            const SizedBox(height: KashCubeSpacing.xs),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'from ${widget.customerName}',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
           ],
 
-          const SizedBox(height: KashCubeSpacing.xl),
+          const SizedBox(height: AppSpacing.xl),
 
           // Date selector (if not today)
           if (_selectedDate.day != DateTime.now().day ||
@@ -145,22 +145,22 @@ class _PaymentMethodPickerBottomSheetState
                 minimumSize: const Size(double.infinity, 48),
               ),
             ),
-            const SizedBox(height: KashCubeSpacing.base),
+            const SizedBox(height: AppSpacing.base),
           ],
 
           // Payment method buttons
           Text(
             'Payment Method',
             style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
-          const SizedBox(height: KashCubeSpacing.md),
+          const SizedBox(height: AppSpacing.md),
 
           // Grid of payment method buttons
           Wrap(
-            spacing: KashCubeSpacing.md,
-            runSpacing: KashCubeSpacing.md,
+            spacing: AppSpacing.md,
+            runSpacing: AppSpacing.md,
             children: [
               _PaymentMethodButton(
                 method: PaymentMethod.cash,
@@ -188,7 +188,7 @@ class _PaymentMethodPickerBottomSheetState
             ],
           ),
 
-          const SizedBox(height: KashCubeSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
 
           // Other date option
           if (!_showDatePicker)
@@ -245,14 +245,14 @@ class _PaymentMethodButton extends StatelessWidget {
     final theme = Theme.of(context);
     
     return SizedBox(
-      width: (MediaQuery.of(context).size.width - KashCubeSpacing.lg * 2 - KashCubeSpacing.md) / 2,
+      width: (MediaQuery.of(context).size.width - AppSpacing.lg * 2 - AppSpacing.md) / 2,
       height: 72,
       child: FilledButton.tonal(
         onPressed: onTap,
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(
-            horizontal: KashCubeSpacing.md,
-            vertical: KashCubeSpacing.md,
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -268,7 +268,7 @@ class _PaymentMethodButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(_getIcon(), size: 24),
-            const SizedBox(height: KashCubeSpacing.xs),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               label ?? method.label,
               style: theme.textTheme.labelLarge,

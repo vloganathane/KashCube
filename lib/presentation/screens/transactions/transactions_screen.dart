@@ -155,82 +155,87 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         data: (transactions) {
           final filtered = _applyFilter(transactions);
 
-          return Column(
-            children: [
-              // Filter chips
-              _FilterChips(
-                active: _activeFilter,
-                onChanged: (filter) =>
-                    setState(() => _activeFilter = filter),
-                totalCount: transactions.length,
-                filteredCount: filtered.length,
-              ),
+          return RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(transactionsProvider.notifier).loadTransactions();
+            },
+            child: Column(
+              children: [
+                // Filter chips
+                _FilterChips(
+                  active: _activeFilter,
+                  onChanged: (filter) =>
+                      setState(() => _activeFilter = filter),
+                  totalCount: transactions.length,
+                  filteredCount: filtered.length,
+                ),
 
-              // Transaction list
-              Expanded(
-                child: filtered.isEmpty
-                    ? _buildEmptyState(transactions.isEmpty)
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.base,
-                          vertical: AppSpacing.sm,
-                        ),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final txn = filtered[index];
-                          final colors = context.kashColors;
-                          final amountColor =
-                              txn.isIncome ? colors.income : colors.expense;
-                          final prefix = txn.isIncome ? '+' : '-';
+                // Transaction list
+                Expanded(
+                  child: filtered.isEmpty
+                      ? _buildEmptyState(transactions.isEmpty)
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.base,
+                            vertical: AppSpacing.sm,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final txn = filtered[index];
+                            final colors = context.kashColors;
+                            final amountColor =
+                                txn.isIncome ? colors.income : colors.expense;
+                            final prefix = txn.isIncome ? '+' : '-';
 
-                          return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.xs,
-                            ),
-                            leading: CircleAvatar(
-                              backgroundColor:
-                                  context.colorScheme.primaryContainer,
-                              child: Icon(
-                                CategoryHelper.getIcon(txn.category),
-                                color:
-                                    context.colorScheme.onPrimaryContainer,
-                                size: AppSpacing.iconMd,
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs,
                               ),
-                            ),
-                            title: Text(
-                              txn.partyName ?? txn.category,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: Text(
-                              '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
-                              style: context.textTheme.bodySmall,
-                            ),
-                            trailing: Text(
-                              '$prefix${CurrencyFormatter.format(txn.amount)}',
-                              style: context.textTheme.titleSmall?.copyWith(
-                                color: amountColor,
-                                fontWeight: FontWeight.w600,
-                                fontFamily: 'RobotoMono',
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    context.colorScheme.primaryContainer,
+                                child: Icon(
+                                  CategoryHelper.getIcon(txn.category),
+                                  color:
+                                      context.colorScheme.onPrimaryContainer,
+                                  size: AppSpacing.iconMd,
+                                ),
                               ),
-                            ),
-                            onTap: () {
-                              if (txn.id != null) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        TransactionDetailScreen(
-                                      transactionId: txn.id!,
+                              title: Text(
+                                txn.partyName ?? txn.category,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                                style: context.textTheme.bodySmall,
+                              ),
+                              trailing: Text(
+                                '$prefix${CurrencyFormatter.format(txn.amount)}',
+                                style: context.textTheme.titleSmall?.copyWith(
+                                  color: amountColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'RobotoMono',
+                                ),
+                              ),
+                              onTap: () {
+                                if (txn.id != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          TransactionDetailScreen(
+                                        transactionId: txn.id!,
+                                      ),
                                     ),
-                                  ),
-                                );
-                              }
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

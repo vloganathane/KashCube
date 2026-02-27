@@ -80,37 +80,42 @@ class _InvoicesTab extends ConsumerWidget {
     final filter = ref.watch(invoiceFilterProvider);
     final invoicesAsync = ref.watch(filteredInvoicesProvider);
 
-    return Column(
-      children: [
-        _StatusFilterBar(
-          selected: filter,
-          onSelected: (s) =>
-              ref.read(invoiceFilterProvider.notifier).state = s,
-        ),
-        Expanded(
-          child: invoicesAsync.when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
-            data: (list) => list.isEmpty
-                ? _EmptyState(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'No invoices yet',
-                    sub: 'Create a quote and convert it to an invoice',
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(
-                      left: AppSpacing.base,
-                      right: AppSpacing.base,
-                      top: AppSpacing.base,
-                      bottom: 80,
-                    ),
-                    itemCount: list.length,
-                    itemBuilder: (ctx, i) => _InvoiceTile(invoice: list[i]),
-                  ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(invoicesProvider.notifier).load();
+      },
+      child: Column(
+        children: [
+          _StatusFilterBar(
+            selected: filter,
+            onSelected: (s) =>
+                ref.read(invoiceFilterProvider.notifier).state = s,
           ),
-        ),
-      ],
+          Expanded(
+            child: invoicesAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+              data: (list) => list.isEmpty
+                  ? _EmptyState(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'No invoices yet',
+                      sub: 'Create a quote and convert it to an invoice',
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(
+                        left: AppSpacing.base,
+                        right: AppSpacing.base,
+                        top: AppSpacing.base,
+                        bottom: 80,
+                      ),
+                      itemCount: list.length,
+                      itemBuilder: (ctx, i) => _InvoiceTile(invoice: list[i]),
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -343,25 +348,30 @@ class _QuotesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final quotesAsync = ref.watch(quotesProvider);
-    return quotesAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (list) => list.isEmpty
-          ? _EmptyState(
-              icon: Icons.description_outlined,
-              label: 'No quotes yet',
-              sub: 'Tap + to create your first quote',
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.only(
-                left: AppSpacing.base,
-                right: AppSpacing.base,
-                top: AppSpacing.base,
-                bottom: 80,
+    return RefreshIndicator(
+      onRefresh: () async {
+        await ref.read(quotesProvider.notifier).load();
+      },
+      child: quotesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (list) => list.isEmpty
+            ? _EmptyState(
+                icon: Icons.description_outlined,
+                label: 'No quotes yet',
+                sub: 'Tap + to create your first quote',
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.base,
+                  right: AppSpacing.base,
+                  top: AppSpacing.base,
+                  bottom: 80,
+                ),
+                itemCount: list.length,
+                itemBuilder: (ctx, i) => _QuoteTile(quote: list[i]),
               ),
-              itemCount: list.length,
-              itemBuilder: (ctx, i) => _QuoteTile(quote: list[i]),
-            ),
+      ),
     );
   }
 }

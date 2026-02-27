@@ -10,9 +10,9 @@ extension BookingTypeExt on BookingType {
   String get label {
     switch (this) {
       case BookingType.business:
-        return 'Business';
+        return 'Booking';
       case BookingType.personal:
-        return 'Personal';
+        return 'Schedule';
     }
   }
 

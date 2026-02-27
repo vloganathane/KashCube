@@ -261,3 +261,26 @@ final quoteByIdProvider =
     FutureProvider.family<Quote?, int>((ref, id) async {
   return ref.read(quoteRepositoryProvider).getById(id);
 });
+
+// ---------------------------------------------------------------------------
+// Overdue invoices summary (for home screen alert)
+// ---------------------------------------------------------------------------
+
+/// A lightweight record of overdue invoice count and total amount due.
+typedef OverdueInvoicesSummary = ({int count, double totalDue});
+
+/// Derives count + total pending from unpaid invoices (overdue or sent).
+/// Returns null when invoices haven't loaded yet.
+final overdueInvoicesSummaryProvider =
+    Provider<OverdueInvoicesSummary?>((ref) {
+  final all = ref.watch(invoicesProvider);
+  return all.whenOrNull(data: (list) {
+    final unpaid = list.where((inv) =>
+        inv.status == InvoiceStatus.overdue ||
+        inv.status == InvoiceStatus.sent ||
+        inv.status == InvoiceStatus.partiallyPaid).toList();
+    if (unpaid.isEmpty) return (count: 0, totalDue: 0.0);
+    final totalDue = unpaid.fold(0.0, (sum, inv) => sum + inv.balanceDue);
+    return (count: unpaid.length, totalDue: totalDue);
+  });
+});

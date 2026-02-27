@@ -85,7 +85,7 @@ class BookingRepositoryImpl implements BookingRepository {
     final db = await _db.database;
     
     // Generate booking reference if not provided
-    String bookingRef = booking.bookingRef ?? await generateBookingRef();
+    String bookingRef = booking.bookingRef ?? await generateBookingRef(booking.bookingType);
     
     final bookingWithRef = booking.copyWith(bookingRef: bookingRef);
     return db.insert(_table, bookingWithRef.toMap());
@@ -109,18 +109,19 @@ class BookingRepositoryImpl implements BookingRepository {
   }
 
   @override
-  Future<String> generateBookingRef() async {
+  Future<String> generateBookingRef([BookingType type = BookingType.business]) async {
     final db = await _db.database;
     final year = DateTime.now().year;
-    
-    // Get the highest booking number for current year
+    final prefix = type == BookingType.personal ? 'SC' : 'BK';
+
+    // Get the highest number for this prefix + year
     final result = await db.rawQuery('''
       SELECT booking_ref FROM $_table 
-      WHERE booking_ref LIKE 'BK-$year-%' 
+      WHERE booking_ref LIKE '$prefix-$year-%' 
       ORDER BY booking_ref DESC 
       LIMIT 1
     ''');
-    
+
     int nextNumber = 1;
     if (result.isNotEmpty) {
       final lastRef = result.first['booking_ref'] as String?;
@@ -131,9 +132,9 @@ class BookingRepositoryImpl implements BookingRepository {
         }
       }
     }
-    
-    // Format: BK-2026-001
-    return 'BK-$year-${nextNumber.toString().padLeft(3, '0')}';
+
+    // Format: BK-2026-001 or SC-2026-001
+    return '$prefix-$year-${nextNumber.toString().padLeft(3, '0')}';
   }
 
   @override

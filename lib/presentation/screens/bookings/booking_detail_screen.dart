@@ -48,14 +48,16 @@ class _BookingDetailView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(booking.bookingRef ?? 'Booking Details'),
+        title: Text(booking.serviceName),
         actions: [
           if (booking.status != BookingStatus.completed &&
               booking.status != BookingStatus.cancelled &&
               booking.status != BookingStatus.noShow)
             IconButton(
               icon: const Icon(Icons.edit),
-              tooltip: 'Edit Booking',
+              tooltip: booking.bookingType == BookingType.personal
+                  ? 'Edit Schedule'
+                  : 'Edit Booking',
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -76,17 +78,20 @@ class _BookingDetailView extends ConsumerWidget {
             itemBuilder: (context) => [
               if (booking.status == BookingStatus.pending ||
                   booking.status == BookingStatus.confirmed)
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'cancel',
                   child: Row(
                     children: [
-                      Icon(Icons.cancel_outlined),
-                      SizedBox(width: 12),
-                      Text('Cancel Booking'),
+                      const Icon(Icons.cancel_outlined),
+                      const SizedBox(width: 12),
+                      Text(booking.bookingType == BookingType.personal
+                          ? 'Cancel Schedule'
+                          : 'Cancel Booking'),
                     ],
                   ),
                 ),
-              if (booking.status == BookingStatus.confirmed &&
+              if (booking.bookingType == BookingType.business &&
+                  booking.status == BookingStatus.confirmed &&
                   booking.startDatetime.isBefore(DateTime.now()))
                 const PopupMenuItem(
                   value: 'no-show',
@@ -127,8 +132,33 @@ class _BookingDetailView extends ConsumerWidget {
   }
 
   Widget? _buildBottomBar(BuildContext context, WidgetRef ref) {
-    // Personal bookings have no financial actions
-    if (booking.bookingType == BookingType.personal) return null;
+    // Schedule: simple Mark Done button
+    if (booking.bookingType == BookingType.personal) {
+      if (booking.status == BookingStatus.pending ||
+          booking.status == BookingStatus.confirmed) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.xl,
+          ),
+          child: FilledButton.icon(
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Mark Done'),
+            onPressed: () async {
+              await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Marked as done')),
+                );
+              }
+            },
+          ),
+        );
+      }
+      return null;
+    }
 
     if (booking.status == BookingStatus.pending) {
       return Padding(
@@ -249,11 +279,14 @@ class _BookingDetailView extends ConsumerWidget {
   }
 
   Future<void> _cancelBooking(BuildContext context, WidgetRef ref) async {
+    final isSchedule = booking.bookingType == BookingType.personal;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Booking?'),
-        content: const Text('Are you sure you want to cancel this booking?'),
+        title: Text(isSchedule ? 'Cancel Schedule?' : 'Cancel Booking?'),
+        content: Text(isSchedule
+            ? 'Are you sure you want to cancel this schedule?'
+            : 'Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -270,7 +303,7 @@ class _BookingDetailView extends ConsumerWidget {
       await ref.read(bookingsProvider.notifier).markAsCancelled(booking.id!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Booking cancelled')),
+          SnackBar(content: Text(isSchedule ? 'Schedule cancelled' : 'Booking cancelled')),
         );
       }
     }
@@ -340,7 +373,9 @@ class _HeaderCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  booking.bookingRef ?? 'No ref',
+                  booking.bookingType == BookingType.personal
+                      ? booking.serviceName
+                      : (booking.bookingRef ?? 'No ref'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -365,6 +400,16 @@ class _HeaderCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (booking.bookingType == BookingType.personal &&
+                booking.bookingRef != null) ...[  
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                booking.bookingRef!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             Text(
               _formatDateTime(),
@@ -538,7 +583,7 @@ class _ServiceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Service',
+              booking.bookingType == BookingType.personal ? 'Event' : 'Service',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,

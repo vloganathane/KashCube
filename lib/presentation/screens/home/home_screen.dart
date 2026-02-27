@@ -8,13 +8,18 @@ import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/dashboard_provider.dart';
+import '../../providers/booking_provider.dart';
+import '../../providers/invoice_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
+import '../../../data/models/booking.dart';
 import '../bills/bills_and_payments_screen.dart';
+import '../bookings/booking_detail_screen.dart';
 import '../bookings/bookings_screen.dart';
+import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../search/search_screen.dart';
@@ -39,6 +44,9 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(totalOutstandingLentProvider);
           ref.invalidate(totalOutstandingBorrowedProvider);
           ref.invalidate(totalMonthlyScheduledExpenseProvider);
+          ref.invalidate(todayCashflowProvider);
+          ref.invalidate(upcomingBookingsProvider);
+          ref.invalidate(invoicesProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -128,10 +136,20 @@ class HomeScreen extends ConsumerWidget {
                       child: Text('Error: $e', style: TextStyle(color: context.colorScheme.error)),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // Today's cashflow bar
+                  const _TodayCashflowBar(),
                   const SizedBox(height: AppSpacing.lg),
 
                   // Upcoming payments — loan EMIs / due dates + bills
                   const _UpcomingSection(),
+
+                  // Upcoming bookings — next 3 pending/confirmed
+                  const _UpcomingBookingsSection(),
+
+                  // Alerts — overdue invoices + pending credits
+                  const _AlertsSection(),
 
                   // Recent Transactions Header
                   Row(
@@ -899,6 +917,440 @@ class _EmptyState extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _TodayCashflowBar — today's income & expense summary
+// ---------------------------------------------------------------------------
+
+class _TodayCashflowBar extends ConsumerWidget {
+  const _TodayCashflowBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todayAsync = ref.watch(todayCashflowProvider);
+    final colors = context.kashColors;
+
+    return todayAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (today) {
+        final net = today.income - today.expense;
+        final hasActivity = today.income > 0 || today.expense > 0;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: context.colorScheme.surfaceContainerHighest
+                .withValues(alpha: 0.50),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              _CashflowPill(
+                icon: Icons.south_rounded,
+                label: 'In',
+                value: CurrencyFormatter.formatCompact(today.income),
+                color: colors.income,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _CashflowPill(
+                icon: Icons.north_rounded,
+                label: 'Out',
+                value: CurrencyFormatter.formatCompact(today.expense),
+                color: colors.expense,
+              ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Today',
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  if (hasActivity)
+                    Text(
+                      '${net >= 0 ? '+' : ''}${CurrencyFormatter.formatCompact(net)}',
+                      style: context.textTheme.labelMedium?.copyWith(
+                        color: net >= 0 ? colors.income : colors.expense,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'RobotoMono',
+                      ),
+                    )
+                  else
+                    Text(
+                      'No activity',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CashflowPill extends StatelessWidget {
+  const _CashflowPill({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12, color: color),
+        const SizedBox(width: 3),
+        Text(
+          '$label ',
+          style: context.textTheme.labelSmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          value,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontFamily: 'RobotoMono',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _UpcomingBookingsSection — next pending/confirmed bookings (max 3)
+// ---------------------------------------------------------------------------
+
+class _UpcomingBookingsSection extends ConsumerWidget {
+  const _UpcomingBookingsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bookingsAsync = ref.watch(upcomingBookingsProvider);
+
+    return bookingsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (bookings) {
+        final active = bookings
+            .where((b) =>
+                b.status == BookingStatus.pending ||
+                b.status == BookingStatus.confirmed)
+            .take(3)
+            .toList();
+        if (active.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Bookings',
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const BookingsScreen(),
+                    ),
+                  ),
+                  child: const Text('See All'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ...active.map((b) => _BookingTimelineTile(booking: b)),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _BookingTimelineTile extends StatelessWidget {
+  const _BookingTimelineTile({required this.booking});
+
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final isPersonal = booking.bookingType == BookingType.personal;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final bookingDay = DateTime(
+      booking.startDatetime.year,
+      booking.startDatetime.month,
+      booking.startDatetime.day,
+    );
+    final isToday = bookingDay == today;
+    final isTomorrow = bookingDay == today.add(const Duration(days: 1));
+
+    const shortMonths = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final shortMonth = shortMonths[booking.startDatetime.month];
+
+    final Color statusColor = switch (booking.status) {
+      BookingStatus.confirmed => colors.income,
+      BookingStatus.pending   => context.colorScheme.primary,
+      _                       => context.colorScheme.outline,
+    };
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          if (booking.id != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+              ),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Row(
+            children: [
+              // Date block
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      booking.startDatetime.day.toString(),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: context.colorScheme.onPrimaryContainer,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      isToday ? 'Today' : isTomorrow ? 'Tmrw' : shortMonth,
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.onPrimaryContainer
+                            .withValues(alpha: 0.7),
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // Title + time/service
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isPersonal ? booking.serviceName : booking.customerName,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '${DateFormatter.formatTime(booking.startDatetime)} · ${booking.serviceName}',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              // Status badge + amount
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      booking.status.label,
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (!isPersonal && booking.totalAmount > 0) ...[  
+                    const SizedBox(height: 2),
+                    Text(
+                      CurrencyFormatter.format(booking.totalAmount),
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                        fontFamily: 'RobotoMono',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _AlertsSection — overdue invoices + pending credits calls-to-action
+// ---------------------------------------------------------------------------
+
+class _AlertsSection extends ConsumerWidget {
+  const _AlertsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final businessMode = ref.watch(businessModeProvider);
+    final overdueSummary = ref.watch(overdueInvoicesSummaryProvider);
+    final lent = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+
+    final overdueCount = overdueSummary?.count ?? 0;
+    final overdueTotal = overdueSummary?.totalDue ?? 0.0;
+    final hasOverdue = businessMode && overdueCount > 0;
+    final hasCredits = lent > 0;
+
+    if (!hasOverdue && !hasCredits) return const SizedBox.shrink();
+
+    return Column(
+      children: [
+        if (hasOverdue)
+          _AlertActionTile(
+            icon: Icons.receipt_long_outlined,
+            label: '$overdueCount unpaid invoice${overdueCount > 1 ? 's' : ''}',
+            value: CurrencyFormatter.format(overdueTotal),
+            color: context.colorScheme.error,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const InvoicesScreen()),
+            ),
+          ),
+        if (hasCredits)
+          _AlertActionTile(
+            icon: Icons.handshake_outlined,
+            label: 'Lent out (pending)',
+            value: CurrencyFormatter.format(lent),
+            color: context.kashColors.credit,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LedgerScreen()),
+            ),
+          ),
+        const SizedBox(height: AppSpacing.sm),
+      ],
+    );
+  }
+}
+
+class _AlertActionTile extends StatelessWidget {
+  const _AlertActionTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      color: color.withValues(alpha: 0.08),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  label,
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                value,
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'RobotoMono',
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: color.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

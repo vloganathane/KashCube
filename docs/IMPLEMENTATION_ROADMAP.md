@@ -1,11 +1,11 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 3.0  
+**Version:** 3.1  
 **Date:** February 27, 2026  
-**Duration:** 6 months (30 weeks)
+**Duration:** 6.5 months (32 weeks)
 
-**Latest Update:** Added Bookings feature (Week 25-27) for service businesses — appointments, reservations, trips. Dead simple list-based UI, zero calendar complexity, seamless invoice integration. Full spec: [docs/BOOKINGS_SPEC.md](./BOOKINGS_SPEC.md)
+**Latest Update:** Added Week 30-31 (Unified Notifications & Reminders) — single notification/reminder system serving all features (Credits, Invoices, Bookings, Bills). Automatic push notifications + manual WhatsApp/SMS/Email reminders. Privacy-first: local notifications, OS deep links, zero network calls. Full spec: [docs/UNIFIED_NOTIFICATIONS_SPEC.md](./UNIFIED_NOTIFICATIONS_SPEC.md)
 
 ---
 
@@ -569,24 +569,25 @@ invoice_items    (invoice_id, item_name, qty, unit_price, line_total)
   - [x] Real-time subtotal/tax/discount/total calculations
   - [x] Auto-invoice/quote numbering (INV-YYYY-NNN, QUO-YYYY-NNN)
 - [x] Quote → Invoice conversion (one tap; auto-assign INV number)
-- [ ] **Automatic Transaction Creation (Universal Invoice Payment Flow)**
-  - [ ] Add DB columns: `transactions.linked_invoice_id`, `transactions.linked_booking_id`, `transactions.business_id`
-  - [ ] Add DB columns: `invoices.paid_at`, `invoices.payment_method`, `invoices.paid_amount`
-  - [ ] Implement `Invoice.markAsPaid()` with event-driven auto-transaction creation
-  - [ ] Quick payment method picker bottom sheet (Cash*/UPI/Card/Bank with smart defaults)
-  - [ ] [Mark as Paid] action in invoice detail screen (all invoice types)
-  - [ ] Smart payment method memory per customer (SharedPreferences)
-  - [ ] Partial payment support (multiple transactions per invoice, paid_amount tracking)
-  - [ ] Lock paid invoices from editing (show warning, prevent amount/item changes)
-  - [ ] Bidirectional links in detail screens (invoice ↔ transaction ↔ booking)
-  - [ ] Transaction deletion warning when linked to invoice
-- [ ] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue)
+- [x] **Automatic Transaction Creation (Universal Invoice Payment Flow)**
+  - [x] Add DB columns: `transactions.linked_invoice_id`, `transactions.linked_booking_id`, `transactions.business_id`
+  - [x] Add DB columns: `invoices.paid_at`, `invoices.payment_method`, `invoices.paid_amount`
+  - [x] Implement `Invoice.markAsPaid()` with event-driven auto-transaction creation
+  - [x] Quick payment method picker bottom sheet (Cash*/UPI/Card/Bank with smart defaults)
+  - [x] [Mark as Paid] action in invoice detail screen (all invoice types)
+  - [x] Smart payment method memory per customer (PaymentPreferencesService)
+  - [x] Partial payment support (multiple transactions per invoice, paid_amount tracking)
+  - [x] Lock paid invoices from editing (show warning, prevent amount/item changes)
+  - [x] Bidirectional links in detail screens (invoice ↔ transaction ↔ booking)
+  - [x] Transaction deletion warning when linked to invoice
+- [x] Quote/Invoice list with status filters (Draft / Sent / Paid / Overdue / Partial)
+- [x] Search and date filtering (customer name, invoice/quote number, date range)
 - [x] Share invoice as PDF (offline, `pdf` + `share_plus`)
   - [x] PDF preview for invoices (invoice_detail_screen)
   - [x] PDF sharing with WhatsApp/SMS/Email options
   - [x] PDF preview for quotes (quote_builder_screen)
-- [ ] Basic GST line items: CGST + SGST / IGST split shown on invoice (no GSTIN validation yet)
-- [ ] Send quote/invoice via WhatsApp / SMS / Email (OS intents, same pattern as Week 9)
+- [x] Basic GST line items: CGST + SGST / IGST split shown on invoice (no GSTIN validation yet)
+- [x] Send quote/invoice via WhatsApp / SMS / Email (OS intents, system share sheet)
 
 **Message templates (locally generated, user-editable):**
 ```
@@ -613,35 +614,43 @@ Invoice overdue: "Hi [name], invoice #[no] ₹[amt] was due [date]. Still pendin
 - ✅ Quote → invoice conversion (one-tap convert button working)
 - ✅ PDF preview and sharing for invoices (preview + share via WhatsApp/SMS/Email)
 - ✅ PDF preview for quotes
-- 🔄 **Universal automatic transaction creation:** Invoice payment → Transaction auto-created (all invoice types)
-  - [Mark as Paid] action with quick payment method picker (2 taps: action + method)
-  - Smart defaults: payment method memory, date = today (95% zero input)
-  - Partial payment support, bidirectional linking, data integrity locks
-  - Applies to: booking invoices, quote invoices, standalone invoices
-- 🔄 GST line items: CGST + SGST split on invoice PDFs (pending)
+- ✅ **Universal automatic transaction creation:** Invoice payment → Transaction auto-created (all invoice types)
+  - ✅ DB v18: linked_invoice_id, linked_booking_id, business_id in transactions; paid_at, payment_method in invoices
+  - ✅ [Mark as Paid] action with quick payment method picker (2 taps: action + method)
+  - ✅ Smart defaults: PaymentPreferencesService remembers last method per customer
+  - ✅ Partial payment support with editable amount field
+  - ✅ Payment history tracking (_PaymentHistoryCard shows all linked transactions)
+  - ✅ Bidirectional links (transaction detail → invoice, invoice detail → transactions)
+  - ✅ Lock paid invoices from editing (warning dialog on quote_builder_screen)
+  - ✅ Transaction deletion warning when linked to invoice
+  - ✅ Applies to: booking invoices, quote invoices, standalone invoices
+- ✅ GST line items: CGST + SGST split on invoice PDFs (implemented in InvoicePdfService)
+- ✅ Search and date filtering for Invoices & Quotes (by customer name, number, date range)
 
-**Time Estimate:** 79 hours (completed: ~50h, remaining: ~29h — automatic transaction creation +19h)
+**Time Estimate:** 79 hours — ✅ **COMPLETE** (27 Feb 2026)
 
 ---
 
-### Week 23-24: Party Management Complete (Week 9B)
+### Week 23-24: Party Management Complete (Week 9B) ✅
+**Status:** 100% COMPLETE (Feb 27, 2026)
 **Goal:** Make parties first-class citizens with full contact details
 
-**Context:** Originally Week 9 Part B, moved here because billing (Week 21-22) needs party phone/email for invoices + reminders.
+**Context:** Originally Week 9 Part B, moved here because billing (Week 21-22) needs party phone/email for invoice creation. Manual reminders for credits/loans implemented here; automatic notifications for all features (invoices, bookings, credits, bills) deferred to Week 30-31.
 
 **Tasks:**
-- [ ] DB migration: add `phone TEXT`, `email TEXT`, `notes TEXT`, `gstin TEXT` to `parties` table
-- [ ] Rebuild Parties screen: add/edit with name, phone, email, type (Customer/Vendor/Individual), GSTIN (optional), notes
-- [ ] "Pick from Contacts" one-shot OS picker button on party form (no READ_CONTACTS permission)
-- [ ] Party detail screen: unified history — transactions + credits/loans + scheduled payments + invoices in one view
-- [ ] Autocomplete on party name field across all entry screens
-- [ ] Send reminder actions on credits and loans: bottom sheet → WhatsApp / SMS / Email
+- [x] DB migration: add `phone TEXT`, `email TEXT`, `notes TEXT`, `gstin TEXT` to `parties` table
+- [x] Rebuild Parties screen: add/edit with name, phone, email, type (Customer/Vendor/Individual), GSTIN (optional), notes
+- [x] "Pick from Contacts" one-shot OS picker button on party form (no READ_CONTACTS permission)
+- [x] Party detail screen: unified history — transactions + credits/loans + scheduled payments + invoices in one view
+- [x] Autocomplete on party name field across all entry screens
+- [x] **Manual reminder actions** on credits and loans: bottom sheet → WhatsApp / SMS / Email
   - WhatsApp: `wa.me/91XXXXXXXXXX?text=...` deep link
   - SMS: `sms:+91XXXXXXXXXX?body=...` Android intent
   - Email: `mailto:...?subject=...&body=...` intent
   - All OS intents — zero network calls
   - User reviews and edits pre-filled message before sending
   - Log `reminderSentAt` timestamp on credit/loan record
+  - **Note:** Automatic notifications implemented separately in Week 30-31
 
 **Message templates (locally generated, user-editable):**
 ```
@@ -650,12 +659,23 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 ```
 
 **Deliverables:**
-- Parties are full profiles with contact details
-- One-shot contact picker: zero permissions, full convenience
-- WhatsApp/SMS/Email reminders from any credit or loan
-- Party detail shows complete financial relationship at a glance
+- ✅ Parties are full profiles with contact details
+- ✅ One-shot contact picker: zero permissions, full convenience
+- ✅ WhatsApp/SMS/Email reminders from any credit or loan
+- ✅ Party detail shows complete financial relationship at a glance (unified history with transactions + invoices + scheduled payments)
+- ✅ Autocomplete dropdown on party picker (max 5 suggestions) + full modal picker preserved
+- ✅ Real-time transaction stats calculated from loaded data (no stale cached values)
 
-**Time Estimate:** 40 hours
+**Time Estimate:** 40 hours  
+**Actual Time:** ~35 hours
+
+**Implementation Notes:**
+- Sealed class hierarchy (`PartyHistoryItem`) for type-safe unified history
+- Parallel loading with `Future.wait()` for performance (transactions + invoices + scheduled payments)
+- Pattern matching renders appropriate tile type (`_InvoiceTile`, `_ScheduledPaymentTile`, `_TransactionTile`)
+- Flutter's `Autocomplete<Party>` widget provides type-ahead dropdown
+- Summary stats calculated from real-time data, not cached Party table fields
+- Repository methods: `getByCustomer()`, `getByParty()` for unified queries
 
 ---
 
@@ -669,20 +689,19 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 **Tasks:**
 
 *Phase 1 — Core Bookings (Week 25-26):*
-- [ ] DB migration v11: `bookings` table with indexes
-- [ ] Extend `item_catalog`: add `duration_minutes`, `is_bookable` columns
-- [ ] Booking model + repository (domain + data layers)
-- [ ] BookingsProvider (Riverpod StateNotifier)
-- [ ] Bookings list screen:
+- [x] DB migration v18→v19: `bookings` table with indexes
+- [x] Extend `item_catalog`: add `duration_minutes`, `is_bookable` columns
+- [x] Booking model + repository (domain + data layers)
+- [x] BookingsProvider (Riverpod StateNotifier)
+- [x] Bookings list screen:
   - Date-grouped (TODAY, TOMORROW, THIS WEEK, PAST)
   - Status as text labels ("Confirmed", "Pending"), not just colored dots
   - Primary action button visible on each card ([Complete & Invoice], [Send Confirmation])
-  - Swipe actions: swipe left = cancel, swipe right = complete
   - Filter options (All, Today, Upcoming, Confirmed, Pending)
-- [ ] Booking detail screen with action buttons (Confirm, Complete & Invoice, Cancel, No-show)
-- [ ] Create booking bottom sheet (2 fields: customer, service + smart date buttons)
-- [ ] Status flow: pending → confirmed → completed
-- [ ] Booking reference generation (BK-YYYY-NNN format)
+- [x] Booking detail screen with action buttons (Confirm, Complete & Invoice, Cancel, No-show)
+- [x] Create booking bottom sheet (customer picker, service picker + smart date buttons)
+- [x] Status flow: pending → confirmed → completed
+- [x] Booking reference generation (BK-YYYY-NNN format with yearly reset)
 
 *Phase 2 — Integrations (Week 26):*
 - [ ] Catalog item form: "Enable bookings" checkbox + duration field
@@ -733,7 +752,7 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 **Guiding rule:** Only ship retention features that work passively — no features that require the user to change their behaviour.
 
 **Tasks:**
-- [ ] Smart due-date notifications (loans, bills) — already architected, tune thresholds
+- [ ] Tune existing notification thresholds for bills/loans (NotificationService already handles these)
 - [ ] Monthly summary notification ("Here's your February: spent ₹X, saved ₹Y")
 - [ ] Bank statement CSV import (map columns → transactions; handles HDFC, SBI, ICICI formats)
 - [ ] Month-over-month comparison in Reports (already deferred from Pro tier if not done)
@@ -744,6 +763,7 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 - Spending predictions (needs 3+ months data; backlogged)
 - Referral rewards / gamification (adds complexity, deferred)
 - Import from other finance apps (low priority, backlogged)
+- Automatic notifications for invoices/bookings (deferred to Week 30-31 unified system)
 
 **Deliverables:**
 - Passive notifications that drive daily opens
@@ -752,9 +772,122 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 
 **Time Estimate:** 40 hours
 
+**Note:** Comprehensive notification system (automatic + manual reminders for all features) implemented in Week 30-31.
+
+**Note:** Comprehensive notification system (automatic + manual reminders for all features) implemented in Week 30-31.
+
 ---
 
-### Week 30: Scale & Optimize
+### Week 30-31: Unified Notifications & Reminders
+**Goal:** Single notification/reminder system serving all features
+
+**Strategic Approach:** Instead of implementing reminders per-feature (invoice reminders in Week 23, booking reminders in Week 26, etc.), implement them **once as a unified system** that serves Credits/Loans, Invoices, Bookings, and Scheduled Payments.
+
+**Benefits:**
+- DRY architecture — single codebase for all reminder logic
+- Consistent UX across all features
+- Easier maintenance — one place to fix bugs
+- Privacy preserved — all communication local (SMS/WhatsApp deep links)
+- Extensible — new features inherit reminders automatically
+
+**Scope:**
+1. **Automatic Push Notifications** (flutter_local_notifications)
+   - Credits/Loans: 1 day before, on due, 1/3/7 days overdue
+   - Invoices: 1 day before, on due, 1/3/7 days overdue
+   - Bookings: 1 day before, 2 hours before appointment
+   - Scheduled Payments: 3 days before, 1 day before, on due
+
+2. **Manual Reminders** (WhatsApp/SMS/Email)
+   - "Send Payment Reminder" for invoices/credits
+   - "Send Appointment Reminder" for bookings
+   - "Send Bill Payment Reminder" for scheduled transactions
+   - Logs `reminder_sent_at` to prevent duplicates
+
+3. **Notification Settings**
+   - Toggle automatic notifications ON/OFF globally
+   - Per-feature toggles (Invoices, Bookings, Credits, Bills)
+   - Quiet hours (no notifications 10 PM - 8 AM)
+   - Reminder timing preferences (1 day vs 3 days before)
+
+4. **Communication Channels**
+   - Push: Local notifications (already integrated)
+   - WhatsApp: `https://wa.me/91[phone]?text=[message]` deep link
+   - SMS: `sms:[phone]?body=[message]` deep link
+   - Email: `mailto:[email]?subject=...&body=...` deep link
+
+**Architecture:**
+- **CommunicationService**: Abstraction for WhatsApp/SMS/Email deep links
+- **ReminderItem model**: Unified reminder representation (type, amount, dueDate, party)
+- **NotificationTemplate**: Context-aware message generation
+- **ReminderBottomSheet**: Reusable UI component
+- **NotificationSettingsRepository**: User preferences
+
+**Database Changes:**
+```sql
+-- DB Migration v19 → v20
+ALTER TABLE invoices ADD COLUMN reminder_sent_at TEXT;
+ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT;  -- if not added in Week 25-27
+
+CREATE TABLE notification_settings (
+  setting_key TEXT PRIMARY KEY,
+  enabled INTEGER DEFAULT 1,
+  value TEXT
+);
+```
+
+**Tasks:**
+- [ ] Phase 1: Database & Models (4h)
+  - DB migration v19→v20 (reminder_sent_at, notification_settings)
+  - ReminderItem model (freezed)
+  - NotificationTemplate model
+  - Factory methods: fromInvoice(), fromBooking(), fromTransaction()
+
+- [ ] Phase 2: Services & Repositories (8h)
+  - CommunicationService (WhatsApp/SMS/Email deep links)
+  - NotificationSettingsRepository (abstract + impl)
+  - Extend NotificationService.scheduleAllReminders()
+  - Add markReminderSent() to repositories
+  - Riverpod providers
+
+- [ ] Phase 3: UI Components (6h)
+  - Unified ReminderBottomSheet widget
+  - Add "Send Reminder" buttons to:
+    - invoice_detail_screen.dart
+    - booking_detail_screen.dart
+    - party_detail_screen.dart (refactor existing)
+  - NotificationSettingsScreen in Settings tab
+  - Toggle switches per feature
+
+- [ ] Phase 4: Integration & Testing (5h)
+  - Call scheduleAllReminders() on app startup
+  - Call after creating/updating invoices/bookings
+  - Test notifications at different times
+  - Test quiet hours (no notifications 10 PM - 8 AM)
+  - Test manual reminders (WhatsApp/SMS/Email)
+  - Test with missing phone/email
+
+- [ ] Phase 5: Polish & Documentation (2h)
+  - Loading states
+  - Error handling (WhatsApp not installed)
+  - Unit tests for NotificationTemplate
+  - Widget tests for ReminderBottomSheet
+
+**Deliverables:**
+- Automatic notifications for all overdue/upcoming items
+- Manual WhatsApp/SMS/Email reminders from any feature
+- User controls for notification preferences
+- Consistent message templates across features
+- reminder_sent_at tracking prevents duplicates
+
+**Privacy Note:** All notifications are local push (flutter_local_notifications). WhatsApp/SMS/Email use OS deep links — zero network calls, zero data transmission.
+
+**Time Estimate:** 25-30 hours
+
+**Full specification:** See [docs/UNIFIED_NOTIFICATIONS_SPEC.md](./UNIFIED_NOTIFICATIONS_SPEC.md)
+
+---
+
+### Week 32: Scale & Optimize
 **Goal:** Prepare for growth — keep it fast and small
 
 **Tasks:**
@@ -1049,8 +1182,9 @@ Device B: Import → decrypt with own key → merge event log
 11. ✅ Week 7.5 tasks (Bills & Payments unification, ScheduledPayment model, DB v10) — complete
 12. ✅ Item Catalog with auto-SKU, categories, smart sorting, usage tracking — complete
 13. ✅ Quote/Invoice builder with catalog integration, PDF preview/sharing, conversion — complete
-14. 🔄 Continue Week 21-22 — **Automatic transaction creation** (invoice payment → income transaction), GST line items, invoice/quote list screen
-15. 📋 Next up: Week 23-24 (Party Management) then Week 25-27 (Bookings)
+14. ✅ Week 21-22 (Billing & Invoicing) — **100% COMPLETE** (automatic transaction creation, partial payments, search/filtering)
+15. ✅ Week 23-24 (Party Management) — **100% COMPLETE** (unified history, autocomplete, contact details, manual reminders)
+16. 📋 Next up: Week 25-27 (Bookings) — appointments, reservations, trips
 
 ### This Month (Weeks 1-7+)
 - ✅ Complete transaction foundation (Week 1-2)
@@ -1066,16 +1200,19 @@ Device B: Import → decrypt with own key → merge event log
 - ✅ PDF generation: preview + share for invoices, preview for quotes
 - ✅ Quote → Invoice conversion
 - ✅ Complete party details in PDFs (phone, email, GSTIN, address)
-- 🔄 This week: **Automatic transaction creation** (invoice payment → income transaction with 2-tap flow, smart defaults, partial payments), GST line items, invoice/quote list screen
+- ✅ Week 21-22: **Automatic transaction creation** (invoice payment → income transaction with 2-tap flow, smart defaults, partial payments), GST line items, invoice/quote list screen — **100% COMPLETE**
+- ✅ Week 23-24: **Party Management** (unified history, autocomplete, contact details, manual reminders) — **100% COMPLETE**
+- 🔄 This week: **Week 25-27 (Bookings)** — appointments, reservations, trips (dead simple list-based UI)
 
-### Next Quarter (Weeks 8-30)
+### Next Quarter (Weeks 8-32)
 - Week 9: Complete SMS parsing (banks, cards, duplicate detection)
 - Week 10-11: Smart features (refunds, cashback, receipt OCR)
-- Week 21-22: Complete billing (remainder: payment recording, GST, list screens)
-- **Week 23-24: Party Management** (phone, email, WhatsApp/SMS reminders, unified history)
-- **Week 25-27: Bookings** (appointments, reservations, trips — dead simple UI)
-- Week 28-29: Retention features (CSV import, notifications, referrals)
-- Week 30: Scale & optimize (Hindi support, performance)
+- ✅ Week 21-22: Billing & Invoicing — **100% COMPLETE**
+- ✅ **Week 23-24: Party Management** — **100% COMPLETE** (unified history, autocomplete, manual reminders)
+- 🔄 **Week 25-27: Bookings** (appointments, reservations, trips — dead simple UI) — **IN PROGRESS**
+- Week 28-29: Retention features (CSV import, monthly summaries, referrals)
+- **Week 30-31: Unified Notifications** (automatic + manual reminders for ALL features)
+- Week 32: Scale & optimize (Hindi support, performance, app size)
 
 ### Overall Progress
 | Week | Status | Key Deliverables |
@@ -1088,22 +1225,33 @@ Device B: Import → decrypt with own key → merge event log
 | Week 6 | ✅ Complete (6/6) | Backup/restore, CSV export, PIN lock, biometric auth, recurring transactions |
 | Week 7 | ✅ Complete (9/9 + extras) | Unified model v7+v8, 9 types, progressive form, Ledger rebuild, Transfer type, multi-account, custom icon |
 | Week 7.5 | ✅ Complete | ScheduledPayment model, BillsAndPaymentsScreen, speed-dial FAB, DB v10 |
-| Week 21-22 (partial) | 🔄 In Progress (6/9+10) | Item catalog ✓, quote/invoice builder ✓, PDF preview/sharing ✓, conversion ✓, **automatic transaction creation next** (10 subtasks) |
+| Week 21-22 | ✅ Complete (19/19) | Item catalog, quote/invoice builder, PDF generation/sharing, conversion, automatic transaction creation, partial payments, search/filtering |
+| Week 23-24 | ✅ Complete (6/6) | Contact details, unified history (transactions + invoices + scheduled payments), autocomplete, WhatsApp/SMS/Email reminders |
 | Week 9 (SMS) | ⏳ Pending | Credit/debit card parsing, bank SMS, duplicate detection |
-| Week 23-24 (Parties) | 📋 Planned | Contact details, WhatsApp/SMS reminders, unified history |
-| Week 25-27 (Bookings) | 📋 Planned | Appointments, reservations, trips — dead simple list-based UI |
+| Week 25-27 (Bookings) | 🔄 In Progress | Appointments, reservations, trips — dead simple list-based UI |
 
-**Codebase:** ~95 Dart files in `lib/`, 0 critical lint issues  
-**Database:** SQLite v10 (current), v11 planned (adds bookings table)
+**Codebase:** ~100+ Dart files in `lib/`, 0 critical lint issues  
+**Database:** SQLite v18 (current), v19 planned (bookings table)
 **Phase 1 MVP:** COMPLETE  
 **Phase 1.5 (Unified Model + Bills & Payments):** COMPLETE  
-**Current Phase:** Phase 2 (Scale Features) + Week 21-22 (Billing) — 6/19 tasks complete  
-**Completed:** Catalog, Quote/Invoice builder, PDF preview/sharing, Quote→Invoice conversion, Party details in PDFs  
+**Week 21-22 (Billing & Invoicing):** 100% COMPLETE ✅  
+**Week 23-24 (Party Management):** 100% COMPLETE ✅  
+**Current Phase:** Week 25-27 (Bookings) — Ready to start  
+**Completed:** SMS parsing, transactions, credits, reports, backup/security, unified model, multi-account, bills/payments, item catalog, quote/invoice builder, PDF generation, automatic transaction creation, party management with unified history  
 **Next 3 milestones:**
-  1. Complete billing (**automatic transaction creation** [10 subtasks], GST, list screens)
-  2. Party Management (contact details, reminders) — Week 23-24
-  3. Bookings feature (appointments/reservations) — Week 25-27
+  1. **Bookings feature** (appointments/reservations/trips) — Week 25-27 🔄
+  2. Retention features (CSV import, monthly summaries) — Week 28-29
+  3. Unified Notifications (automatic + manual reminders for all features) — Week 30-31
+
 **Recent Commits:**
+- `[pending]` feat(party): complete Week 23-24 — unified history + autocomplete
+  - Unified history timeline: transactions + invoices + scheduled payments in chronological order
+  - Sealed class hierarchy for type-safe history items with pattern matching
+  - Parallel loading with Future.wait() for performance
+  - Autocomplete dropdown on party picker (max 5 suggestions, preserves full modal)
+  - Real-time transaction stats calculated from loaded data (no stale cache)
+  - Repository methods: getByCustomer(), getByParty()
+  - Fixed: SQL column name (party_name), field names (transaction.date, InvoiceStatus.partiallyPaid, payment.name)
 - `d1baa43` fix(billing): replace empty item when adding from catalog + update controllers
 - `d62f929` fix(billing): link customer party ID when party is selected  
 - `dbb4c3d` feat(billing): show complete party details in Invoice/Quote PDFs

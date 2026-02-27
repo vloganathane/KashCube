@@ -67,7 +67,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('New Booking'),
+        label: Text(businessEnabled ? 'New' : 'New Schedule'),
         onPressed: () {
           if (businessEnabled) {
             _showBookingTypeSheet(context);
@@ -127,7 +127,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 leading: const CircleAvatar(
                   child: Icon(Icons.storefront_outlined),
                 ),
-                title: const Text('Business Booking'),
+                title: const Text('Booking'),
                 subtitle: const Text('Customer appointment, invoice, payment'),
                 onTap: () {
                   Navigator.pop(context);
@@ -143,7 +143,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 leading: const CircleAvatar(
                   child: Icon(Icons.person_outline),
                 ),
-                title: const Text('Personal Schedule'),
+                title: const Text('Schedule'),
                 subtitle: const Text('Reminder, appointment, personal event'),
                 onTap: () {
                   Navigator.pop(context);
@@ -189,14 +189,14 @@ class _TypeFilterBar extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           ChoiceChip(
             avatar: const Icon(Icons.storefront_outlined, size: 16),
-            label: const Text('Business'),
+            label: const Text('Booking'),
             selected: selected == BookingType.business,
             onSelected: (_) => onSelected(BookingType.business),
           ),
           const SizedBox(width: AppSpacing.sm),
           ChoiceChip(
             avatar: const Icon(Icons.person_outline, size: 16),
-            label: const Text('Personal'),
+            label: const Text('Schedule'),
             selected: selected == BookingType.personal,
             onSelected: (_) => onSelected(BookingType.personal),
           ),
@@ -438,29 +438,41 @@ class _BookingTile extends ConsumerWidget {
 
               // Customer and Service
               Text(
-                '${booking.customerName} • ${booking.serviceName}',
+                booking.bookingType == BookingType.personal
+                    ? booking.serviceName
+                    : '${booking.customerName} • ${booking.serviceName}',
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: AppSpacing.xs),
 
-              // Amount and Duration
-              Row(
-                children: [
-                  Text(
-                    CurrencyFormatter.format(booking.totalAmount),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colors.income,
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                  if (booking.durationMinutes != null) ...[
+              // Amount and Duration (business only)
+              if (booking.bookingType == BookingType.business)
+                Row(
+                  children: [
                     Text(
-                      ' • ${booking.durationLabel}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                      CurrencyFormatter.format(booking.totalAmount),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: colors.income,
+                            fontWeight: FontWeight.w500,
+                          ),
                     ),
+                    if (booking.durationMinutes != null) ...[
+                      Text(
+                        ' • ${booking.durationLabel}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                   ],
-                ],
-              ),
+                ),
+              // Duration only for Schedule
+              if (booking.bookingType == BookingType.personal &&
+                  booking.durationMinutes != null)
+                Text(
+                  booking.durationLabel,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
 
               // Primary Action Button
               if (_shouldShowActionButton(booking)) ...[
@@ -484,6 +496,7 @@ class _BookingTile extends ConsumerWidget {
   }
 
   bool _shouldShowActionButton(Booking booking) {
+    if (booking.bookingType == BookingType.personal) return false;
     return booking.status == BookingStatus.pending ||
         booking.status == BookingStatus.confirmed;
   }

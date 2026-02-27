@@ -327,7 +327,11 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.booking != null ? 'Edit Booking' : 'New Booking'),
+        title: Text(
+          widget.booking != null
+              ? (_bookingType == BookingType.personal ? 'Edit Schedule' : 'Edit Booking')
+              : (_bookingType == BookingType.personal ? 'New Schedule' : 'New Booking'),
+        ),
         actions: [
           TextButton(
             onPressed: _saveBooking,
@@ -347,12 +351,12 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       ButtonSegment(
                         value: BookingType.business,
                         icon: Icon(Icons.storefront_outlined, size: 18),
-                        label: Text('Business'),
+                        label: Text('Booking'),
                       ),
                       ButtonSegment(
                         value: BookingType.personal,
                         icon: Icon(Icons.person_outline, size: 18),
-                        label: Text('Personal'),
+                        label: Text('Schedule'),
                       ),
                     ],
                     selected: {_bookingType},

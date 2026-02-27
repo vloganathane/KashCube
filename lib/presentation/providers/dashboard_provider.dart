@@ -88,3 +88,24 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Today's cashflow
+// ---------------------------------------------------------------------------
+
+/// A lightweight record of today's total income and expense.
+typedef TodayCashflow = ({double income, double expense});
+
+/// Provider for today's cashflow (income + expense totals for today only).
+final todayCashflowProvider = FutureProvider<TodayCashflow>((ref) async {
+  final repo = TransactionRepositoryImpl();
+  final now = DateTime.now();
+  final dayStart = DateTime(now.year, now.month, now.day);
+  final dayEnd   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+  final results = await Future.wait([
+    repo.getTotalIncome(dayStart, dayEnd),
+    repo.getTotalExpense(dayStart, dayEnd),
+  ]);
+  return (income: results[0], expense: results[1]);
+});

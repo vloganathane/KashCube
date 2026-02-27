@@ -31,8 +31,9 @@ abstract class BookingRepository {
   /// Delete booking (soft delete)
   Future<void> delete(int id);
   
-  /// Generate next booking reference number (BK-YYYY-NNN format)
-  Future<String> generateBookingRef();
+  /// Generate next booking reference number
+  /// BK-YYYY-NNN for business, SC-YYYY-NNN for personal
+  Future<String> generateBookingRef([BookingType type = BookingType.business]);
   
   /// Mark booking as confirmed
   Future<void> markAsConfirmed(int id);

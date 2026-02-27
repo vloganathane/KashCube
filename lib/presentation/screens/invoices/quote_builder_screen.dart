@@ -123,6 +123,31 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         await ref.read(invoiceRepositoryProvider).getById(widget.invoiceId!);
     if (invoice == null) return;
     if (!mounted) return;
+    
+    // Prevent editing paid or partially paid invoices
+    if (invoice.status == InvoiceStatus.paid ||
+        invoice.status == InvoiceStatus.partiallyPaid) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Cannot Edit Invoice'),
+          content: Text(
+            'Invoice ${invoice.invoiceNo} is ${invoice.status == InvoiceStatus.paid ? 'paid' : 'partially paid'} '
+            'and cannot be edited. This protects the integrity of linked transactions.\n\n'
+            'To make changes, you can duplicate this invoice instead.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      if (mounted) Navigator.pop(context);
+      return;
+    }
+    
     setState(() {
       _existingInvoice = invoice;
       _customerName = invoice.customerName;
@@ -280,6 +305,21 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   }
 
   Future<void> _saveInvoice({bool send = false}) async {
+    // Defensive check: prevent saving paid/partially paid invoices
+    if (_existingInvoice != null &&
+        (_existingInvoice!.status == InvoiceStatus.paid ||
+            _existingInvoice!.status == InvoiceStatus.partiallyPaid)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cannot save: invoice is paid and locked from editing'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    
     final status = send ? InvoiceStatus.sent : InvoiceStatus.draft;
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;

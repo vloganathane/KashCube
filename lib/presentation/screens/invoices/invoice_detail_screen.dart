@@ -119,6 +119,42 @@ class _InvoiceDetailView extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
           _HeaderCard(invoice: invoice),
+          // Lock indicator for paid/partially paid invoices
+          if (invoice.status == InvoiceStatus.paid ||
+              invoice.status == InvoiceStatus.partiallyPaid) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.lock_outlined,
+                    color: const Color(0xFF2E7D32),
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'This invoice is ${invoice.status == InvoiceStatus.paid ? 'paid' : 'partially paid'} and locked from editing to protect transaction integrity.',
+                      style: TextStyle(
+                        color: const Color(0xFF1B5E20),
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.base),
           _LineItemsCard(invoice: invoice),
           const SizedBox(height: AppSpacing.base),

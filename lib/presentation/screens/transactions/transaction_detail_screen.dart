@@ -285,13 +285,33 @@ class _TransactionDetailContent extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    // Check if transaction is linked to invoice or booking
+    final bool isLinked = transaction.linkedInvoiceId != null ||
+        transaction.linkedBookingId != null;
+
+    String title = 'Delete Transaction';
+    String content = 'Are you sure you want to delete this transaction? '
+        'This action cannot be undone.';
+
+    if (isLinked) {
+      title = 'Delete Linked Transaction';
+      final linkedTo = <String>[];
+      if (transaction.linkedInvoiceId != null) {
+        linkedTo.add('an invoice');
+      }
+      if (transaction.linkedBookingId != null) {
+        linkedTo.add('a booking');
+      }
+      content = 'This transaction is linked to ${linkedTo.join(' and ')}. '
+          'Deleting it will affect payment records and may cause data inconsistencies.\\n\\n'
+          'Are you sure you want to proceed?';
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Transaction'),
-        content: const Text(
-          'Are you sure you want to delete this transaction? This action cannot be undone.',
-        ),
+        title: Text(title),
+        content: Text(content),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

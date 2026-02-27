@@ -215,42 +215,81 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   }
 
   @override
-  Future<void> recordPayment(int invoiceId, double amount) async {
-    final db = await _db.database;
-    final rows =
-        await db.query('invoices', where: 'id = ?', whereArgs: [invoiceId]);
-    if (rows.isEmpty) return;
-    final inv = Invoice.fromMap(rows.first);
-    final newPaid = (inv.paidAmount + amount).clamp(0, inv.total);
-    final newStatus = newPaid >= inv.total
-        ? InvoiceStatus.paid.dbValue
-        : InvoiceStatus.partiallyPaid.dbValue;
-    
-    final now = DateTime.now();
-    await db.update(
-      'invoices',
-      {
-        'paid_amount': newPaid,
-        'status': newStatus,
-        'updated_at': now.toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: [invoiceId],
-    );
+  Future<int> markAsPaid({
+    required Invoice invoice,
+    required PaymentMethod paymentMethod,
+    required DateTime paidDate,
+    double? partialAmount,
+    int? bookingId,
+  }) async {
+    if (invoice.id == null) {
+      throw ArgumentError('Invoice must have an ID to mark as paid');
+    }
 
-    // Create income transaction in main ledger
-    final transaction = Transaction(
-      type: TransactionType.income,
-      mode: TransactionMode.business,
-      amount: amount,
-      category: 'Invoice Payment',
-      partyName: inv.customerName,
-      partyId: inv.customerPartyId,
-      notes: 'Payment for invoice ${inv.invoiceNo}',
-      date: now,
-      createdAt: now,
-      updatedAt: now,
-    );
-    await _transactionRepo.insert(transaction);
+    final db = await _db.database;
+    final amountToRecord =
+        partialAmount ?? (invoice.total - invoice.paidAmount);
+
+    if (amountToRecord <= 0) {
+      throw ArgumentError('Payment amount must be greater than zero');
+    }
+
+    // Execute atomic update: invoice + transaction in one database transaction
+    return await db.transaction((txn) async {
+      // 1. Calculate new paid amount and status
+      final newPaidAmount = invoice.paidAmount + amountToRecord;
+      final isFullyPaid = newPaidAmount >= invoice.total;
+      final newStatus = isFullyPaid
+          ? InvoiceStatus.paid
+          : InvoiceStatus.partiallyPaid;
+
+      // 2. Update invoice
+      await txn.update(
+        'invoices',
+        {
+          'status': newStatus.dbValue,
+          'paid_amount': newPaidAmount,
+          'paid_at': isFullyPaid ? paidDate.toIso8601String() : invoice.paidAt?.toIso8601String(),
+          'payment_method': paymentMethod.name,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id = ?',
+        whereArgs: [invoice.id],
+      );
+
+      // 3. AUTO-CREATE TRANSACTION
+      final transaction = Transaction(
+        type: TransactionType.income,
+        mode: TransactionMode.business,
+        amount: amountToRecord,
+        category: 'Business Income', // Default category for invoice payments
+        partyName: invoice.customerName,
+        partyId: invoice.customerPartyId,
+        paymentMethod: paymentMethod,
+        linkedInvoiceId: invoice.id,
+        linkedBookingId: bookingId,
+        businessId: invoice.businessId,
+        date: paidDate,
+        notes: partialAmount != null
+            ? 'Partial payment (₹${amountToRecord.toStringAsFixed(0)}) - Invoice ${invoice.invoiceNo}'
+            : 'Invoice ${invoice.invoiceNo}',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final transactionId = await txn.insert('transactions', transaction.toMap());
+
+      // 4. Update linked booking if fully paid and booking exists
+      if (isFullyPaid && bookingId != null) {
+        await txn.update(
+          'bookings',
+          {'status': 'paid'},
+          where: 'id = ?',
+          whereArgs: [bookingId],
+        );
+      }
+
+      return transactionId;
+    });
   }
 }

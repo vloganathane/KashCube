@@ -1,5 +1,6 @@
 import '../../data/models/quote.dart';
 import '../../data/models/invoice.dart';
+import '../../data/models/transaction.dart';
 
 abstract class QuoteRepository {
   Future<List<Quote>> getAll();
@@ -17,5 +18,18 @@ abstract class InvoiceRepository {
   Future<int> insert(Invoice invoice, List<InvoiceItem> items);
   Future<void> update(Invoice invoice, List<InvoiceItem> items);
   Future<void> delete(int id);
-  Future<void> recordPayment(int invoiceId, double amount);
+  
+  /// Mark invoice as paid and automatically create transaction in main ledger.
+  /// 
+  /// Returns the created transaction ID.
+  /// 
+  /// [partialAmount] - If provided, records partial payment. If null, marks as fully paid.
+  /// [bookingId] - Optional booking ID to link (for booking invoices).
+  Future<int> markAsPaid({
+    required Invoice invoice,
+    required PaymentMethod paymentMethod,
+    required DateTime paidDate,
+    double? partialAmount,
+    int? bookingId,
+  });
 }

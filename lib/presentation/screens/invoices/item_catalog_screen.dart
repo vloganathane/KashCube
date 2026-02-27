@@ -312,6 +312,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _hsnCtrl;
   late ItemCategory _category;
   late bool _isFavorite;
+  late bool _isBookable;
+  late int _durationMinutes;
   bool _saving = false;
 
   @override
@@ -334,6 +336,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _hsnCtrl = TextEditingController(text: item?.hsnCode ?? '');
     _category = item?.category ?? ItemCategory.product;
     _isFavorite = item?.isFavorite ?? false;
+    _isBookable = item?.isBookable ?? false;
+    _durationMinutes = item?.durationMinutes ?? 30;
     
     // Auto-generate SKU for new items
     if (item == null) {
@@ -387,6 +391,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           : _hsnCtrl.text.trim(),
       category: _category,
       isFavorite: _isFavorite,
+      isBookable: _isBookable,
+      durationMinutes: _isBookable ? _durationMinutes : null,
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -557,6 +563,21 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 subtitle: const Text('Show this item at the top of the list'),
                 contentPadding: EdgeInsets.zero,
               ),
+              const SizedBox(height: AppSpacing.sm),
+              SwitchListTile(
+                value: _isBookable,
+                onChanged: (val) => setState(() => _isBookable = val),
+                title: const Text('Enable Bookings'),
+                subtitle: const Text('Allow customers to book this service'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (_isBookable) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _DurationPicker(
+                  initialMinutes: _durationMinutes,
+                  onChanged: (minutes) => setState(() => _durationMinutes = minutes),
+                ),
+              ],
               const SizedBox(height: AppSpacing.base),
               FilledButton(
                 onPressed: _saving ? null : _submit,
@@ -627,6 +648,79 @@ class _EmptyState extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Duration Picker ───────────────────────────────────────────────────────────
+
+class _DurationPicker extends StatelessWidget {
+  const _DurationPicker({
+    required this.initialMinutes,
+    required this.onChanged,
+  });
+
+  final int initialMinutes;
+  final ValueChanged<int> onChanged;
+
+  String _formatDuration(int minutes) {
+    if (minutes < 60) {
+      return '$minutes min';
+    } else if (minutes % 60 == 0) {
+      return '${minutes ~/ 60} hr${minutes > 60 ? 's' : ''}';
+    } else {
+      final hours = minutes ~/ 60;
+      final mins = minutes % 60;
+      return '${hours}h ${mins}m';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Common preset durations
+    final presets = [15, 30, 45, 60, 90, 120, 180, 240];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Service Duration',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: presets.map((minutes) {
+            final isSelected = initialMinutes == minutes;
+            return ChoiceChip(
+              label: Text(_formatDuration(minutes)),
+              selected: isSelected,
+              onSelected: (_) => onChanged(minutes),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          initialValue: presets.contains(initialMinutes) 
+              ? '' 
+              : initialMinutes.toString(),
+          decoration: InputDecoration(
+            labelText: 'Custom Duration (minutes)',
+            border: const OutlineInputBorder(),
+            isDense: true,
+            hintText: 'e.g., 75',
+            helperText: 'For multi-day services, use minutes (e.g., 2880 = 2 days)',
+          ),
+          keyboardType: TextInputType.number,
+          onChanged: (value) {
+            final minutes = int.tryParse(value);
+            if (minutes != null && minutes > 0) {
+              onChanged(minutes);
+            }
+          },
+        ),
+      ],
     );
   }
 }

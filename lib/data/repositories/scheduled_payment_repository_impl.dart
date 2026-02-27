@@ -24,6 +24,18 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
   }
 
   @override
+  Future<List<ScheduledPayment>> getByParty(String partyName) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      _table,
+      where: 'deleted_at IS NULL AND is_active = 1 AND party_name = ?',
+      whereArgs: [partyName],
+      orderBy: 'next_date ASC',
+    );
+    return rows.map(ScheduledPayment.fromMap).toList();
+  }
+
+  @override
   Future<List<ScheduledPayment>> getOverdue() async {
     final all = await getAll();
     return all.where((p) => p.isOverdue).toList();

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/invoice.dart';
@@ -28,6 +29,12 @@ final invoiceRepositoryProvider = Provider<InvoiceRepository>(
 
 /// null = show all
 final invoiceFilterProvider = StateProvider<InvoiceStatus?>((_) => null);
+
+/// Search query for filtering invoices by customer name or invoice number
+final invoiceSearchQueryProvider = StateProvider<String>((_) => '');
+
+/// Date range for filtering invoices (null = all dates)
+final invoiceDateRangeProvider = StateProvider<DateTimeRange?>((_) => null);
 
 // ── Item Catalog ─────────────────────────────────────────────────────────────
 
@@ -178,17 +185,75 @@ final invoicesProvider =
 /// Filtered view of invoices
 final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
   final all = ref.watch(invoicesProvider);
-  final filter = ref.watch(invoiceFilterProvider);
-  if (filter == null) return all;
-  return all.whenData(
-    (list) => list.where((inv) => inv.status == filter).toList(),
-  );
+  final statusFilter = ref.watch(invoiceFilterProvider);
+  final searchQuery = ref.watch(invoiceSearchQueryProvider);
+  final dateRange = ref.watch(invoiceDateRangeProvider);
+
+  return all.whenData((list) {
+    var filtered = list;
+
+    // Apply status filter
+    if (statusFilter != null) {
+      filtered = filtered.where((inv) => inv.status == statusFilter).toList();
+    }
+
+    // Apply search filter (customer name or invoice number)
+    if (searchQuery.isNotEmpty) {
+      final query = searchQuery.toLowerCase();
+      filtered = filtered.where((inv) {
+        return inv.customerName.toLowerCase().contains(query) ||
+            inv.invoiceNo.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Apply date range filter
+    if (dateRange != null) {
+      filtered = filtered.where((inv) {
+        final invDate = inv.issueDate;
+        return invDate.isAfter(dateRange.start.subtract(const Duration(days: 1))) &&
+            invDate.isBefore(dateRange.end.add(const Duration(days: 1)));
+      }).toList();
+    }
+
+    return filtered;
+  });
 });
 
 /// Single invoice by id
 final invoiceByIdProvider =
     FutureProvider.family<Invoice?, int>((ref, id) async {
   return ref.read(invoiceRepositoryProvider).getById(id);
+});
+
+/// Filtered view of quotes (search + date range)
+final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
+  final all = ref.watch(quotesProvider);
+  final searchQuery = ref.watch(invoiceSearchQueryProvider);
+  final dateRange = ref.watch(invoiceDateRangeProvider);
+
+  return all.whenData((list) {
+    var filtered = list;
+
+    // Apply search filter (customer name or quote number)
+    if (searchQuery.isNotEmpty) {
+      final query = searchQuery.toLowerCase();
+      filtered = filtered.where((quote) {
+        return quote.customerName.toLowerCase().contains(query) ||
+            quote.quoteNo.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Apply date range filter (using createdAt for quotes)
+    if (dateRange != null) {
+      filtered = filtered.where((quote) {
+        final quoteDate = quote.createdAt;
+        return quoteDate.isAfter(dateRange.start.subtract(const Duration(days: 1))) &&
+            quoteDate.isBefore(dateRange.end.add(const Duration(days: 1)));
+      }).toList();
+    }
+
+    return filtered;
+  });
 });
 
 /// Single quote by id

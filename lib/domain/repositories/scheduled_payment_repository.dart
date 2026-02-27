@@ -8,6 +8,9 @@ abstract class ScheduledPaymentRepository {
   /// All active, non-deleted scheduled payments, newest first.
   Future<List<ScheduledPayment>> getAll();
 
+  /// Scheduled payments for a specific party name.
+  Future<List<ScheduledPayment>> getByParty(String partyName);
+
   /// Payments that are unpaid and whose [nextDate] is in the past.
   Future<List<ScheduledPayment>> getOverdue();
 

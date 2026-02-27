@@ -9,6 +9,7 @@ import '../../../data/models/booking.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
 
 /// Helper function to format duration in minutes to readable text
@@ -26,9 +27,16 @@ String _formatDuration(int minutes) {
       : '${days.toStringAsFixed(1)} days';
 }
 
-/// Full-screen form for creating a new booking
+/// Full-screen form for creating or editing a booking
 class CreateBookingScreen extends ConsumerStatefulWidget {
-  const CreateBookingScreen({super.key});
+  const CreateBookingScreen({
+    super.key,
+    this.booking,
+    this.defaultBookingType = BookingType.business,
+  });
+
+  final Booking? booking;  // If provided, we're editing
+  final BookingType defaultBookingType;
 
   @override
   ConsumerState<CreateBookingScreen> createState() => _CreateBookingScreenState();
@@ -45,12 +53,47 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   int? _selectedPartyId;  // Track selected party ID
   ItemCatalog? _selectedService;
   bool _isCustomService = false;  // Track if using custom service
+  bool _serviceLoaded = false;  // Track if we've loaded service in edit mode
   DateTime _startDate = DateTime.now().add(const Duration(hours: 1));
   TimeOfDay _startTime = TimeOfDay.now();
   DateTime? _endDate;
   TimeOfDay? _endTime;
   int? _customDuration;
   bool _hasEndTime = false;  // Simple toggle for end time
+  BookingType _bookingType = BookingType.business;
+
+  @override
+  void initState() {
+    super.initState();
+    _bookingType = widget.booking?.bookingType ?? widget.defaultBookingType;
+    if (widget.booking != null) {
+      _loadBookingData();
+    }
+  }
+
+  void _loadBookingData() {
+    final booking = widget.booking!;
+    _customerController.text = booking.customerName;
+    _selectedPartyId = booking.customerPartyId;
+    _isCustomService = booking.serviceItemId == null;
+    if (_isCustomService) {
+      _customServiceController.text = booking.serviceName;
+    }
+    // Note: _selectedService will be set from catalog if serviceItemId exists
+    _startDate = booking.startDatetime;
+    _startTime = TimeOfDay.fromDateTime(booking.startDatetime);
+    if (booking.endDatetime != null) {
+      _hasEndTime = true;
+      _endDate = booking.endDatetime;
+      _endTime = TimeOfDay.fromDateTime(booking.endDatetime!);
+    }
+    _customDuration = booking.durationMinutes;
+    _amountController.text = booking.totalAmount.toStringAsFixed(0);
+    _advanceController.text = booking.advanceAmount.toStringAsFixed(0);
+    if (booking.notes != null) {
+      _notesController.text = booking.notes!;
+    }
+  }
 
   @override
   void dispose() {
@@ -88,6 +131,18 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       _selectedService = null;
       _amountController.clear();
     });
+  }
+
+  Future<void> _showCatalogPicker(BuildContext context, List<ItemCatalog> services) async {
+    final result = await showModalBottomSheet<ItemCatalog>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => _ServicePickerSheet(services: services, selected: _selectedService),
+    );
+    if (result != null) {
+      _onServiceSelected(result);
+    }
   }
 
   Future<void> _selectStartDate() async {
@@ -136,19 +191,29 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
 
   Future<void> _saveBooking() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    // Validate service (catalog or custom)
-    if (!_isCustomService && _selectedService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a service')),
-      );
-      return;
-    }
-    if (_isCustomService && _customServiceController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter service name')),
-      );
-      return;
+
+    // For business bookings: validate service selection
+    if (_bookingType == BookingType.business) {
+      if (!_isCustomService && _selectedService == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select a service')),
+        );
+        return;
+      }
+      if (_isCustomService && _customServiceController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter service name')),
+        );
+        return;
+      }
+    } else {
+      // Personal: validate title field
+      if (_customServiceController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a title')),
+        );
+        return;
+      }
     }
 
     // Combine date and time
@@ -172,27 +237,62 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       );
     }
 
-    final booking = Booking(
-      customerPartyId: _selectedPartyId,
-      customerName: _customerController.text.trim(),
-      serviceItemId: _isCustomService ? null : _selectedService!.id,
-      serviceName: _isCustomService 
-          ? _customServiceController.text.trim() 
-          : _selectedService!.name,
+    final customerName = _customerController.text.trim().isEmpty
+        ? 'Walk-in Customer'
+        : _customerController.text.trim();
+
+    final bookingData = Booking(
+      id: widget.booking?.id,  // Preserve ID if editing
+      customerPartyId: _bookingType == BookingType.business ? _selectedPartyId : null,
+      customerName: _bookingType == BookingType.business ? customerName : '',
+      serviceItemId: (_isCustomService || _bookingType == BookingType.personal) ? null : _selectedService!.id,
+      serviceName: _bookingType == BookingType.personal
+          ? _customServiceController.text.trim()
+          : (_isCustomService
+              ? _customServiceController.text.trim()
+              : _selectedService!.name),
       startDatetime: startDatetime,
       endDatetime: endDatetime,
       durationMinutes: _customDuration,
-      status: BookingStatus.pending,
-      totalAmount: double.tryParse(_amountController.text) ?? 0,
-      advanceAmount: double.tryParse(_advanceController.text) ?? 0,
-      notes: _notesController.text.trim().isEmpty 
-          ? null 
+      status: widget.booking?.status ?? BookingStatus.pending,
+      totalAmount: _bookingType == BookingType.business
+          ? (double.tryParse(_amountController.text) ?? 0)
+          : 0,
+      advanceAmount: _bookingType == BookingType.business
+          ? (double.tryParse(_advanceController.text) ?? 0)
+          : 0,
+      notes: _notesController.text.trim().isEmpty
+          ? null
           : _notesController.text.trim(),
-      createdAt: DateTime.now(),
+      invoiceId: widget.booking?.invoiceId,  // Preserve invoice link
+      bookingRef: widget.booking?.bookingRef,  // Preserve booking reference
+      bookingType: _bookingType,
+      createdAt: widget.booking?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
 
-    await ref.read(bookingsProvider.notifier).add(booking);
+    if (widget.booking != null) {
+      // Update existing booking
+      await ref.read(bookingsProvider.notifier).edit(bookingData);
+      
+      // Update linked invoice if exists
+      if (widget.booking!.invoiceId != null) {
+        final invoice = await ref.read(invoiceByIdProvider(widget.booking!.invoiceId!).future);
+        if (invoice != null) {
+          // Update invoice with new customer info
+          await ref.read(invoicesProvider.notifier).edit(
+            invoice.copyWith(
+              customerName: customerName,
+              customerPartyId: _selectedPartyId,
+            ),
+            invoice.items,  // Invoice already includes its items
+          );
+        }
+      }
+    } else {
+      // Create new booking
+      await ref.read(bookingsProvider.notifier).add(bookingData);
+    }
 
     if (mounted) {
       Navigator.pop(context);
@@ -207,10 +307,27 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     final bookableServices = ref.watch(catalogProvider).valueOrNull?.where(
       (item) => item.isBookable && item.isActive,
     ).toList() ?? [];
+    final businessEnabled = ref.watch(businessModeProvider);
+
+    // Load selected service from catalog when editing (only once)
+    if (widget.booking != null && 
+        widget.booking!.serviceItemId != null && 
+        !_serviceLoaded && 
+        bookableServices.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final service = bookableServices.where((s) => s.id == widget.booking!.serviceItemId).firstOrNull;
+        if (service != null && mounted) {
+          setState(() {
+            _selectedService = service;
+            _serviceLoaded = true;
+          });
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Booking'),
+        title: Text(widget.booking != null ? 'Edit Booking' : 'New Booking'),
         actions: [
           TextButton(
             onPressed: _saveBooking,
@@ -223,57 +340,166 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.base),
               children: [
-                // Customer Name (optional for walk-ins)
-                PartyPickerField(
-                  controller: _customerController,
-                  labelText: 'Customer Name (optional)',
-                  onPartySelected: (party) {
-                    setState(() => _selectedPartyId = party.id);
-                  },
-                ),
-                const SizedBox(height: AppSpacing.base),
-
-                // Service Picker or Custom Input
-                if (!_isCustomService) ...[
-                  _ServicePickerField(
-                    services: bookableServices,
-                    selected: _selectedService,
-                    onSelected: _onServiceSelected,
-                    onCustomMode: _onCustomServiceMode,
+                // Booking Type selector (only when business mode is on)
+                if (businessEnabled) ...[  
+                  SegmentedButton<BookingType>(
+                    segments: const [
+                      ButtonSegment(
+                        value: BookingType.business,
+                        icon: Icon(Icons.storefront_outlined, size: 18),
+                        label: Text('Business'),
+                      ),
+                      ButtonSegment(
+                        value: BookingType.personal,
+                        icon: Icon(Icons.person_outline, size: 18),
+                        label: Text('Personal'),
+                      ),
+                    ],
+                    selected: {_bookingType},
+                    onSelectionChanged: (sel) => setState(() => _bookingType = sel.first),
                   ),
-                  
-                  // Show service info when catalog item selected
-                  if (_selectedService != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: AppSpacing.sm),
-                      child: Text(
-                        '${CurrencyFormatter.format(_selectedService!.unitPrice)}'
-                        '${_selectedService!.durationMinutes != null ? ' • ${_formatDuration(_selectedService!.durationMinutes!)}' : ''}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.secondary,
+                  const SizedBox(height: AppSpacing.base),
+                ],
+
+                // ── Business-only fields ────────────────────────────────────
+                if (_bookingType == BookingType.business) ...[
+                  // Customer Name (optional for walk-ins)
+                  PartyPickerField(
+                    controller: _customerController,
+                    labelText: 'Customer Name (optional)',
+                    onPartySelected: (party) {
+                      setState(() => _selectedPartyId = party.id);
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Service Selection - Dual Buttons
+                  Text(
+                    'Service *',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showCatalogPicker(context, bookableServices),
+                          icon: const Icon(Icons.list_alt),
+                          label: const Text('From Catalog'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.md,
+                              horizontal: AppSpacing.sm,
+                            ),
+                            side: _selectedService != null
+                                ? BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 2,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _onCustomServiceMode,
+                          icon: const Icon(Icons.edit_outlined),
+                          label: const Text('Custom'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.md,
+                              horizontal: AppSpacing.sm,
+                            ),
+                            side: _isCustomService
+                                ? BorderSide(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    width: 2,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Selected Service Display or Custom Input
+                  if (_selectedService != null) ...[
+                    Card(
+                      child: ListTile(
+                        title: Text(_selectedService!.name),
+                        subtitle: Text(
+                          '${CurrencyFormatter.format(_selectedService!.unitPrice)}'
+                          '${_selectedService!.durationMinutes != null ? ' • ${_formatDuration(_selectedService!.durationMinutes!)}' : ''}',
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => setState(() {
+                            _selectedService = null;
+                            _amountController.clear();
+                          }),
+                          tooltip: 'Remove service',
                         ),
                       ),
                     ),
-                ] else ...[
-                  // Custom Service Input
-                  TextFormField(
-                    controller: _customServiceController,
-                    decoration: InputDecoration(
-                      labelText: 'Service Name *',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => setState(() {
-                          _isCustomService = false;
-                          _customServiceController.clear();
-                        }),
-                        tooltip: 'Use catalog',
+                  ] else if (_isCustomService) ...[
+                    TextFormField(
+                      controller: _customServiceController,
+                      decoration: const InputDecoration(
+                        labelText: 'Service Name',
+                        hintText: 'e.g., Emergency repair',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v?.isEmpty ?? true ? 'Service name required' : null,
+                    ),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.arrow_upward,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            'Select from catalog or use custom service',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    validator: (v) => v?.isEmpty ?? true ? 'Service name required' : null,
-                  ),
+                  ],
+                  const SizedBox(height: AppSpacing.base),
                 ],
-                const SizedBox(height: AppSpacing.base),
+
+                // ── Personal-only fields ─────────────────────────────────────
+                if (_bookingType == BookingType.personal) ...[
+                  TextFormField(
+                    controller: _customServiceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Title *',
+                      hintText: 'e.g., Doctor appointment, Gym, Study session',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.event_note_outlined),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                    validator: (v) =>
+                        (v?.trim().isEmpty ?? true) ? 'Title required' : null,
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+                ],
 
                 // Start Date & Time
                 Text(
@@ -354,39 +580,40 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                   const SizedBox(height: AppSpacing.base),
                 ],
 
-                // Amount
-                TextFormField(
-                  controller: _amountController,
-                  decoration: InputDecoration(
-                    labelText: 'Total Amount *',
-                    prefixText: '₹',
-                    border: const OutlineInputBorder(),
-                    helperText: _selectedService != null 
-                        ? 'From catalog' 
-                        : (_isCustomService ? 'Custom pricing' : null),
+                // Amount & Advance (business only)
+                if (_bookingType == BookingType.business) ...[
+                  TextFormField(
+                    controller: _amountController,
+                    decoration: InputDecoration(
+                      labelText: 'Total Amount *',
+                      prefixText: '₹',
+                      border: const OutlineInputBorder(),
+                      helperText: _selectedService != null
+                          ? 'From catalog'
+                          : (_isCustomService ? 'Custom pricing' : null),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      if (v?.isEmpty ?? true) return 'Amount required';
+                      if (double.tryParse(v!) == null) return 'Invalid amount';
+                      return null;
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) {
-                    if (v?.isEmpty ?? true) return 'Amount required';
-                    if (double.tryParse(v!) == null) return 'Invalid amount';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppSpacing.base),
+                  const SizedBox(height: AppSpacing.base),
 
-                // Advance Payment
-                TextFormField(
-                  controller: _advanceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Advance Payment (optional)',
-                    prefixText: '₹',
-                    border: OutlineInputBorder(),
+                  TextFormField(
+                    controller: _advanceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Advance Payment (optional)',
+                      prefixText: '₹',
+                      border: OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   ),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                ),
-                const SizedBox(height: AppSpacing.base),
+                  const SizedBox(height: AppSpacing.base),
+                ],
 
                 // Notes
                 TextFormField(
@@ -404,73 +631,15 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   }
 }
 
-// ── Service Picker Field ─────────────────────────────────────────────────────
-
-class _ServicePickerField extends StatelessWidget {
-  const _ServicePickerField({
-    required this.services,
-    required this.selected,
-    required this.onSelected,
-    required this.onCustomMode,
-  });
-
-  final List<ItemCatalog> services;
-  final ItemCatalog? selected;
-  final ValueChanged<ItemCatalog> onSelected;
-  final VoidCallback onCustomMode;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () => _showServicePicker(context),
-      borderRadius: BorderRadius.circular(4),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'Service *',
-          border: const OutlineInputBorder(),
-          suffixIcon: Icon(
-            Icons.arrow_drop_down,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-        child: Text(
-          selected?.name ?? 'Select a service',
-          style: selected != null
-              ? null
-              : TextStyle(color: Theme.of(context).hintColor),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showServicePicker(BuildContext context) async {
-    final result = await showModalBottomSheet<dynamic>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _ServicePickerSheet(
-        services: services, 
-        selected: selected,
-        onCustomMode: onCustomMode,
-      ),
-    );
-    if (result != null && result is ItemCatalog) {
-      onSelected(result);
-    }
-  }
-}
-
 // ── Service Picker Sheet ─────────────────────────────────────────────────────
 
 class _ServicePickerSheet extends StatefulWidget {
   const _ServicePickerSheet({
     required this.services, 
     this.selected,
-    required this.onCustomMode,
   });
   final List<ItemCatalog> services;
   final ItemCatalog? selected;
-  final VoidCallback onCustomMode;
 
   @override
   State<_ServicePickerSheet> createState() => _ServicePickerSheetState();
@@ -578,32 +747,6 @@ class _ServicePickerSheetState extends State<_ServicePickerSheet> {
                         );
                       },
                     ),
-            ),
-            
-            // Custom Service Button
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                  ),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onCustomMode();
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Use custom service'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  ),
-                ),
-              ),
             ),
           ],
         );

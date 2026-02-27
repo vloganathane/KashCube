@@ -14,6 +14,7 @@ import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
+import '../invoices/item_catalog_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
 class SettingsScreen extends ConsumerWidget {
@@ -185,16 +186,31 @@ class SettingsScreen extends ConsumerWidget {
               Consumer(builder: (context, ref, _) {
                 final enabled = ref.watch(businessModeProvider);
                 if (!enabled) return const SizedBox.shrink();
-                return ListTile(
-                  leading: const Icon(Icons.business_outlined),
-                  title: const Text('Business Profiles'),
-                  subtitle: const Text('Name, address, GST, logo & more'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const BusinessesScreen()),
-                  ),
+                return Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.business_outlined),
+                      title: const Text('Business Profiles'),
+                      subtitle: const Text('Name, address, GST, logo & more'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const BusinessesScreen()),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.inventory_2_outlined),
+                      title: const Text('Item Catalog'),
+                      subtitle: const Text('Manage products, services & materials'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ItemCatalogScreen()),
+                      ),
+                    ),
+                  ],
                 );
               }),
             ],

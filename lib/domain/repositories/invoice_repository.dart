@@ -14,6 +14,7 @@ abstract class QuoteRepository {
 abstract class InvoiceRepository {
   Future<List<Invoice>> getAll();
   Future<List<Invoice>> getByStatus(InvoiceStatus status);
+  Future<List<Invoice>> getByCustomer(String customerName);
   Future<Invoice?> getById(int id);
   Future<int> insert(Invoice invoice, List<InvoiceItem> items);
   Future<void> update(Invoice invoice, List<InvoiceItem> items);

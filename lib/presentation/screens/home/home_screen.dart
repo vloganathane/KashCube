@@ -14,9 +14,9 @@ import '../../providers/transaction_provider.dart';
 import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
 import '../bills/bills_and_payments_screen.dart';
+import '../bookings/bookings_screen.dart';
 import '../loans/loans_screen.dart';
 import '../invoices/invoices_screen.dart';
-import '../invoices/quote_builder_screen.dart';
 import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
@@ -78,14 +78,9 @@ class HomeScreen extends ConsumerWidget {
                         Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => const InvoicesScreen(),
                         ));
-                      } else if (value == 'new_quote') {
+                      } else if (value == 'bookings') {
                         Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const QuoteBuilderScreen(),
-                        ));
-                      } else if (value == 'new_invoice') {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const QuoteBuilderScreen(
-                              docType: DocumentType.invoice),
+                          builder: (_) => const BookingsScreen(),
                         ));
                       }
                     },
@@ -98,20 +93,11 @@ class HomeScreen extends ConsumerWidget {
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
-                      PopupMenuDivider(),
                       PopupMenuItem(
-                        value: 'new_invoice',
+                        value: 'bookings',
                         child: ListTile(
-                          leading: Icon(Icons.add_circle_outline),
-                          title: Text('New Invoice'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'new_quote',
-                        child: ListTile(
-                          leading: Icon(Icons.request_quote_outlined),
-                          title: Text('New Quote'),
+                          leading: Icon(Icons.calendar_month_outlined),
+                          title: Text('Bookings'),
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),

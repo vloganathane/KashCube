@@ -22,6 +22,8 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
@@ -32,7 +34,25 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        ref.read(invoiceSearchQueryProvider.notifier).state = '';
+      }
+    });
+  }
+
+  void _showFilterDialog() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _FilterBottomSheet(),
+    );
   }
 
   @override
@@ -49,7 +69,31 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Invoices & Quotes'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search invoices...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  ref.read(invoiceSearchQueryProvider.notifier).state = value;
+                },
+              )
+            : const Text('Invoices & Quotes'),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            onPressed: _toggleSearch,
+            tooltip: _isSearching ? 'Close search' : 'Search',
+          ),
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: _showFilterDialog,
+            tooltip: 'Filter by date',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -347,7 +391,7 @@ class _QuotesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quotesAsync = ref.watch(quotesProvider);
+    final quotesAsync = ref.watch(filteredQuotesProvider);
     return RefreshIndicator(
       onRefresh: () async {
         await ref.read(quotesProvider.notifier).load();
@@ -585,6 +629,113 @@ class _DisabledView extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Filter Bottom Sheet ──────────────────────────────────────────────────────
+
+class _FilterBottomSheet extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dateRange = ref.watch(invoiceDateRangeProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Text(
+                'Filter by Date',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const Spacer(),
+              if (dateRange != null)
+                TextButton(
+                  onPressed: () {
+                    ref.read(invoiceDateRangeProvider.notifier).state = null;
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Clear'),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.base),
+
+          // Quick filters
+          ListTile(
+            leading: const Icon(Icons.today),
+            title: const Text('Today'),
+            onTap: () {
+              final today = DateTime.now();
+              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+                start: DateTime(today.year, today.month, today.day),
+                end: DateTime(today.year, today.month, today.day, 23, 59, 59),
+              );
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.view_week),
+            title: const Text('This Week'),
+            onTap: () {
+              final now = DateTime.now();
+              final weekStart = now.subtract(Duration(days: now.weekday - 1));
+              final weekEnd = weekStart.add(const Duration(days: 6));
+              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+                start: DateTime(weekStart.year, weekStart.month, weekStart.day),
+                end: DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59),
+              );
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.calendar_month),
+            title: const Text('This Month'),
+            onTap: () {
+              final now = DateTime.now();
+              final monthStart = DateTime(now.year, now.month, 1);
+              final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+                start: monthStart,
+                end: monthEnd,
+              );
+              Navigator.pop(context);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.date_range),
+            title: const Text('Custom Range'),
+            trailing: dateRange != null
+                ? Text(
+                    '${DateFormatter.format(dateRange.start)} - ${DateFormatter.format(dateRange.end)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  )
+                : null,
+            onTap: () async {
+              final picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+                initialDateRange: dateRange,
+              );
+              if (picked != null) {
+                ref.read(invoiceDateRangeProvider.notifier).state = picked;
+                if (context.mounted) Navigator.pop(context);
+              }
+            },
+          ),
+
+          // Bottom padding
+          SizedBox(height: MediaQuery.of(context).padding.bottom),
+        ],
       ),
     );
   }

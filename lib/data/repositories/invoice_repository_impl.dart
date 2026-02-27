@@ -149,6 +149,16 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     return _withItems(db, rows);
   }
 
+  @override
+  Future<List<Invoice>> getByCustomer(String customerName) async {
+    final db = await _db.database;
+    final rows = await db.query('invoices',
+        where: 'customer_name = ?',
+        whereArgs: [customerName],
+        orderBy: 'issue_date DESC');
+    return _withItems(db, rows);
+  }
+
   Future<List<Invoice>> _withItems(
       dynamic db, List<Map<String, dynamic>> rows) async {
     final List<Invoice> result = [];
@@ -276,16 +286,8 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
 
       final transactionId = await txn.insert('transactions', transaction.toMap());
 
-      // 4. Update linked booking if fully paid and booking exists
-      if (isFullyPaid && bookingId != null) {
-        await txn.update(
-          'bookings',
-          {'status': 'paid'},
-          where: 'id = ?',
-          whereArgs: [bookingId],
-        );
-      }
-
+      // Note: Booking remains in 'completed' status - invoice payment tracked separately
+      
       return transactionId;
     });
   }

@@ -444,6 +444,120 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
+  Future<void> _shareQuotePdf() async {
+    if (_existingQuote == null) return;
+    
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (_existingQuote!.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+      }
+      
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (_existingQuote!.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+      }
+      
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
+        _existingQuote!,
+        business: business,
+        customerParty: customerParty,
+      );
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      final businessName = business?.name ?? 'My Business';
+      
+      // Show share options
+      final due = _existingQuote!.validUntil;
+      final message = 'Hi ${_existingQuote!.customerName},\n\n'
+          'Quote ${_existingQuote!.quoteNo} for ${CurrencyFormatter.format(_existingQuote!.total)}'
+          '${due != null ? '\nValid till ${DateFormatter.format(due)}' : ''}'
+          '\n\n— $businessName';
+      
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        subject: 'Quote ${_existingQuote!.quoteNo}',
+        text: message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareInvoicePdf() async {
+    if (_existingInvoice == null) return;
+    
+    // Show loading indicator
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Fetch business if businessId is set
+      Business? business;
+      if (_existingInvoice!.businessId != null) {
+        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+      }
+      
+      // Fetch customer party if customerPartyId is set
+      Party? customerParty;
+      if (_existingInvoice!.customerPartyId != null) {
+        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+      }
+      
+      // Generate PDF
+      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
+        _existingInvoice!,
+        business: business,
+        customerParty: customerParty,
+      );
+      
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      final businessName = business?.name ?? 'My Business';
+      
+      // Show share options
+      final due = _existingInvoice!.dueDate;
+      final message = 'Hi ${_existingInvoice!.customerName},\n\n'
+          'Invoice ${_existingInvoice!.invoiceNo} for ${CurrencyFormatter.format(_existingInvoice!.total)}'
+          '${due != null ? '\nDue ${DateFormatter.format(due)}' : ''}'
+          '\n\n— $businessName';
+      
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        subject: 'Invoice ${_existingInvoice!.invoiceNo}',
+        text: message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
   Future<void> _previewInvoice() async {
     if (_existingInvoice == null) return;
     
@@ -514,6 +628,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               icon: const Icon(Icons.visibility_outlined),
               tooltip: 'Preview PDF',
               onPressed: () => isInvoice ? _previewInvoice() : _previewQuote(),
+            ),
+          if (isEdit)
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: 'Share PDF',
+              onPressed: () => isInvoice ? _shareInvoicePdf() : _shareQuotePdf(),
             ),
           if (!isInvoice &&
               isEdit &&

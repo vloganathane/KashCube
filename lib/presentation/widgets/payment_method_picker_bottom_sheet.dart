@@ -32,17 +32,32 @@ class _PaymentMethodPickerBottomSheetState
     extends State<PaymentMethodPickerBottomSheet> {
   late DateTime _selectedDate;
   bool _showDatePicker = false;
+  late TextEditingController _amountController;
+  late double _amount;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = widget.defaultDate ?? DateTime.now();
+    _amount = widget.amount;
+    _amountController = TextEditingController(
+      text: widget.amount.toStringAsFixed(0),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
   }
 
   void _selectMethod(PaymentMethod method) {
+    // Parse amount from text field
+    final amount = double.tryParse(_amountController.text) ?? _amount;
     Navigator.pop(context, {
       'method': method,
       'date': _selectedDate,
+      'amount': amount,
     });
   }
 
@@ -71,11 +86,6 @@ class _PaymentMethodPickerBottomSheetState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.extension<KashCubeColors>()!;
-    final currencyFormat = NumberFormat.currency(
-      locale: 'en_IN',
-      symbol: '₹',
-      decimalDigits: 0,
-    );
 
     return Container(
       decoration: BoxDecoration(
@@ -83,22 +93,23 @@ class _PaymentMethodPickerBottomSheetState
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.lg),
 
           // Title
           Text(
@@ -107,14 +118,51 @@ class _PaymentMethodPickerBottomSheetState
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.base),
 
-          // Amount
-          Text(
-            currencyFormat.format(widget.amount),
-            style: theme.textTheme.displaySmall?.copyWith(
+          // Amount (editable for partial payments)
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: theme.textTheme.headlineMedium?.copyWith(
               color: colors.income,
               fontWeight: FontWeight.bold,
+              fontFamily: 'RobotoMono',
+            ),
+            decoration: InputDecoration(
+              labelText: 'Amount',
+              prefixText: '₹ ',
+              prefixStyle: theme.textTheme.headlineMedium?.copyWith(
+                color: colors.income,
+                fontWeight: FontWeight.bold,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outline),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: colors.income, width: 2),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+            ),
+            onChanged: (value) {
+              setState(() {
+                _amount = double.tryParse(value) ?? widget.amount;
+              });
+            },
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Tap to edit for partial payment',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              fontStyle: FontStyle.italic,
             ),
           ),
 
@@ -204,6 +252,7 @@ class _PaymentMethodPickerBottomSheetState
           // Bottom padding for safe area
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
+        ),
       ),
     );
   }
@@ -246,13 +295,13 @@ class _PaymentMethodButton extends StatelessWidget {
     
     return SizedBox(
       width: (MediaQuery.of(context).size.width - AppSpacing.lg * 2 - AppSpacing.md) / 2,
-      height: 72,
+      height: 80,
       child: FilledButton.tonal(
         onPressed: onTap,
         style: FilledButton.styleFrom(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.sm,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -265,24 +314,34 @@ class _PaymentMethodButton extends StatelessWidget {
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(_getIcon(), size: 24),
+            Icon(_getIcon(), size: 28),
             const SizedBox(height: AppSpacing.xs),
-            Text(
-              label ?? method.label,
-              style: theme.textTheme.labelLarge,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            if (isRecommended)
-              Text(
-                '★',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontSize: 10,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    label ?? method.label,
+                    style: theme.textTheme.labelLarge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
+                if (isRecommended) ...[
+                  const SizedBox(width: 2),
+                  Text(
+                    '★',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
       ),

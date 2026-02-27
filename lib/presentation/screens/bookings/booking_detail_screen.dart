@@ -14,6 +14,7 @@ import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
+import 'create_booking_screen.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
   const BookingDetailScreen({super.key, required this.bookingId});
@@ -49,6 +50,19 @@ class _BookingDetailView extends ConsumerWidget {
       appBar: AppBar(
         title: Text(booking.bookingRef ?? 'Booking Details'),
         actions: [
+          if (booking.status != BookingStatus.completed &&
+              booking.status != BookingStatus.cancelled &&
+              booking.status != BookingStatus.noShow)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit Booking',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CreateBookingScreen(booking: booking),
+                ),
+              ),
+            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) async {
@@ -93,11 +107,14 @@ class _BookingDetailView extends ConsumerWidget {
         children: [
           _HeaderCard(booking: booking),
           const SizedBox(height: AppSpacing.base),
-          _CustomerCard(booking: booking),
-          const SizedBox(height: AppSpacing.base),
+          if (booking.bookingType == BookingType.business) ...[    
+            _CustomerCard(booking: booking),
+            const SizedBox(height: AppSpacing.base),
+          ],
           _ServiceCard(booking: booking),
           const SizedBox(height: AppSpacing.base),
-          _AmountCard(booking: booking),
+          if (booking.bookingType == BookingType.business)
+            _AmountCard(booking: booking),
           if (booking.notes != null && booking.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.base),
             _NotesCard(notes: booking.notes!),
@@ -110,6 +127,9 @@ class _BookingDetailView extends ConsumerWidget {
   }
 
   Widget? _buildBottomBar(BuildContext context, WidgetRef ref) {
+    // Personal bookings have no financial actions
+    if (booking.bookingType == BookingType.personal) return null;
+
     if (booking.status == BookingStatus.pending) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(
@@ -123,12 +143,12 @@ class _BookingDetailView extends ConsumerWidget {
           label: const Text('Confirm Booking'),
           onPressed: () async {
             await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
-            if (context.mounted) {
-              await _sendWhatsAppConfirmation();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Booking confirmed')),
-              );
-            }
+            if (!context.mounted) return;
+            await _sendWhatsAppConfirmation();
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Booking confirmed')),
+            );
           },
         ),
       );

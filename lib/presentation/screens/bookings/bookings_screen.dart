@@ -41,14 +41,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
   @override
   Widget build(BuildContext context) {
     final businessEnabled = ref.watch(businessModeProvider);
-    if (!businessEnabled) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Bookings')),
-        body: _DisabledView(
-          onEnable: () => ref.read(businessModeProvider.notifier).setEnabled(true),
-        ),
-      );
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -77,15 +69,27 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('New Booking'),
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const CreateBookingScreen(),
-            ),
-          );
+          if (businessEnabled) {
+            _showBookingTypeSheet(context);
+          } else {
+            // Business mode OFF → always personal
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const CreateBookingScreen(
+                defaultBookingType: BookingType.personal,
+              ),
+            ));
+          }
         },
       ),
       body: Column(
         children: [
+          // Type filter only shown when business mode is ON
+          if (businessEnabled)
+            _TypeFilterBar(
+              selected: ref.watch(bookingTypeFilterProvider),
+              onSelected: (t) =>
+                  ref.read(bookingTypeFilterProvider.notifier).state = t,
+            ),
           _StatusFilterBar(
             selected: ref.watch(bookingFilterProvider),
             onSelected: (s) =>
@@ -98,6 +102,103 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               },
               child: const _BookingsList(),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBookingTypeSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'New Booking',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.base),
+              ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.storefront_outlined),
+                ),
+                title: const Text('Business Booking'),
+                subtitle: const Text('Customer appointment, invoice, payment'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const CreateBookingScreen(
+                      defaultBookingType: BookingType.business,
+                    ),
+                  ));
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const CircleAvatar(
+                  child: Icon(Icons.person_outline),
+                ),
+                title: const Text('Personal Schedule'),
+                subtitle: const Text('Reminder, appointment, personal event'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const CreateBookingScreen(
+                      defaultBookingType: BookingType.personal,
+                    ),
+                  ));
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Type Filter Bar ──────────────────────────────────────────────────────────
+
+class _TypeFilterBar extends StatelessWidget {
+  const _TypeFilterBar({required this.selected, required this.onSelected});
+  final BookingType? selected;
+  final ValueChanged<BookingType?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.xs,
+        ),
+        children: [
+          ChoiceChip(
+            label: const Text('All'),
+            selected: selected == null,
+            onSelected: (_) => onSelected(null),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          ChoiceChip(
+            avatar: const Icon(Icons.storefront_outlined, size: 16),
+            label: const Text('Business'),
+            selected: selected == BookingType.business,
+            onSelected: (_) => onSelected(BookingType.business),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          ChoiceChip(
+            avatar: const Icon(Icons.person_outline, size: 16),
+            label: const Text('Personal'),
+            selected: selected == BookingType.personal,
+            onSelected: (_) => onSelected(BookingType.personal),
           ),
         ],
       ),
@@ -510,46 +611,3 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Disabled View ────────────────────────────────────────────────────────────
-
-class _DisabledView extends StatelessWidget {
-  const _DisabledView({required this.onEnable});
-  final VoidCallback onEnable;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xxl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.business_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.outline,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Business Mode Required',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Enable Business Mode in Settings to use bookings',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            FilledButton(
-              onPressed: onEnable,
-              child: const Text('Enable Business Mode'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -13,12 +13,11 @@ import '../providers/party_provider.dart';
 
 /// A form field widget for selecting / entering a party name.
 ///
-/// Opens a bottom sheet that shows:
-/// - Saved parties from the local parties table (searchable, with type badge)
-/// - "Pick from Contacts" option (OS picker, no READ_CONTACTS permission)
-/// - "Add '[name]' as new party" quick-create when no exact match is found
+/// Features two selection paths:
+/// 1. **Autocomplete**: Type to see suggestions dropdown (quick select)
+/// 2. **Full Picker**: Click button to see all parties with search, contacts, add new
 ///
-/// The user can also type freely in the text field without using the picker.
+/// The user can also type freely in the text field without using either method.
 class PartyPickerField extends ConsumerStatefulWidget {
   const PartyPickerField({
     super.key,
@@ -27,6 +26,7 @@ class PartyPickerField extends ConsumerStatefulWidget {
     this.hintText,
     this.validator,
     this.onSelected,
+    this.onPartySelected,
   });
 
   final TextEditingController controller;
@@ -36,13 +36,25 @@ class PartyPickerField extends ConsumerStatefulWidget {
 
   /// Called after a party name is chosen (e.g. to trigger suggestion fetch).
   final void Function(String name)? onSelected;
+  
+  /// Called after a party is selected from autocomplete - provides full Party object.
+  final void Function(Party party)? onPartySelected;
 
   @override
   ConsumerState<PartyPickerField> createState() => _PartyPickerFieldState();
 }
 
 class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
+  final FocusNode _focusNode = FocusNode();
+  
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+  
   Future<void> _openPicker() async {
+    _focusNode.unfocus();  // Close autocomplete dropdown
     final result = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -60,22 +72,94 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: widget.controller,
-      textCapitalization: TextCapitalization.words,
-      decoration: InputDecoration(
-        labelText: widget.labelText,
-        hintText: widget.hintText,
-        prefixIcon: const Icon(Icons.person_outline),
-        suffixIcon: IconButton(
-          icon: const Icon(Icons.people_outline),
-          tooltip: 'Select party',
-          onPressed: _openPicker,
-        ),
-      ),
-      validator: widget.validator,
-      onChanged: (v) {
-        // free-type still works; no autocomplete overlay
+    final partiesAsync = ref.watch(partiesProvider);
+    final allParties = partiesAsync.valueOrNull ?? [];
+
+    return Autocomplete<Party>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return const Iterable<Party>.empty();
+        }
+        final query = textEditingValue.text.toLowerCase();
+        return allParties.where((party) {
+          return party.name.toLowerCase().contains(query) ||
+              (party.phoneNumber?.contains(query) ?? false);
+        }).take(5);  // Show max 5 suggestions
+      },
+      displayStringForOption: (Party party) => party.name,
+      onSelected: (Party party) {
+        widget.controller.text = party.name;
+        widget.onSelected?.call(party.name);
+        widget.onPartySelected?.call(party);  // Pass full party object
+      },
+      fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+        // Sync with parent controller
+        widget.controller.addListener(() {
+          if (controller.text != widget.controller.text) {
+            controller.text = widget.controller.text;
+          }
+        });
+        controller.addListener(() {
+          if (widget.controller.text != controller.text) {
+            widget.controller.text = controller.text;
+          }
+        });
+        
+        return TextFormField(
+          controller: controller,
+          focusNode: focusNode,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            labelText: widget.labelText,
+            hintText: widget.hintText,
+            prefixIcon: const Icon(Icons.person_outline),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.people_outline),
+              tooltip: 'Show all parties',
+              onPressed: _openPicker,
+            ),
+          ),
+          validator: widget.validator,
+          onFieldSubmitted: (_) => onSubmitted(),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200, maxWidth: 350),
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final party = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 16,
+                      child: Text(
+                        party.name.isNotEmpty ? party.name[0].toUpperCase() : '?',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    title: Text(party.name),
+                    subtitle: party.phoneNumber != null
+                        ? Text(
+                            '+91 ${party.phoneNumber}',
+                            style: Theme.of(context).textTheme.labelSmall,
+                          )
+                        : null,
+                    onTap: () => onSelected(party),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
       },
     );
   }

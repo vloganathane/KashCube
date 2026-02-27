@@ -973,6 +973,78 @@ class DatabaseHelper {
         'description': 'Automatic transaction creation: link transactions to invoices/bookings, track payment details',
       });
     }
+
+    if (oldVersion < 19) {
+      // Week 25-27: Bookings feature
+      
+      // Create bookings table
+      await db.execute('''
+        CREATE TABLE bookings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_party_id INTEGER,
+          customer_name TEXT NOT NULL,
+          
+          service_item_id INTEGER,
+          service_name TEXT NOT NULL,
+          
+          start_datetime TEXT NOT NULL,
+          end_datetime TEXT,
+          duration_minutes INTEGER,
+          
+          status TEXT NOT NULL DEFAULT 'pending',
+          booking_type TEXT NOT NULL DEFAULT 'business',
+          
+          total_amount REAL NOT NULL,
+          advance_amount REAL DEFAULT 0,
+          
+          invoice_id INTEGER,
+          
+          notes TEXT,
+          notification_scheduled_at TEXT,
+          confirmed_at TEXT,
+          
+          business_id INTEGER,
+          booking_ref TEXT,
+          
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT,
+          
+          FOREIGN KEY (customer_party_id) REFERENCES parties(id),
+          FOREIGN KEY (service_item_id) REFERENCES item_catalog(id),
+          FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+          FOREIGN KEY (business_id) REFERENCES businesses(id)
+        )
+      ''');
+      
+      // Create indexes for bookings
+      await db.execute('CREATE INDEX idx_bookings_status ON bookings(status)');
+      await db.execute('CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)');
+      await db.execute('CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)');
+      await db.execute('CREATE INDEX idx_bookings_business ON bookings(business_id)');
+      
+      // Extend item_catalog for bookable services
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN duration_minutes INTEGER DEFAULT 30');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN is_bookable INTEGER DEFAULT 0');
+      
+      await db.insert('schema_version', {
+        'version': 19,
+        'description': 'Add bookings table and extend item_catalog for bookable services',
+      });
+    }
+
+    if (oldVersion < 20) {
+      // Business + Personal schedule: add booking_type column
+      await db.execute(
+        "ALTER TABLE bookings ADD COLUMN booking_type TEXT NOT NULL DEFAULT 'business'",
+      );
+      await db.execute(
+        'CREATE INDEX idx_bookings_type ON bookings(booking_type)',
+      );
+      await db.insert('schema_version', {
+        'version': 20,
+        'description': 'Add booking_type column (business/personal) to bookings table',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

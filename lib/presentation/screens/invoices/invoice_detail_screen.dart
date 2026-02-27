@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -213,6 +212,7 @@ class _InvoiceDetailView extends ConsumerWidget {
 
     final paymentMethod = result['method'] as PaymentMethod;
     final paidDate = result['date'] as DateTime;
+    final amount = result['amount'] as double;
 
     // Show loading
     if (!context.mounted) return;
@@ -224,11 +224,16 @@ class _InvoiceDetailView extends ConsumerWidget {
 
     try {
       // Call markAsPaid - this auto-creates transaction
-      await ref.read(invoicesProvider.notifier).markAsPaid(
+      final transactionId = await ref.read(invoicesProvider.notifier).markAsPaid(
             invoice: invoice,
             paymentMethod: paymentMethod,
             paidDate: paidDate,
+            partialAmount: amount,
           );
+
+      // Invalidate providers to force reload with updated data
+      ref.invalidate(invoiceByIdProvider(invoice.id!));
+      ref.invalidate(transactionsProvider);
 
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading
@@ -243,12 +248,17 @@ class _InvoiceDetailView extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Payment recorded: ${CurrencyFormatter.format(invoice.balanceDue)} via ${paymentMethod.label}',
+            'Payment recorded: ${CurrencyFormatter.format(amount)} via ${paymentMethod.label}',
           ),
           action: SnackBarAction(
             label: 'View Transactions',
             onPressed: () {
-              // TODO: Navigate to transactions screen filtered to this invoice
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TransactionDetailScreen(transactionId: transactionId),
+                ),
+              );
             },
           ),
         ),
@@ -795,67 +805,51 @@ class _ShareOptionsSheet extends StatelessWidget {
             
             const Divider(),
             
-            // WhatsApp
+            // WhatsApp - Share PDF + message
             ListTile(
               leading: const Icon(Icons.chat_outlined, color: Colors.green),
               title: const Text('WhatsApp'),
-              subtitle: const Text('Send via WhatsApp'),
+              subtitle: const Text('Send PDF via WhatsApp'),
               onTap: () async {
                 Navigator.pop(context);
-                final msg = Uri.encodeComponent(_generateMessage());
-                final url = Uri.parse('https://wa.me/?text=$msg');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('WhatsApp not available')),
-                    );
-                  }
-                }
+                await Share.shareXFiles(
+                  [XFile(pdfFile.path)],
+                  subject: 'Invoice ${invoice.invoiceNo}',
+                  text: _generateMessage(),
+                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
+                );
               },
             ),
             
-            // SMS
+            // SMS - Share PDF + message
             ListTile(
               leading: const Icon(Icons.sms_outlined, color: Colors.blue),
               title: const Text('SMS'),
-              subtitle: const Text('Send via text message'),
+              subtitle: const Text('Send PDF via text message'),
               onTap: () async {
                 Navigator.pop(context);
-                final msg = Uri.encodeComponent(_generateMessage());
-                final url = Uri.parse('sms:?body=$msg');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('SMS not available')),
-                    );
-                  }
-                }
+                await Share.shareXFiles(
+                  [XFile(pdfFile.path)],
+                  subject: 'Invoice ${invoice.invoiceNo}',
+                  text: _generateMessage(),
+                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
+                );
               },
             ),
             
-            // Email
+            // Email - Share PDF + message
             ListTile(
               leading: const Icon(Icons.email_outlined, color: Colors.orange),
               title: const Text('Email'),
-              subtitle: const Text('Send via email'),
+              subtitle: const Text('Send PDF via email'),
               onTap: () async {
                 Navigator.pop(context);
-                final subject = Uri.encodeComponent('Invoice ${invoice.invoiceNo}');
-                final body = Uri.encodeComponent(_generateMessage());
-                final url = Uri.parse('mailto:?subject=$subject&body=$body');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Email not available')),
-                    );
-                  }
-                }
+                await Share.shareXFiles(
+                  [XFile(pdfFile.path)],
+                  subject: 'Invoice ${invoice.invoiceNo}',
+                  text: _generateMessage(),
+                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
+                );
               },
             ),
             

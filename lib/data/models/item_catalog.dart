@@ -30,6 +30,8 @@ class ItemCatalog extends Equatable {
     this.isActive = true,
     this.lastUsedAt,
     this.usageCount = 0,
+    this.durationMinutes,
+    this.isBookable = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -48,6 +50,8 @@ class ItemCatalog extends Equatable {
   final bool isActive;
   final DateTime? lastUsedAt;
   final int usageCount;
+  final int? durationMinutes;
+  final bool isBookable;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -66,6 +70,8 @@ class ItemCatalog extends Equatable {
     bool? isActive,
     DateTime? lastUsedAt,
     int? usageCount,
+    int? durationMinutes,
+    bool? isBookable,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -84,6 +90,8 @@ class ItemCatalog extends Equatable {
       isActive: isActive ?? this.isActive,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
       usageCount: usageCount ?? this.usageCount,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      isBookable: isBookable ?? this.isBookable,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -104,6 +112,8 @@ class ItemCatalog extends Equatable {
         'is_active': isActive ? 1 : 0,
         'last_used_at': lastUsedAt?.toIso8601String(),
         'usage_count': usageCount,
+        'duration_minutes': durationMinutes,
+        'is_bookable': isBookable ? 1 : 0,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -128,6 +138,8 @@ class ItemCatalog extends Equatable {
             ? DateTime.parse(map['last_used_at'] as String)
             : null,
         usageCount: (map['usage_count'] as int?) ?? 0,
+        durationMinutes: map['duration_minutes'] as int?,
+        isBookable: (map['is_bookable'] as int?) == 1,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
@@ -148,5 +160,9 @@ class ItemCatalog extends Equatable {
         isActive,
         lastUsedAt,
         usageCount,
+        durationMinutes,
+        isBookable,
+        createdAt,
+        updatedAt,
       ];
 }

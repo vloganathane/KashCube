@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/settings_provider.dart';
 import '../screens/bills/bills_and_payments_screen.dart';
+import '../screens/bookings/create_booking_screen.dart';
 import '../screens/invoices/quote_builder_screen.dart';
 import '../screens/loans/loans_screen.dart';
 import '../screens/transactions/add_edit_transaction_screen.dart';
@@ -91,6 +92,15 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     );
   }
 
+  void _openNewBooking() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CreateBookingScreen(),
+      ),
+    );
+  }
+
   Widget _animated(Widget child) => ScaleTransition(
         scale: _expandAnim,
         child: FadeTransition(opacity: _expandAnim, child: child),
@@ -104,7 +114,7 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // ── Invoice + Quote (business mode only) ───────────────────────
+        // ── Invoice + Quote + Booking (business mode only) ──────────────
         if (isBusiness) ...[
           _animated(SpeedDialOption(
             icon: Icons.receipt_outlined,
@@ -116,6 +126,12 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
             icon: Icons.request_quote_outlined,
             label: 'Quote',
             onTap: _openNewQuote,
+          )),
+          const SizedBox(height: 12),
+          _animated(SpeedDialOption(
+            icon: Icons.calendar_month_outlined,
+            label: 'Booking',
+            onTap: _openNewBooking,
           )),
           const SizedBox(height: 12),
         ],

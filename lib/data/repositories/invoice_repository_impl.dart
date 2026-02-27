@@ -3,7 +3,6 @@ import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
 import '../../data/services/database_helper.dart';
 import '../../domain/repositories/invoice_repository.dart';
-import '../../domain/repositories/transaction_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Quote
@@ -129,11 +128,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
 // ---------------------------------------------------------------------------
 
 class InvoiceRepositoryImpl implements InvoiceRepository {
-  InvoiceRepositoryImpl({required TransactionRepository transactionRepo})
-      : _transactionRepo = transactionRepo;
+  InvoiceRepositoryImpl();
 
   final _db = DatabaseHelper.instance;
-  final TransactionRepository _transactionRepo;
 
   @override
   Future<List<Invoice>> getAll() async {

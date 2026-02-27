@@ -22,9 +22,7 @@ final quoteRepositoryProvider = Provider<QuoteRepository>(
 );
 
 final invoiceRepositoryProvider = Provider<InvoiceRepository>(
-  (ref) => InvoiceRepositoryImpl(
-    transactionRepo: ref.read(transactionRepositoryProvider),
-  ),
+  (ref) => InvoiceRepositoryImpl(),
 );
 
 // ── Filter ───────────────────────────────────────────────────────────────────

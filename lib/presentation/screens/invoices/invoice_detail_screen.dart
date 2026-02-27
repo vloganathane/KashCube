@@ -12,6 +12,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/invoice_pdf_service.dart';
+import '../../../data/services/payment_preferences_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
@@ -187,9 +188,10 @@ class _InvoiceDetailView extends ConsumerWidget {
   }
 
   Future<void> _markAsPaid(BuildContext context, WidgetRef ref) async {
-    // TODO: Load last used payment method for this customer from SharedPreferences
-    // For now, use null (no smart default)
-    PaymentMethod? lastUsedMethod;
+    // Load last used payment method for this customer
+    final lastUsedMethod = await PaymentPreferencesService.getLastUsedMethod(
+      invoice.customerPartyId,
+    );
 
     // Show payment method picker
     final result = await showPaymentMethodPicker(
@@ -224,7 +226,11 @@ class _InvoiceDetailView extends ConsumerWidget {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading
 
-      // TODO: Save payment method preference for this customer to SharedPreferences
+      // Save payment method preference for this customer
+      await PaymentPreferencesService.saveLastUsedMethod(
+        invoice.customerPartyId,
+        paymentMethod,
+      );
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(

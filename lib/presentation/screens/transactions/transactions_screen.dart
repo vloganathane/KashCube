@@ -11,6 +11,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import 'transaction_detail_screen.dart';
 import '../search/search_screen.dart';
+import '../ledger/ledger_screen.dart';
 import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 /// Date range filter for the transactions list.
@@ -145,6 +146,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       appBar: AppBar(
         title: const Text('Transactions'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            tooltip: 'Ledger',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LedgerScreen()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Search',

@@ -23,12 +23,12 @@ import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../search/search_screen.dart';
-import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../../data/models/budget.dart';
 import '../reports/budget_screen.dart';
+import '../reports/reports_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -80,51 +80,6 @@ class HomeScreen extends ConsumerWidget {
                     );
                   },
                 ),
-                if (ref.watch(businessModeProvider))
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert),
-                    tooltip: 'More',
-                    onSelected: (value) {
-                      if (value == 'invoices') {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const InvoicesScreen(),
-                        ));
-                      } else if (value == 'bookings') {
-                        Navigator.of(context).push(MaterialPageRoute(
-                          builder: (_) => const BookingsScreen(),
-                        ));
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                        value: 'invoices',
-                        child: ListTile(
-                          leading: Icon(Icons.receipt_long_outlined),
-                          title: Text('Invoices & Quotes'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: 'bookings',
-                        child: ListTile(
-                          leading: Icon(Icons.calendar_month_outlined),
-                          title: Text('Bookings'),
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ],
-                  ),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  tooltip: 'Settings',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SettingsScreen(),
-                      ),
-                    );
-                  },
-                ),
               ],
             ),
             SliverPadding(
@@ -154,8 +109,23 @@ class HomeScreen extends ConsumerWidget {
                   // Alerts — overdue invoices + pending credits
                   const _AlertsSection(),
 
-                  // Budget health — only shown when budgets are set
+                  // Monthly Budgets card
                   const _BudgetSection(),
+
+                  // Reports shortcut
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const ReportsScreen()),
+                        ),
+                        icon: const Icon(Icons.bar_chart_outlined, size: 16),
+                        label: const Text('See Reports'),
+                      ),
+                    ],
+                  ),
 
                   // Recent Transactions Header
                   Row(
@@ -555,13 +525,15 @@ class _BusinessCard extends ConsumerWidget {
           icon: Icons.call_made, label: 'Lent out',
           value: lentAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
-          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LedgerScreen())),
         ),
         _CardFooterTile(
           icon: Icons.call_received, label: 'Borrowed',
           value: borrowedAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
-          onTap: () => ref.read(currentTabIndexProvider.notifier).state = 2,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LedgerScreen())),
         ),
       ],
     );

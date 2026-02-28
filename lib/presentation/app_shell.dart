@@ -5,15 +5,15 @@ import '../data/models/parsed_sms.dart';
 import '../data/models/transaction.dart';
 import '../data/services/sms_parser.dart';
 import 'providers/scheduled_payment_provider.dart';
-import 'providers/report_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
-import 'screens/ledger/ledger_screen.dart';
-import 'widgets/speed_dial_fab.dart';
+import 'screens/business/business_hub_screen.dart';
+import 'screens/contacts/contacts_hub_screen.dart';
 import 'screens/home/home_screen.dart';
-import 'screens/reports/reports_screen.dart';
+import 'screens/settings/settings_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_screen.dart';
+import 'widgets/speed_dial_fab.dart';
 import 'widgets/sms_confirmation_sheet.dart';
 
 /// Provider for the current bottom navigation tab index.
@@ -33,8 +33,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   static const _screens = [
     HomeScreen(),
     TransactionsScreen(),
-    LedgerScreen(),
-    ReportsScreen(),
+    BusinessHubScreen(),
+    ContactsHubScreen(),
+    SettingsScreen(),
   ];
 
   @override
@@ -125,7 +126,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
-    final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
+    final showFab = currentIndex == 0 || currentIndex == 1;
 
     return Scaffold(
       body: IndexedStack(
@@ -135,11 +136,6 @@ class _AppShellState extends ConsumerState<AppShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         onDestinationSelected: (index) {
-          if (index == 3) {
-            ref.invalidate(monthlyPnLProvider);
-            ref.invalidate(monthlyTotalsProvider);
-            ref.invalidate(dailyTotalsProvider);
-          }
           ref.read(currentTabIndexProvider.notifier).state = index;
         },
         destinations: const [
@@ -154,14 +150,19 @@ class _AppShellState extends ConsumerState<AppShell> {
             label: 'Transactions',
           ),
           NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Ledger',
+            icon: Icon(Icons.storefront_outlined),
+            selectedIcon: Icon(Icons.storefront),
+            label: 'Business',
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: 'Reports',
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Contacts',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),

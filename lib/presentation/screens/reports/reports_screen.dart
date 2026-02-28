@@ -226,17 +226,7 @@ class _ReportsBody extends ConsumerWidget {
     // Report mode filter ('personal', 'business', or null = All)
     final reportMode = ref.watch(reportModeProvider);
 
-    if (!hasData) {
-      // Even with no transactions, show booking overview if business mode is on
-      if (bookingStats != null) {
-        return ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            _BookingsOverviewCard(stats: bookingStats),
-          ],
-        );
-      }
+    if (!hasData && bookingStats == null) {
       return LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -283,29 +273,31 @@ class _ReportsBody extends ConsumerWidget {
           _YtdSummaryRow(ytd: ytd, month: month),
           const SizedBox(height: AppSpacing.base),
         ],
-        _PnLCard(pnl: pnl, prevPnl: prevPnl),
-        const SizedBox(height: AppSpacing.base),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: _SavingsRateCard(
-                pnl: pnl,
-                prevRate: prevPnl?.savingsRate,
+        if (hasData) ...[
+          _PnLCard(pnl: pnl, prevPnl: prevPnl),
+          const SizedBox(height: AppSpacing.base),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _SavingsRateCard(
+                  pnl: pnl,
+                  prevRate: prevPnl?.savingsRate,
+                ),
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: _AvgDailySpendCard(
-                pnl: pnl,
-                prevPnl: prevPnl,
-                daysElapsed: daysElapsed,
-                month: month,
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _AvgDailySpendCard(
+                  pnl: pnl,
+                  prevPnl: prevPnl,
+                  daysElapsed: daysElapsed,
+                  month: month,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.base),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.base),
+        ],
         _BudgetVsActualCard(budgets: budgets),
         const SizedBox(height: AppSpacing.base),
         if (pnl.expenseByCat.isNotEmpty) ...[

@@ -569,14 +569,21 @@ class _AddEditBudgetSheetState
       category: _selectedCategory!,
       budgetAmount: double.parse(_amountController.text.trim()),
       alertAtPercentage: 80,
-      isActive: true,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
-      updatedAt: widget.existing != null ? DateTime.now() : null,
     );
 
-    await ref.read(currentMonthBudgetsProvider.notifier).upsert(budget);
-
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await ref.read(currentMonthBudgetsProvider.notifier).upsert(budget);
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      debugPrint('_AddEditBudgetSheet._save error: $e');
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to save budget. Please try again.')),
+        );
+      }
+    }
   }
 
   @override

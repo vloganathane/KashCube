@@ -46,18 +46,17 @@ class Budget {
   // Serialization
   // ---------------------------------------------------------------------------
 
+  /// Only includes columns that exist in the DB schema.
+  /// `spentAmount`, `remainingAmount`, `isActive`, `updatedAt` are computed or
+  /// from the old schema and must NOT be persisted.
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'year': year,
         'month': month,
         'category': category,
         'budget_amount': budgetAmount,
-        'spent_amount': spentAmount,
-        'remaining_amount': remainingAmount,
         'alert_at_percentage': alertAtPercentage,
-        'is_active': isActive ? 1 : 0,
         'created_at': createdAt.toIso8601String(),
-        if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
       };
 
   factory Budget.fromMap(Map<String, dynamic> m) => Budget(

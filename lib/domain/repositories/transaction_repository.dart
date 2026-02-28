@@ -90,6 +90,13 @@ abstract class TransactionRepository {
     DateTime end, {
     int limit = 5,
   });
+
+  /// Get income and expense totals grouped by payment method for a date range.
+  Future<Map<String, ({double income, double expense})>> getByPaymentMethod(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  });
 }
 
 /// Daily income/expense totals.
@@ -133,10 +140,16 @@ class PartyTotal {
     required this.partyName,
     required this.totalAmount,
     required this.transactionCount,
+    this.income = 0,
+    this.expense = 0,
   });
   final String partyName;
   final double totalAmount;
   final int transactionCount;
+  /// Total income received from this party in the period.
+  final double income;
+  /// Total expenses paid to this party in the period.
+  final double expense;
 }
 
 /// Aggregated ledger (khata) position for a single party.

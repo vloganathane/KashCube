@@ -192,6 +192,10 @@ class _ReportsBody extends ConsumerWidget {
         ? now.day.toDouble()
         : DateTime(month.year, month.month + 1, 0).day.toDouble();
 
+    // Payment method split for the selected month
+    final payMethodData =
+        ref.watch(paymentMethodSplitProvider(month)).valueOrNull ?? const {};
+
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
@@ -282,6 +286,10 @@ class _ReportsBody extends ConsumerWidget {
         ],
         const _MonthlyTrendCard(),
         const SizedBox(height: AppSpacing.base),
+        if (payMethodData.isNotEmpty) ...[
+          _PaymentMethodCard(data: payMethodData),
+          const SizedBox(height: AppSpacing.base),
+        ],
         if (pnl.largestTransactions.isNotEmpty) ...[  
           _LargestTransactionsCard(transactions: pnl.largestTransactions),
           const SizedBox(height: AppSpacing.base),
@@ -890,6 +898,8 @@ class _TopPartiesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxAmount = parties.fold<double>(
         0, (prev, p) => math.max(prev, p.totalAmount));
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
 
     return Card(
       child: Padding(
@@ -907,6 +917,7 @@ class _TopPartiesCard extends StatelessWidget {
             ...parties.asMap().entries.map((entry) {
               final i = entry.key;
               final p = entry.value;
+              final hasInEx = p.income > 0 || p.expense > 0;
               return Padding(
                 padding: const EdgeInsets.symmetric(
                     vertical: AppSpacing.xs),
@@ -918,8 +929,7 @@ class _TopPartiesCard extends StatelessWidget {
                         '${i + 1}',
                         style:
                             context.textTheme.bodySmall?.copyWith(
-                          color: context
-                              .colorScheme.onSurfaceVariant,
+                          color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -935,17 +945,24 @@ class _TopPartiesCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          LinearProgressIndicator(
-                            value: maxAmount > 0
-                                ? p.totalAmount / maxAmount
-                                : 0,
-                            backgroundColor: context.colorScheme
-                                .surfaceContainerHighest,
-                            color: context.colorScheme.primary,
-                            minHeight: 4,
-                            borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusSm),
-                          ),
+                          if (hasInEx)
+                            _StackedPartyBar(
+                              income: p.income,
+                              expense: p.expense,
+                              maxAmount: maxAmount,
+                            )
+                          else
+                            LinearProgressIndicator(
+                              value: maxAmount > 0
+                                  ? p.totalAmount / maxAmount
+                                  : 0,
+                              backgroundColor:
+                                  cs.surfaceContainerHighest,
+                              color: cs.primary,
+                              minHeight: 4,
+                              borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusSm),
+                            ),
                         ],
                       ),
                     ),
@@ -954,21 +971,41 @@ class _TopPartiesCard extends StatelessWidget {
                       crossAxisAlignment:
                           CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          CurrencyFormatter.formatCompact(
-                              p.totalAmount),
-                          style: context.textTheme.bodyMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'RobotoMono',
+                        if (p.income > 0)
+                          Text(
+                            '+${CurrencyFormatter.formatCompact(p.income)}',
+                            style: context.textTheme.bodySmall
+                                ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                              color: colors.income,
+                            ),
                           ),
-                        ),
+                        if (p.expense > 0)
+                          Text(
+                            '-${CurrencyFormatter.formatCompact(p.expense)}',
+                            style: context.textTheme.bodySmall
+                                ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                              color: colors.expense,
+                            ),
+                          ),
+                        if (!hasInEx)
+                          Text(
+                            CurrencyFormatter.formatCompact(
+                                p.totalAmount),
+                            style: context.textTheme.bodyMedium
+                                ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
+                          ),
                         Text(
                           '${p.transactionCount} txns',
                           style: context.textTheme.bodySmall
                               ?.copyWith(
-                            color: context
-                                .colorScheme.onSurfaceVariant,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -977,6 +1014,57 @@ class _TopPartiesCard extends StatelessWidget {
                 ),
               );
             }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A small stacked bar showing income (green) and expense (red) segments.
+class _StackedPartyBar extends StatelessWidget {
+  const _StackedPartyBar({
+    required this.income,
+    required this.expense,
+    required this.maxAmount,
+  });
+
+  final double income;
+  final double expense;
+  final double maxAmount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (maxAmount == 0) return const SizedBox.shrink();
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final incomeW = income / maxAmount;
+    final expenseW = expense / maxAmount;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+      child: SizedBox(
+        height: 4,
+        child: Row(
+          children: [
+            if (incomeW > 0)
+              Flexible(
+                flex: (incomeW * 1000).round(),
+                child: Container(color: colors.income),
+              ),
+            if (expenseW > 0)
+              Flexible(
+                flex: (expenseW * 1000).round(),
+                child: Container(color: colors.expense),
+              ),
+            Flexible(
+              flex: math.max(
+                  0,
+                  ((1 - incomeW - expenseW) * 1000)
+                      .round()
+                      .clamp(0, 1000)),
+              child:
+                  Container(color: cs.surfaceContainerHighest),
+            ),
           ],
         ),
       ),
@@ -1745,3 +1833,168 @@ class _LargestTransactionsCard extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Payment Method Split Card
+// ---------------------------------------------------------------------------
+
+class _PaymentMethodCard extends StatelessWidget {
+  const _PaymentMethodCard({required this.data});
+
+  final Map<String, ({double income, double expense})> data;
+
+  static IconData _iconFor(String key) {
+    final m = PaymentMethod.fromDb(key);
+    switch (m) {
+      case PaymentMethod.upi:
+        return Icons.phone_android_outlined;
+      case PaymentMethod.cash:
+        return Icons.payments_outlined;
+      case PaymentMethod.creditCard:
+        return Icons.credit_card;
+      case PaymentMethod.debitCard:
+        return Icons.credit_card_outlined;
+      case PaymentMethod.netBanking:
+        return Icons.account_balance_outlined;
+      case PaymentMethod.wallet:
+        return Icons.account_balance_wallet_outlined;
+      case PaymentMethod.cheque:
+        return Icons.receipt_long_outlined;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+
+    final entries = data.entries
+        .map((e) => (
+              key: e.key,
+              income: e.value.income,
+              expense: e.value.expense,
+              total: e.value.income + e.value.expense,
+            ))
+        .where((e) => e.total > 0)
+        .toList()
+      ..sort((a, b) => b.total.compareTo(a.total));
+
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    final maxTotal = entries.first.total;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.credit_score_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Payment Methods',
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ...entries.map((e) {
+              final incomeW = maxTotal > 0 ? e.income / maxTotal : 0.0;
+              final expenseW = maxTotal > 0 ? e.expense / maxTotal : 0.0;
+              final method = PaymentMethod.fromDb(e.key);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius:
+                            BorderRadius.circular(AppSpacing.radiusSm),
+                      ),
+                      child: Icon(_iconFor(e.key), size: 16, color: cs.primary),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            method.label,
+                            style: tt.bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius:
+                                BorderRadius.circular(AppSpacing.radiusSm),
+                            child: SizedBox(
+                              height: 6,
+                              child: Row(
+                                children: [
+                                  if (incomeW > 0)
+                                    Flexible(
+                                      flex: (incomeW * 1000).round(),
+                                      child: Container(color: colors.income),
+                                    ),
+                                  if (expenseW > 0)
+                                    Flexible(
+                                      flex: (expenseW * 1000).round(),
+                                      child: Container(color: colors.expense),
+                                    ),
+                                  Flexible(
+                                    flex: math.max(
+                                        0,
+                                        ((1 - incomeW - expenseW) * 1000)
+                                            .round()
+                                            .clamp(0, 1000)),
+                                    child: Container(
+                                        color: cs.surfaceContainerHighest),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (e.income > 0)
+                          Text(
+                            CurrencyFormatter.formatCompact(e.income),
+                            style: tt.bodySmall?.copyWith(
+                              color: colors.income,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
+                          ),
+                        if (e.expense > 0)
+                          Text(
+                            CurrencyFormatter.formatCompact(e.expense),
+                            style: tt.bodySmall?.copyWith(
+                              color: colors.expense,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}

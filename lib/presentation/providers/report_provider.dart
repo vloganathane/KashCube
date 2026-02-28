@@ -127,6 +127,16 @@ final pnlForMonthProvider =
   );
 });
 
+/// Monthly income+expense totals grouped by payment method for [month].
+final paymentMethodSplitProvider = FutureProvider.family<
+    Map<String, ({double income, double expense})>, DateTime>((ref, month) async {
+  final mode = ref.watch(reportModeProvider);
+  final repo = TransactionRepositoryImpl();
+  final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+  return repo.getByPaymentMethod(start, end, mode: mode);
+});
+
 /// Year-to-date summary from Jan 1 of [month]'s year through end of [month].
 final ytdSummaryProvider =
     FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {

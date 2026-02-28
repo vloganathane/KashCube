@@ -247,28 +247,32 @@ class _InvoiceDetailView extends ConsumerWidget {
 
       // Show success message
       if (!context.mounted) return;
-      // Capture navigator before pop so the snackbar action can still navigate
+      // Capture both before the pop - NavigatorState remains valid after pop
+      // because the shell Navigator outlives any individual route.
       final nav = Navigator.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      // Pop first so the parent screen is visible when the snackbar appears
+      nav.pop();
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             'Payment recorded: ${CurrencyFormatter.format(amount)} via ${paymentMethod.label}',
           ),
           action: SnackBarAction(
-            label: 'View Transactions',
+            label: 'View Transaction',
             onPressed: () {
-              nav.push(
-                MaterialPageRoute(
-                  builder: (_) => TransactionDetailScreen(transactionId: transactionId),
-                ),
-              );
+              if (nav.canPop() || true) {
+                nav.push(
+                  MaterialPageRoute(
+                    builder: (_) => TransactionDetailScreen(transactionId: transactionId),
+                  ),
+                );
+              }
             },
           ),
         ),
       );
 
-      // Pop back to previous screen (invoice now paid)
-      nav.pop();
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading

@@ -24,6 +24,17 @@ enum TransactionFilter {
   final String label;
 }
 
+/// Sort order for the transactions list.
+enum TransactionSortOrder {
+  dateDesc('Date: Newest first'),
+  dateAsc('Date: Oldest first'),
+  amountHigh('Amount: High to low'),
+  amountLow('Amount: Low to high');
+
+  const TransactionSortOrder(this.label);
+  final String label;
+}
+
 /// Screen showing the full list of transactions with search and filters.
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -39,6 +50,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   PaymentMethod? _paymentMethodFilter;
   DateTime? _dateFrom;
   DateTime? _dateTo;
+  TransactionSortOrder _sortOrder = TransactionSortOrder.dateDesc;
 
   bool get _hasAdvancedFilters =>
       _typeFilter != null ||
@@ -47,6 +59,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _dateFrom != null ||
       _dateTo != null;
 
+  bool get _hasNonDefaultSort => _sortOrder != TransactionSortOrder.dateDesc;
+
   void _clearAdvancedFilters() {
     setState(() {
       _typeFilter = null;
@@ -54,6 +68,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       _paymentMethodFilter = null;
       _dateFrom = null;
       _dateTo = null;
+      _sortOrder = TransactionSortOrder.dateDesc;
     });
   }
 
@@ -107,6 +122,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       }).toList();
     }
 
+    // Apply sort order
+    switch (_sortOrder) {
+      case TransactionSortOrder.dateDesc:
+        filtered.sort((a, b) => b.date.compareTo(a.date));
+      case TransactionSortOrder.dateAsc:
+        filtered.sort((a, b) => a.date.compareTo(b.date));
+      case TransactionSortOrder.amountHigh:
+        filtered.sort((a, b) => b.amount.compareTo(a.amount));
+      case TransactionSortOrder.amountLow:
+        filtered.sort((a, b) => a.amount.compareTo(b.amount));
+    }
+
     return filtered;
   }
 
@@ -133,24 +160,67 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               onPressed: () => _showFilterSheet(context),
             ),
           ),
-          PopupMenuButton<String>(
-            tooltip: 'More options',
-            onSelected: (v) {
-              if (v == 'export') {
-                final transactions = ref.read(transactionsProvider).valueOrNull ?? [];
-                _exportCsv(context, ref, _applyFilter(transactions));
-              }
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'export',
-                child: ListTile(
-                  leading: Icon(Icons.download_outlined),
-                  title: Text('Export CSV'),
-                  contentPadding: EdgeInsets.zero,
+          Badge(
+            isLabelVisible: _hasNonDefaultSort,
+            child: PopupMenuButton<String>(
+              icon: const Icon(Icons.sort),
+              tooltip: 'Sort & options',
+              onSelected: (v) {
+                if (v == 'export') {
+                  final transactions =
+                      ref.read(transactionsProvider).valueOrNull ?? [];
+                  _exportCsv(context, ref, _applyFilter(transactions));
+                } else if (v.startsWith('sort_')) {
+                  final sortName = v.substring(5);
+                  setState(() {
+                    _sortOrder = TransactionSortOrder.values
+                        .firstWhere((s) => s.name == sortName);
+                  });
+                }
+              },
+              itemBuilder: (_) => [
+                PopupMenuItem<String>(
+                  enabled: false,
+                  height: 32,
+                  child: Text(
+                    'Sort by',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                for (final sort in TransactionSortOrder.values)
+                  PopupMenuItem<String>(
+                    value: 'sort_${sort.name}',
+                    child: Row(
+                      children: [
+                        Icon(
+                          _sortOrder == sort
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                          size: 18,
+                          color: _sortOrder == sort
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(sort.label),
+                      ],
+                    ),
+                  ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'export',
+                  child: ListTile(
+                    leading: Icon(Icons.download_outlined),
+                    title: Text('Export CSV'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

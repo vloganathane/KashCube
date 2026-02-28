@@ -27,6 +27,37 @@ class BudgetScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Monthly Budgets'),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Budget options',
+            onSelected: (v) async {
+              if (v == 'copy') {
+                final notifier =
+                    ref.read(currentMonthBudgetsProvider.notifier);
+                final count = await notifier.copyFromPreviousMonth();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(count == 0
+                          ? 'No new budgets to copy (all categories already set)'
+                          : 'Copied $count budget${count == 1 ? '' : 's'} from last month'),
+                    ),
+                  );
+                }
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem<String>(
+                value: 'copy',
+                child: ListTile(
+                  leading: Icon(Icons.content_copy_outlined),
+                  title: Text('Copy from last month'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: _MonthBar(month: month, isCurrentMonth: isCurrentMonth),

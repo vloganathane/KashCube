@@ -173,6 +173,12 @@ class _ReportsBody extends ConsumerWidget {
     final budgets =
         ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
 
+    // Previous month for month-over-month comparison
+    final prevYear = month.month == 1 ? month.year - 1 : month.year;
+    final prevMonthNum = month.month == 1 ? 12 : month.month - 1;
+    final prevMonth = DateTime(prevYear, prevMonthNum);
+    final prevPnl = ref.watch(pnlForMonthProvider(prevMonth)).valueOrNull;
+
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
@@ -215,7 +221,7 @@ class _ReportsBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
-        _PnLCard(pnl: pnl),
+        _PnLCard(pnl: pnl, prevPnl: prevPnl),
         const SizedBox(height: AppSpacing.base),
         _BudgetOverviewCard(budgets: budgets),
         const SizedBox(height: AppSpacing.base),
@@ -252,9 +258,10 @@ class _ReportsBody extends ConsumerWidget {
 
 /// Profit & Loss summary card.
 class _PnLCard extends StatelessWidget {
-  const _PnLCard({required this.pnl});
+  const _PnLCard({required this.pnl, this.prevPnl});
 
   final MonthlyPnL pnl;
+  final MonthlyPnL? prevPnl;
 
   @override
   Widget build(BuildContext context) {
@@ -282,6 +289,8 @@ class _PnLCard extends StatelessWidget {
                     amount: pnl.totalIncome,
                     color: colors.income,
                     icon: Icons.arrow_downward,
+                    prevAmount: prevPnl?.totalIncome,
+                    isGoodWhenUp: true,
                   ),
                 ),
                 Expanded(
@@ -290,6 +299,8 @@ class _PnLCard extends StatelessWidget {
                     amount: pnl.totalExpense,
                     color: colors.expense,
                     icon: Icons.arrow_upward,
+                    prevAmount: prevPnl?.totalExpense,
+                    isGoodWhenUp: false,
                   ),
                 ),
               ],
@@ -298,11 +309,22 @@ class _PnLCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  isProfit ? 'Net Profit' : 'Net Loss',
-                  style: context.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isProfit ? 'Net Profit' : 'Net Loss',
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (prevPnl != null && prevPnl!.netProfitLoss != 0)
+                      _DeltaTag(
+                        current: pnl.netProfitLoss,
+                        prev: prevPnl!.netProfitLoss,
+                        isGoodWhenUp: true,
+                      ),
+                  ],
                 ),
                 Text(
                   CurrencyFormatter.formatSigned(pnl.netProfitLoss),
@@ -327,12 +349,16 @@ class _PnLItem extends StatelessWidget {
     required this.amount,
     required this.color,
     required this.icon,
+    this.prevAmount,
+    this.isGoodWhenUp = true,
   });
 
   final String label;
   final double amount;
   final Color color;
   final IconData icon;
+  final double? prevAmount;
+  final bool isGoodWhenUp;
 
   @override
   Widget build(BuildContext context) {
@@ -359,6 +385,59 @@ class _PnLItem extends StatelessWidget {
             fontWeight: FontWeight.w600,
             fontFamily: 'RobotoMono',
             color: color,
+          ),
+        ),
+        if (prevAmount != null && prevAmount! > 0) ...
+          [
+            const SizedBox(height: 2),
+            _DeltaTag(
+              current: amount,
+              prev: prevAmount!,
+              isGoodWhenUp: isGoodWhenUp,
+            ),
+          ],
+      ],
+    );
+  }
+}
+
+/// Shows a % delta vs the previous period with colour-coded trend icon.
+class _DeltaTag extends StatelessWidget {
+  const _DeltaTag({
+    required this.current,
+    required this.prev,
+    required this.isGoodWhenUp,
+  });
+
+  final double current;
+  final double prev;
+  final bool isGoodWhenUp;
+
+  @override
+  Widget build(BuildContext context) {
+    final delta = (current - prev) / prev;
+    final isUp = delta >= 0;
+    final isGood = isGoodWhenUp ? isUp : !isUp;
+    final color =
+        isGood ? context.kashColors.income : context.kashColors.expense;
+    final sign = isUp ? '+' : '';
+    final pct = '$sign${(delta * 100).toStringAsFixed(1)}%';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          isUp ? Icons.trending_up : Icons.trending_down,
+          size: 12,
+          color: color,
+        ),
+        const SizedBox(width: 2),
+        Text(
+          '$pct vs prev',
+          style: TextStyle(
+            fontSize: 10,
+            color: color,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],

@@ -84,6 +84,27 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
   }
 }
 
+/// Lightweight income+expense total for any arbitrary [month].
+/// Used by the Reports screen to show month-over-month deltas.
+final pnlForMonthProvider =
+    FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {
+  final mode = ref.watch(reportModeProvider);
+  final repo = TransactionRepositoryImpl();
+  final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+  final results = await Future.wait([
+    repo.getTotalIncome(start, end, mode: mode),
+    repo.getTotalExpense(start, end, mode: mode),
+  ]);
+  final income = results[0];
+  final expense = results[1];
+  return MonthlyPnL(
+    totalIncome: income,
+    totalExpense: expense,
+    netProfitLoss: income - expense,
+  );
+});
+
 /// Monthly totals for the trend chart (last 6 months).
 final monthlyTotalsProvider =
     StateNotifierProvider<MonthlyTotalsNotifier, AsyncValue<List<MonthlyTotal>>>(

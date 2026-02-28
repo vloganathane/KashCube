@@ -47,6 +47,39 @@ class BudgetsNotifier
     await _repo.delete(id);
     await load();
   }
+
+  /// Copies budgets from the previous month for any category that doesn't
+  /// yet have a budget in the current month.  Returns the number of budgets
+  /// copied (0 if everything was already set up).
+  Future<int> copyFromPreviousMonth() async {
+    // Determine previous month
+    final prevYear = _month == 1 ? _year - 1 : _year;
+    final prevMonth = _month == 1 ? 12 : _month - 1;
+
+    final prevBudgets = await _repo.getBudgetsForMonth(prevYear, prevMonth);
+    if (prevBudgets.isEmpty) return 0;
+
+    final existing = state.valueOrNull ?? [];
+    final existingCategories = existing.map((b) => b.category).toSet();
+
+    final toCopy = prevBudgets
+        .where((b) => !existingCategories.contains(b.category))
+        .toList();
+
+    for (final prev in toCopy) {
+      await _repo.upsert(Budget(
+        year: _year,
+        month: _month,
+        category: prev.category,
+        budgetAmount: prev.budgetAmount,
+        alertAtPercentage: prev.alertAtPercentage,
+        createdAt: DateTime.now(),
+      ));
+    }
+
+    if (toCopy.isNotEmpty) await load();
+    return toCopy.length;
+  }
 }
 
 /// Parameter-based provider keyed on (year, month).

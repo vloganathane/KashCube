@@ -1661,11 +1661,12 @@ class _UpcomingItemTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Budget health section — home screen compact view
+// Monthly budgets section — home screen card view
 // ---------------------------------------------------------------------------
 
-/// Shows at-risk budgets (over or near limit) on the home screen.
-/// Hidden when no budgets are set.
+/// Shows all current-month budgets as a tappable card, matching the
+/// Reports screen layout. Always visible (shows empty-state prompt if no
+/// budgets are set).
 class _BudgetSection extends ConsumerWidget {
   const _BudgetSection();
 
@@ -1673,61 +1674,84 @@ class _BudgetSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgets = ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
 
-    // Only show budgets that need attention (over or near limit)
-    final atRisk = budgets
-        .where((b) => b.isOverBudget || b.isNearLimit)
-        .toList()
-      ..sort((a, b) => a.isOverBudget ? -1 : 1);
-
-    if (budgets.isEmpty) return const SizedBox.shrink();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Budget Health',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+        Card(
+          child: InkWell(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const BudgetScreen()),
             ),
-            TextButton(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const BudgetScreen()),
-              ),
-              child: const Text('Manage'),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        if (atRisk.isEmpty)
-          Card(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      color: const Color(0xFF2E7D32), size: AppSpacing.iconMd),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'All ${budgets.length} budgets on track',
-                    style: context.textTheme.bodyMedium,
+                  // Header row
+                  Row(
+                    children: [
+                      const Icon(Icons.savings_outlined,
+                          size: AppSpacing.iconMd),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Monthly Budgets',
+                        style: context.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Manage →',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
+                  if (budgets.isEmpty) ...[
+                    const SizedBox(height: AppSpacing.base),
+                    Row(
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            size: AppSpacing.iconSm,
+                            color: context.colorScheme.outline),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(
+                          'Set spending limits for each category',
+                          style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.outline),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    const SizedBox(height: AppSpacing.md),
+                    ...budgets
+                        .take(3)
+                        .map<Widget>((b) => _HomeBudgetRow(budget: b)),
+                    if (budgets.length > 3)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xs),
+                        child: Text(
+                          '+ ${budgets.length - 3} more categories',
+                          style: context.textTheme.labelSmall?.copyWith(
+                              color: context.colorScheme.outline),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
-          )
-        else
-          ...atRisk.take(3).map((b) => _HomeBudgetTile(budget: b)),
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
       ],
     );
   }
 }
 
-class _HomeBudgetTile extends StatelessWidget {
-  const _HomeBudgetTile({required this.budget});
+class _HomeBudgetRow extends StatelessWidget {
+  const _HomeBudgetRow({required this.budget});
   final Budget budget;
 
   @override
@@ -1735,69 +1759,52 @@ class _HomeBudgetTile extends StatelessWidget {
     final colors = context.kashColors;
     final isOver = budget.isOverBudget;
     final pct = budget.spentPercentage.clamp(0.0, 1.0);
-    final barColor = isOver ? colors.expense : Colors.orange;
+    final barColor = isOver
+        ? colors.expense
+        : budget.isNearLimit
+            ? Colors.orange
+            : colors.income;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base, vertical: AppSpacing.sm),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  CategoryHelper.getIcon(budget.category),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(CategoryHelper.getIcon(budget.category),
                   size: AppSpacing.iconSm,
-                  color: context.colorScheme.onSurfaceVariant,
+                  color: context.colorScheme.onSurfaceVariant),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  budget.category,
+                  style: context.textTheme.labelMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Expanded(
-                  child: Text(
-                    budget.category,
-                    style: context.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w500),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: barColor.withValues(alpha: 0.12),
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.radiusSm),
-                  ),
-                  child: Text(
-                    isOver ? 'Over budget' : 'Near limit',
-                    style: context.textTheme.labelSmall?.copyWith(
-                        color: barColor, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(AppSpacing.radiusFull),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 4,
-                backgroundColor:
-                    context.colorScheme.surfaceContainerHighest,
-                color: barColor,
               ),
+              Text(
+                '${CurrencyFormatter.format(budget.spentAmount)}'
+                ' / ${CurrencyFormatter.format(budget.budgetAmount)}',
+                style: context.textTheme.labelSmall?.copyWith(
+                  color:
+                      isOver ? colors.expense : context.colorScheme.outline,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: context.colorScheme.surfaceContainerHighest,
+              color: barColor,
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '${CurrencyFormatter.format(budget.spentAmount)}'
-              ' of ${CurrencyFormatter.format(budget.budgetAmount)}'
-              ' spent',
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: context.colorScheme.outline),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

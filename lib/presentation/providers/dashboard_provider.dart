@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/transaction.dart';
+import '../../data/repositories/settings_repository_impl.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/transaction_repository.dart';
 
@@ -109,3 +111,67 @@ final todayCashflowProvider = FutureProvider<TodayCashflow>((ref) async {
   ]);
   return (income: results[0], expense: results[1]);
 });
+
+// ---------------------------------------------------------------------------
+// Account-based balance (Model C)
+// ---------------------------------------------------------------------------
+
+/// Per-payment-method running balance.
+class AccountBalance {
+  const AccountBalance({
+    required this.method,
+    required this.openingBalance,
+    required this.allTimeIncome,
+    required this.allTimeExpense,
+  });
+
+  final PaymentMethod method;
+  final double openingBalance;
+  final double allTimeIncome;
+  final double allTimeExpense;
+
+  /// opening + all-time inflows − outflows.
+  double get runningBalance => openingBalance + allTimeIncome - allTimeExpense;
+
+  /// True when this account has any activity or a non-zero opening balance.
+  bool get hasActivity =>
+      openingBalance != 0 || allTimeIncome != 0 || allTimeExpense != 0;
+}
+
+/// Provider for per-payment-method account balances.
+/// Reads opening balances from the settings table and combines with all-time
+/// transaction data grouped by [payment_method].
+final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async {
+  final repo = TransactionRepositoryImpl();
+  final settings = SettingsRepositoryImpl();
+
+  final netsByMethod = await repo.getAllTimeByPaymentMethod();
+
+  final balances = <AccountBalance>[];
+  for (final method in PaymentMethod.values) {
+    final openingStr =
+        await settings.get('opening_balance_${method.dbValue}');
+    final opening = double.tryParse(openingStr ?? '') ?? 0.0;
+    final net = netsByMethod[method.dbValue] ??
+        (income: 0.0, expense: 0.0);
+    balances.add(AccountBalance(
+      method: method,
+      openingBalance: opening,
+      allTimeIncome: net.income,
+      allTimeExpense: net.expense,
+    ));
+  }
+  return balances;
+});
+
+/// Total balance = sum of all account running balances.
+final totalBalanceProvider = FutureProvider<double>((ref) async {
+  final accounts = await ref.watch(accountBalancesProvider.future);
+  return accounts.fold<double>(0.0, (sum, a) => sum + a.runningBalance);
+});
+
+/// Invalidates both balance providers (call after saving opening balances).
+void invalidateBalanceProviders(Ref ref) {
+  ref.invalidate(accountBalancesProvider);
+  ref.invalidate(totalBalanceProvider);
+}

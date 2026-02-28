@@ -12,6 +12,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
+import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
 import 'notification_settings_screen.dart';
@@ -50,6 +51,18 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AccountsManageScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_balance_wallet_outlined),
+                title: const Text('Opening Balances'),
+                subtitle: const Text('Set starting balance per payment method'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OpeningBalancesScreen(),
                   ),
                 ),
               ),

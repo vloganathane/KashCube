@@ -16,6 +16,8 @@ import '../../providers/transaction_provider.dart';
 import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
 import '../../../data/models/booking.dart';
+import '../../../data/models/budget.dart';
+import '../../../data/models/transaction.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../bookings/bookings_screen.dart';
@@ -26,7 +28,6 @@ import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/budget_provider.dart';
-import '../../../data/models/budget.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 
@@ -50,6 +51,8 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(todayCashflowProvider);
           ref.invalidate(upcomingBookingsProvider);
           ref.invalidate(invoicesProvider);
+          ref.invalidate(accountBalancesProvider);
+          ref.invalidate(totalBalanceProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -218,10 +221,12 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final borrowed = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
     final hasLoans = lent > 0 || borrowed > 0;
 
-    // Actual = cash physically in hand (borrowed money is in pocket; lent money has left)
-    final actualBalance = summary.balance + borrowed - lent;
-    // Net worth = what you truly own (lent money is still your receivable)
-    final netBalance = summary.balance + lent - borrowed;
+    // All-time account balance (Model C: opening + all-time inflows − outflows)
+    final totalBalanceAsync = ref.watch(totalBalanceProvider);
+    final totalBalance = totalBalanceAsync.valueOrNull;
+
+    // Net worth = total balance + outstanding lent (receivable) − outstanding borrowed (payable)
+    final netBalance = (totalBalance ?? 0.0) + lent - borrowed;
 
     return Card(
       child: InkWell(
@@ -240,37 +245,63 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               ),
               const SizedBox(height: 2),
 
-              // Primary: Actual Balance (cash in hand)
-              Text(
-                CurrencyFormatter.format(actualBalance),
-                style: context.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'RobotoMono',
+              // Primary: Total Balance (all-time account balance)
+              totalBalanceAsync.when(
+                data: (balance) => Text(
+                  CurrencyFormatter.format(balance),
+                  style: context.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'RobotoMono',
+                  ),
+                ),
+                loading: () => const SizedBox(
+                  height: 36,
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                error: (_, _) => Text(
+                  '₹—',
+                  style: context.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'RobotoMono',
+                  ),
                 ),
               ),
               const SizedBox(height: 1),
-              // Label + chevron
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Actual Balance',
-                    style: context.textTheme.labelSmall?.copyWith(
-                      color: context.colorScheme.onSurfaceVariant,
-                    ),
+              // Label + chevron — tap to see per-account breakdown
+              InkWell(
+                onTap: () => _showAccountBreakdownSheet(context),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Total Balance',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      Icon(
+                        Icons.account_balance_wallet_outlined,
+                        size: 12,
+                        color: context.colorScheme.outline,
+                      ),
+                      const SizedBox(width: 2),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 220),
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 14,
+                          color: context.colorScheme.outline,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 2),
-                  AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 14,
-                      color: context.colorScheme.outline,
-                    ),
-                  ),
-                ],
+                ),
               ),
 
               // Secondary: Net Balance + breakdown — only when loans exist
@@ -369,6 +400,150 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
         ),
       ),
     );
+  }
+
+  void _showAccountBreakdownSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => const _AccountBreakdownSheet(),
+    );
+  }
+}
+
+// ─── Account Breakdown Sheet ─────────────────────────────────────────────────
+
+class _AccountBreakdownSheet extends ConsumerWidget {
+  const _AccountBreakdownSheet();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final accountsAsync = ref.watch(accountBalancesProvider);
+    final colors = context.kashColors;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xxl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              margin: const EdgeInsets.only(bottom: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: context.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Text('Account Balances',
+              style: context.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('All-time balance per payment method',
+              style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant)),
+          const SizedBox(height: AppSpacing.md),
+          accountsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppSpacing.xxl),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('Error: $e'),
+            data: (accounts) {
+              final active = accounts.where((a) => a.hasActivity).toList();
+              if (active.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                  child: Center(
+                    child: Text('No transactions yet.\nAdd transactions to see balances here.',
+                        textAlign: TextAlign.center,
+                        style: context.textTheme.bodyMedium?.copyWith(
+                            color: context.colorScheme.onSurfaceVariant)),
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  ...active.map((a) {
+                    final bal = a.runningBalance;
+                    final balColor = bal >= 0 ? colors.income : colors.expense;
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            context.colorScheme.secondaryContainer,
+                        radius: 18,
+                        child: Icon(_paymentMethodIcon(a.method),
+                            size: 18,
+                            color: context.colorScheme.onSecondaryContainer),
+                      ),
+                      title: Text(a.method.label,
+                          style: context.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500)),
+                      subtitle: Text(
+                        '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
+                        '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
+                        style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.onSurfaceVariant),
+                      ),
+                      trailing: Text(
+                        CurrencyFormatter.format(bal),
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: balColor,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                    );
+                  }),
+                  const Divider(),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Total',
+                        style: context.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w700)),
+                    trailing: Text(
+                      CurrencyFormatter.format(
+                          active.fold(0.0, (s, a) => s + a.runningBalance)),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'RobotoMono',
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _paymentMethodIcon(PaymentMethod method) {
+    switch (method) {
+      case PaymentMethod.cash:
+        return Icons.money_outlined;
+      case PaymentMethod.upi:
+        return Icons.qr_code_rounded;
+      case PaymentMethod.creditCard:
+        return Icons.credit_card;
+      case PaymentMethod.debitCard:
+        return Icons.credit_card_outlined;
+      case PaymentMethod.netBanking:
+        return Icons.account_balance_outlined;
+      case PaymentMethod.wallet:
+        return Icons.account_balance_wallet_outlined;
+      case PaymentMethod.cheque:
+        return Icons.receipt_long_outlined;
+    }
   }
 }
 

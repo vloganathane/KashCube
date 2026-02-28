@@ -401,4 +401,35 @@ class TransactionRepositoryImpl implements TransactionRepository {
     );
     return (rows.first['net'] as num).toDouble();
   }
+
+  // ---------------------------------------------------------------------------
+  // Account-based balance (Model C)
+  // ---------------------------------------------------------------------------
+
+  /// Returns all-time inflow and outflow amounts grouped by [payment_method].
+  ///
+  /// Inflows : income, received_back, redeemed, borrowed
+  /// Outflows: expense, paid_back, lent
+  ///
+  /// Keys are [PaymentMethod.dbValue] strings (e.g. 'cash', 'upi').
+  Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT payment_method, "
+      "COALESCE(SUM(CASE WHEN type IN ('income','received_back','redeemed','borrowed') "
+      "  THEN amount ELSE 0 END), 0) AS inflow, "
+      "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back','lent') "
+      "  THEN amount ELSE 0 END), 0) AS outflow "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL "
+      "GROUP BY payment_method",
+    );
+    return {
+      for (final r in rows)
+        (r['payment_method'] as String? ?? 'cash'): (
+          income: (r['inflow'] as num).toDouble(),
+          expense: (r['outflow'] as num).toDouble(),
+        ),
+    };
+  }
 }

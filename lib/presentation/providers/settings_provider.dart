@@ -194,4 +194,73 @@ final businessNameProvider =
   (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
 );
 
+// ---------------------------------------------------------------------------
+// Notification Settings
+// ---------------------------------------------------------------------------
+
+/// Keys for notification settings stored in the generic [settings] table.
+class NotificationKeys {
+  NotificationKeys._();
+  static const notificationsEnabled = 'notifications_enabled';
+  static const invoicesNotifications = 'invoices_notifications';
+  static const bookingsNotifications = 'bookings_notifications';
+  static const creditsNotifications = 'credits_notifications';
+  static const billsNotifications = 'bills_notifications';
+  static const quietHoursStart = 'quiet_hours_start';
+  static const quietHoursEnd = 'quiet_hours_end';
+}
+
+/// Holds all notification preference values as a flat map.
+typedef NotificationSettings = Map<String, dynamic>;
+
+class NotificationSettingsNotifier
+    extends StateNotifier<AsyncValue<NotificationSettings>> {
+  NotificationSettingsNotifier(this._repo)
+      : super(const AsyncValue.loading()) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  static const _defaults = {
+    NotificationKeys.notificationsEnabled: true,
+    NotificationKeys.invoicesNotifications: true,
+    NotificationKeys.bookingsNotifications: true,
+    NotificationKeys.creditsNotifications: true,
+    NotificationKeys.billsNotifications: true,
+    NotificationKeys.quietHoursStart: '22:00',
+    NotificationKeys.quietHoursEnd: '08:00',
+  };
+
+  Future<void> _load() async {
+    final map = <String, dynamic>{};
+    for (final entry in _defaults.entries) {
+      final raw = await _repo.get(entry.key);
+      if (raw == null) {
+        map[entry.key] = entry.value;
+      } else if (entry.value is bool) {
+        map[entry.key] = raw == 'true';
+      } else {
+        map[entry.key] = raw;
+      }
+    }
+    state = AsyncValue.data(map);
+  }
+
+  /// Update a single notification setting.
+  Future<void> updateSetting(String key, dynamic value) async {
+    await _repo.set(key, value.toString());
+    final current = state.valueOrNull ?? {};
+    state = AsyncValue.data({...current, key: value});
+  }
+
+  /// Reload all settings from DB (e.g. after restore).
+  Future<void> reload() => _load();
+}
+
+final notificationSettingsProvider = StateNotifierProvider<
+    NotificationSettingsNotifier, AsyncValue<NotificationSettings>>(
+  (ref) => NotificationSettingsNotifier(ref.read(settingsRepositoryProvider)),
+);
+
 

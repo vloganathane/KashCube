@@ -93,6 +93,7 @@ class Booking extends Equatable {
     this.bookingRef,
     this.createdAt,
     this.updatedAt,
+    this.reminderSentAt,
   });
 
   final int? id;
@@ -115,6 +116,8 @@ class Booking extends Equatable {
   final String? bookingRef;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  /// Timestamp of the last manual reminder sent (WhatsApp/SMS/Email).
+  final DateTime? reminderSentAt;
 
   Booking copyWith({
     int? id,
@@ -137,6 +140,7 @@ class Booking extends Equatable {
     String? bookingRef,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? reminderSentAt,
   }) {
     return Booking(
       id: id ?? this.id,
@@ -159,6 +163,7 @@ class Booking extends Equatable {
       bookingRef: bookingRef ?? this.bookingRef,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      reminderSentAt: reminderSentAt ?? this.reminderSentAt,
     );
   }
 
@@ -184,6 +189,7 @@ class Booking extends Equatable {
       'booking_ref': bookingRef,
       'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'reminder_sent_at': reminderSentAt?.toIso8601String(),
     };
   }
 
@@ -218,6 +224,9 @@ class Booking extends Equatable {
           : null,
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'] as String)
+          : null,
+      reminderSentAt: map['reminder_sent_at'] != null
+          ? DateTime.parse(map['reminder_sent_at'] as String)
           : null,
     );
   }

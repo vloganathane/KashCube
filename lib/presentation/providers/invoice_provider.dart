@@ -175,6 +175,12 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
     await load(); // Refresh invoice list
     return transactionId;
   }
+
+  /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [invoiceId].
+  Future<void> markReminderSent(int invoiceId) async {
+    await _repo.markReminderSent(invoiceId);
+    await load();
+  }
 }
 
 final invoicesProvider =

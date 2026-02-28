@@ -291,4 +291,15 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       return transactionId;
     });
   }
+
+  @override
+  Future<void> markReminderSent(int invoiceId) async {
+    final db = await _db.database;
+    await db.update(
+      'invoices',
+      {'reminder_sent_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
 }

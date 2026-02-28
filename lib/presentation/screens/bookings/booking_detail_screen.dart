@@ -11,6 +11,8 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
 import '../../../data/services/invoice_number_service.dart';
 import '../../providers/booking_provider.dart';
+import '../../widgets/reminder_bottom_sheet.dart';
+import '../../../data/models/reminder_item.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
@@ -50,6 +52,14 @@ class _BookingDetailView extends ConsumerWidget {
       appBar: AppBar(
         title: Text(booking.serviceName),
         actions: [
+          // Send Reminder — for active/upcoming bookings
+          if (booking.status == BookingStatus.pending ||
+              booking.status == BookingStatus.confirmed)
+            IconButton(
+              icon: const Icon(Icons.send_outlined),
+              tooltip: 'Send Reminder',
+              onPressed: () => _showReminderSheet(context, ref),
+            ),
           if (booking.status != BookingStatus.completed &&
               booking.status != BookingStatus.cancelled &&
               booking.status != BookingStatus.noShow)
@@ -318,6 +328,41 @@ class _BookingDetailView extends ConsumerWidget {
     final dateStr = DateFormat('d MMM').format(booking.startDatetime);
     final timeStr = DateFormat('h:mm a').format(booking.startDatetime);
     return "Hi ${booking.customerName}, your ${booking.serviceName} is confirmed for $dateStr at $timeStr. Amount: ${CurrencyFormatter.format(booking.totalAmount)}.";
+  }
+
+  void _showReminderSheet(BuildContext context, WidgetRef ref) {
+    // Look up party contact details asynchronously
+    Future<void> open() async {
+      String? phone;
+      String? email;
+      if (booking.customerPartyId != null) {
+        final party =
+            await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!);
+        phone = party?.phoneNumber;
+        email = party?.email;
+      }
+      if (!context.mounted) return;
+
+      final item = ReminderItem.fromBooking(
+        booking,
+        partyPhone: phone,
+        partyEmail: email,
+      );
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => ReminderBottomSheet(
+          item: item,
+          onReminderSent: () {
+            ref.read(bookingsProvider.notifier).markReminderSent(booking.id!);
+          },
+        ),
+      );
+    }
+
+    open();
   }
 
   Future<void> _cancelBooking(BuildContext context, WidgetRef ref) async {

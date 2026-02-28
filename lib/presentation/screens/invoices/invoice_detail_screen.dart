@@ -18,8 +18,11 @@ import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
+import '../../widgets/reminder_bottom_sheet.dart';
 import '../bookings/booking_detail_screen.dart';
+
 import '../transactions/transaction_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -60,6 +63,15 @@ class _InvoiceDetailView extends ConsumerWidget {
       appBar: AppBar(
         title: Text(invoice.invoiceNo),
         actions: [
+          // Send Reminder — only for unpaid / overdue invoices
+          if (invoice.status == InvoiceStatus.sent ||
+              invoice.status == InvoiceStatus.overdue ||
+              invoice.status == InvoiceStatus.partiallyPaid)
+            IconButton(
+              icon: const Icon(Icons.send_outlined),
+              tooltip: 'Send Reminder',
+              onPressed: () => _showReminderSheet(context, ref, businessName),
+            ),
           IconButton(
             icon: const Icon(Icons.visibility_outlined),
             tooltip: 'Preview PDF',
@@ -405,6 +417,44 @@ class _InvoiceDetailView extends ConsumerWidget {
         Navigator.pop(context);
       }
     });
+  }
+
+  void _showReminderSheet(
+      BuildContext context, WidgetRef ref, String businessName) {
+    // Try to look up party contact details for pre-filling the reminder
+    final parties = ref.read(partyRepositoryProvider);
+    Future<void> open() async {
+      String? phone;
+      String? email;
+      if (invoice.customerPartyId != null) {
+        final party = await parties.getById(invoice.customerPartyId!);
+        phone = party?.phoneNumber;
+        email = party?.email;
+      }
+      if (!context.mounted) return;
+
+      final item = ReminderItem.fromInvoice(
+        invoice,
+        partyPhone: phone,
+        partyEmail: email,
+      );
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => ReminderBottomSheet(
+          item: item,
+          onReminderSent: () {
+            ref
+                .read(invoicesProvider.notifier)
+                .markReminderSent(invoice.id!);
+          },
+        ),
+      );
+    }
+
+    open();
   }
 
   Future<void> _voidInvoice(BuildContext context, WidgetRef ref) async {

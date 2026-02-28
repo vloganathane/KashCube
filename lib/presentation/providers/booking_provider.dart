@@ -85,6 +85,12 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
     await _repo.linkInvoice(bookingId, invoiceId);
     await load();
   }
+
+  /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [bookingId].
+  Future<void> markReminderSent(int bookingId) async {
+    await _repo.markReminderSent(bookingId);
+    await load();
+  }
 }
 
 final bookingsProvider =

@@ -153,6 +153,7 @@ class Invoice extends Equatable {
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
+    this.reminderSentAt,
   });
 
   final int? id;
@@ -177,6 +178,8 @@ class Invoice extends Equatable {
   final List<InvoiceItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// Timestamp of the last manual reminder sent (WhatsApp/SMS/Email).
+  final DateTime? reminderSentAt;
 
   double get balanceDue => total - paidAmount;
   bool get isOverdue =>
@@ -205,6 +208,7 @@ class Invoice extends Equatable {
     List<InvoiceItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? reminderSentAt,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -227,6 +231,7 @@ class Invoice extends Equatable {
       items: items ?? this.items,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      reminderSentAt: reminderSentAt ?? this.reminderSentAt,
     );
   }
 
@@ -250,6 +255,7 @@ class Invoice extends Equatable {
         'notes': notes,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
+        'reminder_sent_at': reminderSentAt?.toIso8601String(),
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -279,9 +285,12 @@ class Invoice extends Equatable {
         items: items,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
+        reminderSentAt: map['reminder_sent_at'] != null
+            ? DateTime.parse(map['reminder_sent_at'] as String)
+            : null,
       );
 
   @override
   List<Object?> get props =>
-      [id, invoiceNo, customerName, status, total, paidAmount];
+      [id, invoiceNo, customerName, status, total, paidAmount, reminderSentAt];
 }

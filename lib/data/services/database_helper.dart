@@ -1045,6 +1045,20 @@ class DatabaseHelper {
         'description': 'Add booking_type column (business/personal) to bookings table',
       });
     }
+
+    if (oldVersion < 21) {
+      // Unified Notifications — track last manual reminder timestamp per record
+      await db.execute('ALTER TABLE invoices ADD COLUMN reminder_sent_at TEXT');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
+      await db.execute('ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)');
+      await db.insert('schema_version', {
+        'version': 21,
+        'description': 'Add reminder_sent_at to invoices and bookings (Unified Notifications)',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

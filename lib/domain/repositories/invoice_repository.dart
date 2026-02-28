@@ -33,4 +33,7 @@ abstract class InvoiceRepository {
     double? partialAmount,
     int? bookingId,
   });
+
+  /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [invoiceId].
+  Future<void> markReminderSent(int invoiceId);
 }

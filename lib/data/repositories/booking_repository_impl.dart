@@ -182,4 +182,15 @@ class BookingRepositoryImpl implements BookingRepository {
       'updated_at': DateTime.now().toIso8601String(),
     }, where: 'id = ?', whereArgs: [bookingId]);
   }
+
+  @override
+  Future<void> markReminderSent(int bookingId) async {
+    final db = await _db.database;
+    await db.update(
+      _table,
+      {'reminder_sent_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [bookingId],
+    );
+  }
 }

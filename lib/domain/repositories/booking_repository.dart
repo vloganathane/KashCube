@@ -49,4 +49,7 @@ abstract class BookingRepository {
   
   /// Link invoice to booking
   Future<void> linkInvoice(int bookingId, int invoiceId);
+
+  /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [bookingId].
+  Future<void> markReminderSent(int bookingId);
 }

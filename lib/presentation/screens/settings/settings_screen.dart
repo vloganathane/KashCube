@@ -14,6 +14,7 @@ import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
+import 'notification_settings_screen.dart';
 import '../invoices/item_catalog_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
@@ -83,6 +84,25 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showDefaultAccountPicker(context, ref),
+              ),
+            ],
+          ),
+
+          // -- Notifications --
+          _SettingsSection(
+            title: 'Notifications',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Notification Settings'),
+                subtitle: const Text('Reminders, quiet hours & toggles'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationSettingsScreen(),
+                  ),
+                ),
               ),
             ],
           ),

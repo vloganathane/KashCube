@@ -36,7 +36,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
+              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.bookings)),
             ),
           ),
         ],

@@ -109,7 +109,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             icon: const Icon(Icons.search),
             tooltip: 'Global Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
+              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties)),
             ),
           ),
           IconButton(

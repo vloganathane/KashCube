@@ -37,7 +37,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
+              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.bills)),
             ),
           ),
         ],

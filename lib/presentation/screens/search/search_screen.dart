@@ -34,7 +34,10 @@ final recentSearchesProvider = StateProvider<List<String>>((_) => const []);
 // Filter enum
 // ---------------------------------------------------------------------------
 
-enum _SearchFilter {
+/// Scope filter for the global search screen.
+/// Pass [initialFilter] to [SearchScreen] to pre-select a scope based on
+/// which screen the user opened search from.
+enum SearchFilter {
   all,
   transactions,
   invoices,
@@ -44,32 +47,37 @@ enum _SearchFilter {
   parties,
 }
 
-extension _SearchFilterExt on _SearchFilter {
+extension SearchFilterExt on SearchFilter {
   String get label => switch (this) {
-        _SearchFilter.all => 'All',
-        _SearchFilter.transactions => 'Transactions',
-        _SearchFilter.invoices => 'Invoices',
-        _SearchFilter.credits => 'Credits',
-        _SearchFilter.bills => 'Bills',
-        _SearchFilter.bookings => 'Bookings',
-        _SearchFilter.parties => 'Parties',
+        SearchFilter.all => 'All',
+        SearchFilter.transactions => 'Transactions',
+        SearchFilter.invoices => 'Invoices',
+        SearchFilter.credits => 'Credits',
+        SearchFilter.bills => 'Bills',
+        SearchFilter.bookings => 'Bookings',
+        SearchFilter.parties => 'Parties',
       };
 
   IconData get icon => switch (this) {
-        _SearchFilter.all => Icons.apps,
-        _SearchFilter.transactions => Icons.receipt_long_outlined,
-        _SearchFilter.invoices => Icons.description_outlined,
-        _SearchFilter.credits => Icons.book_outlined,
-        _SearchFilter.bills => Icons.calendar_today_outlined,
-        _SearchFilter.bookings => Icons.calendar_month_outlined,
-        _SearchFilter.parties => Icons.people_outline,
+        SearchFilter.all => Icons.apps,
+        SearchFilter.transactions => Icons.receipt_long_outlined,
+        SearchFilter.invoices => Icons.description_outlined,
+        SearchFilter.credits => Icons.book_outlined,
+        SearchFilter.bills => Icons.calendar_today_outlined,
+        SearchFilter.bookings => Icons.calendar_month_outlined,
+        SearchFilter.parties => Icons.people_outline,
       };
 }
 
 /// Unified global search across transactions, invoices, credits, bills,
 /// bookings, and parties. Accessible from every main screen.
+///
+/// Pass [initialFilter] to pre-select a scope filter so search starts
+/// focused on the entity type relevant to the calling screen.
 class SearchScreen extends ConsumerStatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialFilter = SearchFilter.all});
+
+  final SearchFilter initialFilter;
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -78,7 +86,13 @@ class SearchScreen extends ConsumerStatefulWidget {
 class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _controller = TextEditingController();
   String _query = '';
-  _SearchFilter _filter = _SearchFilter.all;
+  late SearchFilter _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter = widget.initialFilter;
+  }
 
   @override
   void dispose() {
@@ -97,6 +111,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     ref.read(recentSearchesProvider.notifier).state = updated;
   }
 
+  String get _hintText => switch (_filter) {
+        SearchFilter.all => 'Search everything…',
+        SearchFilter.transactions => 'Search transactions…',
+        SearchFilter.invoices => 'Search invoices…',
+        SearchFilter.credits => 'Search credits & udhar…',
+        SearchFilter.bills => 'Search bills…',
+        SearchFilter.bookings => 'Search bookings…',
+        SearchFilter.parties => 'Search parties…',
+      };
+
   @override
   Widget build(BuildContext context) {
     final recents = ref.watch(recentSearchesProvider);
@@ -108,7 +132,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: 'Search everything…',
+            hintText: _hintText,
             border: InputBorder.none,
             suffixIcon: _query.isNotEmpty
                 ? IconButton(
@@ -128,6 +152,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         children: [
           _FilterBar(
             selected: _filter,
+            initialFilter: widget.initialFilter,
             onChanged: (f) => setState(() => _filter = f),
           ),
           const Divider(height: 1),
@@ -153,10 +178,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 // ---------------------------------------------------------------------------
 
 class _FilterBar extends StatelessWidget {
-  const _FilterBar({required this.selected, required this.onChanged});
+  const _FilterBar({
+    required this.selected,
+    required this.initialFilter,
+    required this.onChanged,
+  });
 
-  final _SearchFilter selected;
-  final ValueChanged<_SearchFilter> onChanged;
+  final SearchFilter selected;
+  final SearchFilter initialFilter;
+  final ValueChanged<SearchFilter> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -167,12 +197,19 @@ class _FilterBar extends StatelessWidget {
         vertical: AppSpacing.xs,
       ),
       child: Row(
-        children: _SearchFilter.values
+        children: SearchFilter.values
             .map(
               (f) => Padding(
                 padding: const EdgeInsets.only(right: AppSpacing.xs),
                 child: FilterChip(
-                  avatar: Icon(f.icon, size: 14),
+                  avatar: Icon(
+                    f.icon,
+                    size: 14,
+                    // Highlight the context-scoped filter differently
+                    color: f == initialFilter && f != SearchFilter.all
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
                   label: Text(f.label),
                   selected: selected == f,
                   onSelected: (_) => onChanged(f),
@@ -253,9 +290,9 @@ class _SearchResults extends ConsumerWidget {
   const _SearchResults({required this.query, required this.filter});
 
   final String query;
-  final _SearchFilter filter;
+  final SearchFilter filter;
 
-  bool _show(_SearchFilter f) => filter == _SearchFilter.all || filter == f;
+  bool _show(SearchFilter f) => filter == SearchFilter.all || filter == f;
 
   bool _matchTxn(Transaction t, String q) =>
       (t.partyName?.toLowerCase().contains(q) ?? false) ||
@@ -292,37 +329,37 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final q = query.toLowerCase();
 
-    final txns = _show(_SearchFilter.transactions)
+    final txns = _show(SearchFilter.transactions)
         ? (ref.watch(transactionsProvider).valueOrNull ?? <Transaction>[])
             .where((t) => _matchTxn(t, q))
             .toList()
         : <Transaction>[];
 
-    final invoices = _show(_SearchFilter.invoices)
+    final invoices = _show(SearchFilter.invoices)
         ? (ref.watch(invoicesProvider).valueOrNull ?? <Invoice>[])
             .where((inv) => _matchInvoice(inv, q))
             .toList()
         : <Invoice>[];
 
-    final credits = _show(_SearchFilter.credits)
+    final credits = _show(SearchFilter.credits)
         ? (ref.watch(ledgerSummariesProvider).valueOrNull ?? <LedgerPartyEntry>[])
             .where((e) => e.partyName.toLowerCase().contains(q))
             .toList()
         : <LedgerPartyEntry>[];
 
-    final bills = _show(_SearchFilter.bills)
+    final bills = _show(SearchFilter.bills)
         ? (ref.watch(scheduledBillsProvider).valueOrNull ?? <Bill>[])
             .where((b) => _matchBill(b, q))
             .toList()
         : <Bill>[];
 
-    final bookings = _show(_SearchFilter.bookings)
+    final bookings = _show(SearchFilter.bookings)
         ? (ref.watch(bookingsProvider).valueOrNull ?? <Booking>[])
             .where((b) => _matchBooking(b, q))
             .toList()
         : <Booking>[];
 
-    final parties = _show(_SearchFilter.parties)
+    final parties = _show(SearchFilter.parties)
         ? (ref.watch(partiesProvider).valueOrNull ?? <Party>[])
             .where((p) => _matchParty(p, q))
             .toList()

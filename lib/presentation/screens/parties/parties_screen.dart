@@ -45,7 +45,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen()),
+              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties)),
             ),
           ),
         ],

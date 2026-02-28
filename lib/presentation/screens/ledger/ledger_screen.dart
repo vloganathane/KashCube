@@ -12,6 +12,7 @@ import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/transaction_provider.dart';
 import '../parties/parties_screen.dart';
 import '../transactions/add_edit_transaction_screen.dart';
+import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Mode / filter enums
@@ -97,7 +98,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
                 controller: _searchController,
                 autofocus: true,
                 decoration: const InputDecoration(
-                  hintText: 'Search parties...',
+                  hintText: 'Filter parties…',
                   border: InputBorder.none,
                 ),
                 onChanged: (value) => setState(() => _searchQuery = value),
@@ -105,7 +106,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             : const Text('Ledger'),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
+            icon: const Icon(Icons.search),
+            tooltip: 'Global Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+          ),
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.filter_list),
+            tooltip: _isSearching ? 'Clear filter' : 'Filter parties',
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;

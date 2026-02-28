@@ -9,11 +9,14 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/budget.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bookings/bookings_screen.dart';
+import 'budget_screen.dart';
 
 /// Reports screen with monthly P&L, category breakdowns, trends, and top parties.
 class ReportsScreen extends ConsumerWidget {
@@ -167,6 +170,8 @@ class _ReportsBody extends ConsumerWidget {
     final bookingStats = isBusiness
         ? ref.watch(bookingMonthStatsProvider(month))
         : null;
+    final budgets =
+        ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
 
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
@@ -211,6 +216,8 @@ class _ReportsBody extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
         _PnLCard(pnl: pnl),
+        const SizedBox(height: AppSpacing.base),
+        _BudgetOverviewCard(budgets: budgets),
         const SizedBox(height: AppSpacing.base),
         if (pnl.expenseByCat.isNotEmpty) ...[
           _CategoryPieCard(
@@ -1031,3 +1038,144 @@ class _BookingStat extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Budget Overview Card — compact summary shown inside Reports
+// ---------------------------------------------------------------------------
+
+class _BudgetOverviewCard extends StatelessWidget {
+  const _BudgetOverviewCard({required this.budgets});
+  final List<Budget> budgets;
+
+  @override
+  Widget build(BuildContext context) {
+    // Safely cast at use
+    final typedBudgets = budgets;
+
+    return Card(
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BudgetScreen()),
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.savings_outlined, size: AppSpacing.iconMd),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Monthly Budgets',
+                    style: context.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  Text(
+                    'Manage →',
+                    style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.primary,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              if (typedBudgets.isEmpty) ...[
+                const SizedBox(height: AppSpacing.base),
+                Row(
+                  children: [
+                    Icon(Icons.add_circle_outline,
+                        size: AppSpacing.iconSm,
+                        color: context.colorScheme.outline),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Set spending limits for each category',
+                      style: context.textTheme.bodySmall
+                          ?.copyWith(color: context.colorScheme.outline),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: AppSpacing.md),
+                ...typedBudgets
+                    .take(3)
+                    .map<Widget>((b) => _MiniBudgetRow(budget: b)),
+                if (typedBudgets.length > 3)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AppSpacing.xs),
+                    child: Text(
+                      '+ ${typedBudgets.length - 3} more categories',
+                      style: context.textTheme.labelSmall
+                          ?.copyWith(color: context.colorScheme.outline),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniBudgetRow extends StatelessWidget {
+  const _MiniBudgetRow({required this.budget});
+  final Budget budget;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final pct = budget.spentPercentage.clamp(0.0, 1.0);
+    final isOver = budget.isOverBudget;
+    final barColor = isOver
+        ? colors.expense
+        : budget.isNearLimit ? Colors.orange : colors.income;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                CategoryHelper.getIcon(budget.category),
+                size: AppSpacing.iconSm,
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  budget.category,
+                  style: context.textTheme.labelMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(
+                '${CurrencyFormatter.format(budget.spentAmount)}'
+                ' / ${CurrencyFormatter.format(budget.budgetAmount)}',
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: isOver ? colors.expense : context.colorScheme.outline,
+                  fontFamily: 'RobotoMono',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 4,
+              backgroundColor: context.colorScheme.surfaceContainerHighest,
+              color: barColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

@@ -137,6 +137,16 @@ final paymentMethodSplitProvider = FutureProvider.family<
   return repo.getByPaymentMethod(start, end, mode: mode);
 });
 
+/// Transactions for a specific [category] within [month].
+/// Key is a record (String category, int year, int month).
+final categoryTransactionsProvider = FutureProvider.family<
+    List<Transaction>, ({String category, int year, int month})>((ref, key) async {
+  final repo = TransactionRepositoryImpl();
+  final start = DateTime(key.year, key.month, 1);
+  final end = DateTime(key.year, key.month + 1, 0, 23, 59, 59);
+  return repo.getByCategoryInRange(key.category, start, end);
+});
+
 /// Year-to-date summary from Jan 1 of [month]'s year through end of [month].
 final ytdSummaryProvider =
     FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {

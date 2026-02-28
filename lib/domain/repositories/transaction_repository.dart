@@ -23,6 +23,13 @@ abstract class TransactionRepository {
   /// Get transactions by category.
   Future<List<Transaction>> getByCategory(String category, {int? limit});
 
+  /// Get transactions for a category within a date range.
+  Future<List<Transaction>> getByCategoryInRange(
+    String category,
+    DateTime start,
+    DateTime end,
+  );
+
   /// Get transactions by type (income/expense).
   Future<List<Transaction>> getByType(TransactionType type, {int? limit});
 

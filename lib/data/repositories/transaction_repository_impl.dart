@@ -95,6 +95,25 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<List<Transaction>> getByCategoryInRange(
+    String category,
+    DateTime start,
+    DateTime end,
+  ) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT * FROM transactions "
+      "WHERE deleted_at IS NULL AND category = ? "
+      "AND date >= ? AND date <= ? "
+      "ORDER BY date DESC",
+      [category, start.toIso8601String(), end.toIso8601String()],
+    );
+    return rows
+        .map((r) => Transaction.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
+  }
+
+  @override
   Future<List<Transaction>> getByType(TransactionType type, {int? limit}) async {
     final db = await _db;
     final rows = await db.query(

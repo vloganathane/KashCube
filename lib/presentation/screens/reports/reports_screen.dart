@@ -14,6 +14,7 @@ import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bookings/bookings_screen.dart';
@@ -196,6 +197,10 @@ class _ReportsBody extends ConsumerWidget {
     final payMethodData =
         ref.watch(paymentMethodSplitProvider(month)).valueOrNull ?? const {};
 
+    // All-time investment totals for investment summary card
+    final allTimeInv =
+        ref.watch(allTimeInvestmentProvider).valueOrNull;
+
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
@@ -266,13 +271,14 @@ class _ReportsBody extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.base),
-        _BudgetOverviewCard(budgets: budgets),
+        _BudgetVsActualCard(budgets: budgets),
         const SizedBox(height: AppSpacing.base),
         if (pnl.expenseByCat.isNotEmpty) ...[
           _CategoryPieCard(
             title: 'Expense Breakdown',
             data: pnl.expenseByCat,
             total: pnl.totalExpense,
+            month: month,
           ),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -281,6 +287,7 @@ class _ReportsBody extends ConsumerWidget {
             title: 'Income Breakdown',
             data: pnl.incomeByCat,
             total: pnl.totalIncome,
+            month: month,
           ),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -292,6 +299,10 @@ class _ReportsBody extends ConsumerWidget {
         ],
         if (pnl.largestTransactions.isNotEmpty) ...[  
           _LargestTransactionsCard(transactions: pnl.largestTransactions),
+          const SizedBox(height: AppSpacing.base),
+        ],
+        if (pnl.totalInvested > 0 || pnl.totalRedeemed > 0) ...[
+          _InvestmentSummaryCard(pnl: pnl, allTime: allTimeInv),
           const SizedBox(height: AppSpacing.base),
         ],
         if (bookingStats != null) ...[
@@ -525,11 +536,13 @@ class _CategoryPieCard extends StatelessWidget {
     required this.title,
     required this.data,
     required this.total,
+    required this.month,
   });
 
   final String title;
   final Map<String, double> data;
   final double total;
+  final DateTime month;
 
   @override
   Widget build(BuildContext context) {
@@ -639,69 +652,92 @@ class _CategoryPieCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.sm),
-            // Category amounts list
+            // Category amounts list — tap to drill down
             ...display.map((e) {
               final pct =
                   (e.value / total * 100).toStringAsFixed(1);
-              return Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.xs),
-                child: Row(
-                  children: [
-                    Icon(
-                      CategoryHelper.getIcon(e.key),
-                      size: AppSpacing.iconSm,
-                      color: CategoryHelper.getColor(e.key),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
+              final tappable = e.key != 'Other';
+              return InkWell(
+                borderRadius:
+                    BorderRadius.circular(AppSpacing.radiusSm),
+                onTap: tappable
+                    ? () => showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          useSafeArea: true,
+                          builder: (_) => _CategoryDrillDownSheet(
+                            category: e.key,
+                            month: month,
+                            categoryTotal: e.value,
+                          ),
+                        )
+                    : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        CategoryHelper.getIcon(e.key),
+                        size: AppSpacing.iconSm,
+                        color: CategoryHelper.getColor(e.key),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              e.key,
+                              style: context.textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: 2),
+                            LinearProgressIndicator(
+                              value: e.value / total,
+                              backgroundColor: context.colorScheme
+                                  .surfaceContainerHighest,
+                              color:
+                                  CategoryHelper.getColor(e.key),
+                              minHeight: 4,
+                              borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusSm),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Column(
                         crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                            CrossAxisAlignment.end,
                         children: [
                           Text(
-                            e.key,
-                            style: context.textTheme.bodyMedium,
+                            CurrencyFormatter.formatCompact(
+                                e.value),
+                            style: context.textTheme.bodyMedium
+                                ?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'RobotoMono',
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          LinearProgressIndicator(
-                            value: e.value / total,
-                            backgroundColor: context.colorScheme
-                                .surfaceContainerHighest,
-                            color:
-                                CategoryHelper.getColor(e.key),
-                            minHeight: 4,
-                            borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusSm),
+                          Text(
+                            '$pct%',
+                            style: context.textTheme.bodySmall
+                                ?.copyWith(
+                              color: context
+                                  .colorScheme.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          CurrencyFormatter.formatCompact(
-                              e.value),
-                          style: context.textTheme.bodyMedium
-                              ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'RobotoMono',
-                          ),
+                      if (tappable)
+                        Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: context.colorScheme.outlineVariant,
                         ),
-                        Text(
-                          '$pct%',
-                          style: context.textTheme.bodySmall
-                              ?.copyWith(
-                            color: context
-                                .colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             }),
@@ -1276,6 +1312,8 @@ class _BookingStat extends StatelessWidget {
 // Budget Overview Card — compact summary shown inside Reports
 // ---------------------------------------------------------------------------
 
+// _BudgetOverviewCard removed (replaced by _BudgetVsActualCard)
+// ignore: unused_element
 class _BudgetOverviewCard extends StatelessWidget {
   const _BudgetOverviewCard({required this.budgets});
   final List<Budget> budgets;
@@ -1995,6 +2033,530 @@ class _PaymentMethodCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+// ---------------------------------------------------------------------------
+// Category Drill-Down Bottom Sheet (item 7)
+// ---------------------------------------------------------------------------
+
+class _CategoryDrillDownSheet extends ConsumerWidget {
+  const _CategoryDrillDownSheet({
+    required this.category,
+    required this.month,
+    required this.categoryTotal,
+  });
+
+  final String category;
+  final DateTime month;
+  final double categoryTotal;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = (
+      category: category,
+      year: month.year,
+      month: month.month,
+    );
+    final txAsync = ref.watch(categoryTransactionsProvider(key));
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (context, scrollController) {
+        return Column(
+          children: [
+            // Handle bar
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(CategoryHelper.getIcon(category),
+                      size: AppSpacing.iconMd,
+                      color: CategoryHelper.getColor(category)),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(category,
+                            style: tt.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          DateFormat('MMMM yyyy').format(month),
+                          style: tt.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    CurrencyFormatter.format(categoryTotal),
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'RobotoMono',
+                      color: CategoryHelper.getColor(category),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Transaction list
+            Expanded(
+              child: txAsync.when(
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) =>
+                    Center(child: Text('Error: $e')),
+                data: (txList) {
+                  if (txList.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No transactions in this category',
+                        style: tt.bodyMedium
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    controller: scrollController,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm),
+                    itemCount: txList.length,
+                    separatorBuilder: (_, _) =>
+                        const Divider(height: 1, indent: 56, endIndent: 16),
+                    itemBuilder: (context, i) {
+                      final tx = txList[i];
+                      final isIncome = tx.type == TransactionType.income ||
+                          tx.type == TransactionType.receivedBack ||
+                          tx.type == TransactionType.redeemed;
+                      final amtColor =
+                          isIncome ? colors.income : colors.expense;
+                      final label = (tx.partyName != null &&
+                              tx.partyName!.isNotEmpty)
+                          ? tx.partyName!
+                          : tx.category;
+                      return ListTile(
+                        leading: CircleAvatar(
+                          radius: 18,
+                          backgroundColor:
+                              CategoryHelper.getColor(tx.category)
+                                  .withValues(alpha: 0.15),
+                          child: Icon(
+                            CategoryHelper.getIcon(tx.category),
+                            size: 16,
+                            color: CategoryHelper.getColor(tx.category),
+                          ),
+                        ),
+                        title: Text(label,
+                            style: tt.bodyMedium,
+                            overflow: TextOverflow.ellipsis),
+                        subtitle: Text(
+                          DateFormat('d MMM, h:mm a').format(tx.date),
+                          style: tt.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                        trailing: Text(
+                          CurrencyFormatter.format(tx.amount),
+                          style: tt.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'RobotoMono',
+                            color: amtColor,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Investment Summary Card (item 8)
+// ---------------------------------------------------------------------------
+
+class _InvestmentSummaryCard extends StatelessWidget {
+  const _InvestmentSummaryCard({required this.pnl, this.allTime});
+
+  final MonthlyPnL pnl;
+  final ({double invested, double net, double redeemed})? allTime;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final netThisMonth = pnl.totalInvested - pnl.totalRedeemed;
+    final allTimeNet = allTime?.net;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.savings_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text('Investments',
+                    style: tt.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // This-month row
+            Row(
+              children: [
+                Expanded(
+                  child: _InvStat(
+                    label: 'Invested',
+                    amount: pnl.totalInvested,
+                    color: cs.primary,
+                    icon: Icons.arrow_circle_up_outlined,
+                    tt: tt,
+                  ),
+                ),
+                Expanded(
+                  child: _InvStat(
+                    label: 'Redeemed',
+                    amount: pnl.totalRedeemed,
+                    color: cs.tertiary,
+                    icon: Icons.arrow_circle_down_outlined,
+                    tt: tt,
+                  ),
+                ),
+                Expanded(
+                  child: _InvStat(
+                    label: 'Net',
+                    amount: netThisMonth,
+                    color: netThisMonth >= 0 ? cs.primary : cs.error,
+                    icon: netThisMonth >= 0
+                        ? Icons.trending_up
+                        : Icons.trending_down,
+                    tt: tt,
+                  ),
+                ),
+              ],
+            ),
+            if (allTime != null) ...[
+              const Divider(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Icon(Icons.account_balance_outlined,
+                      size: AppSpacing.iconSm,
+                      color: cs.onSurfaceVariant),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Portfolio (all-time)',
+                    style: tt.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  const Spacer(),
+                  Text(
+                    allTimeNet! >= 0
+                        ? '+${CurrencyFormatter.formatCompact(allTimeNet)}'
+                        : CurrencyFormatter.formatCompact(allTimeNet),
+                    style: tt.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'RobotoMono',
+                      color: allTimeNet >= 0 ? cs.primary : cs.error,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InvStat extends StatelessWidget {
+  const _InvStat({
+    required this.label,
+    required this.amount,
+    required this.color,
+    required this.icon,
+    required this.tt,
+  });
+
+  final String label;
+  final double amount;
+  final Color color;
+  final IconData icon;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          CurrencyFormatter.formatCompact(amount.abs()),
+          style: tt.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontFamily: 'RobotoMono',
+            color: color,
+          ),
+        ),
+        Text(label,
+            style: tt.labelSmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Budget vs Actual Card (item 9)
+// ---------------------------------------------------------------------------
+
+class _BudgetVsActualCard extends StatelessWidget {
+  const _BudgetVsActualCard({required this.budgets});
+
+  final List<Budget> budgets;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final colors = context.kashColors;
+
+    if (budgets.isEmpty) {
+      return Card(
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BudgetScreen()),
+          ),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.base),
+            child: Row(
+              children: [
+                Icon(Icons.bar_chart_outlined,
+                    size: AppSpacing.iconMd,
+                    color: cs.onSurfaceVariant),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Set budgets to track spending vs limits',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+                Text('Set up',
+                    style: tt.labelSmall?.copyWith(
+                        color: cs.primary, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final maxBudget = budgets.fold<double>(
+        0, (m, b) => math.max(m, b.budgetAmount));
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.waterfall_chart_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text('Budget vs Actual',
+                      style:
+                          tt.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                  ),
+                  child: const Text('Manage'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Legend
+            Row(
+              children: [
+                _BudgetLegend(color: cs.surfaceContainerHighest, label: 'Budget'),
+                const SizedBox(width: AppSpacing.base),
+                _BudgetLegend(color: colors.income, label: 'Spent (ok)'),
+                const SizedBox(width: AppSpacing.base),
+                _BudgetLegend(color: colors.expense, label: 'Over budget'),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ...budgets.map((b) {
+              final isOver = b.isOverBudget;
+              final barColor = isOver ? colors.expense : colors.income;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(CategoryHelper.getIcon(b.category),
+                            size: AppSpacing.iconSm,
+                            color: CategoryHelper.getColor(b.category)),
+                        const SizedBox(width: AppSpacing.xs),
+                        Expanded(
+                          child: Text(b.category,
+                              style: tt.bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        Text(
+                          '${CurrencyFormatter.formatCompact(b.spentAmount)} / ${CurrencyFormatter.formatCompact(b.budgetAmount)}',
+                          style: tt.labelSmall?.copyWith(
+                            fontFamily: 'RobotoMono',
+                            color: isOver ? colors.expense : cs.onSurfaceVariant,
+                            fontWeight:
+                                isOver ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final fullW = constraints.maxWidth;
+                        final budgetW =
+                            (b.budgetAmount / maxBudget * fullW)
+                                .clamp(0.0, fullW);
+                        final spentW =
+                            (b.spentAmount / maxBudget * fullW)
+                                .clamp(0.0, fullW);
+                        return SizedBox(
+                          height: 10,
+                          child: Stack(
+                            children: [
+                              // Budget track (grey)
+                              Positioned(
+                                left: 0,
+                                child: Container(
+                                  width: budgetW,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: cs.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusSm),
+                                  ),
+                                ),
+                              ),
+                              // Spent fill
+                              Positioned(
+                                left: 0,
+                                child: Container(
+                                  width: spentW.clamp(0.0, budgetW),
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: barColor,
+                                    borderRadius: BorderRadius.circular(
+                                        AppSpacing.radiusSm),
+                                  ),
+                                ),
+                              ),
+                              // Over-budget overflow
+                              if (isOver)
+                                Positioned(
+                                  left: budgetW,
+                                  child: Container(
+                                    width: (spentW - budgetW).clamp(
+                                        0.0, fullW - budgetW),
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color:
+                                          colors.expense.withValues(alpha: 0.7),
+                                      borderRadius: const BorderRadius.only(
+                                        topRight:
+                                            Radius.circular(AppSpacing.radiusSm),
+                                        bottomRight:
+                                            Radius.circular(AppSpacing.radiusSm),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BudgetLegend extends StatelessWidget {
+  const _BudgetLegend({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label,
+            style: context.textTheme.labelSmall
+                ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
+      ],
     );
   }
 }

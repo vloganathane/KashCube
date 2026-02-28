@@ -293,6 +293,8 @@ class _ReportsBody extends ConsumerWidget {
         ],
         const _MonthlyTrendCard(),
         const SizedBox(height: AppSpacing.base),
+        const _WeeklyPatternCard(),
+        const SizedBox(height: AppSpacing.base),
         if (payMethodData.isNotEmpty) ...[
           _PaymentMethodCard(data: payMethodData),
           const SizedBox(height: AppSpacing.base),
@@ -749,12 +751,22 @@ class _CategoryPieCard extends StatelessWidget {
 }
 
 /// Monthly trend bar chart for the last 6 months.
-class _MonthlyTrendCard extends ConsumerWidget {
+class _MonthlyTrendCard extends ConsumerStatefulWidget {
   const _MonthlyTrendCard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final totalsAsync = ref.watch(monthlyTotalsProvider);
+  ConsumerState<_MonthlyTrendCard> createState() => _MonthlyTrendCardState();
+}
+
+class _MonthlyTrendCardState extends ConsumerState<_MonthlyTrendCard> {
+  int _count = 6;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalsAsync = ref.watch(monthlyTotalsForCountProvider(_count));
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
 
     return Card(
       child: Padding(
@@ -762,11 +774,29 @@ class _MonthlyTrendCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Monthly Trend',
-              style: context.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+            Row(
+              children: [
+                Icon(Icons.show_chart, size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text('Monthly Trend',
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                const Spacer(),
+                _CountToggle(
+                  count: _count,
+                  onChanged: (c) => setState(() => _count = c),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            // Legend
+            Row(
+              children: [
+                _TrendLegendDot(color: colors.income, label: 'Income'),
+                const SizedBox(width: AppSpacing.md),
+                _TrendLegendDot(color: colors.expense, label: 'Expense'),
+                const SizedBox(width: AppSpacing.md),
+                _TrendLegendDot(color: cs.primary, label: 'Net', dashed: true),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             totalsAsync.when(
@@ -785,14 +815,14 @@ class _MonthlyTrendCard extends ConsumerWidget {
                     child: Center(
                       child: Text(
                         'No data yet',
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: context.colorScheme.outline,
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                     ),
                   );
                 }
-                return _TrendChart(totals: totals);
+                return _TrendLineChart(totals: totals);
               },
             ),
           ],
@@ -802,59 +832,160 @@ class _MonthlyTrendCard extends ConsumerWidget {
   }
 }
 
-class _TrendChart extends StatelessWidget {
-  const _TrendChart({required this.totals});
+class _CountToggle extends StatelessWidget {
+  const _CountToggle({required this.count, required this.onChanged});
+
+  final int count;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [6, 12].map((c) {
+        final selected = count == c;
+        return GestureDetector(
+          onTap: () => onChanged(c),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+            decoration: BoxDecoration(
+              color: selected ? cs.primaryContainer : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Text(
+              '${c}M',
+              style: tt.labelSmall?.copyWith(
+                color: selected
+                    ? cs.onPrimaryContainer
+                    : cs.onSurfaceVariant,
+                fontWeight:
+                    selected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _TrendLegendDot extends StatelessWidget {
+  const _TrendLegendDot(
+      {required this.color, required this.label, this.dashed = false});
+
+  final Color color;
+  final String label;
+  final bool dashed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (dashed)
+          Row(
+            children: [
+              Container(width: 5, height: 2, color: color),
+              const SizedBox(width: 2),
+              Container(width: 5, height: 2, color: color),
+            ],
+          )
+        else
+          Container(width: 12, height: 2, color: color),
+        const SizedBox(width: 4),
+        Text(label,
+            style: context.textTheme.labelSmall
+                ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
+      ],
+    );
+  }
+}
+
+class _TrendLineChart extends StatelessWidget {
+  const _TrendLineChart({required this.totals});
 
   final List<MonthlyTotal> totals;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
+    final cs = context.colorScheme;
     final maxVal = totals.fold<double>(
-      0,
-      (prev, t) => math.max(prev, math.max(t.income, t.expense)),
-    );
-    // Round up to nice interval
-    final interval = maxVal > 0 ? (maxVal / 4).ceilToDouble() : 1.0;
+        0, (m, t) => math.max(m, math.max(t.income, t.expense)));
+    final minNet =
+        totals.fold<double>(0, (m, t) => math.min(m, t.net));
+    final interval = maxVal > 0 ? (maxVal / 3).ceilToDouble() : 1.0;
+    final minY = minNet < 0 ? (minNet * 1.2).floorToDouble() : 0.0;
+    final maxY = maxVal > 0 ? maxVal * 1.15 : 100.0;
+
+    LineChartBarData makeLine({
+      required List<FlSpot> spots,
+      required Color color,
+      double width = 2.5,
+      List<int>? dashArray,
+    }) {
+      return LineChartBarData(
+        spots: spots,
+        isCurved: true,
+        curveSmoothness: 0.35,
+        color: color,
+        barWidth: width,
+        isStrokeCapRound: true,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (s, _, _, _) => FlDotCirclePainter(
+            radius: 3,
+            color: color,
+            strokeWidth: 0,
+          ),
+        ),
+        belowBarData: BarAreaData(show: false),
+        dashArray: dashArray,
+      );
+    }
 
     return SizedBox(
       height: 220,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: maxVal > 0 ? maxVal * 1.15 : 100,
-          barTouchData: BarTouchData(
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, gIdx, rod, rIdx) {
-                final label = rIdx == 0 ? 'Income' : 'Expense';
-                return BarTooltipItem(
-                  '$label\n${CurrencyFormatter.formatCompact(rod.toY)}',
-                  TextStyle(
-                    color: rod.color,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                );
+      child: LineChart(
+        LineChartData(
+          minY: minY,
+          maxY: maxY,
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (touchedSpots) {
+                const labels = ['Income', 'Expense', 'Net'];
+                return touchedSpots.map((s) {
+                  return LineTooltipItem(
+                    '${labels[s.barIndex]}\n${CurrencyFormatter.formatCompact(s.y)}',
+                    TextStyle(
+                      color: s.bar.color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  );
+                }).toList();
               },
             ),
           ),
           titlesData: FlTitlesData(
-            show: true,
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
+                interval: 1,
                 getTitlesWidget: (value, meta) {
                   final idx = value.toInt();
                   if (idx < 0 || idx >= totals.length) {
                     return const SizedBox.shrink();
                   }
                   return Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       totals[idx].label,
-                      style: context.textTheme.bodySmall?.copyWith(
-                        fontSize: 10,
-                      ),
+                      style: context.textTheme.bodySmall
+                          ?.copyWith(fontSize: 9),
                     ),
                   );
                 },
@@ -867,50 +998,251 @@ class _TrendChart extends StatelessWidget {
                 reservedSize: 52,
                 interval: interval,
                 getTitlesWidget: (value, meta) {
+                  if (value == minY && minY != 0) {
+                    return const SizedBox.shrink();
+                  }
                   return Text(
                     CurrencyFormatter.formatCompact(value),
-                    style: context.textTheme.bodySmall?.copyWith(
-                      fontSize: 9,
-                    ),
+                    style:
+                        context.textTheme.bodySmall?.copyWith(fontSize: 9),
                   );
                 },
               ),
             ),
             topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+                sideTitles: SideTitles(showTitles: false)),
             rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
+                sideTitles: SideTitles(showTitles: false)),
           ),
           gridData: FlGridData(
             show: true,
-            horizontalInterval: interval,
             drawVerticalLine: false,
+            horizontalInterval: interval,
             getDrawingHorizontalLine: (value) => FlLine(
-              color: context.colorScheme.outlineVariant
-                  .withValues(alpha: 0.4),
+              color: cs.outlineVariant.withValues(alpha: 0.4),
               strokeWidth: 1,
             ),
           ),
           borderData: FlBorderData(show: false),
-          barGroups: List.generate(totals.length, (i) {
-            final t = totals[i];
+          lineBarsData: [
+            makeLine(
+              spots: [
+                for (int i = 0; i < totals.length; i++)
+                  FlSpot(i.toDouble(), totals[i].income)
+              ],
+              color: colors.income,
+            ),
+            makeLine(
+              spots: [
+                for (int i = 0; i < totals.length; i++)
+                  FlSpot(i.toDouble(), totals[i].expense)
+              ],
+              color: colors.expense,
+            ),
+            makeLine(
+              spots: [
+                for (int i = 0; i < totals.length; i++)
+                  FlSpot(i.toDouble(), totals[i].net)
+              ],
+              color: cs.primary,
+              width: 2.0,
+              dashArray: [4, 4],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Weekly Pattern Card (item 13)
+// ---------------------------------------------------------------------------
+
+class _WeeklyPatternCard extends ConsumerWidget {
+  const _WeeklyPatternCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dailyAsync = ref.watch(dailyTotalsProvider);
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_view_week_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Weekly Pattern',
+                        style: tt.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text('Avg spend by day',
+                        style: tt.labelSmall
+                            ?.copyWith(color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            dailyAsync.when(
+              loading: () => const SizedBox(
+                  height: 160, child: Center(child: CircularProgressIndicator())),
+              error: (e, _) =>
+                  SizedBox(height: 160, child: Center(child: Text('Error: $e'))),
+              data: (days) {
+                if (days.isEmpty) {
+                  return SizedBox(
+                    height: 160,
+                    child: Center(
+                      child: Text(
+                        'No data for this month',
+                        style: tt.bodyMedium
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  );
+                }
+                // Group by weekday (0=Mon..6=Sun), collect all expense values
+                final sums = List<double>.filled(7, 0.0);
+                final counts = List<int>.filled(7, 0);
+                for (final d in days) {
+                  if (d.expense > 0) {
+                    final idx = d.date.weekday - 1;
+                    sums[idx] += d.expense;
+                    counts[idx]++;
+                  }
+                }
+                final avgs = [
+                  for (int i = 0; i < 7; i++)
+                    counts[i] > 0 ? sums[i] / counts[i] : 0.0
+                ];
+                final maxAvg = avgs.fold<double>(0.0, math.max);
+                if (maxAvg == 0) {
+                  return SizedBox(
+                    height: 160,
+                    child: Center(
+                      child: Text(
+                        'No expense data',
+                        style: tt.bodyMedium
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  );
+                }
+                return _WeeklyBarChart(avgs: avgs, maxAvg: maxAvg);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WeeklyBarChart extends StatelessWidget {
+  const _WeeklyBarChart({required this.avgs, required this.maxAvg});
+
+  final List<double> avgs;
+  final double maxAvg;
+
+  static const _dayLabels = [
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final interval = (maxAvg / 3).ceilToDouble().clamp(1.0, double.infinity);
+
+    return SizedBox(
+      height: 160,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxAvg * 1.2,
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipItem: (group, _, rod, _) => BarTooltipItem(
+                '${_dayLabels[group.x]}\n${CurrencyFormatter.formatCompact(rod.toY)}',
+                TextStyle(
+                  color: rod.color,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                getTitlesWidget: (value, meta) {
+                  final i = value.toInt();
+                  final isWeekend = i >= 5;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _dayLabels[i],
+                      style: context.textTheme.bodySmall?.copyWith(
+                        fontSize: 10,
+                        color: isWeekend ? cs.primary : cs.onSurfaceVariant,
+                        fontWeight: isWeekend
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 48,
+                interval: interval,
+                getTitlesWidget: (value, meta) => Text(
+                  CurrencyFormatter.formatCompact(value),
+                  style: context.textTheme.bodySmall?.copyWith(fontSize: 9),
+                ),
+              ),
+            ),
+            topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false)),
+          ),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: interval,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: cs.outlineVariant.withValues(alpha: 0.4),
+              strokeWidth: 1,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: List.generate(7, (i) {
+            final isWeekend = i >= 5;
             return BarChartGroupData(
               x: i,
               barRods: [
                 BarChartRodData(
-                  toY: t.income,
-                  color: colors.income,
-                  width: 12,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(AppSpacing.radiusSm),
-                  ),
-                ),
-                BarChartRodData(
-                  toY: t.expense,
-                  color: colors.expense,
-                  width: 12,
+                  toY: avgs[i],
+                  color: isWeekend
+                      ? colors.expense.withValues(alpha: 0.6)
+                      : colors.expense,
+                  width: 16,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(AppSpacing.radiusSm),
                   ),

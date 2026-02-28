@@ -176,6 +176,14 @@ final monthlyTotalsProvider =
   },
 );
 
+/// Monthly totals for the trend chart with a configurable count (6 or 12).
+final monthlyTotalsForCountProvider =
+    FutureProvider.family<List<MonthlyTotal>, int>((ref, count) async {
+  final mode = ref.watch(reportModeProvider);
+  final repo = TransactionRepositoryImpl();
+  return repo.getMonthlyTotals(months: count, mode: mode);
+});
+
 class MonthlyTotalsNotifier
     extends StateNotifier<AsyncValue<List<MonthlyTotal>>> {
   final TransactionRepository _repo;

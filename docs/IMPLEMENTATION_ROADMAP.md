@@ -1,11 +1,17 @@
 # Implementation Roadmap
 # Kash Cube Development Plan
 
-**Version:** 3.1  
-**Date:** February 27, 2026  
+**Version:** 3.2  
+**Date:** February 28, 2026  
 **Duration:** 6.5 months (32 weeks)
 
-**Latest Update:** Added Week 30-31 (Unified Notifications & Reminders) — single notification/reminder system serving all features (Credits, Invoices, Bookings, Bills). Automatic push notifications + manual WhatsApp/SMS/Email reminders. Privacy-first: local notifications, OS deep links, zero network calls. Full spec: [docs/UNIFIED_NOTIFICATIONS_SPEC.md](./UNIFIED_NOTIFICATIONS_SPEC.md)
+**Latest Update (28 Feb 2026):** Multiple improvements shipped in rapid iteration:
+- **Budget tracking** — full stack (model → repo → provider → screen) with progress bars, alerts, home screen health widget, form hints, and "Copy from last month". Moved to free tier (always-on).
+- **Reports: month-over-month P&L deltas** — `_DeltaTag` with colour-coded trending arrows on Income, Expense, and Net P/L rows
+- **Transactions: sort order** — Date Newest/Oldest, Amount High/Low, via AppBar sort menu with badge indicator
+- **Transactions: date range filter + CSV export** — custom from/to date pickers in filter sheet; CSV via `share_plus`
+- **Context-aware search filter** — `SearchFilter` (public enum) + `initialFilter` param on `SearchScreen`; each screen pre-selects its own entity type; hint text updates dynamically
+- **LedgerScreen global search** added
 
 ---
 
@@ -137,6 +143,11 @@ This roadmap follows a **core-first, iterative approach**:
 - Advanced transaction filters (type, category, payment method)
 - Full loan tracking (add, pay, delete, detail, overdue/cleared tabs)
 - Loans accessible via Home screen quick action
+- ✅ **Unified global search** extended to all 6 entity types (transactions, invoices, credits, bills, bookings, parties) with filter chips, text highlighting, recent searches — `SearchFilter` enum with `initialFilter` param so each screen pre-selects its scope
+- ✅ **Transactions sort order** — Date Newest/Oldest, Amount High/Low via AppBar PopupMenu with badge indicator
+- ✅ **Transactions date range filter** — custom from/to date pickers in the filter sheet
+- ✅ **Transactions CSV export** — exports filtered list via `share_plus`
+- ✅ **Month-over-month deltas** on Reports P&L card — `_DeltaTag` with colour-coded trending arrows
 
 **Time Estimate:** 40 hours
 
@@ -253,8 +264,23 @@ This roadmap follows a **core-first, iterative approach**:
 
 > **Revised sequence (26 Feb 2026):** Week 9 Part B (Party Management) → Week 21-22 (Billing) → Week 8 Budgets folded into Pro tier (Week 19-20). Rationale: billing needs party phone/email; billing adds more immediate value than budgets for business users; budgets fit naturally as a Pro feature.
 
-### ~~Week 8: Money Management~~ → Folded into Pro Tier (Week 19-20)
-**Moved:** Budget tracking and savings goals are now part of the Pro tier feature set (Week 19-20). The `budgets` table already exists in the DB schema — no migration needed when the time comes.
+### ~~Week 8: Money Management~~ → ✅ Shipped as Free Feature (28 Feb 2026)
+**Status:** 100% COMPLETE — moved to free tier (was Pro, now always-on)
+
+Budget tracking is now live for all users, not gated behind Pro. The `budgets` table was already in the DB schema; the full stack was implemented in rapid iteration.
+
+**Completed tasks:**
+- [x] `Budget` model (amount, spent computed from transactions, alertAtPercentage, remaining, isOverBudget, isNearLimit)
+- [x] `BudgetRepository` interface + `BudgetRepositoryImpl` (SQLite, spentAmount computed dynamically via JOIN)
+- [x] `budgetsForMonthProvider` (family, keyed by year/month) + `currentMonthBudgetsProvider` (synced to reportMonthProvider)
+- [x] `BudgetScreen` — per-category cards with progress bars, summary card, Add/Edit/Delete via bottom sheet, month navigator
+- [x] `copyFromPreviousMonth()` in `BudgetsNotifier` — copies only categories not yet set for the current month
+- [x] Budget overview card on Reports screen (`_BudgetOverviewCard` + `_MiniBudgetRow`)
+- [x] Budget Health section on Home screen (`_BudgetSection` + `_HomeBudgetTile`) — shows over/near-limit budgets or "all on track"
+- [x] Budget status hint on Add/Edit Transaction form (`_BudgetHintRow`) — shows progress bar for selected expense category
+- [x] "Copy from last month" action in BudgetScreen AppBar overflow menu
+
+**Note:** Savings goals still deferred to Pro tier (Week 19-20).
 
 ---
 
@@ -518,9 +544,9 @@ Screen 3 — How do you use money?
 - [ ] Advanced reports: custom date ranges, category drill-down (Pro)
 - [ ] PDF export with branded invoice/statement layout (Pro, uses `pdf` package — 100% local)
 - [ ] Month-over-month comparison chart (Pro)
-- [ ] **Budget tracking with category limits + visual progress bars (Pro)** ← moved from Week 8
+- [ ] **Budget tracking with category limits + visual progress bars (Pro)** ← ~~moved from Week 8~~ **ALREADY SHIPPED as free feature (28 Feb 2026)**
 - [ ] **Savings goals with progress ring + target date countdown (Pro)** ← moved from Week 8
-- [ ] **Budget alerts at 80% / 100% / exceeded via local notifications (Pro)** ← moved from Week 8
+- [ ] **Budget alerts at 80% / 100% / exceeded via local notifications (Pro)** ← ~~moved from Week 8~~ **partially shipped** (in-app hint on form; local notification scheduling still pending)
 - [ ] Test payment flow end-to-end
 
 **Deliverables:**
@@ -704,21 +730,21 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 - [x] Booking reference generation (BK-YYYY-NNN format with yearly reset)
 
 *Phase 2 — Integrations (Week 26):*
-- [ ] Catalog item form: "Enable bookings" checkbox + duration field
-- [ ] "Complete & Invoice" creates draft invoice (pre-filled from booking, navigates to InvoiceDetailScreen)
-- [ ] Link `invoice.booking_id` foreign key, auto-update booking status when invoice paid
-- [ ] Party detail: add "Bookings" tab (upcoming, past, no-show rate, stats)
-- [ ] [Confirm] button → WhatsApp OS intent with template message
+- [x] Catalog item form: "Enable bookings" checkbox + duration field
+- [x] "Complete & Invoice" creates draft invoice (pre-filled from booking, navigates to InvoiceDetailScreen)
+- [x] Link `invoice.booking_id` foreign key, auto-update booking status when invoice paid
+- [x] Party detail: add "Bookings" tab (upcoming, past, no-show rate, stats)
+- [x] [Confirm] button → WhatsApp OS intent with template message
 - [ ] Invoice deducts advance payment amount
 
 *Phase 3 — Notifications & Polish (Week 27):*
-- [ ] BookingNotificationService using `flutter_local_notifications`
-- [ ] Schedule reminder 24h before start_datetime when status → confirmed
-- [ ] Cancel notification when booking cancelled/completed
-- [ ] Extend global search to include bookings (customer, service, ref)
-- [ ] "Bookings Overview" card in Reports tab (completed count/amount, pipeline, no-show rate, top services)
-- [ ] Speed-dial FAB: add "New Booking" action when Business Mode enabled
-- [ ] Empty states, loading states, confirmation dialogs
+- [x] Bookings notifications (BookingNotificationService via flutter_local_notifications)
+- [x] Schedule reminder 24h before start_datetime when status → confirmed
+- [x] Cancel notification when booking cancelled/completed
+- [x] Extend global search to include bookings (customer, service, ref)
+- [x] "Bookings Overview" card in Reports tab
+- [x] Speed-dial FAB: "New Booking" action when Business Mode enabled
+- [x] Empty states, loading states, confirmation dialogs
 - [ ] Multi-day duration display (e.g., "3 nights" for homestays)
 
 **Deliverables:**
@@ -755,7 +781,7 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 - [ ] Tune existing notification thresholds for bills/loans (NotificationService already handles these)
 - [ ] Monthly summary notification ("Here's your February: spent ₹X, saved ₹Y")
 - [ ] Bank statement CSV import (map columns → transactions; handles HDFC, SBI, ICICI formats)
-- [ ] Month-over-month comparison in Reports (already deferred from Pro tier if not done)
+- [x] Month-over-month comparison in Reports (`pnlForMonthProvider` + `_DeltaTag` on P&L card — ✅ 28 Feb 2026)
 - [ ] Play Store rating prompt (after 10th transaction, not on launch)
 - [ ] Referral / share card ("I track finances with Kash Cube — try it")
 
@@ -768,11 +794,10 @@ Loan overdue:      "Hi [Name], ₹[amount] (due [date]) is still pending. Please
 **Deliverables:**
 - Passive notifications that drive daily opens
 - CSV import covering top 3 Indian banks
+- ✅ Month-over-month delta % on P&L card (Income ↑↓, Expense ↑↓, Net P/L ↑↓) — **DONE**
 - Organic growth hook via share card
 
 **Time Estimate:** 40 hours
-
-**Note:** Comprehensive notification system (automatic + manual reminders for all features) implemented in Week 30-31.
 
 **Note:** Comprehensive notification system (automatic + manual reminders for all features) implemented in Week 30-31.
 

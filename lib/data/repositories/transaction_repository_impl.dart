@@ -121,6 +121,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     return rows.map((r) => Transaction.fromMap(r)).toList();
   }
 
+  @override
   Future<double> getTotalInvested(DateTime start, DateTime end) async {
     final db = await _db;
     final result = await db.rawQuery(
@@ -132,6 +133,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     return (result.first['total'] as num).toDouble();
   }
 
+  @override
   Future<double> getTotalRedeemed(DateTime start, DateTime end) async {
     final db = await _db;
     final result = await db.rawQuery(
@@ -415,6 +417,25 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "FROM transactions WHERE deleted_at IS NULL",
     );
     return (rows.first['net'] as num).toDouble();
+  }
+
+  @override
+  Future<List<Transaction>> getTopByAmount(
+    DateTime start,
+    DateTime end, {
+    int limit = 5,
+  }) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT * FROM transactions "
+      "WHERE deleted_at IS NULL AND type != 'transfer' "
+      "AND date >= ? AND date <= ? "
+      "ORDER BY amount DESC LIMIT ?",
+      [start.toIso8601String(), end.toIso8601String(), limit],
+    );
+    return rows
+        .map((r) => Transaction.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
   }
 
   // ---------------------------------------------------------------------------

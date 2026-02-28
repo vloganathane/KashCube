@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/transaction.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/transaction_repository.dart';
 
@@ -20,6 +21,9 @@ class MonthlyPnL {
   final Map<String, double> incomeByCat;
   final Map<String, double> expenseByCat;
   final List<PartyTotal> topParties;
+  final double totalInvested;
+  final double totalRedeemed;
+  final List<Transaction> largestTransactions;
 
   const MonthlyPnL({
     this.totalIncome = 0,
@@ -28,7 +32,16 @@ class MonthlyPnL {
     this.incomeByCat = const {},
     this.expenseByCat = const {},
     this.topParties = const [],
+    this.totalInvested = 0,
+    this.totalRedeemed = 0,
+    this.largestTransactions = const [],
   });
+
+  /// Savings rate: (income − expense) / income, clamped 0–1.
+  double get savingsRate =>
+      totalIncome > 0
+          ? ((totalIncome - totalExpense) / totalIncome).clamp(0.0, 1.0)
+          : 0.0;
 }
 
 /// Provider for monthly P&L report.
@@ -62,6 +75,9 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
         _repo.getIncomeByCategorySummary(start, end, mode: _mode),
         _repo.getExpenseByCategorySummary(start, end, mode: _mode),
         _repo.getTopParties(start, end, mode: _mode),
+        _repo.getTotalInvested(start, end),
+        _repo.getTotalRedeemed(start, end),
+        _repo.getTopByAmount(start, end, limit: 5),
       ]);
 
       final income = results[0] as double;
@@ -69,6 +85,9 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
       final incomeCat = results[2] as Map<String, double>;
       final expenseCat = results[3] as Map<String, double>;
       final topParties = results[4] as List<PartyTotal>;
+      final invested = results[5] as double;
+      final redeemed = results[6] as double;
+      final largest = results[7] as List<Transaction>;
 
       state = AsyncValue.data(MonthlyPnL(
         totalIncome: income,
@@ -77,6 +96,9 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
         incomeByCat: incomeCat,
         expenseByCat: expenseCat,
         topParties: topParties,
+        totalInvested: invested,
+        totalRedeemed: redeemed,
+        largestTransactions: largest,
       ));
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -91,6 +113,26 @@ final pnlForMonthProvider =
   final mode = ref.watch(reportModeProvider);
   final repo = TransactionRepositoryImpl();
   final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+  final results = await Future.wait([
+    repo.getTotalIncome(start, end, mode: mode),
+    repo.getTotalExpense(start, end, mode: mode),
+  ]);
+  final income = results[0];
+  final expense = results[1];
+  return MonthlyPnL(
+    totalIncome: income,
+    totalExpense: expense,
+    netProfitLoss: income - expense,
+  );
+});
+
+/// Year-to-date summary from Jan 1 of [month]'s year through end of [month].
+final ytdSummaryProvider =
+    FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {
+  final mode = ref.watch(reportModeProvider);
+  final repo = TransactionRepositoryImpl();
+  final start = DateTime(month.year, 1, 1);
   final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
   final results = await Future.wait([
     repo.getTotalIncome(start, end, mode: mode),

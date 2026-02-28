@@ -77,6 +77,19 @@ abstract class TransactionRepository {
 
   /// Get total outstanding borrowed amount (borrowed - paid_back).
   Future<double> getTotalOutstandingBorrowed();
+
+  /// Get total amount invested within a date range (type = 'invested').
+  Future<double> getTotalInvested(DateTime start, DateTime end);
+
+  /// Get total amount redeemed within a date range (type = 'redeemed').
+  Future<double> getTotalRedeemed(DateTime start, DateTime end);
+
+  /// Get top [limit] transactions by amount within [start]–[end], excluding transfers.
+  Future<List<Transaction>> getTopByAmount(
+    DateTime start,
+    DateTime end, {
+    int limit = 5,
+  });
 }
 
 /// Daily income/expense totals.

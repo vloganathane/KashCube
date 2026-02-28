@@ -10,6 +10,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/budget.dart';
+import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/budget_provider.dart';
@@ -179,6 +180,18 @@ class _ReportsBody extends ConsumerWidget {
     final prevMonth = DateTime(prevYear, prevMonthNum);
     final prevPnl = ref.watch(pnlForMonthProvider(prevMonth)).valueOrNull;
 
+    // YTD summary
+    final ytdAsync = ref.watch(ytdSummaryProvider(month));
+    final ytd = ytdAsync.valueOrNull;
+
+    // Days elapsed in the selected month (for avg daily spend)
+    final now = DateTime.now();
+    final isCurrentMonth =
+        now.year == month.year && now.month == month.month;
+    final daysElapsed = isCurrentMonth
+        ? now.day.toDouble()
+        : DateTime(month.year, month.month + 1, 0).day.toDouble();
+
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
@@ -221,7 +234,33 @@ class _ReportsBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
+        if (ytd != null &&
+            (ytd.totalIncome > 0 || ytd.totalExpense > 0)) ...[  
+          _YtdSummaryRow(ytd: ytd, month: month),
+          const SizedBox(height: AppSpacing.base),
+        ],
         _PnLCard(pnl: pnl, prevPnl: prevPnl),
+        const SizedBox(height: AppSpacing.base),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _SavingsRateCard(
+                pnl: pnl,
+                prevRate: prevPnl?.savingsRate,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: _AvgDailySpendCard(
+                pnl: pnl,
+                prevPnl: prevPnl,
+                daysElapsed: daysElapsed,
+                month: month,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: AppSpacing.base),
         _BudgetOverviewCard(budgets: budgets),
         const SizedBox(height: AppSpacing.base),
@@ -243,6 +282,10 @@ class _ReportsBody extends ConsumerWidget {
         ],
         const _MonthlyTrendCard(),
         const SizedBox(height: AppSpacing.base),
+        if (pnl.largestTransactions.isNotEmpty) ...[  
+          _LargestTransactionsCard(transactions: pnl.largestTransactions),
+          const SizedBox(height: AppSpacing.base),
+        ],
         if (bookingStats != null) ...[
           _BookingsOverviewCard(stats: bookingStats),
           const SizedBox(height: AppSpacing.base),
@@ -305,6 +348,29 @@ class _PnLCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (pnl.totalInvested > 0 || pnl.totalRedeemed > 0) ...[
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PnLItem(
+                      label: 'Invested',
+                      amount: pnl.totalInvested,
+                      color: context.colorScheme.primary,
+                      icon: Icons.savings_outlined,
+                    ),
+                  ),
+                  Expanded(
+                    child: _PnLItem(
+                      label: 'Redeemed',
+                      amount: pnl.totalRedeemed,
+                      color: context.colorScheme.tertiary,
+                      icon: Icons.account_balance_outlined,
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const Divider(height: AppSpacing.xl),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1253,6 +1319,427 @@ class _MiniBudgetRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// YTD Summary Row
+// ---------------------------------------------------------------------------
+
+class _YtdSummaryRow extends StatelessWidget {
+  const _YtdSummaryRow({required this.ytd, required this.month});
+
+  final MonthlyPnL ytd;
+  final DateTime month;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final savings = ytd.totalIncome - ytd.totalExpense;
+    final monthName = DateFormat('MMM').format(month);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.xs),
+                Text(
+                  'YTD  Jan\u2013$monthName ${month.year}',
+                  style: tt.labelMedium?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _YtdStat(
+                      label: 'Income',
+                      amount: ytd.totalIncome,
+                      color: colors.income,
+                      tt: tt,
+                    ),
+                  ),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: cs.outlineVariant,
+                  ),
+                  Expanded(
+                    child: _YtdStat(
+                      label: 'Expense',
+                      amount: ytd.totalExpense,
+                      color: colors.expense,
+                      tt: tt,
+                    ),
+                  ),
+                  VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: cs.outlineVariant,
+                  ),
+                  Expanded(
+                    child: _YtdStat(
+                      label: 'Saved',
+                      amount: savings,
+                      color: savings >= 0 ? colors.income : colors.expense,
+                      tt: tt,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _YtdStat extends StatelessWidget {
+  const _YtdStat({
+    required this.label,
+    required this.amount,
+    required this.color,
+    required this.tt,
+  });
+
+  final String label;
+  final double amount;
+  final Color color;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: tt.labelSmall
+                ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            CurrencyFormatter.formatCompact(amount),
+            style: tt.titleSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+              fontFamily: 'RobotoMono',
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Savings Rate Card
+// ---------------------------------------------------------------------------
+
+class _SavingsRateCard extends StatelessWidget {
+  const _SavingsRateCard({required this.pnl, this.prevRate});
+
+  final MonthlyPnL pnl;
+  final double? prevRate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final rate = pnl.savingsRate;
+    const target = 0.20;
+    final isAboveTarget = rate >= target;
+    final rateColor = isAboveTarget ? colors.income : cs.error;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Savings Rate',
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Center(
+              child: SizedBox(
+                width: 90,
+                height: 90,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CircularProgressIndicator(
+                      value: 1,
+                      backgroundColor: Colors.transparent,
+                      color: cs.surfaceContainerHighest,
+                      strokeWidth: 10,
+                    ),
+                    CircularProgressIndicator(
+                      value: rate,
+                      backgroundColor: cs.surfaceContainerHighest,
+                      color: rateColor,
+                      strokeWidth: 10,
+                      strokeCap: StrokeCap.round,
+                    ),
+                    Center(
+                      child: Text(
+                        '${(rate * 100).toStringAsFixed(0)}%',
+                        style: tt.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'RobotoMono',
+                          color: rateColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isAboveTarget
+                        ? Icons.check_circle_outline
+                        : Icons.radio_button_unchecked,
+                    size: 12,
+                    color: isAboveTarget ? colors.income : cs.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Target: 20%',
+                    style: tt.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            if (prevRate != null && prevRate! > 0) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Center(
+                child: _DeltaTag(
+                  current: rate,
+                  prev: prevRate!,
+                  isGoodWhenUp: true,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Avg Daily Spend Card
+// ---------------------------------------------------------------------------
+
+class _AvgDailySpendCard extends StatelessWidget {
+  const _AvgDailySpendCard({
+    required this.pnl,
+    required this.daysElapsed,
+    required this.month,
+    this.prevPnl,
+  });
+
+  final MonthlyPnL pnl;
+  final MonthlyPnL? prevPnl;
+  final double daysElapsed;
+  final DateTime month;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final totalDays =
+        DateTime(month.year, month.month + 1, 0).day.toDouble();
+    final avgSpend =
+        daysElapsed > 0 ? pnl.totalExpense / daysElapsed : 0.0;
+    final prevMonthDays = prevPnl != null
+        ? DateTime(month.year, month.month, 0).day.toDouble()
+        : 30.0;
+    final prevAvg = (prevPnl != null && prevMonthDays > 0)
+        ? prevPnl!.totalExpense / prevMonthDays
+        : null;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Avg Daily Spend',
+              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              CurrencyFormatter.format(avgSpend),
+              style: tt.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                fontFamily: 'RobotoMono',
+                color: colors.expense,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '${daysElapsed.toInt()} / ${totalDays.toInt()} days',
+              style:
+                  tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            if (prevAvg != null && prevAvg > 0) ...[
+              const SizedBox(height: AppSpacing.xs),
+              _DeltaTag(
+                current: avgSpend,
+                prev: prevAvg,
+                isGoodWhenUp: false,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Largest Transactions Card
+// ---------------------------------------------------------------------------
+
+class _LargestTransactionsCard extends StatelessWidget {
+  const _LargestTransactionsCard({required this.transactions});
+
+  final List<Transaction> transactions;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.format_list_numbered_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Largest Transactions',
+                  style:
+                      tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            ...transactions.map((t) {
+              Color typeColor;
+              IconData typeIcon;
+              switch (t.type) {
+                case TransactionType.income:
+                case TransactionType.receivedBack:
+                case TransactionType.redeemed:
+                  typeColor = colors.income;
+                  typeIcon = Icons.arrow_downward_rounded;
+                case TransactionType.expense:
+                case TransactionType.paidBack:
+                  typeColor = colors.expense;
+                  typeIcon = Icons.arrow_upward_rounded;
+                case TransactionType.invested:
+                  typeColor = cs.primary;
+                  typeIcon = Icons.savings_outlined;
+                case TransactionType.lent:
+                  typeColor = colors.credit;
+                  typeIcon = Icons.call_made_outlined;
+                case TransactionType.borrowed:
+                  typeColor = cs.tertiary;
+                  typeIcon = Icons.call_received_outlined;
+                default:
+                  typeColor = cs.onSurfaceVariant;
+                  typeIcon = Icons.swap_horiz;
+              }
+              final label = (t.partyName != null && t.partyName!.isNotEmpty)
+                  ? t.partyName!
+                  : t.category;
+              return Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm),
+                      ),
+                      child: Icon(typeIcon, size: 16, color: typeColor),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            label,
+                            style: tt.bodyMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            DateFormat('d MMM').format(t.date),
+                            style: tt.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      CurrencyFormatter.format(t.amount),
+                      style: tt.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'RobotoMono',
+                        color: typeColor,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }

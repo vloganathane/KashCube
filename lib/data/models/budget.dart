@@ -60,18 +60,14 @@ class Budget {
       };
 
   factory Budget.fromMap(Map<String, dynamic> m) => Budget(
-        id: m['id'] as int?,
-        year: m['year'] as int,
-        month: m['month'] as int,
+        id: (m['id'] as num?)?.toInt(),
+        year: (m['year'] as num).toInt(),
+        month: (m['month'] as num).toInt(),
         category: m['category'] as String,
         budgetAmount: (m['budget_amount'] as num).toDouble(),
         spentAmount: (m['spent_amount'] as num? ?? 0).toDouble(),
-        alertAtPercentage: (m['alert_at_percentage'] as int? ?? 80),
-        isActive: (m['is_active'] as int? ?? 1) == 1,
+        alertAtPercentage: (m['alert_at_percentage'] as num?)?.toInt() ?? 80,
         createdAt: DateTime.parse(m['created_at'] as String),
-        updatedAt: m['updated_at'] != null
-            ? DateTime.tryParse(m['updated_at'] as String)
-            : null,
       );
 
   Budget copyWith({

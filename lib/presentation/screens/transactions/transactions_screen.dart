@@ -7,9 +7,11 @@ import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import 'transaction_detail_screen.dart';
 import '../search/search_screen.dart';
+import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 /// Date range filter for the transactions list.
 enum TransactionFilter {
@@ -35,17 +37,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   TransactionType? _typeFilter;
   String? _categoryFilter;
   PaymentMethod? _paymentMethodFilter;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   bool get _hasAdvancedFilters =>
       _typeFilter != null ||
       _categoryFilter != null ||
-      _paymentMethodFilter != null;
+      _paymentMethodFilter != null ||
+      _dateFrom != null ||
+      _dateTo != null;
 
   void _clearAdvancedFilters() {
     setState(() {
       _typeFilter = null;
       _categoryFilter = null;
       _paymentMethodFilter = null;
+      _dateFrom = null;
+      _dateTo = null;
     });
   }
 
@@ -87,6 +95,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           filtered.where((t) => t.paymentMethod == _paymentMethodFilter).toList();
     }
 
+    // Apply custom date range
+    if (_dateFrom != null || _dateTo != null) {
+      filtered = filtered.where((t) {
+        if (_dateFrom != null && t.date.isBefore(_dateFrom!)) return false;
+        final toEnd = _dateTo == null
+            ? null
+            : DateTime(_dateTo!.year, _dateTo!.month, _dateTo!.day, 23, 59, 59);
+        if (toEnd != null && t.date.isAfter(toEnd)) return false;
+        return true;
+      }).toList();
+    }
+
     return filtered;
   }
 
@@ -112,6 +132,25 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               tooltip: 'Filters',
               onPressed: () => _showFilterSheet(context),
             ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (v) {
+              if (v == 'export') {
+                final transactions = ref.read(transactionsProvider).valueOrNull ?? [];
+                _exportCsv(context, ref, _applyFilter(transactions));
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'export',
+                child: ListTile(
+                  leading: Icon(Icons.download_outlined),
+                  title: Text('Export CSV'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -216,16 +255,47 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         typeFilter: _typeFilter,
         categoryFilter: _categoryFilter,
         paymentMethodFilter: _paymentMethodFilter,
-        onApply: (type, category, method) {
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
+        onApply: (type, category, method, from, to) {
           setState(() {
             _typeFilter = type;
             _categoryFilter = category;
             _paymentMethodFilter = method;
+            _dateFrom = from;
+            _dateTo = to;
           });
         },
         onClear: _clearAdvancedFilters,
       ),
     );
+  }
+
+  Future<void> _exportCsv(
+    BuildContext context,
+    WidgetRef ref,
+    List<Transaction> transactions,
+  ) async {
+    if (transactions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions to export')),
+      );
+      return;
+    }
+    try {
+      final service = ref.read(csvExportServiceProvider);
+      final path = await service.exportTransactions(transactions);
+      if (!context.mounted) return;
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'Kash Cube Transactions',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
   }
 
   Widget _buildEmptyState(bool noTransactions) {
@@ -335,6 +405,8 @@ class _AdvancedFilterSheet extends StatefulWidget {
     required this.typeFilter,
     required this.categoryFilter,
     required this.paymentMethodFilter,
+    required this.dateFrom,
+    required this.dateTo,
     required this.onApply,
     required this.onClear,
   });
@@ -342,7 +414,10 @@ class _AdvancedFilterSheet extends StatefulWidget {
   final TransactionType? typeFilter;
   final String? categoryFilter;
   final PaymentMethod? paymentMethodFilter;
-  final void Function(TransactionType?, String?, PaymentMethod?) onApply;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+  final void Function(
+      TransactionType?, String?, PaymentMethod?, DateTime?, DateTime?) onApply;
   final VoidCallback onClear;
 
   @override
@@ -353,6 +428,8 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
   late TransactionType? _type;
   late String? _category;
   late PaymentMethod? _method;
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
 
   static const _categories = [
     'Food & Dining',
@@ -379,6 +456,8 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
     _type = widget.typeFilter;
     _category = widget.categoryFilter;
     _method = widget.paymentMethodFilter;
+    _dateFrom = widget.dateFrom;
+    _dateTo = widget.dateTo;
   }
 
   @override
@@ -490,12 +569,76 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
+            // Date range filter
+            Text('Date Range', style: context.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 14),
+                    label: Text(
+                      _dateFrom == null
+                          ? 'From'
+                          : DateFormatter.format(_dateFrom!),
+                      maxLines: 1,
+                    ),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _dateFrom ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: _dateTo ?? DateTime.now(),
+                        helpText: 'Start date',
+                      );
+                      if (picked != null) {
+                        setState(() => _dateFrom = picked);
+                      }
+                    },
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  child: Text('–'),
+                ),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.calendar_today, size: 14),
+                    label: Text(
+                      _dateTo == null
+                          ? 'To'
+                          : DateFormatter.format(_dateTo!),
+                      maxLines: 1,
+                    ),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: _dateTo ?? DateTime.now(),
+                        firstDate: _dateFrom ?? DateTime(2020),
+                        lastDate: DateTime.now(),
+                        helpText: 'End date',
+                      );
+                      if (picked != null) {
+                        setState(() => _dateTo = picked);
+                      }
+                    },
+                  ),
+                ),
+                if (_dateFrom != null || _dateTo != null)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () =>
+                        setState(() { _dateFrom = null; _dateTo = null; }),
+                  ),
+              ],
+            ),
+
             // Apply button
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
-                  widget.onApply(_type, _category, _method);
+                  widget.onApply(_type, _category, _method, _dateFrom, _dateTo);
                   Navigator.pop(context);
                 },
                 child: const Text('Apply Filters'),

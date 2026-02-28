@@ -39,7 +39,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Parties'),
+        title: const Text('Contacts'),
         actions: [
           IconButton(
             icon: const Icon(Icons.search),
@@ -161,7 +161,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddEditSheet(context),
         icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Add Party'),
+        label: const Text('Add Contact'),
       ),
     );
   }
@@ -439,7 +439,7 @@ class _AddEditPartySheetState extends ConsumerState<_AddEditPartySheet> {
             // ── Header ──────────────────────────────────────────────────
             Row(
               children: [
-                Text(isEdit ? 'Edit Party' : 'Add Party',
+                Text(isEdit ? 'Edit Contact' : 'Add Contact',
                     style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
                 IconButton(
@@ -702,7 +702,7 @@ class _EmptyState extends StatelessWidget {
               color: Theme.of(context).colorScheme.outlineVariant),
           const SizedBox(height: AppSpacing.md),
           Text(
-            hasQuery ? 'No parties match' : 'No parties yet',
+            hasQuery ? 'No contacts match' : 'No contacts yet',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -717,7 +717,7 @@ class _EmptyState extends StatelessWidget {
             FilledButton.icon(
               onPressed: onAdd,
               icon: const Icon(Icons.person_add_outlined),
-              label: const Text('Add Party'),
+              label: const Text('Add Contact'),
             ),
           ],
         ],

@@ -260,6 +260,28 @@ class _BookingDetailView extends ConsumerWidget {
           },
         ),
       );
+    } else if (booking.status == BookingStatus.completed &&
+        booking.invoiceId != null) {
+      // Booking is done — show a shortcut to the linked invoice
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.base,
+          AppSpacing.xl,
+        ),
+        child: OutlinedButton.icon(
+          icon: const Icon(Icons.receipt_long_outlined),
+          label: const Text('View Invoice'),
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => InvoiceDetailScreen(invoiceId: booking.invoiceId!),
+              ),
+            );
+          },
+        ),
+      );
     }
     return null;
   }
@@ -669,6 +691,13 @@ class _AmountCard extends StatelessWidget {
                 isBold: true,
               ),
             ],
+            if (booking.invoiceId != null) ...[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Divider(height: 1),
+              ),
+              _LinkedInvoiceRow(invoiceId: booking.invoiceId!),
+            ],
           ],
         ),
       ),
@@ -707,6 +736,59 @@ class _AmountRow extends StatelessWidget {
               ),
         ),
       ],
+    );
+  }
+}
+
+// ── Linked Invoice Row ────────────────────────────────────────────────────────
+
+class _LinkedInvoiceRow extends ConsumerWidget {
+  const _LinkedInvoiceRow({required this.invoiceId});
+  final int invoiceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final invoiceAsync = ref.watch(invoiceByIdProvider(invoiceId));
+    return invoiceAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (invoice) {
+        if (invoice == null) return const SizedBox.shrink();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Invoice',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => InvoiceDetailScreen(invoiceId: invoiceId),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    invoice.invoiceNo,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

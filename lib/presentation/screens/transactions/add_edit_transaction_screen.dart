@@ -13,6 +13,7 @@ import '../../../data/models/transaction.dart';
 import '../../../data/services/suggestion_service.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/bill_provider.dart';
+import '../../providers/budget_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/suggestion_provider.dart';
@@ -310,6 +311,8 @@ class _AddEditTransactionScreenState
                   if (value != null) setState(() => _category = value);
                 },
               ),
+              if (_type.isExpense)
+                _BudgetHintRow(category: _category),
               const SizedBox(height: AppSpacing.lg),
             ],
 
@@ -1229,3 +1232,81 @@ class IndianCurrencyInputFormatter extends TextInputFormatter {
     return decPart.isEmpty ? formatted : '$formatted.$decPart';
   }
 }
+
+// ---------------------------------------------------------------------------
+// Budget hint row — shown below the category dropdown for expense transactions
+// ---------------------------------------------------------------------------
+
+/// Displays the current month's budget status for [category] inline on the
+/// add/edit transaction form. Hidden when no budget is set.
+class _BudgetHintRow extends ConsumerWidget {
+  const _BudgetHintRow({required this.category});
+  final String category;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final budgets =
+        ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
+    final budget = budgets.where((b) => b.category == category).firstOrNull;
+
+    if (budget == null) return const SizedBox.shrink();
+
+    final pct = budget.spentPercentage;
+    final isOver = budget.isOverBudget;
+    final isNear = budget.isNearLimit;
+
+    Color statusColor;
+    IconData statusIcon;
+    String statusText;
+
+    if (isOver) {
+      statusColor = context.colorScheme.error;
+      statusIcon = Icons.warning_amber_rounded;
+      statusText =
+          'Over budget by ₹${(budget.spentAmount - budget.budgetAmount).toStringAsFixed(0)}';
+    } else if (isNear) {
+      statusColor = Colors.orange;
+      statusIcon = Icons.info_outline;
+      statusText =
+          '${(pct * 100).toStringAsFixed(0)}% of budget used — nearing limit';
+    } else {
+      statusColor = context.colorScheme.outline;
+      statusIcon = Icons.savings_outlined;
+      statusText =
+          '₹${budget.spentAmount.toStringAsFixed(0)} of ₹${budget.budgetAmount.toStringAsFixed(0)} used (${(pct * 100).toStringAsFixed(0)}%)';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.xs, bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(statusIcon, size: AppSpacing.iconSm, color: statusColor),
+          const SizedBox(width: AppSpacing.xs),
+          Expanded(
+            child: Text(
+              statusText,
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: statusColor),
+            ),
+          ),
+          // Mini progress bar
+          SizedBox(
+            width: 60,
+            child: ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(AppSpacing.radiusFull),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 4,
+                backgroundColor:
+                    context.colorScheme.surfaceContainerHighest,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

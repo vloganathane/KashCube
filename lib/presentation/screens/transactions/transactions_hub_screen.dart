@@ -2,33 +2,76 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../parties/parties_screen.dart';
+import '../ledger/ledger_screen.dart';
+import '../loans/loans_screen.dart';
+import '../recurring/recurring_transactions_screen.dart';
+import 'transactions_screen.dart';
 
-/// Contacts hub — top-level entry point for people (parties).
-class ContactsHubScreen extends StatelessWidget {
-  const ContactsHubScreen({super.key});
+/// Transactions hub — entry point for all money-movement screens.
+class TransactionsHubScreen extends StatelessWidget {
+  const TransactionsHubScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Contacts'),
+        title: const Text('Transactions'),
         centerTitle: false,
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
           _HubSection(
-            title: 'People',
+            title: 'Activity',
             tiles: [
               _HubTile(
-                icon: Icons.people_outline,
-                label: 'Parties',
-                subtitle: 'Customers & vendors',
+                icon: Icons.receipt_long_outlined,
+                label: 'Transactions',
+                subtitle: 'All income & expenses',
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const PartiesScreen()),
+                    builder: (_) => const TransactionsScreen(),
+                  ),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.menu_book_outlined,
+                label: 'Ledger',
+                subtitle: 'Party-wise account book',
+                color: const Color(0xFF006064),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LedgerScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Credit',
+            tiles: [
+              _HubTile(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Loans & Credits',
+                subtitle: 'Lent, borrowed & udhar',
+                color: const Color(0xFFE65100),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LoansScreen(),
+                  ),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.event_repeat_outlined,
+                label: 'Recurring',
+                subtitle: 'Scheduled transactions',
+                color: const Color(0xFF0D47A1),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RecurringTransactionsScreen(),
+                  ),
                 ),
               ),
             ],
@@ -39,6 +82,8 @@ class ContactsHubScreen extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Private helpers (mirrors ContactsHubScreen for visual consistency)
 // ---------------------------------------------------------------------------
 
 class _HubSection extends StatelessWidget {

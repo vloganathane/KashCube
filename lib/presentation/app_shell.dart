@@ -12,7 +12,7 @@ import 'screens/contacts/contacts_hub_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
-import 'screens/transactions/transactions_screen.dart';
+import 'screens/transactions/transactions_hub_screen.dart';
 import 'widgets/speed_dial_fab.dart';
 import 'widgets/sms_confirmation_sheet.dart';
 
@@ -32,7 +32,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   static const _screens = [
     HomeScreen(),
-    TransactionsScreen(),
+    TransactionsHubScreen(),
     BusinessHubScreen(),
     ContactsHubScreen(),
     SettingsScreen(),

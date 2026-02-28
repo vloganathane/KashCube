@@ -421,108 +421,228 @@ class _AccountBreakdownSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountsAsync = ref.watch(accountBalancesProvider);
-    final colors = context.kashColors;
+    final accountsAsync    = ref.watch(accountBalancesProvider);
+    final lentAsync        = ref.watch(totalOutstandingLentProvider);
+    final borrowedAsync    = ref.watch(totalOutstandingBorrowedProvider);
+    final billsAsync       = ref.watch(totalMonthlyScheduledExpenseProvider);
+    final colors           = context.kashColors;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xxl),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 36, height: 4,
-              margin: const EdgeInsets.only(bottom: AppSpacing.md),
-              decoration: BoxDecoration(
-                color: context.colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(2),
+    final lent     = lentAsync.valueOrNull ?? 0.0;
+    final borrowed = borrowedAsync.valueOrNull ?? 0.0;
+    final bills    = billsAsync.valueOrNull ?? 0.0;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, scrollCtrl) => SingleChildScrollView(
+        controller: scrollCtrl,
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xxl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: context.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          Text('Account Balances',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
-          const SizedBox(height: AppSpacing.xs),
-          Text('All-time balance per payment method',
-              style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: AppSpacing.md),
-          accountsAsync.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(AppSpacing.xxl),
-              child: Center(child: CircularProgressIndicator()),
+
+            // ── Section 1: Cash Accounts ──────────────────────────────────
+            _SheetSectionHeader(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'Cash Accounts',
             ),
-            error: (e, _) => Text('Error: $e'),
-            data: (accounts) {
-              final active = accounts.where((a) => a.hasActivity).toList();
-              if (active.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-                  child: Center(
-                    child: Text('No transactions yet.\nAdd transactions to see balances here.',
-                        textAlign: TextAlign.center,
-                        style: context.textTheme.bodyMedium?.copyWith(
-                            color: context.colorScheme.onSurfaceVariant)),
-                  ),
-                );
-              }
-              return Column(
-                children: [
-                  ...active.map((a) {
-                    final bal = a.runningBalance;
-                    final balColor = bal >= 0 ? colors.income : colors.expense;
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor:
-                            context.colorScheme.secondaryContainer,
-                        radius: 18,
-                        child: Icon(_paymentMethodIcon(a.method),
-                            size: 18,
-                            color: context.colorScheme.onSecondaryContainer),
-                      ),
-                      title: Text(a.method.label,
-                          style: context.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w500)),
-                      subtitle: Text(
-                        '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
-                        '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
-                        style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colorScheme.onSurfaceVariant),
-                      ),
-                      trailing: Text(
-                        CurrencyFormatter.format(bal),
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: balColor,
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'RobotoMono',
+            const SizedBox(height: AppSpacing.xs),
+            accountsAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(AppSpacing.xxl),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, _) => Text('Error: $e'),
+              data: (accounts) {
+                final active = accounts.where((a) => a.hasActivity).toList();
+                final cashTotal =
+                    active.fold<double>(0.0, (s, a) => s + a.runningBalance);
+                if (active.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    child: Text(
+                      'No transactions yet. Add transactions to see balances.',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                  );
+                }
+                return Column(
+                  children: [
+                    ...active.map((a) {
+                      final bal = a.runningBalance;
+                      final balColor = bal >= 0 ? colors.income : colors.expense;
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: CircleAvatar(
+                          backgroundColor: context.colorScheme.secondaryContainer,
+                          radius: 18,
+                          child: Icon(_paymentMethodIcon(a.method),
+                              size: 18,
+                              color: context.colorScheme.onSecondaryContainer),
                         ),
-                      ),
-                    );
-                  }),
-                  const Divider(),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text('Total',
-                        style: context.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700)),
-                    trailing: Text(
-                      CurrencyFormatter.format(
-                          active.fold(0.0, (s, a) => s + a.runningBalance)),
-                      style: context.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'RobotoMono',
-                      ),
+                        title: Text(a.method.label,
+                            style: context.textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w500)),
+                        subtitle: Text(
+                          '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
+                          '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
+                          style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.onSurfaceVariant),
+                        ),
+                        trailing: Text(
+                          CurrencyFormatter.format(bal),
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: balColor,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'RobotoMono',
+                          ),
+                        ),
+                      );
+                    }),
+                    const Divider(height: 1),
+                    _SheetTotalRow(
+                      label: 'Cash Total',
+                      value: cashTotal,
+                      colors: colors,
+                    ),
+                  ],
+                );
+              },
+            ),
+
+            // ── Section 2: Lending & Loans ────────────────────────────────
+            if (lent > 0 || borrowed > 0) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _SheetSectionHeader(
+                icon: Icons.handshake_outlined,
+                label: 'Lending & Loans',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              if (lent > 0)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        colors.income.withAlpha(30),
+                    radius: 18,
+                    child: Icon(Icons.arrow_upward,
+                        size: 16, color: colors.income),
+                  ),
+                  title: Text('To Receive',
+                      style: context.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w500)),
+                  subtitle: Text('Outstanding lending — others owe you',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant)),
+                  trailing: Text(
+                    '+${CurrencyFormatter.format(lent)}',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: colors.income,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'RobotoMono',
                     ),
                   ),
-                ],
-              );
-            },
-          ),
-        ],
+                ),
+              if (borrowed > 0)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor:
+                        colors.expense.withAlpha(30),
+                    radius: 18,
+                    child: Icon(Icons.arrow_downward,
+                        size: 16, color: colors.expense),
+                  ),
+                  title: Text('To Repay',
+                      style: context.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w500)),
+                  subtitle: Text('Outstanding loans — you owe others',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant)),
+                  trailing: Text(
+                    '-${CurrencyFormatter.format(borrowed)}',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: colors.expense,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'RobotoMono',
+                    ),
+                  ),
+                ),
+            ],
+
+            // ── Section 3: Recurring Bills ────────────────────────────────
+            if (bills > 0) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _SheetSectionHeader(
+                icon: Icons.event_repeat_outlined,
+                label: 'Recurring Bills',
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor:
+                      context.colorScheme.tertiaryContainer,
+                  radius: 18,
+                  child: Icon(Icons.calendar_month_outlined,
+                      size: 16,
+                      color: context.colorScheme.onTertiaryContainer),
+                ),
+                title: Text('Monthly Committed',
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w500)),
+                subtitle: Text('Scheduled bills & recurring payments',
+                    style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant)),
+                trailing: Text(
+                  '${CurrencyFormatter.format(bills)}/mo',
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'RobotoMono',
+                  ),
+                ),
+              ),
+            ],
+
+            // ── Net Worth row ─────────────────────────────────────────────
+            if (lent > 0 || borrowed > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              const Divider(height: 1),
+              const SizedBox(height: AppSpacing.xs),
+              accountsAsync.whenOrNull(
+                data: (accounts) {
+                  final cashTotal = accounts
+                      .where((a) => a.hasActivity)
+                      .fold<double>(0.0, (s, a) => s + a.runningBalance);
+                  final netWorth = cashTotal + lent - borrowed;
+                  return _SheetTotalRow(
+                    label: 'Net Worth',
+                    sublabel: 'Cash + receivables − liabilities',
+                    value: netWorth,
+                    colors: colors,
+                    large: true,
+                  );
+                },
+              ) ?? const SizedBox.shrink(),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -544,6 +664,90 @@ class _AccountBreakdownSheet extends ConsumerWidget {
       case PaymentMethod.cheque:
         return Icons.receipt_long_outlined;
     }
+  }
+}
+
+// ─── Sheet helpers ────────────────────────────────────────────────────────────
+
+class _SheetSectionHeader extends StatelessWidget {
+  const _SheetSectionHeader({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: context.colorScheme.primary),
+        const SizedBox(width: AppSpacing.xs),
+        Text(
+          label,
+          style: context.textTheme.labelMedium?.copyWith(
+            color: context.colorScheme.primary,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.4,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SheetTotalRow extends StatelessWidget {
+  const _SheetTotalRow({
+    required this.label,
+    required this.value,
+    required this.colors,
+    this.sublabel,
+    this.large = false,
+  });
+  final String label;
+  final String? sublabel;
+  final double value;
+  final KashCubeColors colors;
+  final bool large;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = value >= 0 ? colors.income : colors.expense;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: (large
+                          ? context.textTheme.titleSmall
+                          : context.textTheme.bodyMedium)
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (sublabel != null)
+                  Text(
+                    sublabel!,
+                    style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            CurrencyFormatter.format(value),
+            style: (large
+                    ? context.textTheme.titleSmall
+                    : context.textTheme.bodyMedium)
+                ?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

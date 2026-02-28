@@ -10,7 +10,10 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/repositories/transaction_repository.dart';
+import '../../providers/booking_provider.dart';
 import '../../providers/report_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../bookings/bookings_screen.dart';
 
 /// Reports screen with monthly P&L, category breakdowns, trends, and top parties.
 class ReportsScreen extends ConsumerWidget {
@@ -151,16 +154,30 @@ class _MonthSelector extends ConsumerWidget {
 }
 
 /// Main scrollable reports body.
-class _ReportsBody extends StatelessWidget {
+class _ReportsBody extends ConsumerWidget {
   const _ReportsBody({required this.pnl});
 
   final MonthlyPnL pnl;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final hasData = pnl.totalIncome > 0 || pnl.totalExpense > 0;
+    final isBusiness = ref.watch(businessModeProvider);
+    final month = ref.watch(reportMonthProvider);
+    final bookingStats = isBusiness
+        ? ref.watch(bookingMonthStatsProvider(month))
+        : null;
 
     if (!hasData) {
+      // Even with no transactions, show booking overview if business mode is on
+      if (bookingStats != null) {
+        return ListView(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          children: [
+            _BookingsOverviewCard(stats: bookingStats),
+          ],
+        );
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -213,6 +230,10 @@ class _ReportsBody extends StatelessWidget {
         ],
         const _MonthlyTrendCard(),
         const SizedBox(height: AppSpacing.base),
+        if (bookingStats != null) ...[
+          _BookingsOverviewCard(stats: bookingStats),
+          const SizedBox(height: AppSpacing.base),
+        ],
         if (pnl.topParties.isNotEmpty) ...[
           _TopPartiesCard(parties: pnl.topParties),
           const SizedBox(height: AppSpacing.base),
@@ -807,6 +828,206 @@ class _TopPartiesCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Bookings Overview Card ───────────────────────────────────────────────────
+
+class _BookingsOverviewCard extends StatelessWidget {
+  const _BookingsOverviewCard({required this.stats});
+
+  final BookingMonthStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final colors = context.kashColors;
+
+    final pipeline = stats.confirmedCount + stats.pendingCount;
+    final totalBookings = stats.completedCount + pipeline + stats.noShowCount;
+    final noShowRate = totalBookings > 0
+        ? (stats.noShowCount / totalBookings * 100).toStringAsFixed(0)
+        : '0';
+
+    if (!stats.hasData) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BookingsCardHeader(cs: cs, tt: tt),
+              const SizedBox(height: AppSpacing.md),
+              Center(
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.base),
+                  child: Text(
+                    'No bookings this month',
+                    style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _BookingsCardHeader(cs: cs, tt: tt),
+            const SizedBox(height: AppSpacing.md),
+
+            // Stats grid
+            Row(
+              children: [
+                Expanded(
+                  child: _BookingStat(
+                    label: 'Completed',
+                    value: '${stats.completedCount}',
+                    sub: CurrencyFormatter.formatCompact(stats.completedRevenue),
+                    icon: Icons.check_circle_outline,
+                    color: colors.income,
+                    tt: tt,
+                  ),
+                ),
+                Expanded(
+                  child: _BookingStat(
+                    label: 'Pipeline',
+                    value: '$pipeline',
+                    sub: '${stats.confirmedCount} confirmed',
+                    icon: Icons.pending_outlined,
+                    color: cs.primary,
+                    tt: tt,
+                  ),
+                ),
+                Expanded(
+                  child: _BookingStat(
+                    label: 'No-shows',
+                    value: '${stats.noShowCount}',
+                    sub: '$noShowRate% rate',
+                    icon: Icons.person_off_outlined,
+                    color: colors.expense,
+                    tt: tt,
+                  ),
+                ),
+              ],
+            ),
+
+            // Top service
+            if (stats.topService != null) ...[
+              const Divider(height: AppSpacing.xl),
+              Row(
+                children: [
+                  Icon(Icons.star_outline,
+                      size: AppSpacing.iconSm, color: cs.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Top service: ',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  Expanded(
+                    child: Text(
+                      stats.topService!,
+                      style:
+                          tt.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BookingsCardHeader extends StatelessWidget {
+  const _BookingsCardHeader({required this.cs, required this.tt});
+  final ColorScheme cs;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(Icons.calendar_month_outlined,
+            size: AppSpacing.iconSm, color: cs.primary),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            'Bookings Overview',
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BookingsScreen()),
+          ),
+          child: const Text('View All'),
+        ),
+      ],
+    );
+  }
+}
+
+class _BookingStat extends StatelessWidget {
+  const _BookingStat({
+    required this.label,
+    required this.value,
+    required this.sub,
+    required this.icon,
+    required this.color,
+    required this.tt,
+  });
+
+  final String label;
+  final String value;
+  final String sub;
+  final IconData icon;
+  final Color color;
+  final TextTheme tt;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          value,
+          style: tt.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            fontFamily: 'RobotoMono',
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: tt.bodySmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(
+          sub,
+          style: tt.bodySmall
+              ?.copyWith(fontSize: 10, color: context.colorScheme.outline),
+        ),
+      ],
     );
   }
 }

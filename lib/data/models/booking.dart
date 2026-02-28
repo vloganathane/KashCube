@@ -234,9 +234,14 @@ class Booking extends Equatable {
            DateTime.now().isAfter(startDatetime);
   }
 
-  /// Returns formatted duration string
+  /// Returns formatted duration string.
+  /// ≥ 1440 min (24 h) → "X nights",  ≥ 60 min → "X hrs",  else → "X min"
   String get durationLabel {
     if (durationMinutes == null) return '';
+    if (durationMinutes! >= 1440) {
+      final nights = (durationMinutes! / 1440).round();
+      return '$nights ${nights == 1 ? 'night' : 'nights'}';
+    }
     if (durationMinutes! < 60) {
       return '$durationMinutes min';
     }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/booking.dart';
 import '../../data/repositories/booking_repository_impl.dart';
+import '../../data/services/notification_service.dart';
 import '../../domain/repositories/booking_repository.dart';
 
 // ── Repository provider ──────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
   }
 
   final BookingRepository _repo;
+  final _notifications = NotificationService.instance;
 
   Future<void> load() async {
     state = const AsyncValue.loading();
@@ -54,21 +56,29 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
   Future<void> markAsConfirmed(int id) async {
     await _repo.markAsConfirmed(id);
     await load();
+    // Schedule 24 h-ahead reminder
+    final booking = await _repo.getById(id);
+    if (booking != null) {
+      await _notifications.scheduleBookingReminder(booking);
+    }
   }
 
   Future<void> markAsCompleted(int id) async {
     await _repo.markAsCompleted(id);
     await load();
+    await _notifications.cancelBookingReminder(id);
   }
 
   Future<void> markAsCancelled(int id) async {
     await _repo.markAsCancelled(id);
     await load();
+    await _notifications.cancelBookingReminder(id);
   }
 
   Future<void> markAsNoShow(int id) async {
     await _repo.markAsNoShow(id);
     await load();
+    await _notifications.cancelBookingReminder(id);
   }
 
   Future<void> linkInvoice(int bookingId, int invoiceId) async {
@@ -149,4 +159,76 @@ final filteredBookingsProvider = Provider<AsyncValue<List<Booking>>>((ref) {
 
     return filtered;
   });
+});
+
+// ── Booking month stats ───────────────────────────────────────────────────────
+
+/// Aggregated booking stats for a given calendar month (used by Reports screen).
+class BookingMonthStats {
+  const BookingMonthStats({
+    this.completedCount = 0,
+    this.completedRevenue = 0,
+    this.confirmedCount = 0,
+    this.pendingCount = 0,
+    this.noShowCount = 0,
+    this.topService,
+  });
+
+  final int completedCount;
+  final double completedRevenue;
+  final int confirmedCount;
+  final int pendingCount;
+  final int noShowCount;
+  final String? topService;
+
+  bool get hasData =>
+      completedCount > 0 ||
+      confirmedCount > 0 ||
+      pendingCount > 0 ||
+      noShowCount > 0;
+}
+
+/// Derives booking stats for a given [month] from the already-loaded
+/// [bookingsProvider].  Only considers business-type bookings.
+final bookingMonthStatsProvider =
+    Provider.family<BookingMonthStats, DateTime>((ref, month) {
+  final bookings = ref.watch(bookingsProvider).valueOrNull ?? [];
+
+  final monthStart = DateTime(month.year, month.month, 1);
+  final monthEnd = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+
+  final inMonth = bookings.where((b) {
+    return b.bookingType == BookingType.business &&
+        !b.startDatetime.isBefore(monthStart) &&
+        !b.startDatetime.isAfter(monthEnd);
+  }).toList();
+
+  final completed =
+      inMonth.where((b) => b.status == BookingStatus.completed).toList();
+  final revenue = completed.fold<double>(0, (s, b) => s + b.totalAmount);
+
+  final confirmed =
+      inMonth.where((b) => b.status == BookingStatus.confirmed).length;
+  final pending =
+      inMonth.where((b) => b.status == BookingStatus.pending).length;
+  final noShow =
+      inMonth.where((b) => b.status == BookingStatus.noShow).length;
+
+  // Top service by frequency across all bookings (not just this month)
+  final serviceFreq = <String, int>{};
+  for (final b in bookings.where((b) => b.bookingType == BookingType.business)) {
+    serviceFreq[b.serviceName] = (serviceFreq[b.serviceName] ?? 0) + 1;
+  }
+  final topServiceEntry = serviceFreq.entries.isEmpty
+      ? null
+      : serviceFreq.entries.reduce((a, b) => a.value >= b.value ? a : b);
+
+  return BookingMonthStats(
+    completedCount: completed.length,
+    completedRevenue: revenue,
+    confirmedCount: confirmed,
+    pendingCount: pending,
+    noShowCount: noShow,
+    topService: topServiceEntry?.key,
+  );
 });

@@ -4,6 +4,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../../core/utils/currency_formatter.dart';
+import '../../data/models/booking.dart';
 import '../../presentation/providers/upcoming_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -26,6 +27,13 @@ const _channelDesc =
 const _billBase = 10000;
 const _loanBase = 20000;
 const _dayBeforeOffset = 5000;
+// Bookings: 30_000 + booking.id
+const _bookingBase = 30000;
+
+const _bookingChannelId = 'kash_bookings';
+const _bookingChannelName = 'Booking Reminders';
+const _bookingChannelDesc =
+    'Reminders 24 hours before confirmed appointment or reservation';
 
 class NotificationService {
   NotificationService._();
@@ -139,6 +147,75 @@ class NotificationService {
 
     debugPrint(
         '[Notifications] Scheduled ${items.where((i) => !i.isOverdue).length} upcoming reminders');
+  }
+
+  // ── Bookings ───────────────────────────────────────────────────────────────
+
+  /// Schedules a reminder notification 24 h before [booking.startDatetime].
+  ///
+  /// If the booking starts in less than 24 h (but still in the future) the
+  /// notification is scheduled for now + 1 minute so the user still gets
+  /// an immediate heads-up. No-ops if startDatetime is already in the past.
+  Future<void> scheduleBookingReminder(Booking booking) async {
+    if (!_initialized) await initialize();
+
+    final id = booking.id;
+    if (id == null) return;
+
+    final start = tz.TZDateTime.from(booking.startDatetime, tz.local);
+    final now = tz.TZDateTime.now(tz.local);
+
+    if (start.isBefore(now)) return; // already past
+
+    final target = start.subtract(const Duration(hours: 24));
+    final fireAt = target.isAfter(now)
+        ? target
+        : now.add(const Duration(minutes: 1)); // less than 24 h away
+
+    final title = booking.customerName.isNotEmpty
+        ? '${booking.serviceName} — ${booking.customerName}'
+        : booking.serviceName;
+
+    final timeStr =
+        '${booking.startDatetime.hour % 12 == 0 ? 12 : booking.startDatetime.hour % 12}'
+        ':${booking.startDatetime.minute.toString().padLeft(2, '0')} '
+        '${booking.startDatetime.hour < 12 ? 'AM' : 'PM'}';
+
+    final body = booking.totalAmount > 0
+        ? 'Tomorrow at $timeStr · ${CurrencyFormatter.format(booking.totalAmount)}'
+        : 'Tomorrow at $timeStr';
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _bookingChannelId,
+        _bookingChannelName,
+        channelDescription: _bookingChannelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        styleInformation: const DefaultStyleInformation(true, true),
+      ),
+    );
+
+    await _plugin.zonedSchedule(
+      _bookingBase + id,
+      title,
+      body,
+      fireAt,
+      details,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+
+    debugPrint('[Notifications] Booking reminder scheduled for id=$id at $fireAt');
+  }
+
+  /// Cancels the 24-h reminder for the given booking.
+  Future<void> cancelBookingReminder(int bookingId) async {
+    if (!_initialized) await initialize();
+    await _plugin.cancel(_bookingBase + bookingId);
+    debugPrint('[Notifications] Booking reminder cancelled for id=$bookingId');
   }
 
   // ── Cancel ─────────────────────────────────────────────────────────────────

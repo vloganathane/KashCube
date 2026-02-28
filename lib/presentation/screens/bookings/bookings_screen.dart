@@ -6,8 +6,12 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/booking.dart';
+import '../../../data/models/invoice.dart';
+import '../../../data/services/invoice_number_service.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../invoices/invoice_detail_screen.dart';
 import 'booking_detail_screen.dart';
 import 'create_booking_screen.dart';
 
@@ -572,7 +576,63 @@ class _ActionButton extends ConsumerWidget {
               );
             }
           } else {
-            // TODO: Create invoice and navigate
+            // Mark booking as completed
+            await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+
+            // Generate invoice from booking
+            final invoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
+            final now = DateTime.now();
+            final amountToInvoice = booking.totalAmount - booking.advanceAmount;
+
+            final invoice = Invoice(
+              invoiceNo: invoiceNo,
+              businessId: booking.businessId,
+              customerPartyId: booking.customerPartyId,
+              customerName: booking.customerName,
+              status: InvoiceStatus.draft,
+              issueDate: now,
+              dueDate: now,
+              subtotal: amountToInvoice,
+              taxTotal: 0,
+              discountPct: 0,
+              total: amountToInvoice,
+              paidAmount: 0,
+              notes: booking.notes != null && booking.notes!.isNotEmpty
+                  ? 'Booking: \${booking.bookingRef}\n\${booking.notes}'
+                  : 'Booking: \${booking.bookingRef}',
+              items: [],
+              createdAt: now,
+              updatedAt: now,
+            );
+
+            final invoiceItem = InvoiceItem(
+              invoiceId: 0,
+              itemName: booking.serviceName,
+              description: 'Service completed on \${DateFormat('d MMM yyyy').format(booking.startDatetime)}'
+                  '\${booking.advanceAmount > 0 ? ' (Advance paid: \${CurrencyFormatter.format(booking.advanceAmount)})' : ''}',
+              qty: 1,
+              unitPrice: amountToInvoice,
+              discountPct: 0,
+              lineTotal: amountToInvoice,
+            );
+
+            final invoiceId = await ref.read(invoicesProvider.notifier).add(
+              invoice,
+              [invoiceItem],
+            );
+
+            await ref.read(bookingsProvider.notifier).linkInvoice(
+              booking.id!,
+              invoiceId,
+            );
+
+            if (context.mounted) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => InvoiceDetailScreen(invoiceId: invoiceId),
+                ),
+              );
+            }
           }
         },
         icon: Icon(

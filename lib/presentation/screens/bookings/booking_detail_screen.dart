@@ -174,7 +174,7 @@ class _BookingDetailView extends ConsumerWidget {
           onPressed: () async {
             await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
             if (!context.mounted) return;
-            await _sendWhatsAppConfirmation();
+            await _sendWhatsAppConfirmation(ref);
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Booking confirmed')),
@@ -264,12 +264,32 @@ class _BookingDetailView extends ConsumerWidget {
     return null;
   }
 
-  Future<void> _sendWhatsAppConfirmation() async {
-    // TODO: Link to party to get phone number
-    // For now, show a message that WhatsApp will be implemented
+  Future<void> _sendWhatsAppConfirmation(WidgetRef ref) async {
+    // Look up party phone from customerPartyId or by name
+    final parties = ref.read(partiesProvider).valueOrNull ?? [];
+    Party? party;
+    if (booking.customerPartyId != null) {
+      party = parties.cast<Party?>().firstWhere(
+        (p) => p?.id == booking.customerPartyId,
+        orElse: () => null,
+      );
+    }
+    party ??= parties.cast<Party?>().firstWhere(
+      (p) => p?.name == booking.customerName,
+      orElse: () => null,
+    );
+
+    final phone = party?.phoneNumber;
+    if (phone == null || phone.isEmpty) return; // No phone — skip silently
+
     final message = _buildConfirmationMessage();
-    // When we have the phone number, use: whatsapp://send?phone=$phone&text=$message
-    debugPrint('WhatsApp message: $message');
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final uri = Uri.parse(
+      'https://wa.me/$cleanPhone?text=\${Uri.encodeComponent(message)}',
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   String _buildConfirmationMessage() {

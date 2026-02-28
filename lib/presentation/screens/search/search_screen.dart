@@ -6,9 +6,12 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/booking.dart';
 import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
+import '../../providers/booking_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../bookings/booking_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
@@ -92,6 +95,7 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsync = ref.watch(transactionsProvider);
     final ledgerAsync = ref.watch(ledgerSummariesProvider);
+    final bookingsAsync = ref.watch(bookingsProvider);
 
     return transactionsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -117,7 +121,21 @@ class _SearchResults extends ConsumerWidget {
           return e.partyName.toLowerCase().contains(q);
         }).toList();
 
-        final totalResults = matchedTxns.length + matchedLedger.length;
+        // Filter bookings by customer, service, or ref
+        final bookings = bookingsAsync.valueOrNull ?? <Booking>[];
+        final matchedBookings = bookings.where((b) {
+          final customer = b.customerName.toLowerCase();
+          final service = b.serviceName.toLowerCase();
+          final ref = b.bookingRef?.toLowerCase() ?? '';
+          final notes = b.notes?.toLowerCase() ?? '';
+          return customer.contains(q) ||
+              service.contains(q) ||
+              ref.contains(q) ||
+              notes.contains(q);
+        }).toList();
+
+        final totalResults =
+            matchedTxns.length + matchedLedger.length + matchedBookings.length;
 
         if (totalResults == 0) {
           return Center(
@@ -181,6 +199,32 @@ class _SearchResults extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                   child: Text(
                     '+ ${matchedLedger.length - 20} more entries',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+            ],
+
+            // Bookings section
+            if (matchedBookings.isNotEmpty) ...[
+              if (matchedTxns.isNotEmpty || matchedLedger.isNotEmpty)
+                const SizedBox(height: AppSpacing.base),
+              _SectionHeader(
+                title: 'Bookings',
+                count: matchedBookings.length,
+                icon: Icons.calendar_month_outlined,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              ...matchedBookings
+                  .take(20)
+                  .map((b) => _BookingResultTile(booking: b)),
+              if (matchedBookings.length > 20)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text(
+                    '+ ${matchedBookings.length - 20} more bookings',
                     style: context.textTheme.bodySmall?.copyWith(
                       color: context.colorScheme.outline,
                     ),
@@ -339,6 +383,73 @@ class _LedgerTile extends StatelessWidget {
             builder: (_) => const LedgerScreen(),
           ),
         );
+      },
+    );
+  }
+}
+
+class _BookingResultTile extends StatelessWidget {
+  const _BookingResultTile({required this.booking});
+
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (booking.status) {
+      BookingStatus.confirmed => Colors.green,
+      BookingStatus.pending => Colors.orange,
+      BookingStatus.completed => context.colorScheme.primary,
+      BookingStatus.cancelled => context.colorScheme.outline,
+      BookingStatus.noShow => context.colorScheme.error,
+    };
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.primaryContainer,
+        child: Icon(
+          Icons.calendar_month_outlined,
+          color: context.colorScheme.onPrimaryContainer,
+          size: AppSpacing.iconMd,
+        ),
+      ),
+      title: Text(
+        booking.customerName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        '${booking.serviceName} · ${DateFormatter.format(booking.startDatetime)}'
+        '${booking.bookingRef != null ? ' · ${booking.bookingRef}' : ''}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 2,
+        ),
+        decoration: BoxDecoration(
+          color: statusColor.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+        ),
+        child: Text(
+          booking.status.label,
+          style: context.textTheme.labelSmall?.copyWith(
+            color: statusColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      onTap: () {
+        if (booking.id != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+            ),
+          );
+        }
       },
     );
   }

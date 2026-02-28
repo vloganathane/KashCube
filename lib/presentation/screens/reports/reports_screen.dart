@@ -21,11 +21,30 @@ import '../bookings/bookings_screen.dart';
 import 'budget_screen.dart';
 
 /// Reports screen with monthly P&L, category breakdowns, trends, and top parties.
-class ReportsScreen extends ConsumerWidget {
+class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends ConsumerState<ReportsScreen> {
+  Future<void> _refresh() {
+    ref.invalidate(monthlyPnLProvider);
+    ref.invalidate(monthlyTotalsProvider);
+    ref.invalidate(dailyTotalsProvider);
+    ref.invalidate(pnlForMonthProvider);
+    ref.invalidate(ytdSummaryProvider);
+    ref.invalidate(paymentMethodSplitProvider);
+    ref.invalidate(categoryTransactionsProvider);
+    ref.invalidate(monthlyTotalsForCountProvider);
+    ref.invalidate(allTimeInvestmentProvider);
+    ref.invalidate(currentMonthBudgetsProvider);
+    return Future.value();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final month = ref.watch(reportMonthProvider);
     final mode = ref.watch(reportModeProvider);
     final pnlAsync = ref.watch(monthlyPnLProvider);
@@ -39,10 +58,13 @@ class ReportsScreen extends ConsumerWidget {
           _MonthSelector(month: month),
           _ModeFilter(selectedMode: mode),
           Expanded(
-            child: pnlAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-              data: (pnl) => _ReportsBody(pnl: pnl),
+            child: RefreshIndicator(
+              onRefresh: _refresh,
+              child: pnlAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+                data: (pnl) => _ReportsBody(pnl: pnl),
+              ),
             ),
           ),
         ],
@@ -208,42 +230,52 @@ class _ReportsBody extends ConsumerWidget {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
         return ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.base),
           children: [
             _BookingsOverviewCard(stats: bookingStats),
           ],
         );
       }
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.bar_chart_outlined,
-              size: 64,
-              color: context.colorScheme.outlineVariant,
-            ),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              'No transactions this month',
-              style: context.textTheme.titleMedium?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
+      return LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: constraints.maxHeight,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.bar_chart_outlined,
+                    size: 64,
+                    color: context.colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+                  Text(
+                    'No transactions this month',
+                    style: context.textTheme.titleMedium?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Add transactions to see your financial reports',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              'Add transactions to see your financial reports',
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: context.colorScheme.outline,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+          ),
         ),
       );
     }
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
         if (ytd != null &&

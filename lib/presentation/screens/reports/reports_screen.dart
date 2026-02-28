@@ -201,6 +201,9 @@ class _ReportsBody extends ConsumerWidget {
     final allTimeInv =
         ref.watch(allTimeInvestmentProvider).valueOrNull;
 
+    // Report mode filter ('personal', 'business', or null = All)
+    final reportMode = ref.watch(reportModeProvider);
+
     if (!hasData) {
       // Even with no transactions, show booking overview if business mode is on
       if (bookingStats != null) {
@@ -291,6 +294,10 @@ class _ReportsBody extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.base),
         ],
+        if (pnl.totalIncome > 0 && pnl.expenseByCat.isNotEmpty) ...[  
+          _CashflowWaterfallCard(pnl: pnl),
+          const SizedBox(height: AppSpacing.base),
+        ],
         const _MonthlyTrendCard(),
         const SizedBox(height: AppSpacing.base),
         const _WeeklyPatternCard(),
@@ -311,7 +318,11 @@ class _ReportsBody extends ConsumerWidget {
           _BookingsOverviewCard(stats: bookingStats),
           const SizedBox(height: AppSpacing.base),
         ],
-        if (pnl.topParties.isNotEmpty) ...[
+if (reportMode == 'business') ...[  
+          _GstSummaryCard(pnl: pnl),
+          const SizedBox(height: AppSpacing.base),
+        ],
+        if (pnl.topParties.isNotEmpty) ...[  
           _TopPartiesCard(parties: pnl.topParties),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -900,6 +911,395 @@ class _TrendLegendDot extends StatelessWidget {
             style: context.textTheme.labelSmall
                 ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cashflow Waterfall Card (item 2)
+// ---------------------------------------------------------------------------
+
+class _CashflowWaterfallCard extends StatelessWidget {
+  const _CashflowWaterfallCard({required this.pnl});
+
+  final MonthlyPnL pnl;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final colors = context.kashColors;
+
+    final sortedExpenses = pnl.expenseByCat.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final topExpenses = sortedExpenses.take(5).toList();
+    final otherTotal = sortedExpenses.length > 5
+        ? sortedExpenses.skip(5).fold(0.0, (s, e) => s + e.value)
+        : 0.0;
+
+    final steps = <({String label, double fromY, double toY, Color color})>[];
+
+    steps.add((
+      label: 'Income',
+      fromY: 0,
+      toY: pnl.totalIncome,
+      color: colors.income,
+    ));
+
+    double running = pnl.totalIncome;
+    for (final e in topExpenses) {
+      final bottom = (running - e.value).clamp(0.0, double.infinity);
+      steps.add((
+        label: e.key.split(' ').first,
+        fromY: bottom,
+        toY: running,
+        color: CategoryHelper.getColor(e.key).withValues(alpha: 0.85),
+      ));
+      running -= e.value;
+    }
+    if (otherTotal > 0) {
+      final bottom = (running - otherTotal).clamp(0.0, double.infinity);
+      steps.add((
+        label: 'Other',
+        fromY: bottom,
+        toY: running,
+        color: cs.outlineVariant,
+      ));
+      running -= otherTotal;
+    }
+
+    final net = pnl.totalIncome - pnl.totalExpense;
+    steps.add((
+      label: 'Net',
+      fromY: 0,
+      toY: net.abs(),
+      color: net >= 0 ? colors.income : colors.expense,
+    ));
+
+    final interval =
+        (pnl.totalIncome / 3).ceilToDouble().clamp(1.0, double.infinity);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.waterfall_chart,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Cashflow Waterfall',
+                        style: tt.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text('Income  →  Expenses  →  Savings',
+                        style: tt.labelSmall
+                            ?.copyWith(color: cs.onSurfaceVariant)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            SizedBox(
+              height: 220,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: pnl.totalIncome * 1.1,
+                  minY: net < 0 ? net * 1.1 : 0,
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, _, rod, _) {
+                        final step = steps[group.x];
+                        final amount = (rod.toY - rod.fromY).abs();
+                        return BarTooltipItem(
+                          '${step.label}\n${CurrencyFormatter.formatCompact(amount)}',
+                          TextStyle(
+                            color: step.color,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 28,
+                        getTitlesWidget: (value, meta) {
+                          final i = value.toInt();
+                          if (i < 0 || i >= steps.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              steps[i].label,
+                              style: tt.bodySmall?.copyWith(fontSize: 9),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 52,
+                        interval: interval,
+                        getTitlesWidget: (value, meta) => Text(
+                          CurrencyFormatter.formatCompact(value),
+                          style: tt.bodySmall?.copyWith(fontSize: 9),
+                        ),
+                      ),
+                    ),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: interval,
+                    getDrawingHorizontalLine: (value) => FlLine(
+                      color: cs.outlineVariant.withValues(alpha: 0.4),
+                      strokeWidth: 1,
+                    ),
+                  ),
+                  borderData: FlBorderData(show: false),
+                  barGroups: List.generate(steps.length, (i) {
+                    final s = steps[i];
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          fromY: s.fromY,
+                          toY: s.toY,
+                          color: s.color,
+                          width: 18,
+                          borderRadius: s.fromY == 0
+                              ? const BorderRadius.vertical(
+                                  top: Radius.circular(AppSpacing.radiusSm))
+                              : const BorderRadius.vertical(
+                                  top: Radius.circular(AppSpacing.radiusSm),
+                                  bottom:
+                                      Radius.circular(AppSpacing.radiusSm)),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('Net: ',
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  net >= 0
+                      ? '+${CurrencyFormatter.formatCompact(net)}'
+                      : CurrencyFormatter.formatCompact(net),
+                  style: tt.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'RobotoMono',
+                    color: net >= 0 ? colors.income : colors.expense,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GST Estimator Card (item 15) — shown in Business mode only
+// ---------------------------------------------------------------------------
+
+class _GstSummaryCard extends StatelessWidget {
+  const _GstSummaryCard({required this.pnl});
+
+  final MonthlyPnL pnl;
+
+  static const _slabs = <({String label, double rate})>[
+    (label: '5%', rate: 0.05),
+    (label: '12%', rate: 0.12),
+    (label: '18%', rate: 0.18),
+    (label: '28%', rate: 0.28),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    final tt = context.textTheme;
+    final colors = context.kashColors;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.receipt_outlined,
+                    size: AppSpacing.iconSm, color: cs.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('GST Estimator',
+                          style: tt.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                      Text('Business mode  •  Estimated values',
+                          style: tt.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+                Tooltip(
+                  message:
+                      'Estimates based on total income & expense.\n'
+                      'Actual rates depend on HSN/SAC codes.\n'
+                      'Consult your CA for accurate returns.',
+                  child: Icon(Icons.info_outline,
+                      size: AppSpacing.iconSm, color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            // Column headers
+            Row(
+              children: [
+                Expanded(
+                    flex: 2,
+                    child: Text('Slab',
+                        style: tt.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600))),
+                Expanded(
+                    flex: 3,
+                    child: Text('Output\n(on income)',
+                        style: tt.labelSmall?.copyWith(
+                            color: colors.expense,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.end)),
+                Expanded(
+                    flex: 3,
+                    child: Text('Input ITC\n(on expense)',
+                        style: tt.labelSmall?.copyWith(
+                            color: colors.income,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.end)),
+                Expanded(
+                    flex: 3,
+                    child: Text('Net\nLiability',
+                        style: tt.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600),
+                        textAlign: TextAlign.end)),
+              ],
+            ),
+            const Divider(height: AppSpacing.md),
+            ..._slabs.map((slab) {
+              final output = pnl.totalIncome * slab.rate;
+              final input = pnl.totalExpense * slab.rate;
+              final netLiability = output - input;
+              final netColor =
+                  netLiability > 0 ? colors.expense : colors.income;
+              return Padding(
+                padding:
+                    const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cs.primaryContainer,
+                          borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusSm),
+                        ),
+                        child: Text(
+                          slab.label,
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onPrimaryContainer,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        CurrencyFormatter.formatCompact(output),
+                        style: tt.bodySmall?.copyWith(
+                          fontFamily: 'RobotoMono',
+                          color: colors.expense,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        CurrencyFormatter.formatCompact(input),
+                        style: tt.bodySmall?.copyWith(
+                          fontFamily: 'RobotoMono',
+                          color: colors.income,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text(
+                        netLiability >= 0
+                            ? '+${CurrencyFormatter.formatCompact(netLiability)}'
+                            : CurrencyFormatter.formatCompact(netLiability),
+                        style: tt.bodySmall?.copyWith(
+                          fontFamily: 'RobotoMono',
+                          color: netColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const Divider(height: AppSpacing.xs),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                '* Estimates only. Actual liability depends on HSN/SAC '
+                'classification. Consult your CA for filing.',
+                style: tt.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontStyle: FontStyle.italic),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

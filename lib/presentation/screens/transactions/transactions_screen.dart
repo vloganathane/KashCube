@@ -9,6 +9,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction.dart';
 import '../../providers/transaction_provider.dart';
 import 'transaction_detail_screen.dart';
+import '../search/search_screen.dart';
 
 /// Date range filter for the transactions list.
 enum TransactionFilter {
@@ -34,15 +35,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   TransactionType? _typeFilter;
   String? _categoryFilter;
   PaymentMethod? _paymentMethodFilter;
-  String _searchQuery = '';
-  bool _isSearching = false;
-  final _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   bool get _hasAdvancedFilters =>
       _typeFilter != null ||
@@ -95,19 +87,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           filtered.where((t) => t.paymentMethod == _paymentMethodFilter).toList();
     }
 
-    // Apply search
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
-      filtered = filtered.where((t) {
-        final party = t.partyName?.toLowerCase() ?? '';
-        final category = t.category.toLowerCase();
-        final notes = t.notes?.toLowerCase() ?? '';
-        return party.contains(query) ||
-            category.contains(query) ||
-            notes.contains(query);
-      }).toList();
-    }
-
     return filtered;
   }
 
@@ -117,29 +96,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Search transactions...',
-                  border: InputBorder.none,
-                ),
-                onChanged: (value) => setState(() => _searchQuery = value),
-              )
-            : const Text('Transactions'),
+        title: const Text('Transactions'),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                _isSearching = !_isSearching;
-                if (!_isSearching) {
-                  _searchQuery = '';
-                  _searchController.clear();
-                }
-              });
-            },
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
           ),
           Badge(
             isLabelVisible: _hasAdvancedFilters,

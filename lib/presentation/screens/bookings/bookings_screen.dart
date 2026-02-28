@@ -12,6 +12,7 @@ import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
+import '../search/search_screen.dart';
 import 'booking_detail_screen.dart';
 import 'create_booking_screen.dart';
 
@@ -23,49 +24,20 @@ class BookingsScreen extends ConsumerStatefulWidget {
 }
 
 class _BookingsScreenState extends ConsumerState<BookingsScreen> {
-  bool _isSearching = false;
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _isSearching = !_isSearching;
-      if (!_isSearching) {
-        _searchController.clear();
-        ref.read(bookingSearchQueryProvider.notifier).state = '';
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final businessEnabled = ref.watch(businessModeProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Search bookings...',
-                  border: InputBorder.none,
-                ),
-                onChanged: (value) {
-                  ref.read(bookingSearchQueryProvider.notifier).state = value;
-                },
-              )
-            : const Text('Bookings'),
+        title: const Text('Bookings'),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: _toggleSearch,
-            tooltip: _isSearching ? 'Close search' : 'Search',
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
           ),
         ],
       ),

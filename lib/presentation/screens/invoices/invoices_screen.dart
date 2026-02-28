@@ -8,6 +8,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../search/search_screen.dart';
 import '../../widgets/speed_dial_fab.dart';
 import 'invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
@@ -22,9 +23,6 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  bool _isSearching = false;
-  final TextEditingController _searchController = TextEditingController();
-
   @override
   void initState() {
     super.initState();
@@ -34,18 +32,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
   @override
   void dispose() {
     _tabController.dispose();
-    _searchController.dispose();
     super.dispose();
-  }
-
-  void _toggleSearch() {
-    setState(() {
-      _isSearching = !_isSearching;
-      if (!_isSearching) {
-        _searchController.clear();
-        ref.read(invoiceSearchQueryProvider.notifier).state = '';
-      }
-    });
   }
 
   void _showFilterDialog() {
@@ -69,24 +56,14 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Search invoices...',
-                  border: InputBorder.none,
-                ),
-                onChanged: (value) {
-                  ref.read(invoiceSearchQueryProvider.notifier).state = value;
-                },
-              )
-            : const Text('Invoices & Quotes'),
+        title: const Text('Invoices & Quotes'),
         actions: [
           IconButton(
-            icon: Icon(_isSearching ? Icons.close : Icons.search),
-            onPressed: _toggleSearch,
-            tooltip: _isSearching ? 'Close search' : 'Search',
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.tune),

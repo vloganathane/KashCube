@@ -7,6 +7,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../data/models/party.dart';
 import '../../providers/party_provider.dart';
+import '../search/search_screen.dart';
 import 'party_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,15 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Parties'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -46,8 +56,8 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                 AppSpacing.base, 0, AppSpacing.base, AppSpacing.sm),
             child: SearchBar(
               controller: _searchController,
-              hintText: 'Search by name or phone…',
-              leading: const Icon(Icons.search, size: 20),
+              hintText: 'Filter by name or phone…',
+              leading: const Icon(Icons.filter_list, size: 20),
               trailing: query.isNotEmpty
                   ? [
                       IconButton(

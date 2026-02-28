@@ -8,6 +8,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/bill.dart';
 import '../../../data/models/recurring_transaction.dart';
 import '../../providers/bill_schedule_provider.dart';
+import '../search/search_screen.dart';
 
 /// Filter tabs for the bills list.
 enum _BillFilter { all, upcoming, overdue, paid }
@@ -31,6 +32,15 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Bills & Payments'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [

@@ -98,6 +98,16 @@ final bookingByIdProvider =
   );
 });
 
+/// Reverse-lookup: find the booking that is linked to a given invoice.
+final bookingByInvoiceIdProvider =
+    Provider.family<Booking?, int>((ref, invoiceId) {
+  final bookings = ref.watch(bookingsProvider).valueOrNull ?? [];
+  return bookings.cast<Booking?>().firstWhere(
+    (b) => b?.invoiceId == invoiceId,
+    orElse: () => null,
+  );
+});
+
 // ── Upcoming bookings provider ───────────────────────────────────────────────
 
 final upcomingBookingsProvider =

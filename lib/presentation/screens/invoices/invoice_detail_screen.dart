@@ -7,16 +7,19 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
+import '../../../data/models/booking.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../../data/services/payment_preferences_service.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
+import '../bookings/booking_detail_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -169,6 +172,10 @@ class _InvoiceDetailView extends ConsumerWidget {
           if (invoice.notes != null && invoice.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.base),
             _NotesCard(notes: invoice.notes!),
+          ],
+          if (invoice.id != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            _LinkedBookingCard(invoiceId: invoice.id!),
           ],
           const SizedBox(height: AppSpacing.xxxl),
         ],
@@ -760,6 +767,95 @@ class _NotesCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(notes),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Linked Booking Card ───────────────────────────────────────────────────────
+
+class _LinkedBookingCard extends ConsumerWidget {
+  const _LinkedBookingCard({required this.invoiceId});
+  final int invoiceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final booking = ref.watch(bookingByInvoiceIdProvider(invoiceId));
+    if (booking == null) return const SizedBox.shrink();
+
+    final statusColor = switch (booking.status) {
+      BookingStatus.confirmed => Colors.green,
+      BookingStatus.pending => Colors.orange,
+      BookingStatus.completed => Theme.of(context).colorScheme.primary,
+      BookingStatus.cancelled => Theme.of(context).colorScheme.outline,
+      BookingStatus.noShow => Theme.of(context).colorScheme.error,
+    };
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Icon(
+                Icons.calendar_month_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Linked Booking',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${booking.bookingRef ?? 'Booking'} · ${booking.serviceName}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius:
+                      BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Text(
+                  booking.status.label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ],
+          ),
         ),
       ),
     );

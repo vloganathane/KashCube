@@ -26,6 +26,9 @@ import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/budget_provider.dart';
+import '../../../data/models/budget.dart';
+import '../reports/budget_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -150,6 +153,9 @@ class HomeScreen extends ConsumerWidget {
 
                   // Alerts — overdue invoices + pending credits
                   const _AlertsSection(),
+
+                  // Budget health — only shown when budgets are set
+                  const _BudgetSection(),
 
                   // Recent Transactions Header
                   Row(
@@ -1646,6 +1652,149 @@ class _UpcomingItemTile extends StatelessWidget {
                   color: context.colorScheme.outlineVariant,
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Budget health section — home screen compact view
+// ---------------------------------------------------------------------------
+
+/// Shows at-risk budgets (over or near limit) on the home screen.
+/// Hidden when no budgets are set.
+class _BudgetSection extends ConsumerWidget {
+  const _BudgetSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final budgets = ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
+
+    // Only show budgets that need attention (over or near limit)
+    final atRisk = budgets
+        .where((b) => b.isOverBudget || b.isNearLimit)
+        .toList()
+      ..sort((a, b) => a.isOverBudget ? -1 : 1);
+
+    if (budgets.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Budget Health',
+              style: context.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BudgetScreen()),
+              ),
+              child: const Text('Manage'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (atRisk.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.base),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline,
+                      color: const Color(0xFF2E7D32), size: AppSpacing.iconMd),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'All ${budgets.length} budgets on track',
+                    style: context.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...atRisk.take(3).map((b) => _HomeBudgetTile(budget: b)),
+        const SizedBox(height: AppSpacing.lg),
+      ],
+    );
+  }
+}
+
+class _HomeBudgetTile extends StatelessWidget {
+  const _HomeBudgetTile({required this.budget});
+  final Budget budget;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final isOver = budget.isOverBudget;
+    final pct = budget.spentPercentage.clamp(0.0, 1.0);
+    final barColor = isOver ? colors.expense : Colors.orange;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  CategoryHelper.getIcon(budget.category),
+                  size: AppSpacing.iconSm,
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    budget.category,
+                    style: context.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: barColor.withValues(alpha: 0.12),
+                    borderRadius:
+                        BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  child: Text(
+                    isOver ? 'Over budget' : 'Near limit',
+                    style: context.textTheme.labelSmall?.copyWith(
+                        color: barColor, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            ClipRRect(
+              borderRadius:
+                  BorderRadius.circular(AppSpacing.radiusFull),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 4,
+                backgroundColor:
+                    context.colorScheme.surfaceContainerHighest,
+                color: barColor,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              '${CurrencyFormatter.format(budget.spentAmount)}'
+              ' of ${CurrencyFormatter.format(budget.budgetAmount)}'
+              ' spent',
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: context.colorScheme.outline),
             ),
           ],
         ),

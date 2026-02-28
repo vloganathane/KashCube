@@ -247,6 +247,8 @@ class _InvoiceDetailView extends ConsumerWidget {
 
       // Show success message
       if (!context.mounted) return;
+      // Capture navigator before pop so the snackbar action can still navigate
+      final nav = Navigator.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -255,8 +257,7 @@ class _InvoiceDetailView extends ConsumerWidget {
           action: SnackBarAction(
             label: 'View Transactions',
             onPressed: () {
-              Navigator.push(
-                context,
+              nav.push(
                 MaterialPageRoute(
                   builder: (_) => TransactionDetailScreen(transactionId: transactionId),
                 ),
@@ -267,7 +268,7 @@ class _InvoiceDetailView extends ConsumerWidget {
       );
 
       // Pop back to previous screen (invoice now paid)
-      Navigator.pop(context);
+      nav.pop();
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading

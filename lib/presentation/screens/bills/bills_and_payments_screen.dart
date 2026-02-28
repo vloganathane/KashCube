@@ -713,7 +713,7 @@ class _AddEditScheduledPaymentScreenState
 
             // ── Category ───────────────────────────────────────────────────
             DropdownButtonFormField<String>(
-              value: _categories.contains(_category)
+              initialValue: _categories.contains(_category)
                   ? _category
                   : _categories.first,
               decoration: const InputDecoration(
@@ -732,7 +732,7 @@ class _AddEditScheduledPaymentScreenState
             // ── Recurring fields ───────────────────────────────────────────
             if (!_isOneTime) ...[
               DropdownButtonFormField<ScheduledFrequency>(
-                value: _frequency,
+                initialValue: _frequency,
                 decoration: const InputDecoration(
                   labelText: 'Frequency',
                   prefixIcon: Icon(Icons.repeat),
@@ -750,7 +750,7 @@ class _AddEditScheduledPaymentScreenState
 
               if (_frequency == ScheduledFrequency.monthly)
                 DropdownButtonFormField<int>(
-                  value: _dueDay,
+                  initialValue: _dueDay,
                   decoration: const InputDecoration(
                     labelText: 'Due Day (day of month)',
                     prefixIcon: Icon(Icons.calendar_today),
@@ -813,7 +813,7 @@ class _AddEditScheduledPaymentScreenState
 
             // ── Payment method ─────────────────────────────────────────────
             DropdownButtonFormField<String>(
-              value: _paymentMethod,
+              initialValue: _paymentMethod,
               decoration: const InputDecoration(
                 labelText: 'Payment Method',
                 prefixIcon: Icon(Icons.credit_card),

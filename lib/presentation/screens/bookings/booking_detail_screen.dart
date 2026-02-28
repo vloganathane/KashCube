@@ -285,7 +285,7 @@ class _BookingDetailView extends ConsumerWidget {
     final message = _buildConfirmationMessage();
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
     final uri = Uri.parse(
-      'https://wa.me/$cleanPhone?text=\${Uri.encodeComponent(message)}',
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
     );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

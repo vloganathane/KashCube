@@ -200,6 +200,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     );
 
     // Show payment method picker
+    if (!context.mounted) return;
     final result = await showPaymentMethodPicker(
       context: context,
       amount: invoice.balanceDue,
@@ -245,6 +246,7 @@ class _InvoiceDetailView extends ConsumerWidget {
       );
 
       // Show success message
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

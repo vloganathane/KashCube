@@ -179,7 +179,7 @@ class HomeScreen extends ConsumerWidget {
                         return const _EmptyState();
                       }
                       return Column(
-                        children: transactions.map((txn) => _TransactionTile(
+                        children: transactions.take(5).map((txn) => _TransactionTile(
                           transactionId: txn.id,
                           category: txn.category,
                           partyName: txn.partyName,

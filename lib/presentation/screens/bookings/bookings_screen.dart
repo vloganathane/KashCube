@@ -608,8 +608,8 @@ class _ActionButton extends ConsumerWidget {
             final invoiceItem = InvoiceItem(
               invoiceId: 0,
               itemName: booking.serviceName,
-              description: 'Service completed on \${DateFormat('d MMM yyyy').format(booking.startDatetime)}'
-                  '\${booking.advanceAmount > 0 ? ' (Advance paid: \${CurrencyFormatter.format(booking.advanceAmount)})' : ''}',
+              description: 'Service completed on ${DateFormat('d MMM yyyy').format(booking.startDatetime)}'
+                  '${booking.advanceAmount > 0 ? ' (Advance paid: ${CurrencyFormatter.format(booking.advanceAmount)})' : ''}',
               qty: 1,
               unitPrice: amountToInvoice,
               discountPct: 0,

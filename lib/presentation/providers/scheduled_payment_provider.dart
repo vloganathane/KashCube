@@ -133,7 +133,7 @@ final scheduledMonthlySummaryProvider =
       return (income: income, expense: expense);
     },
     loading: () => (income: 0.0, expense: 0.0),
-    error: (_, __) => (income: 0.0, expense: 0.0),
+    error: (_, _) => (income: 0.0, expense: 0.0),
   );
 });
 

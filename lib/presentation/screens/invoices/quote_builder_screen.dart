@@ -683,7 +683,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 final businessesAsync = ref.watch(businessesProvider);
                 return businessesAsync.when(
                   loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                   data: (businesses) {
                     if (businesses.isEmpty) return const SizedBox.shrink();
                     // If only one business, don't show selector
@@ -709,7 +709,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         DropdownButtonFormField<int>(
-                          value: selectedId,
+                          initialValue: selectedId,
                           decoration: const InputDecoration(
                             labelText: 'Business',
                             border: OutlineInputBorder(),

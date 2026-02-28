@@ -143,6 +143,21 @@ class TransactionRepositoryImpl implements TransactionRepository {
     return (result.first['total'] as num).toDouble();
   }
 
+  /// All-time invested and redeemed totals (no date filter).
+  Future<({double invested, double redeemed})> getAllTimeInvestments() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT "
+      "COALESCE(SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END), 0) AS invested, "
+      "COALESCE(SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END), 0) AS redeemed "
+      "FROM transactions WHERE deleted_at IS NULL",
+    );
+    return (
+      invested: (rows.first['invested'] as num).toDouble(),
+      redeemed: (rows.first['redeemed'] as num).toDouble(),
+    );
+  }
+
   @override
   Future<double> getTotalIncome(DateTime start, DateTime end, {String? mode}) async {
     final db = await _db;

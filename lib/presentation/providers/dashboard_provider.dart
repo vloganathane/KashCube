@@ -175,3 +175,20 @@ void invalidateBalanceProviders(Ref ref) {
   ref.invalidate(accountBalancesProvider);
   ref.invalidate(totalBalanceProvider);
 }
+
+// ---------------------------------------------------------------------------
+// All-time investments
+// ---------------------------------------------------------------------------
+
+/// All-time invested (still deployed) and redeemed (returned) totals.
+/// Net invested = invested − redeemed = capital still in market/FD/etc.
+final allTimeInvestmentProvider =
+    FutureProvider<({double invested, double redeemed, double net})>((ref) async {
+  final repo = TransactionRepositoryImpl();
+  final data = await repo.getAllTimeInvestments();
+  return (
+    invested: data.invested,
+    redeemed: data.redeemed,
+    net: data.invested - data.redeemed,
+  );
+});

@@ -53,6 +53,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(invoicesProvider);
           ref.invalidate(accountBalancesProvider);
           ref.invalidate(totalBalanceProvider);
+          ref.invalidate(allTimeInvestmentProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -425,11 +426,13 @@ class _AccountBreakdownSheet extends ConsumerWidget {
     final lentAsync        = ref.watch(totalOutstandingLentProvider);
     final borrowedAsync    = ref.watch(totalOutstandingBorrowedProvider);
     final billsAsync       = ref.watch(totalMonthlyScheduledExpenseProvider);
+    final investmentAsync  = ref.watch(allTimeInvestmentProvider);
     final colors           = context.kashColors;
 
-    final lent     = lentAsync.valueOrNull ?? 0.0;
-    final borrowed = borrowedAsync.valueOrNull ?? 0.0;
-    final bills    = billsAsync.valueOrNull ?? 0.0;
+    final lent      = lentAsync.valueOrNull ?? 0.0;
+    final borrowed  = borrowedAsync.valueOrNull ?? 0.0;
+    final bills     = billsAsync.valueOrNull ?? 0.0;
+    final netInvest = investmentAsync.valueOrNull?.net ?? 0.0;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
@@ -585,7 +588,49 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                 ),
             ],
 
-            // ── Section 3: Recurring Bills ────────────────────────────────
+            // ── Section 3: Investments ─────────────────────────────────
+            investmentAsync.whenOrNull(data: (inv) {
+              if (inv.invested == 0) return null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: AppSpacing.lg),
+                  _SheetSectionHeader(
+                    icon: Icons.trending_up_outlined,
+                    label: 'Investments',
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: colors.investment.withAlpha(30),
+                      radius: 18,
+                      child: Icon(Icons.savings_outlined,
+                          size: 16, color: colors.investment),
+                    ),
+                    title: Text('Total Deployed',
+                        style: context.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w500)),
+                    subtitle: Text(
+                      '${CurrencyFormatter.formatCompact(inv.invested)} invested  •  '
+                      '${CurrencyFormatter.formatCompact(inv.redeemed)} redeemed',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                    trailing: Text(
+                      CurrencyFormatter.format(inv.net),
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: colors.investment,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: 'RobotoMono',
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }) ?? const SizedBox.shrink(),
+
+            // ── Section 4: Recurring Bills ────────────────────────────────
             if (bills > 0) ...[
               const SizedBox(height: AppSpacing.lg),
               _SheetSectionHeader(
@@ -621,7 +666,7 @@ class _AccountBreakdownSheet extends ConsumerWidget {
             ],
 
             // ── Net Worth row ─────────────────────────────────────────────
-            if (lent > 0 || borrowed > 0) ...[
+            if (lent > 0 || borrowed > 0 || netInvest > 0) ...[
               const SizedBox(height: AppSpacing.sm),
               const Divider(height: 1),
               const SizedBox(height: AppSpacing.xs),
@@ -630,10 +675,10 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                   final cashTotal = accounts
                       .where((a) => a.hasActivity)
                       .fold<double>(0.0, (s, a) => s + a.runningBalance);
-                  final netWorth = cashTotal + lent - borrowed;
+                  final netWorth = cashTotal + lent - borrowed + netInvest;
                   return _SheetTotalRow(
                     label: 'Net Worth',
-                    sublabel: 'Cash + receivables − liabilities',
+                    sublabel: 'Cash + investments + receivables − liabilities',
                     value: netWorth,
                     colors: colors,
                     large: true,

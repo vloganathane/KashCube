@@ -277,14 +277,13 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE budgets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
         category TEXT NOT NULL,
-        amount REAL NOT NULL,
-        period TEXT NOT NULL DEFAULT 'monthly',
-        start_date TEXT NOT NULL,
-        end_date TEXT,
-        is_active INTEGER DEFAULT 1,
+        budget_amount REAL NOT NULL,
+        alert_at_percentage REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT
+        UNIQUE(year, month, category)
       )
     ''');
 
@@ -1057,6 +1056,29 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 21,
         'description': 'Add reminder_sent_at to invoices and bookings (Unified Notifications)',
+      });
+    }
+
+    if (oldVersion < 22) {
+      // Budget feature — drop old schema (category/amount/period/start_date) and
+      // recreate with the new per-month schema (year, month, category, budget_amount).
+      // Old table had no valuable data to migrate.
+      await db.execute('DROP TABLE IF EXISTS budgets');
+      await db.execute('''
+        CREATE TABLE budgets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          year INTEGER NOT NULL,
+          month INTEGER NOT NULL,
+          category TEXT NOT NULL,
+          budget_amount REAL NOT NULL,
+          alert_at_percentage REAL NOT NULL DEFAULT 80,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(year, month, category)
+        )
+      ''');
+      await db.insert('schema_version', {
+        'version': 22,
+        'description': 'Recreate budgets table with year/month/category/budget_amount schema',
       });
     }
   }

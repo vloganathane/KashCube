@@ -84,10 +84,18 @@ final bookingsProvider =
 
 // ── Single booking provider ──────────────────────────────────────────────────
 
+/// Derives a single booking from the already-loaded [bookingsProvider] so it
+/// automatically reflects any status change (confirm, complete, cancel, etc.)
+/// without a separate DB fetch.
 final bookingByIdProvider =
-    FutureProvider.family<Booking?, int>((ref, id) async {
-  final repo = ref.read(bookingRepositoryProvider);
-  return repo.getById(id);
+    Provider.family<AsyncValue<Booking?>, int>((ref, id) {
+  final bookings = ref.watch(bookingsProvider);
+  return bookings.whenData(
+    (list) => list.cast<Booking?>().firstWhere(
+          (b) => b?.id == id,
+          orElse: () => null,
+        ),
+  );
 });
 
 // ── Upcoming bookings provider ───────────────────────────────────────────────

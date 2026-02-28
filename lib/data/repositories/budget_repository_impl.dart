@@ -28,7 +28,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
     // 1. Load budget rows
     final budgetRows = await db.query(
       _table,
-      where: 'year = ? AND month = ? AND is_active = 1',
+      where: 'year = ? AND month = ?',
       whereArgs: [year, month],
       orderBy: 'category ASC',
     );

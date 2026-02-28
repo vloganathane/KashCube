@@ -8,8 +8,8 @@ import 'providers/scheduled_payment_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'screens/business/business_hub_screen.dart';
-import 'screens/contacts/contacts_hub_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/parties/parties_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_hub_screen.dart';
@@ -34,7 +34,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     HomeScreen(),
     TransactionsHubScreen(),
     BusinessHubScreen(),
-    ContactsHubScreen(),
+    PartiesScreen(),
     SettingsScreen(),
   ];
 

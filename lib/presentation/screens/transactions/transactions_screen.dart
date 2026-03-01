@@ -9,6 +9,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import 'add_edit_transaction_screen.dart';
 import 'transaction_detail_screen.dart';
 import '../search/search_screen.dart';
 import '../ledger/ledger_screen.dart';
@@ -231,6 +232,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final added = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => const AddEditTransactionScreen(),
+            ),
+          );
+          if (added == true) {
+            ref.read(transactionsProvider.notifier).loadTransactions();
+          }
+        },
+        child: const Icon(Icons.add),
       ),
       body: transactionsAsync.when(
         data: (transactions) {

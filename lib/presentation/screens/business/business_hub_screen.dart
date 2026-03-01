@@ -55,8 +55,8 @@ class BusinessHubScreen extends StatelessWidget {
               ),
               _HubTile(
                 icon: Icons.payments_outlined,
-                label: 'Bills & Payments',
-                subtitle: 'Track what you owe',
+                label: 'Bills Payable',
+                subtitle: 'Short-term dues to suppliers',
                 color: const Color(0xFFE65100),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(

@@ -835,7 +835,7 @@ class _OverviewCard extends ConsumerWidget {
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.event_repeat, label: 'Bills & Pay',
+          icon: Icons.event_repeat, label: 'Bills Payable',
           value: monthlyScheduledAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
           suffix: '/mo',
@@ -893,7 +893,7 @@ class _PersonalCard extends ConsumerWidget {
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.event_repeat, label: 'Bills & Pay',
+          icon: Icons.event_repeat, label: 'Bills Payable',
           value: monthlyScheduledAsync.maybeWhen(
             data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
           suffix: '/mo',

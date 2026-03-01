@@ -27,7 +27,7 @@ enum _SpFilter { all, recurring, oneTime, overdue, paid }
 // Screen
 // ---------------------------------------------------------------------------
 
-/// Unified Bills & Payments screen.
+/// Unified Bills Payable screen.
 ///
 /// Replaces the legacy `BillsScreen` and `RecurringTransactionsScreen`.
 class BillsAndPaymentsScreen extends ConsumerStatefulWidget {
@@ -49,7 +49,7 @@ class _BillsAndPaymentsScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bills & Payments'),
+        title: const Text('Bills Payable'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

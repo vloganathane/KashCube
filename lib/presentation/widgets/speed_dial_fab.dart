@@ -140,7 +140,7 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
         if (widget.showAllOptions) ...[
           _animated(SpeedDialOption(
             icon: Icons.event_repeat,
-            label: 'Bills & Pay',
+            label: 'Bills Payable',
             onTap: _openBillsAndPayments,
           )),
           const SizedBox(height: 12),

@@ -75,6 +75,9 @@ class DatabaseHelper {
         notes TEXT,
         tags TEXT,
         reminder_sent_at TEXT,
+        linked_invoice_id INTEGER,
+        linked_booking_id INTEGER,
+        business_id INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
@@ -94,6 +97,10 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)');
     await db.execute('CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)');
 
     // -- credits table
     await db.execute('''
@@ -221,6 +228,11 @@ class DatabaseHelper {
         total_credit_received REAL DEFAULT 0,
         notes TEXT,
         tags TEXT,
+        gstin TEXT,
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        pincode TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT
@@ -384,6 +396,176 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_sp_next ON scheduled_payments(next_date)');
     await db.execute('CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)');
 
+    // -- businesses table (multiple business profiles, v14)
+    await db.execute('''
+      CREATE TABLE businesses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        pincode TEXT,
+        phone TEXT,
+        email TEXT,
+        gst_no TEXT,
+        logo_path TEXT,
+        is_active INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
+
+    // -- item_catalog table (v13 + v15 + v19 columns)
+    await db.execute('''
+      CREATE TABLE item_catalog (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        unit TEXT DEFAULT 'pcs',
+        unit_price REAL NOT NULL DEFAULT 0,
+        tax_pct REAL NOT NULL DEFAULT 0,
+        hsn_code TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        business_id INTEGER,
+        sku TEXT,
+        category TEXT DEFAULT 'product',
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        last_used_at TEXT,
+        usage_count INTEGER NOT NULL DEFAULT 0,
+        duration_minutes INTEGER DEFAULT 30,
+        is_bookable INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)');
+    await db.execute('CREATE INDEX idx_item_catalog_category ON item_catalog(category)');
+    await db.execute('CREATE INDEX idx_item_catalog_favorite ON item_catalog(is_favorite)');
+    await db.execute('CREATE INDEX idx_item_catalog_last_used ON item_catalog(last_used_at)');
+
+    // -- quotes table (v13 + v16)
+    await db.execute('''
+      CREATE TABLE quotes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quote_no TEXT NOT NULL UNIQUE,
+        customer_party_id INTEGER,
+        customer_name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        valid_until TEXT,
+        subtotal REAL NOT NULL DEFAULT 0,
+        tax_total REAL NOT NULL DEFAULT 0,
+        discount_pct REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        business_id INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_quotes_status ON quotes(status)');
+    await db.execute('CREATE INDEX idx_quotes_business ON quotes(business_id)');
+
+    // -- quote_items table (v13)
+    await db.execute('''
+      CREATE TABLE quote_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        quote_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        description TEXT,
+        qty REAL NOT NULL DEFAULT 1,
+        unit_price REAL NOT NULL DEFAULT 0,
+        tax_pct REAL NOT NULL DEFAULT 0,
+        discount_pct REAL NOT NULL DEFAULT 0,
+        line_total REAL NOT NULL DEFAULT 0,
+        FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // -- invoices table (v13 + v16 + v18 + v21)
+    await db.execute('''
+      CREATE TABLE invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_no TEXT NOT NULL UNIQUE,
+        quote_id INTEGER,
+        customer_party_id INTEGER,
+        customer_name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        issue_date TEXT NOT NULL,
+        due_date TEXT,
+        subtotal REAL NOT NULL DEFAULT 0,
+        tax_total REAL NOT NULL DEFAULT 0,
+        discount_pct REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        paid_amount REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        business_id INTEGER,
+        paid_at TEXT,
+        payment_method TEXT,
+        reminder_sent_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_invoices_status ON invoices(status)');
+    await db.execute('CREATE INDEX idx_invoices_due ON invoices(due_date)');
+    await db.execute('CREATE INDEX idx_invoices_business ON invoices(business_id)');
+    await db.execute('CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
+
+    // -- invoice_items table (v13)
+    await db.execute('''
+      CREATE TABLE invoice_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        description TEXT,
+        qty REAL NOT NULL DEFAULT 1,
+        unit_price REAL NOT NULL DEFAULT 0,
+        tax_pct REAL NOT NULL DEFAULT 0,
+        discount_pct REAL NOT NULL DEFAULT 0,
+        line_total REAL NOT NULL DEFAULT 0,
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
+      )
+    ''');
+
+    // -- bookings table (v19 + v20 booking_type + v21 reminder_sent_at)
+    await db.execute('''
+      CREATE TABLE bookings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_party_id INTEGER,
+        customer_name TEXT NOT NULL,
+        service_item_id INTEGER,
+        service_name TEXT NOT NULL,
+        start_datetime TEXT NOT NULL,
+        end_datetime TEXT,
+        duration_minutes INTEGER,
+        status TEXT NOT NULL DEFAULT 'pending',
+        booking_type TEXT NOT NULL DEFAULT 'business',
+        total_amount REAL NOT NULL,
+        advance_amount REAL DEFAULT 0,
+        invoice_id INTEGER,
+        notes TEXT,
+        notification_scheduled_at TEXT,
+        confirmed_at TEXT,
+        business_id INTEGER,
+        booking_ref TEXT,
+        reminder_sent_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        FOREIGN KEY (customer_party_id) REFERENCES parties(id),
+        FOREIGN KEY (service_item_id) REFERENCES item_catalog(id),
+        FOREIGN KEY (invoice_id) REFERENCES invoices(id),
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
+      )
+    ''');
+    await db.execute('CREATE INDEX idx_bookings_status ON bookings(status)');
+    await db.execute('CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)');
+    await db.execute('CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)');
+    await db.execute('CREATE INDEX idx_bookings_business ON bookings(business_id)');
+    await db.execute('CREATE INDEX idx_bookings_type ON bookings(booking_type)');
+    await db.execute('CREATE INDEX idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)');
+
     // -- schema_version table
     await db.execute('''
       CREATE TABLE schema_version (
@@ -394,8 +576,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 10,
-      'description': 'Unified scheduled_payments table',
+      'version': 22,
+      'description': 'Full v22 schema (fresh install)',
     });
 
     // Seed default categories + default accounts

@@ -135,6 +135,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         onDestinationSelected: (index) {
           ref.read(currentTabIndexProvider.notifier).state = index;
         },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../widgets/speed_dial_fab.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../invoices/invoices_screen.dart';
@@ -19,6 +20,7 @@ class BusinessHubScreen extends StatelessWidget {
         title: const Text('Business'),
         centerTitle: false,
       ),
+      floatingActionButton: const SpeedDialFab(showAllOptions: false),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [

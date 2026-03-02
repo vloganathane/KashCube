@@ -33,9 +33,10 @@ class DatabaseHelper {
       onConfigure: _onConfigure,
     );
 
-    // Enable WAL mode here (not in onConfigure — sqflite/Android restricts
-    // execute() calls inside the onConfigure callback).
-    await db.execute('PRAGMA journal_mode=WAL');
+    // Enable WAL mode. Must use rawQuery (not execute) because
+    // PRAGMA journal_mode returns a result set — sqflite on Android
+    // rejects execute() for any statement that produces output rows.
+    await db.rawQuery('PRAGMA journal_mode=WAL');
 
     await _runIntegrityCheck(db);
     // Rolling daily snapshot — only if integrity passed.

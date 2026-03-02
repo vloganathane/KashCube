@@ -1477,6 +1477,16 @@ class DatabaseHelper {
         'description': 'Add unit_types table with seeded defaults',
       });
     }
+
+    if (oldVersion < 29) {
+      // Add software/digital service units to existing installs.
+      // ConflictAlgorithm.ignore makes this safe to re-run.
+      await _seedUnitTypes(db);
+      await db.insert('schema_version', {
+        'version': 29,
+        'description': 'Seed software/digital unit types (week, year, license, seat, user, project, task, sprint, feature, screen, page, report, API call, request, token, deployment, instance, GB, MB, TB)',
+      });
+    }
   }
 
   /// Inserts fiscal-year defaults into the settings table.
@@ -1643,10 +1653,21 @@ class DatabaseHelper {
   /// so re-running on upgrades is safe (won't clobber user data).
   Future<void> _seedUnitTypes(Database db) async {
     const systemUnits = [
+      // Physical / general
       'pcs', 'box', 'dozen', 'pair', 'set',
-      'kg', 'g', 'mg', 'litre', 'ml',
+      // Weight
+      'kg', 'g', 'mg',
+      // Volume
+      'litre', 'ml',
+      // Length / area
       'metre', 'cm', 'sq.ft', 'sq.m', 'acre',
-      'hrs', 'days', 'month',
+      // Time
+      'hrs', 'days', 'week', 'month', 'year',
+      // Software / digital services
+      'license', 'seat', 'user', 'project', 'task',
+      'sprint', 'feature', 'screen', 'page', 'report',
+      'API call', 'request', 'token', 'deployment', 'instance',
+      'GB', 'MB', 'TB',
     ];
     for (int i = 0; i < systemUnits.length; i++) {
       await db.insert(

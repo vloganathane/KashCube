@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/business.dart';
+import 'gst_calculator.dart';
 import 'pdf_cache_manager.dart';
 import '../models/invoice.dart';
 import '../models/party.dart';
@@ -50,6 +51,9 @@ class InvoicePdfService {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
+    final sellerState = business?.state;
+    final buyerState = customerParty?.state;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -57,11 +61,18 @@ class InvoicePdfService {
         build: (context) => [
           _buildInvoiceHeader(invoice, business: business, logo: logo),
           pw.SizedBox(height: 24),
-          _buildInvoiceDetails(invoice, customerParty: customerParty),
+          _buildInvoiceDetails(invoice,
+              customerParty: customerParty,
+              sellerState: sellerState,
+              buyerState: buyerState),
           pw.SizedBox(height: 24),
           _buildItemsTable(invoice.items),
           pw.SizedBox(height: 16),
-          _buildTotalsWithGst(invoice),
+          _buildGstSummaryTable(invoice.items,
+              sellerState: sellerState, buyerState: buyerState),
+          pw.SizedBox(height: 8),
+          _buildTotalsWithGst(invoice,
+              sellerState: sellerState, buyerState: buyerState),
           pw.SizedBox(height: 32),
           _buildFooter(invoice),
         ],
@@ -76,6 +87,9 @@ class InvoicePdfService {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
+    final sellerState = business?.state;
+    final buyerState = customerParty?.state;
+
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
@@ -83,11 +97,18 @@ class InvoicePdfService {
         build: (context) => [
           _buildQuoteHeader(quote, business: business, logo: logo),
           pw.SizedBox(height: 24),
-          _buildQuoteDetails(quote, customerParty: customerParty),
+          _buildQuoteDetails(quote,
+              customerParty: customerParty,
+              sellerState: sellerState,
+              buyerState: buyerState),
           pw.SizedBox(height: 24),
           _buildQuoteItemsTable(quote.items),
           pw.SizedBox(height: 16),
-          _buildQuoteTotalsWithGst(quote),
+          _buildQuoteGstSummaryTable(quote.items,
+              sellerState: sellerState, buyerState: buyerState),
+          pw.SizedBox(height: 8),
+          _buildQuoteTotalsWithGst(quote,
+              sellerState: sellerState, buyerState: buyerState),
           pw.SizedBox(height: 32),
           _buildQuoteFooter(quote),
         ],
@@ -180,9 +201,9 @@ class InvoicePdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'INVOICE',
+                  invoice.invoiceType.label.toUpperCase(),
                   style: pw.TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
@@ -252,77 +273,148 @@ class InvoicePdfService {
     }
   }
 
-  pw.Widget _buildInvoiceDetails(Invoice invoice, {Party? customerParty}) {
-    return pw.Row(
+  pw.Widget _buildInvoiceDetails(
+    Invoice invoice, {
+    Party? customerParty,
+    String? sellerState,
+    String? buyerState,
+  }) {
+    final effectiveBuyerGstin =
+        invoice.customerGstin ?? customerParty?.gstin;
+    final effectivePlaceOfSupply =
+        invoice.placeOfSupply ?? buyerState ?? '';
+    final isInterState =
+        GstCalculator.isInterState(sellerState, buyerState);
+
+    return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Column(
+        pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(
-              'BILL TO',
-              style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.grey600,
-              ),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              invoice.customerName,
-              style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            if (customerParty != null) ..._buildPartyDetails(customerParty),
-          ],
-        ),
-        if (invoice.notes != null && invoice.notes!.isNotEmpty)
-          pw.Container(
-            width: 200,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              color: PdfColors.grey100,
-              borderRadius: pw.BorderRadius.circular(4),
-            ),
-            child: pw.Column(
+            // Bill To block
+            pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'NOTES',
+                  'BILL TO',
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.grey600,
                   ),
                 ),
-                pw.SizedBox(height: 4),
+                pw.SizedBox(height: 8),
                 pw.Text(
-                  invoice.notes!,
-                  style: const pw.TextStyle(fontSize: 10),
+                  invoice.customerName,
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
+                if (effectiveBuyerGstin != null &&
+                    effectiveBuyerGstin.isNotEmpty) ...[  
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'GSTIN: $effectiveBuyerGstin',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                ],
+                if (customerParty != null)
+                  ..._buildPartyDetails(customerParty,
+                      skipGstin: effectiveBuyerGstin != null),
               ],
             ),
-          ),
+            // GST metadata block
+            pw.Container(
+              width: 200,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey100,
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (effectivePlaceOfSupply.isNotEmpty) ...[  
+                    _metaRow('Place of Supply', effectivePlaceOfSupply),
+                    pw.SizedBox(height: 4),
+                  ],
+                  _metaRow(
+                    'Supply Type',
+                    isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)',
+                  ),
+                  pw.SizedBox(height: 4),
+                  _metaRow(
+                    'Reverse Charge',
+                    invoice.reverseCharge ? 'Yes' : 'No',
+                  ),
+                  if (invoice.notes != null &&
+                      invoice.notes!.isNotEmpty) ...[  
+                    pw.SizedBox(height: 6),
+                    pw.Divider(color: PdfColors.grey300),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'NOTES',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      invoice.notes!,
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
+  pw.Widget _metaRow(String label, String value) {
+    return pw.RichText(
+      text: pw.TextSpan(
+        children: [
+          pw.TextSpan(
+            text: '$label: ',
+            style: pw.TextStyle(
+              fontSize: 9,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+            ),
+          ),
+          pw.TextSpan(
+            text: value,
+            style: const pw.TextStyle(fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
   pw.Widget _buildItemsTable(List<InvoiceItem> items) {
-    // Check if we need to show tax and discount columns
     final hasTax = items.any((item) => item.taxPct > 0);
     final hasDiscount = items.any((item) => item.discountPct > 0);
+    final hasHsn = items.any((item) => item.hsnCode != null && item.hsnCode!.isNotEmpty);
 
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300),
       children: [
-        // Header
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.grey200),
           children: [
             _tableCell('Item', isHeader: true),
+            if (hasHsn) _tableCell('HSN/SAC', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Qty', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Rate', isHeader: true, align: pw.TextAlign.right),
             if (hasTax) _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
@@ -330,23 +422,134 @@ class InvoicePdfService {
             _tableCell('Amount', isHeader: true, align: pw.TextAlign.right),
           ],
         ),
-        // Items
         ...items.map((item) => pw.TableRow(
               children: [
                 _tableCell(_buildItemName(item.itemName, item.description)),
-                _tableCell(item.qty.toString(),
-                    align: pw.TextAlign.center),
+                if (hasHsn)
+                  _tableCell(
+                    item.hsnCode != null && item.hsnCode!.isNotEmpty
+                        ? item.hsnCode!
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
+                _tableCell(item.qty.toString(), align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
-                if (hasTax) _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
-                    align: pw.TextAlign.center),
-                if (hasDiscount) _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
-                    align: pw.TextAlign.center),
+                if (hasTax)
+                  _tableCell(
+                    item.taxPct > 0
+                        ? '${item.taxPct.toStringAsFixed(1)}%'
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
+                if (hasDiscount)
+                  _tableCell(
+                    item.discountPct > 0
+                        ? '${item.discountPct.toStringAsFixed(1)}%'
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
                 _tableCell(_formatCurrency(item.lineTotal),
-                    align: pw.TextAlign.right,
-                    isBold: true),
+                    align: pw.TextAlign.right, isBold: true),
               ],
             )),
+      ],
+    );
+  }
+
+  /// HSN/SAC-grouped GST summary table (mandatory on Tax Invoices).
+  pw.Widget _buildGstSummaryTable(
+    List<InvoiceItem> items, {
+    String? sellerState,
+    String? buyerState,
+  }) {
+    final rows = GstCalculator.summarise(
+      sellerState: sellerState,
+      buyerState: buyerState,
+      items: items.toSplitInputs(),
+    );
+    if (rows.isEmpty) return pw.SizedBox.shrink();
+
+    final isInterState = rows.first.isInterState;
+    final totTaxable = rows.fold<double>(0, (s, r) => s + r.taxableAmount);
+    final totCgst = rows.fold<double>(0, (s, r) => s + r.cgst);
+    final totSgst = rows.fold<double>(0, (s, r) => s + r.sgst);
+    final totIgst = rows.fold<double>(0, (s, r) => s + r.igst);
+    final totGst = rows.fold<double>(0, (s, r) => s + r.total);
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.Text(
+          'GST Summary',
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey700,
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              children: [
+                _tableCell('HSN/SAC', isHeader: true),
+                _tableCell('Taxable Amt', isHeader: true, align: pw.TextAlign.right),
+                _tableCell('Rate', isHeader: true, align: pw.TextAlign.center),
+                if (!isInterState)
+                  _tableCell('CGST', isHeader: true, align: pw.TextAlign.right),
+                if (!isInterState)
+                  _tableCell('SGST', isHeader: true, align: pw.TextAlign.right),
+                if (isInterState)
+                  _tableCell('IGST', isHeader: true, align: pw.TextAlign.right),
+                _tableCell('Total Tax', isHeader: true, align: pw.TextAlign.right),
+              ],
+            ),
+            ...rows.map((r) => pw.TableRow(
+                  children: [
+                    _tableCell(r.codeLabel),
+                    _tableCell(_formatCurrency(r.taxableAmount),
+                        align: pw.TextAlign.right),
+                    _tableCell('${r.gstPct.toStringAsFixed(r.gstPct == r.gstPct.truncateToDouble() ? 0 : 1)}%',
+                        align: pw.TextAlign.center),
+                    if (!isInterState)
+                      _tableCell(_formatCurrency(r.cgst),
+                          align: pw.TextAlign.right),
+                    if (!isInterState)
+                      _tableCell(_formatCurrency(r.sgst),
+                          align: pw.TextAlign.right),
+                    if (isInterState)
+                      _tableCell(_formatCurrency(r.igst),
+                          align: pw.TextAlign.right),
+                    _tableCell(_formatCurrency(r.total),
+                        align: pw.TextAlign.right, isBold: true),
+                  ],
+                )),
+            // Totals row
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              children: [
+                _tableCell('Total', isHeader: true),
+                _tableCell(_formatCurrency(totTaxable),
+                    align: pw.TextAlign.right, isBold: true),
+                _tableCell('', align: pw.TextAlign.center),
+                if (!isInterState)
+                  _tableCell(_formatCurrency(totCgst),
+                      align: pw.TextAlign.right, isBold: true),
+                if (!isInterState)
+                  _tableCell(_formatCurrency(totSgst),
+                      align: pw.TextAlign.right, isBold: true),
+                if (isInterState)
+                  _tableCell(_formatCurrency(totIgst),
+                      align: pw.TextAlign.right, isBold: true),
+                _tableCell(_formatCurrency(totGst),
+                    align: pw.TextAlign.right, isBold: true),
+              ],
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -390,26 +593,43 @@ class InvoicePdfService {
     );
   }
 
-  pw.Widget _buildTotalsWithGst(Invoice invoice) {
+pw.Widget _buildTotalsWithGst(
+    Invoice invoice, {
+    String? sellerState,
+    String? buyerState,
+  }) {
     final subtotal = invoice.items.fold<double>(
       0,
-      (sum, item) => sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
+      (sum, item) =>
+          sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
     );
-    final totalTax = invoice.total - subtotal;
-    
-    // For simplicity, split GST equally as CGST + SGST
-    // In production, check business state to determine IGST vs CGST+SGST
-    final cgst = totalTax / 2;
-    final sgst = totalTax / 2;
+    final isInterState = GstCalculator.isInterState(sellerState, buyerState);
+    double totalCgst = 0, totalSgst = 0, totalIgst = 0;
+    for (final item in invoice.items) {
+      if (item.taxPct <= 0) continue;
+      final taxable = item.qty * item.unitPrice * (1 - item.discountPct / 100);
+      final split = GstCalculator.calculate(
+        sellerState: sellerState,
+        buyerState: buyerState,
+        taxableAmount: taxable,
+        gstPct: item.taxPct,
+      );
+      totalCgst += split.cgst;
+      totalSgst += split.sgst;
+      totalIgst += split.igst;
+    }
 
     return pw.Container(
-      width: 250,
+      width: 280,
       child: pw.Column(
         children: [
           _totalsRow('Subtotal', subtotal),
           pw.Divider(color: PdfColors.grey300),
-          _totalsRow('CGST', cgst, isSmall: true),
-          _totalsRow('SGST', sgst, isSmall: true),
+          if (!isInterState) ...[  
+            _totalsRow('CGST', totalCgst, isSmall: true),
+            _totalsRow('SGST', totalSgst, isSmall: true),
+          ] else
+            _totalsRow('IGST', totalIgst, isSmall: true),
           pw.Divider(color: PdfColors.grey400),
           _totalsRow('Total', invoice.total, isBold: true, isLarge: true),
           if (invoice.paidAmount > 0) ...[
@@ -567,11 +787,16 @@ class InvoicePdfService {
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'QUOTE',
+                  'QUOTATION',
                   style: pw.TextStyle(
-                    fontSize: 28,
+                    fontSize: 22,
                     fontWeight: pw.FontWeight.bold,
                   ),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'For ${quote.invoiceType.label}',
+                  style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
@@ -637,66 +862,114 @@ class InvoicePdfService {
     }
   }
 
-  pw.Widget _buildQuoteDetails(Quote quote, {Party? customerParty}) {
-    return pw.Row(
+  pw.Widget _buildQuoteDetails(
+    Quote quote, {
+    Party? customerParty,
+    String? sellerState,
+    String? buyerState,
+  }) {
+    final effectiveBuyerGstin =
+        quote.customerGstin ?? customerParty?.gstin;
+    final effectivePlaceOfSupply =
+        quote.placeOfSupply ?? buyerState ?? '';
+    final isInterState =
+        GstCalculator.isInterState(sellerState, buyerState);
+
+    return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Column(
+        pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
           children: [
-            pw.Text(
-              'QUOTE FOR',
-              style: pw.TextStyle(
-                fontSize: 10,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.grey600,
-              ),
-            ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              quote.customerName,
-              style: pw.TextStyle(
-                fontSize: 14,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            if (customerParty != null) ..._buildPartyDetails(customerParty),
-          ],
-        ),
-        if (quote.notes != null && quote.notes!.isNotEmpty)
-          pw.Container(
-            width: 200,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              color: PdfColors.grey100,
-              borderRadius: pw.BorderRadius.circular(4),
-            ),
-            child: pw.Column(
+            pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 pw.Text(
-                  'NOTES',
+                  'QUOTE FOR',
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.grey600,
                   ),
                 ),
-                pw.SizedBox(height: 4),
+                pw.SizedBox(height: 8),
                 pw.Text(
-                  quote.notes!,
-                  style: const pw.TextStyle(fontSize: 10),
+                  quote.customerName,
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
                 ),
+                if (effectiveBuyerGstin != null &&
+                    effectiveBuyerGstin.isNotEmpty) ...[  
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'GSTIN: $effectiveBuyerGstin',
+                    style: const pw.TextStyle(
+                        fontSize: 10, color: PdfColors.grey700),
+                  ),
+                ],
+                if (customerParty != null)
+                  ..._buildPartyDetails(customerParty,
+                      skipGstin: effectiveBuyerGstin != null),
               ],
             ),
-          ),
+            pw.Container(
+              width: 200,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.grey100,
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  if (effectivePlaceOfSupply.isNotEmpty) ...[  
+                    _metaRow('Place of Supply', effectivePlaceOfSupply),
+                    pw.SizedBox(height: 4),
+                  ],
+                  _metaRow(
+                    'Supply Type',
+                    isInterState
+                        ? 'Inter-State (IGST)'
+                        : 'Intra-State (CGST+SGST)',
+                  ),
+                  pw.SizedBox(height: 4),
+                  _metaRow(
+                    'Reverse Charge',
+                    quote.reverseCharge ? 'Yes' : 'No',
+                  ),
+                  if (quote.notes != null && quote.notes!.isNotEmpty) ...[  
+                    pw.SizedBox(height: 6),
+                    pw.Divider(color: PdfColors.grey300),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'NOTES',
+                      style: pw.TextStyle(
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(quote.notes!,
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
 
-  /// Build party contact details (phone, email, address) for PDF
-  List<pw.Widget> _buildPartyDetails(Party party) {
+  /// Build party contact details for PDF.
+  ///
+  /// [skipGstin] avoids printing GSTIN twice when the caller has already
+  /// rendered it from `invoice.customerGstin` / `quote.customerGstin`.
+  List<pw.Widget> _buildPartyDetails(Party party, {bool skipGstin = false}) {
     final details = <pw.Widget>[];
     
     if (party.phoneNumber != null && party.phoneNumber!.isNotEmpty) {
@@ -719,7 +992,7 @@ class InvoicePdfService {
       );
     }
     
-    if (party.gstin != null && party.gstin!.isNotEmpty) {
+    if (party.gstin != null && party.gstin!.isNotEmpty && !skipGstin) {
       details.add(pw.SizedBox(height: 2));
       details.add(
         pw.Text(
@@ -746,65 +1019,208 @@ class InvoicePdfService {
   }
 
   pw.Widget _buildQuoteItemsTable(List<QuoteItem> items) {
-    // Check if we need to show tax and discount columns
     final hasTax = items.any((item) => item.taxPct > 0);
     final hasDiscount = items.any((item) => item.discountPct > 0);
+    final hasHsn = items.any(
+        (item) => item.hsnCode != null && item.hsnCode!.isNotEmpty);
 
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300),
       children: [
-        // Header
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: PdfColors.grey200),
           children: [
             _tableCell('Item', isHeader: true),
+            if (hasHsn)
+              _tableCell('HSN/SAC', isHeader: true,
+                  align: pw.TextAlign.center),
             _tableCell('Qty', isHeader: true, align: pw.TextAlign.center),
             _tableCell('Rate', isHeader: true, align: pw.TextAlign.right),
-            if (hasTax) _tableCell('Tax %', isHeader: true, align: pw.TextAlign.center),
-            if (hasDiscount) _tableCell('Disc %', isHeader: true, align: pw.TextAlign.center),
+            if (hasTax)
+              _tableCell('Tax %', isHeader: true,
+                  align: pw.TextAlign.center),
+            if (hasDiscount)
+              _tableCell('Disc %', isHeader: true,
+                  align: pw.TextAlign.center),
             _tableCell('Amount', isHeader: true, align: pw.TextAlign.right),
           ],
         ),
-        // Items
         ...items.map((item) => pw.TableRow(
               children: [
                 _tableCell(_buildItemName(item.itemName, item.description)),
+                if (hasHsn)
+                  _tableCell(
+                    item.hsnCode != null && item.hsnCode!.isNotEmpty
+                        ? item.hsnCode!
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
                 _tableCell(item.qty.toString(),
                     align: pw.TextAlign.center),
                 _tableCell(_formatCurrency(item.unitPrice),
                     align: pw.TextAlign.right),
-                if (hasTax) _tableCell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
-                    align: pw.TextAlign.center),
-                if (hasDiscount) _tableCell(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—',
-                    align: pw.TextAlign.center),
+                if (hasTax)
+                  _tableCell(
+                    item.taxPct > 0
+                        ? '${item.taxPct.toStringAsFixed(1)}%'
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
+                if (hasDiscount)
+                  _tableCell(
+                    item.discountPct > 0
+                        ? '${item.discountPct.toStringAsFixed(1)}%'
+                        : '—',
+                    align: pw.TextAlign.center,
+                  ),
                 _tableCell(_formatCurrency(item.lineTotal),
-                    align: pw.TextAlign.right,
-                    isBold: true),
+                    align: pw.TextAlign.right, isBold: true),
               ],
             )),
       ],
     );
   }
 
-  pw.Widget _buildQuoteTotalsWithGst(Quote quote) {
+  pw.Widget _buildQuoteGstSummaryTable(
+    List<QuoteItem> items, {
+    String? sellerState,
+    String? buyerState,
+  }) {
+    final rows = GstCalculator.summarise(
+      sellerState: sellerState,
+      buyerState: buyerState,
+      items: items.toSplitInputs(),
+    );
+    if (rows.isEmpty) return pw.SizedBox.shrink();
+
+    final isInterState = rows.first.isInterState;
+    final totTaxable = rows.fold<double>(0, (s, r) => s + r.taxableAmount);
+    final totCgst = rows.fold<double>(0, (s, r) => s + r.cgst);
+    final totSgst = rows.fold<double>(0, (s, r) => s + r.sgst);
+    final totIgst = rows.fold<double>(0, (s, r) => s + r.igst);
+    final totGst = rows.fold<double>(0, (s, r) => s + r.total);
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+      children: [
+        pw.Text(
+          'GST Summary',
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey700,
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Table(
+          border: pw.TableBorder.all(color: PdfColors.grey300),
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey100),
+              children: [
+                _tableCell('HSN/SAC', isHeader: true),
+                _tableCell('Taxable Amt', isHeader: true,
+                    align: pw.TextAlign.right),
+                _tableCell('Rate', isHeader: true,
+                    align: pw.TextAlign.center),
+                if (!isInterState)
+                  _tableCell('CGST', isHeader: true,
+                      align: pw.TextAlign.right),
+                if (!isInterState)
+                  _tableCell('SGST', isHeader: true,
+                      align: pw.TextAlign.right),
+                if (isInterState)
+                  _tableCell('IGST', isHeader: true,
+                      align: pw.TextAlign.right),
+                _tableCell('Total Tax', isHeader: true,
+                    align: pw.TextAlign.right),
+              ],
+            ),
+            ...rows.map((r) => pw.TableRow(
+                  children: [
+                    _tableCell(r.codeLabel),
+                    _tableCell(_formatCurrency(r.taxableAmount),
+                        align: pw.TextAlign.right),
+                    _tableCell(
+                      '${r.gstPct.toStringAsFixed(r.gstPct == r.gstPct.truncateToDouble() ? 0 : 1)}%',
+                      align: pw.TextAlign.center,
+                    ),
+                    if (!isInterState)
+                      _tableCell(_formatCurrency(r.cgst),
+                          align: pw.TextAlign.right),
+                    if (!isInterState)
+                      _tableCell(_formatCurrency(r.sgst),
+                          align: pw.TextAlign.right),
+                    if (isInterState)
+                      _tableCell(_formatCurrency(r.igst),
+                          align: pw.TextAlign.right),
+                    _tableCell(_formatCurrency(r.total),
+                        align: pw.TextAlign.right, isBold: true),
+                  ],
+                )),
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              children: [
+                _tableCell('Total', isHeader: true),
+                _tableCell(_formatCurrency(totTaxable),
+                    align: pw.TextAlign.right, isBold: true),
+                _tableCell('', align: pw.TextAlign.center),
+                if (!isInterState)
+                  _tableCell(_formatCurrency(totCgst),
+                      align: pw.TextAlign.right, isBold: true),
+                if (!isInterState)
+                  _tableCell(_formatCurrency(totSgst),
+                      align: pw.TextAlign.right, isBold: true),
+                if (isInterState)
+                  _tableCell(_formatCurrency(totIgst),
+                      align: pw.TextAlign.right, isBold: true),
+                _tableCell(_formatCurrency(totGst),
+                    align: pw.TextAlign.right, isBold: true),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  pw.Widget _buildQuoteTotalsWithGst(
+    Quote quote, {
+    String? sellerState,
+    String? buyerState,
+  }) {
     final subtotal = quote.items.fold<double>(
       0,
-      (sum, item) => sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
+      (sum, item) =>
+          sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
     );
-    final totalTax = quote.total - subtotal;
-    
-    // Split GST equally as CGST + SGST
-    final cgst = totalTax / 2;
-    final sgst = totalTax / 2;
+    double totalCgst = 0, totalSgst = 0, totalIgst = 0;
+    for (final item in quote.items) {
+      if (item.taxPct <= 0) continue;
+      final taxable = item.qty * item.unitPrice * (1 - item.discountPct / 100);
+      final split = GstCalculator.calculate(
+        sellerState: sellerState,
+        buyerState: buyerState,
+        taxableAmount: taxable,
+        gstPct: item.taxPct,
+      );
+      totalCgst += split.cgst;
+      totalSgst += split.sgst;
+      totalIgst += split.igst;
+    }
+    final isInterState = GstCalculator.isInterState(sellerState, buyerState);
 
     return pw.Container(
-      width: 250,
+      width: 280,
       child: pw.Column(
         children: [
           _totalsRow('Subtotal', subtotal),
           pw.Divider(color: PdfColors.grey300),
-          _totalsRow('CGST', cgst, isSmall: true),
-          _totalsRow('SGST', sgst, isSmall: true),
+          if (!isInterState) ...[  
+            _totalsRow('CGST', totalCgst, isSmall: true),
+            _totalsRow('SGST', totalSgst, isSmall: true),
+          ] else
+            _totalsRow('IGST', totalIgst, isSmall: true),
           pw.Divider(color: PdfColors.grey400),
           _totalsRow('Total', quote.total, isBold: true, isLarge: true),
         ],

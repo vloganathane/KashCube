@@ -116,6 +116,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           unitPrice: qi.unitPrice,
           taxPct: qi.taxPct,
           discountPct: qi.discountPct,
+          hsnCode: qi.hsnCode,
+          unit: qi.unit,
+          hsnOrSac: qi.hsnOrSac,
         ),
       ));
     });
@@ -170,6 +173,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           unitPrice: ii.unitPrice,
           taxPct: ii.taxPct,
           discountPct: ii.discountPct,
+          hsnCode: ii.hsnCode,
+          unit: ii.unit,
+          hsnOrSac: ii.hsnOrSac,
         ),
       ));
     });
@@ -218,6 +224,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           taxPct: li.taxPct,
           discountPct: li.discountPct,
           lineTotal: lineTotal,
+          hsnCode: li.hsnCode,
+          unit: li.unit,
+          hsnOrSac: li.hsnOrSac,
         );
       }).toList();
 
@@ -235,6 +244,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           taxPct: li.taxPct,
           discountPct: li.discountPct,
           lineTotal: lt,
+          hsnCode: li.hsnCode,
+          unit: li.unit,
+          hsnOrSac: li.hsnOrSac,
         );
       }).toList();
 
@@ -1036,25 +1048,24 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               items: _items,
               onChanged: () => setState(() {}),
               onAddFromCatalog: (item) {
+                final catalogItem = _LineItem(
+                  itemName: item.name,
+                  description: item.description ?? '',
+                  unitPrice: item.unitPrice,
+                  taxPct: item.taxPct,
+                  hsnCode: item.hsnCode,
+                  unit: item.unit.toUpperCase(),
+                  hsnOrSac: item.hsnOrSac,
+                );
                 setState(() {
                   // If first item is empty, replace it instead of adding new one
                   if (_items.length == 1 && 
                       _items[0].itemName.isEmpty && 
                       _items[0].unitPrice == 0) {
-                    _items[0] = _LineItem(
-                      itemName: item.name,
-                      description: item.description ?? '',
-                      unitPrice: item.unitPrice,
-                      taxPct: item.taxPct,
-                    );
+                    _items[0] = catalogItem;
                   } else {
                     // Otherwise add as new item
-                    _items.add(_LineItem(
-                      itemName: item.name,
-                      description: item.description ?? '',
-                      unitPrice: item.unitPrice,
-                      taxPct: item.taxPct,
-                    ));
+                    _items.add(catalogItem);
                   }
                 });
                 // Track usage for smart sorting
@@ -1205,6 +1216,9 @@ class _LineItem {
     this.unitPrice = 0.0,
     this.taxPct = 0.0,
     this.discountPct = 0.0,
+    this.hsnCode,
+    this.unit = 'PCS',
+    this.hsnOrSac = 'HSN',
   });
 
   final String itemName;
@@ -1213,6 +1227,12 @@ class _LineItem {
   final double unitPrice;
   final double taxPct;
   final double discountPct;
+  /// HSN or SAC code copied from item catalog.
+  final String? hsnCode;
+  /// GST UOM code (e-Way Bill master), e.g. 'KGS', 'NOS'.
+  final String unit;
+  /// 'HSN' for products/materials/equipment, 'SAC' for services/labour.
+  final String hsnOrSac;
 
   _LineItem copyWith({
     String? itemName,
@@ -1221,6 +1241,9 @@ class _LineItem {
     double? unitPrice,
     double? taxPct,
     double? discountPct,
+    String? hsnCode,
+    String? unit,
+    String? hsnOrSac,
   }) =>
       _LineItem(
         itemName: itemName ?? this.itemName,
@@ -1229,6 +1252,9 @@ class _LineItem {
         unitPrice: unitPrice ?? this.unitPrice,
         taxPct: taxPct ?? this.taxPct,
         discountPct: discountPct ?? this.discountPct,
+        hsnCode: hsnCode ?? this.hsnCode,
+        unit: unit ?? this.unit,
+        hsnOrSac: hsnOrSac ?? this.hsnOrSac,
       );
 }
 

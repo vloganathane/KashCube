@@ -546,6 +546,7 @@ class DatabaseHelper {
         unit_price REAL NOT NULL DEFAULT 0,
         tax_pct REAL NOT NULL DEFAULT 0,
         hsn_code TEXT,
+        hsn_or_sac TEXT DEFAULT 'HSN',
         is_active INTEGER NOT NULL DEFAULT 1,
         business_id INTEGER,
         sku TEXT,
@@ -1532,6 +1533,15 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 32,
         'description': 'GST Phase A: hsn_code/unit/hsn_or_sac on invoice_items+quote_items; invoice_type/place_of_supply/reverse_charge/customer_gstin on invoices+quotes',
+      });
+    }
+
+    if (oldVersion < 33) {
+      // GST Phase A4: store HSN/SAC type on item catalog so the form toggle is persisted.
+      await db.execute("ALTER TABLE item_catalog ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
+      await db.insert('schema_version', {
+        'version': 33,
+        'description': 'GST Phase A4: hsn_or_sac column on item_catalog',
       });
     }
   }

@@ -26,6 +26,7 @@ class ItemCatalog extends Equatable {
     required this.unitPrice,
     this.taxPct = 0,
     this.hsnCode,
+    this.hsnOrSac = 'HSN',
     this.isFavorite = false,
     this.isActive = true,
     this.lastUsedAt,
@@ -46,6 +47,9 @@ class ItemCatalog extends Equatable {
   final double unitPrice;
   final double taxPct;
   final String? hsnCode;
+  /// 'HSN' for products/materials/equipment, 'SAC' for services/labour.
+  /// Stored explicitly so user overrides are preserved.
+  final String hsnOrSac;
   final bool isFavorite;
   final bool isActive;
   final DateTime? lastUsedAt;
@@ -66,6 +70,7 @@ class ItemCatalog extends Equatable {
     double? unitPrice,
     double? taxPct,
     String? hsnCode,
+    String? hsnOrSac,
     bool? isFavorite,
     bool? isActive,
     DateTime? lastUsedAt,
@@ -86,6 +91,7 @@ class ItemCatalog extends Equatable {
       unitPrice: unitPrice ?? this.unitPrice,
       taxPct: taxPct ?? this.taxPct,
       hsnCode: hsnCode ?? this.hsnCode,
+      hsnOrSac: hsnOrSac ?? this.hsnOrSac,
       isFavorite: isFavorite ?? this.isFavorite,
       isActive: isActive ?? this.isActive,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
@@ -108,6 +114,7 @@ class ItemCatalog extends Equatable {
         'unit_price': unitPrice,
         'tax_pct': taxPct,
         'hsn_code': hsnCode,
+        'hsn_or_sac': hsnOrSac,
         'is_favorite': isFavorite ? 1 : 0,
         'is_active': isActive ? 1 : 0,
         'last_used_at': lastUsedAt?.toIso8601String(),
@@ -132,6 +139,7 @@ class ItemCatalog extends Equatable {
         unitPrice: (map['unit_price'] as num).toDouble(),
         taxPct: (map['tax_pct'] as num?)?.toDouble() ?? 0,
         hsnCode: map['hsn_code'] as String?,
+        hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
         isFavorite: (map['is_favorite'] as int?) == 1,
         isActive: (map['is_active'] as int?) == 1,
         lastUsedAt: map['last_used_at'] != null 
@@ -156,6 +164,7 @@ class ItemCatalog extends Equatable {
         unitPrice,
         taxPct,
         hsnCode,
+        hsnOrSac,
         isFavorite,
         isActive,
         lastUsedAt,

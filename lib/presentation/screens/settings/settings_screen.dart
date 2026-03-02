@@ -17,6 +17,19 @@ import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
 
+// ── Profile provider ──────────────────────────────────────────────────────────
+
+final _profileProvider = FutureProvider<({String? name, String? phone})>((ref) async {
+  final repo = ref.read(settingsRepositoryProvider);
+  final results = await Future.wait([
+    repo.get(SettingsKeys.ownerName),
+    repo.get(SettingsKeys.personalPhone),
+  ]);
+  final name  = (results[0]?.trim().isEmpty ?? true) ? null : results[0];
+  final phone = (results[1]?.trim().isEmpty ?? true) ? null : results[1];
+  return (name: name, phone: phone);
+});
+
 /// Settings screen for app preferences, backup, security, and export.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -35,7 +48,62 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
-          const SizedBox(height: AppSpacing.sm),
+          // -- Profile Header --
+          _ProfileHeader(),
+
+          // -- Security --
+          _SettingsSection(
+            title: 'Security',
+            children: [
+              appLockAsync.when(
+                data: (enabled) => SwitchListTile(
+                  secondary: const Icon(Icons.lock_outline),
+                  title: const Text('App Lock'),
+                  subtitle: Text(enabled ? 'PIN enabled' : 'Not configured'),
+                  value: enabled,
+                  onChanged: (value) =>
+                      _toggleAppLock(context, ref, value),
+                ),
+                loading: () => const ListTile(
+                  leading: Icon(Icons.lock_outline),
+                  title: Text('App Lock'),
+                  trailing: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+                error: (_, _) => const ListTile(
+                  leading: Icon(Icons.lock_outline),
+                  title: Text('App Lock'),
+                  subtitle: Text('Error loading'),
+                ),
+              ),
+              biometricAsync.when(
+                data: (bioEnabled) {
+                  final lockEnabled = appLockAsync.valueOrNull ?? false;
+                  return SwitchListTile(
+                    secondary: const Icon(Icons.fingerprint),
+                    title: const Text('Biometric Unlock'),
+                    subtitle: const Text('Use fingerprint or face'),
+                    value: bioEnabled,
+                    onChanged: lockEnabled
+                        ? (value) => _toggleBiometric(context, ref, value)
+                        : null,
+                  );
+                },
+                loading: () => const ListTile(
+                  leading: Icon(Icons.fingerprint),
+                  title: Text('Biometric Unlock'),
+                ),
+                error: (_, _) => const ListTile(
+                  leading: Icon(Icons.fingerprint),
+                  title: Text('Biometric Unlock'),
+                  subtitle: Text('Error loading'),
+                ),
+              ),
+            ],
+          ),
 
           // -- Accounts --
           _SettingsSection(
@@ -112,81 +180,6 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
-          // -- Notifications --
-          _SettingsSection(
-            title: 'Notifications',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.notifications_outlined),
-                title: const Text('Notification Settings'),
-                subtitle: const Text('Reminders, quiet hours & toggles'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const NotificationSettingsScreen(),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // -- Security --
-          _SettingsSection(
-            title: 'Security',
-            children: [
-              appLockAsync.when(
-                data: (enabled) => SwitchListTile(
-                  secondary: const Icon(Icons.lock_outline),
-                  title: const Text('App Lock'),
-                  subtitle: Text(enabled ? 'PIN enabled' : 'Not configured'),
-                  value: enabled,
-                  onChanged: (value) =>
-                      _toggleAppLock(context, ref, value),
-                ),
-                loading: () => const ListTile(
-                  leading: Icon(Icons.lock_outline),
-                  title: Text('App Lock'),
-                  trailing: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-                error: (_, _) => const ListTile(
-                  leading: Icon(Icons.lock_outline),
-                  title: Text('App Lock'),
-                  subtitle: Text('Error loading'),
-                ),
-              ),
-              biometricAsync.when(
-                data: (bioEnabled) {
-                  final lockEnabled =
-                      appLockAsync.valueOrNull ?? false;
-                  return SwitchListTile(
-                    secondary: const Icon(Icons.fingerprint),
-                    title: const Text('Biometric Unlock'),
-                    subtitle: const Text('Use fingerprint or face'),
-                    value: bioEnabled,
-                    onChanged: lockEnabled
-                        ? (value) =>
-                            _toggleBiometric(context, ref, value)
-                        : null,
-                  );
-                },
-                loading: () => const ListTile(
-                  leading: Icon(Icons.fingerprint),
-                  title: Text('Biometric Unlock'),
-                ),
-                error: (_, _) => const ListTile(
-                  leading: Icon(Icons.fingerprint),
-                  title: Text('Biometric Unlock'),
-                  subtitle: Text('Error loading'),
-                ),
-              ),
-            ],
-          ),
-
           // -- Data --
           _SettingsSection(
             title: 'Data',
@@ -216,6 +209,25 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
 
+            ],
+          ),
+
+          // -- Notifications --
+          _SettingsSection(
+            title: 'Notifications',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Notification Settings'),
+                subtitle: const Text('Reminders, quiet hours & toggles'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const NotificationSettingsScreen(),
+                  ),
+                ),
+              ),
             ],
           ),
 
@@ -253,25 +265,6 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 );
               }),
-            ],
-          ),
-
-          // -- Contacts --
-          _SettingsSection(
-            title: 'Contacts',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.qr_code_2_outlined),
-                title: const Text('My Personal Card'),
-                subtitle:
-                    const Text('Share your contact as a QR code'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const MyPersonalCardScreen()),
-                ),
-              ),
             ],
           ),
 
@@ -541,6 +534,118 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+}
+
+// ---------------------------------------------------------------------------
+// Profile header card
+// ---------------------------------------------------------------------------
+
+class _ProfileHeader extends ConsumerWidget {
+  const _ProfileHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync = ref.watch(_profileProvider);
+    final scheme = context.colorScheme;
+
+    return profileAsync.when(
+      loading: () => const SizedBox(height: AppSpacing.sm),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (profile) {
+        final hasProfile = profile.name != null;
+        final initials = _initials(profile.name);
+
+        return InkWell(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const MyPersonalCardScreen(),
+              ),
+            );
+            ref.invalidate(_profileProvider);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.base,
+              AppSpacing.base, AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                // Avatar
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: scheme.primaryContainer,
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: scheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.base),
+                // Info
+                Expanded(
+                  child: hasProfile
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              profile.name!,
+                              style: context.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (profile.phone != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                profile.phone!,
+                                style: context.textTheme.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Set up your profile',
+                              style: context.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Add name, phone & personal card',
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _initials(String? name) {
+    if (name == null || name.trim().isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length == 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -412,6 +412,11 @@ class DatabaseHelper {
         gst_no TEXT,
         logo_path TEXT,
         is_active INTEGER NOT NULL DEFAULT 0,
+        owner_name TEXT,
+        website TEXT,
+        whatsapp TEXT,
+        linkedin TEXT,
+        instagram TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
@@ -1289,6 +1294,35 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 24,
         'description': 'Add party_context to parties table (personal/business for lender/borrower)',
+      });
+    }
+
+    if (oldVersion < 25) {
+      // Store local file path for a scanned/photographed business card.
+      await db.execute(
+        'ALTER TABLE parties ADD COLUMN business_card_image_path TEXT',
+      );
+      await db.insert('schema_version', {
+        'version': 25,
+        'description': 'Add business_card_image_path to parties table',
+      });
+    }
+
+    if (oldVersion < 26) {
+      // Social/web presence on parties.
+      await db.execute('ALTER TABLE parties ADD COLUMN website TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN whatsapp TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN linkedin TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN instagram TEXT');
+      // Social/web presence + owner name on businesses.
+      await db.execute('ALTER TABLE businesses ADD COLUMN owner_name TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN website TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN whatsapp TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN linkedin TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN instagram TEXT');
+      await db.insert('schema_version', {
+        'version': 26,
+        'description': 'Add website, social fields to parties & businesses',
       });
     }
   }

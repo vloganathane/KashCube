@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
@@ -265,7 +268,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   }
 
   Future<void> _saveQuote({bool send = false}) async {
-    final status = send ? QuoteStatus.sent : QuoteStatus.draft;
+    // When sending, save with the current status (or draft for new records).
+    // Status is promoted to 'sent' only after the user confirms sharing.
+    final status = _existingQuote?.status ?? QuoteStatus.draft;
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final quote = Quote(
@@ -289,18 +294,45 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       createdAt: _existingQuote?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+    final int savedId;
     if (_existingQuote != null) {
       await ref.read(quotesProvider.notifier).edit(quote, _quoteItems);
+      savedId = quote.id!;
     } else {
-      await ref.read(quotesProvider.notifier).add(quote, _quoteItems);
+      savedId = await ref.read(quotesProvider.notifier).add(quote, _quoteItems);
     }
     if (send) {
       final bizName =
           ref.read(activeBusinessProvider)?.name ?? 'My Business';
-      final msg =
-          'Hi $_customerName, quote #${quote.quoteNo} for ${CurrencyFormatter.format(_total)}. '
-          'Valid till ${DateFormatter.format(_validUntil)}. — $bizName';
-      Share.share(msg, subject: 'Quote ${quote.quoteNo}');
+      final msg = 'Hi $_customerName,\n\n'
+          'Quote #${quote.quoteNo} for ${CurrencyFormatter.format(_total)}.\n'
+          'Valid till ${DateFormatter.format(_validUntil)}.\n\n'
+          '— $bizName';
+      final capturedBusinessId = businessId;
+      await _showSendPreviewSheet(
+        subject: 'Quote ${quote.quoteNo}',
+        message: msg,
+        onSent: () => ref.read(quotesProvider.notifier).markSent(savedId),
+        generatePdf: () async {
+          Business? business;
+          if (capturedBusinessId != null) {
+            business = await ref
+                .read(businessRepositoryProvider)
+                .getById(capturedBusinessId);
+          }
+          Party? customerParty;
+          if (_customerPartyId != null) {
+            customerParty = await ref
+                .read(partyRepositoryProvider)
+                .getById(_customerPartyId!);
+          }
+          return InvoicePdfService.instance.generateQuotePdf(
+            quote,
+            business: business,
+            customerParty: customerParty,
+          );
+        },
+      );
     }
   }
 
@@ -320,7 +352,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       return;
     }
     
-    final status = send ? InvoiceStatus.sent : InvoiceStatus.draft;
+    final status = _existingInvoice?.status ?? InvoiceStatus.draft;
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
     final invoice = Invoice(
@@ -346,18 +378,214 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       createdAt: _existingInvoice?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );
+    final int savedId;
     if (_existingInvoice != null) {
       await ref.read(invoicesProvider.notifier).edit(invoice, _invoiceItems);
+      savedId = invoice.id!;
     } else {
-      await ref.read(invoicesProvider.notifier).add(invoice, _invoiceItems);
+      savedId = await ref.read(invoicesProvider.notifier).add(invoice, _invoiceItems);
     }
     if (send) {
       final bizName =
           ref.read(activeBusinessProvider)?.name ?? 'My Business';
-      final msg =
-          'Hi $_customerName, invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(_total)}. '
-          '${_dueDate != null ? 'Due ${DateFormatter.format(_dueDate!)}. ' : ''}— $bizName';
-      Share.share(msg, subject: 'Invoice ${invoice.invoiceNo}');
+      final msg = 'Hi $_customerName,\n\n'
+          'Invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(_total)}.'
+          '${_dueDate != null ? '\nDue ${DateFormatter.format(_dueDate!)}.' : ''}\n\n'
+          '— $bizName';
+      final capturedBusinessId = businessId;
+      await _showSendPreviewSheet(
+        subject: 'Invoice ${invoice.invoiceNo}',
+        message: msg,
+        onSent: () => ref.read(invoicesProvider.notifier).markSent(savedId),
+        generatePdf: () async {
+          Business? business;
+          if (capturedBusinessId != null) {
+            business = await ref
+                .read(businessRepositoryProvider)
+                .getById(capturedBusinessId);
+          }
+          Party? customerParty;
+          if (_customerPartyId != null) {
+            customerParty = await ref
+                .read(partyRepositoryProvider)
+                .getById(_customerPartyId!);
+          }
+          return InvoicePdfService.instance.generateInvoicePdf(
+            invoice,
+            business: business,
+            customerParty: customerParty,
+          );
+        },
+      );
+    }
+  }
+
+  /// Shows a bottom sheet with a message preview and a "Send PDF + Message"
+  /// button. If the user confirms, delegates to [_generateAndShare].
+  Future<void> _showSendPreviewSheet({
+    required String subject,
+    required String message,
+    required Future<File> Function() generatePdf,
+    required Future<void> Function() onSent,
+  }) async {
+    if (!mounted) return;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        final colorScheme = Theme.of(sheetCtx).colorScheme;
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.lg,
+              AppSpacing.base,
+              AppSpacing.base + MediaQuery.of(sheetCtx).viewInsets.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ── Header ──────────────────────────────────────────────
+                Row(
+                  children: [
+                    Icon(Icons.send_outlined, color: colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        subject,
+                        style: Theme.of(sheetCtx).textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                // ── Message preview ─────────────────────────────────────
+                Text(
+                  'Message preview',
+                  style: Theme.of(sheetCtx).textTheme.labelMedium?.copyWith(
+                        color: colorScheme.outline,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 140),
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(AppSpacing.sm),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    child: Text(
+                      message,
+                      style: Theme.of(sheetCtx).textTheme.bodyMedium,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+
+                // ── Copy message ─────────────────────────────────────────
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.copy_outlined, size: 16),
+                    label: const Text('Copy message'),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: message));
+                      ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                        const SnackBar(
+                          content: Text('Message copied to clipboard'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+
+                // ── Hint ─────────────────────────────────────────────────
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: colorScheme.outline,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        'The PDF and message will be shared together. '
+                        'Pick WhatsApp, Email, SMS and more from '
+                        'the share sheet.',
+                        style: Theme.of(sheetCtx).textTheme.bodySmall
+                            ?.copyWith(color: colorScheme.outline),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                // ── Actions ──────────────────────────────────────────────
+                FilledButton.icon(
+                  icon: const Icon(Icons.send_outlined),
+                  label: const Text('Send PDF + Message'),
+                  onPressed: () => Navigator.pop(sheetCtx, true),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                OutlinedButton(
+                  onPressed: () => Navigator.pop(sheetCtx, false),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (confirmed == true && mounted) {
+      await _generateAndShare(
+        subject: subject,
+        message: message,
+        generatePdf: generatePdf,
+        onSent: onSent,
+      );
+    }
+  }
+
+  /// Generates a PDF via [generatePdf], opens the system share sheet,
+  /// then calls [onSent] to mark the record as sent in the database.
+  Future<void> _generateAndShare({
+    required String subject,
+    required String message,
+    required Future<File> Function() generatePdf,
+    required Future<void> Function() onSent,
+  }) async {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final pdfFile = await generatePdf();
+      if (!mounted) return;
+      Navigator.pop(context);
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        subject: subject,
+        text: message,
+      );
+      // Mark as sent only after the share sheet has been opened successfully.
+      await onSent();
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
     }
   }
 
@@ -492,6 +720,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         subject: 'Quote ${_existingQuote!.quoteNo}',
         text: message,
       );
+      // Mark as sent now that the user has actively shared the PDF.
+      await ref.read(quotesProvider.notifier).markSent(_existingQuote!.id!);
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -549,6 +779,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         subject: 'Invoice ${_existingInvoice!.invoiceNo}',
         text: message,
       );
+      // Mark as sent now that the user has actively shared the PDF.
+      await ref.read(invoicesProvider.notifier).markSent(_existingInvoice!.id!);
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog

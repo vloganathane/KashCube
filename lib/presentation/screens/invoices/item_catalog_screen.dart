@@ -724,3 +724,16 @@ class _DurationPicker extends StatelessWidget {
     );
   }
 }
+
+// Public helper — call from anywhere (e.g. speed-dial FAB)
+/// Opens the Add Item bottom-sheet without navigating to [ItemCatalogScreen].
+Future<void> showAddItemSheet(BuildContext context, WidgetRef ref) {
+  return showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (_) => _ItemFormSheet(
+      onSave: (item) => ref.read(catalogProvider.notifier).add(item),
+    ),
+  );
+}

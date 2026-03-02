@@ -15,6 +15,11 @@ class Business extends Equatable {
     this.gstNo,
     this.logoPath,
     this.isActive = false,
+    this.ownerName,
+    this.website,
+    this.whatsapp,
+    this.linkedin,
+    this.instagram,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -34,6 +39,13 @@ class Business extends Equatable {
 
   /// Whether this is the currently active business for invoicing.
   final bool isActive;
+
+  /// Owner/contact name for this business profile.
+  final String? ownerName;
+  final String? website;
+  final String? whatsapp;
+  final String? linkedin;
+  final String? instagram;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -61,6 +73,11 @@ class Business extends Equatable {
     String? gstNo,
     String? logoPath,
     bool? isActive,
+    String? ownerName,
+    String? website,
+    String? whatsapp,
+    String? linkedin,
+    String? instagram,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -76,6 +93,11 @@ class Business extends Equatable {
         gstNo: gstNo ?? this.gstNo,
         logoPath: logoPath ?? this.logoPath,
         isActive: isActive ?? this.isActive,
+        ownerName: ownerName ?? this.ownerName,
+        website: website ?? this.website,
+        whatsapp: whatsapp ?? this.whatsapp,
+        linkedin: linkedin ?? this.linkedin,
+        instagram: instagram ?? this.instagram,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -92,6 +114,11 @@ class Business extends Equatable {
         'gst_no': gstNo,
         'logo_path': logoPath,
         'is_active': isActive ? 1 : 0,
+        'owner_name': ownerName,
+        'website': website,
+        'whatsapp': whatsapp,
+        'linkedin': linkedin,
+        'instagram': instagram,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -108,6 +135,11 @@ class Business extends Equatable {
         gstNo: map['gst_no'] as String?,
         logoPath: map['logo_path'] as String?,
         isActive: (map['is_active'] as int? ?? 0) == 1,
+        ownerName: map['owner_name'] as String?,
+        website: map['website'] as String?,
+        whatsapp: map['whatsapp'] as String?,
+        linkedin: map['linkedin'] as String?,
+        instagram: map['instagram'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );

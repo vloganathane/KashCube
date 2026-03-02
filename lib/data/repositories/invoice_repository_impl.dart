@@ -75,6 +75,17 @@ class QuoteRepositoryImpl implements QuoteRepository {
   }
 
   @override
+  Future<void> markSent(int id) async {
+    final db = await _db.database;
+    await db.update(
+      'quotes',
+      {'status': QuoteStatus.sent.dbValue},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, QuoteStatus.draft.dbValue],
+    );
+  }
+
+  @override
   Future<Invoice> convertToInvoice(int quoteId, String invoiceNo) async {
     final db = await _db.database;
     final quote = await getById(quoteId);
@@ -300,6 +311,18 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       {'reminder_sent_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [invoiceId],
+    );
+  }
+
+  @override
+  Future<void> markSent(int id) async {
+    final db = await _db.database;
+    // Only promote draft → sent; never demote paid/overdue/partiallyPaid.
+    await db.update(
+      'invoices',
+      {'status': InvoiceStatus.sent.dbValue},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, InvoiceStatus.draft.dbValue],
     );
   }
 }

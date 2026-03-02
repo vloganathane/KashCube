@@ -9,6 +9,9 @@ abstract class QuoteRepository {
   Future<void> update(Quote quote, List<QuoteItem> items);
   Future<void> delete(int id);
   Future<Invoice> convertToInvoice(int quoteId, String invoiceNo);
+
+  /// Promote a draft quote to [QuoteStatus.sent]. No-op if already past draft.
+  Future<void> markSent(int id);
 }
 
 abstract class InvoiceRepository {
@@ -36,4 +39,7 @@ abstract class InvoiceRepository {
 
   /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [invoiceId].
   Future<void> markReminderSent(int invoiceId);
+
+  /// Promote a draft invoice to [InvoiceStatus.sent]. No-op if paid/overdue.
+  Future<void> markSent(int id);
 }

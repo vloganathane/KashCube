@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
+import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/party.dart';
 import '../../providers/party_provider.dart';
 import '../../widgets/party_form_sheet.dart';
+import '../../widgets/vcard_qr_dialog.dart';
 import '../search/search_screen.dart';
 import 'party_detail_screen.dart';
 
@@ -149,8 +151,12 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                     onEdit: () => _showAddEditSheet(context,
                         existing: filtered[i]),
                     onDelete: () =>
-                        _confirmDelete(context, filtered[i]),
-                  ),
+                        _confirmDelete(context, filtered[i]),                    onShareQr: () => showVCardQrDialog(
+                      context,
+                      vcard: vCardFromParty(filtered[i]),
+                      displayName: filtered[i].name,
+                      subtitle: filtered[i].phoneNumber ?? filtered[i].email,
+                    ),                  ),
                 );
               },
             ),
@@ -237,6 +243,7 @@ class _PartyTile extends StatelessWidget {
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
+    required this.onShareQr,
   });
 
   final Party party;
@@ -244,6 +251,7 @@ class _PartyTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onShareQr;
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +308,20 @@ class _PartyTile extends StatelessWidget {
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
         children: [
+          GestureDetector(
+            onTap: onShareQr,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Icon(
+                Icons.qr_code_2_outlined,
+                size: 16,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+          ),
           if (netBalance != 0) ...[
             Text(
               netBalance > 0
@@ -345,6 +366,14 @@ class _PartyTile extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.qr_code_2_outlined),
+              title: const Text('Share QR'),
+              onTap: () {
+                Navigator.pop(context);
+                onShareQr();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Edit'),

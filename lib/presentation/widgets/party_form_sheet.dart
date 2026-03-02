@@ -1,12 +1,16 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
+import 'qr_scanner_sheet.dart';
 
 /// Unified add / edit party bottom sheet.
 ///
@@ -39,8 +43,14 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   late final TextEditingController _state;
   late final TextEditingController _pincode;
   late final TextEditingController _notes;
+  late final TextEditingController _website;
+  late final TextEditingController _whatsapp;
+  late final TextEditingController _linkedin;
+  late final TextEditingController _instagram;
   late PartyType _type;
   late String _partyContext;
+  String? _businessCardImagePath;
+  bool _onlineExpanded = false;
 
   @override
   void initState() {
@@ -54,9 +64,18 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _city = TextEditingController(text: p?.city ?? '');
     _state = TextEditingController(text: p?.state ?? '');
     _pincode = TextEditingController(text: p?.pincode ?? '');
-    _notes = TextEditingController(text: p?.notes ?? '');
+    _notes     = TextEditingController(text: p?.notes ?? '');
+    _website   = TextEditingController(text: p?.website ?? '');
+    _whatsapp  = TextEditingController(text: p?.whatsapp ?? '');
+    _linkedin  = TextEditingController(text: p?.linkedin ?? '');
+    _instagram = TextEditingController(text: p?.instagram ?? '');
     _type = p?.partyType ?? PartyType.personal;
     _partyContext = p?.partyContext ?? 'personal';
+    _businessCardImagePath = p?.businessCardImagePath;
+    _onlineExpanded = (p?.website ?? '').isNotEmpty ||
+        (p?.whatsapp ?? '').isNotEmpty ||
+        (p?.linkedin ?? '').isNotEmpty ||
+        (p?.instagram ?? '').isNotEmpty;
   }
 
   @override
@@ -70,6 +89,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _state.dispose();
     _pincode.dispose();
     _notes.dispose();
+    _website.dispose();
+    _whatsapp.dispose();
+    _linkedin.dispose();
+    _instagram.dispose();
     super.dispose();
   }
 
@@ -121,11 +144,25 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // ── Pick from contacts ───────────────────────────────────
-              OutlinedButton.icon(
-                onPressed: _pickFromContacts,
-                icon: const Icon(Icons.contacts_outlined, size: 18),
-                label: const Text('Pick from Contacts'),
+              // ── Pick from contacts / Scan QR ─────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickFromContacts,
+                      icon: const Icon(Icons.contacts_outlined, size: 18),
+                      label: const Text('Contacts'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _scanQr,
+                      icon: const Icon(Icons.qr_code_scanner_outlined, size: 18),
+                      label: const Text('Scan QR'),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -308,6 +345,77 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                   prefixIcon: Icon(Icons.notes_outlined),
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+
+              // ── Online Presence ───────────────────────────────────────
+              Theme(
+                data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  initiallyExpanded: _onlineExpanded,
+                  leading: const Icon(Icons.language_outlined),
+                  title: const Text('Online Presence'),
+                  subtitle: const Text(
+                    'Website, WhatsApp, LinkedIn, Instagram',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    TextFormField(
+                      controller: _website,
+                      decoration: const InputDecoration(
+                        labelText: 'Website',
+                        hintText: 'https://example.com',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.language_outlined),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _whatsapp,
+                      decoration: const InputDecoration(
+                        labelText: 'WhatsApp Number',
+                        hintText: '9876543210',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.chat_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _linkedin,
+                      decoration: const InputDecoration(
+                        labelText: 'LinkedIn',
+                        hintText: 'linkedin.com/in/username',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.work_outline),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _instagram,
+                      decoration: const InputDecoration(
+                        labelText: 'Instagram',
+                        hintText: '@username',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.camera_alt_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // ── Business Card ─────────────────────────────────────────
+              _BusinessCardPicker(
+                imagePath: _businessCardImagePath,
+                onPick: _pickBusinessCard,
+                onRemove: () => setState(() => _businessCardImagePath = null),
+              ),
               const SizedBox(height: AppSpacing.xl),
 
               // ── Save ──────────────────────────────────────────────────
@@ -327,6 +435,64 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickBusinessCard() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
+    if (picked != null && mounted) {
+      setState(() => _businessCardImagePath = picked.path);
+    }
+  }
+
+  Future<void> _scanQr() async {
+    final parsed = await showQrScannerSheet(context);
+    if (parsed == null || !mounted) return;
+    setState(() {
+      if (parsed['name'] != null) _name.text = parsed['name']!;
+      if (parsed['phone'] != null) _phone.text = parsed['phone']!;
+      if (parsed['email'] != null) _email.text = parsed['email']!;
+      if (parsed['address'] != null) _address.text = parsed['address']!;
+      if (parsed['city'] != null) _city.text = parsed['city']!;
+      if (parsed['state'] != null) _state.text = parsed['state']!;
+      if (parsed['pincode'] != null) _pincode.text = parsed['pincode']!;
+      if (parsed['gstin'] != null) _gstin.text = parsed['gstin']!;
+      if (parsed['website'] != null) _website.text = parsed['website']!;
+      if (parsed['whatsapp'] != null) _whatsapp.text = parsed['whatsapp']!;
+      if (parsed['linkedin'] != null) _linkedin.text = parsed['linkedin']!;
+      if (parsed['instagram'] != null) _instagram.text = parsed['instagram']!;
+      // Auto-expand online presence if any social field was populated
+      if ((parsed['website'] ?? '').isNotEmpty ||
+          (parsed['whatsapp'] ?? '').isNotEmpty ||
+          (parsed['linkedin'] ?? '').isNotEmpty ||
+          (parsed['instagram'] ?? '').isNotEmpty) {
+        _onlineExpanded = true;
+      }
+    });
   }
 
   Future<void> _pickFromContacts() async {
@@ -378,6 +544,11 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       partyType: _type,
       partyContext: _partyContext,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+      website: _website.text.trim().isEmpty ? null : _website.text.trim(),
+      whatsapp: _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
+      linkedin: _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
+      instagram: _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
+      businessCardImagePath: _businessCardImagePath,
       totalTransactions: existing?.totalTransactions ?? 0,
       totalTransactionAmount: existing?.totalTransactionAmount ?? 0,
       totalCreditGiven: existing?.totalCreditGiven ?? 0,
@@ -388,4 +559,104 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     widget.onSave(party);
     Navigator.pop(context);
   }
+}
+
+// ── Business Card Picker ──────────────────────────────────────────────────────
+
+class _BusinessCardPicker extends StatelessWidget {
+  const _BusinessCardPicker({
+    required this.imagePath,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final String? imagePath;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.badge_outlined, size: 18, color: cs.outline),
+            const SizedBox(width: 8),
+            Text(
+              'Business Card',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: cs.outline),
+            ),
+            const Spacer(),
+            if (imagePath != null)
+              TextButton.icon(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Remove'),
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.error,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (imagePath != null) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.file(
+              File(imagePath!),
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, error, stack) => _placeholder(context, cs),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: onPick,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Retake / Replace'),
+          ),
+        ] else
+          InkWell(
+            onTap: onPick,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              height: 120,
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: cs.outlineVariant, style: BorderStyle.solid),
+                borderRadius: BorderRadius.circular(12),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined,
+                      size: 32, color: cs.primary),
+                  const SizedBox(height: 6),
+                  Text('Tap to add business card',
+                      style: TextStyle(color: cs.primary, fontSize: 13)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _placeholder(BuildContext context, ColorScheme cs) => Container(
+        height: 100,
+        decoration: BoxDecoration(
+          color: cs.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Icon(Icons.broken_image_outlined, color: cs.error),
+        ),
+      );
 }

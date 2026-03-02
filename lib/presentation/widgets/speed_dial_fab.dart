@@ -6,17 +6,33 @@ import '../screens/bills/bills_and_payments_screen.dart';
 import '../screens/bookings/create_booking_screen.dart';
 import '../screens/invoices/quote_builder_screen.dart';
 import '../screens/loans/loans_screen.dart';
+import '../screens/invoices/item_catalog_screen.dart';
 import '../screens/transactions/add_edit_transaction_screen.dart';
 
-/// Shared speed-dial FAB used on the home shell and the Invoices & Quotes
-/// screen. When [showAllOptions] is false (invoices screen), only the
-/// Invoice and Quote options are shown.
+/// Shared speed-dial FAB used on the home shell, Invoices & Quotes screen,
+/// and the Transactions tab.
+///
+/// Behaviour modes:
+/// - [showAllOptions] = true, [transactionsTabOnly] = false → home shell
+///   (all options: business + transaction + loan + bills in respective modes)
+/// - [showAllOptions] = false → invoices/business screen (invoice + quote only)
+/// - [transactionsTabOnly] = true → transactions tab (transaction + loan +
+///   bills only; hides invoice / quote / booking even in business mode)
 class SpeedDialFab extends ConsumerStatefulWidget {
-  const SpeedDialFab({super.key, this.showAllOptions = true});
+  const SpeedDialFab({
+    super.key,
+    this.showAllOptions = true,
+    this.transactionsTabOnly = false,
+  });
 
   /// If true (default), shows Transaction / Loan / Bills options in addition
   /// to Invoice / Quote. Set to false when used inside the Invoices screen.
   final bool showAllOptions;
+
+  /// When true, suppresses Invoice / Quote / Booking options so only the
+  /// transaction-relevant actions (Transaction, Loan/Lend, Bills Payable)
+  /// are shown. Takes precedence over [showAllOptions] for business items.
+  final bool transactionsTabOnly;
 
   @override
   ConsumerState<SpeedDialFab> createState() => _SpeedDialFabState();
@@ -101,6 +117,11 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     );
   }
 
+  void _openAddItem() {
+    _close();
+    showAddItemSheet(context, ref);
+  }
+
   Widget _animated(Widget child) => ScaleTransition(
         scale: _expandAnim,
         child: FadeTransition(opacity: _expandAnim, child: child),
@@ -114,8 +135,14 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        // ── Invoice + Quote + Booking (business mode only) ──────────────
-        if (isBusiness) ...[
+// ── Invoice + Quote + Booking + Item (business mode, not on transactions tab) ──
+        if (isBusiness && !widget.transactionsTabOnly) ...[          
+          _animated(SpeedDialOption(
+            icon: Icons.inventory_2_outlined,
+            label: 'Add Item',
+            onTap: _openAddItem,
+          )),
+          const SizedBox(height: 12),
           _animated(SpeedDialOption(
             icon: Icons.receipt_outlined,
             label: 'Invoice',

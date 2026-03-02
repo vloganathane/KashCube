@@ -47,6 +47,11 @@ class Party extends Equatable {
     this.createdAt,
     this.updatedAt,
     this.deletedAt,
+    this.businessCardImagePath,
+    this.website,
+    this.whatsapp,
+    this.linkedin,
+    this.instagram,
   });
 
   final int? id;
@@ -79,6 +84,12 @@ class Party extends Equatable {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
+  /// Local file-system path to a business card photo/scan. Never transmitted.
+  final String? businessCardImagePath;
+  final String? website;
+  final String? whatsapp;
+  final String? linkedin;
+  final String? instagram;
 
   /// Net credit balance for this party (given - received).
   double get netCredit => totalCreditGiven - totalCreditReceived;
@@ -115,6 +126,11 @@ class Party extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    String? businessCardImagePath,
+    String? website,
+    String? whatsapp,
+    String? linkedin,
+    String? instagram,
   }) {
     return Party(
       id: id ?? this.id,
@@ -137,6 +153,11 @@ class Party extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
+      businessCardImagePath: businessCardImagePath ?? this.businessCardImagePath,
+      website: website ?? this.website,
+      whatsapp: whatsapp ?? this.whatsapp,
+      linkedin: linkedin ?? this.linkedin,
+      instagram: instagram ?? this.instagram,
     );
   }
 
@@ -162,6 +183,11 @@ class Party extends Equatable {
       'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
+      'business_card_image_path': businessCardImagePath,
+      'website': website,
+      'whatsapp': whatsapp,
+      'linkedin': linkedin,
+      'instagram': instagram,
     };
   }
 
@@ -190,9 +216,14 @@ class Party extends Equatable {
       createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
       updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
       deletedAt: map['deleted_at'] != null ? DateTime.parse(map['deleted_at'] as String) : null,
+      businessCardImagePath: map['business_card_image_path'] as String?,
+      website: map['website'] as String?,
+      whatsapp: map['whatsapp'] as String?,
+      linkedin: map['linkedin'] as String?,
+      instagram: map['instagram'] as String?,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, partyType, partyContext];
+  List<Object?> get props => [id, name, partyType, partyContext, businessCardImagePath];
 }

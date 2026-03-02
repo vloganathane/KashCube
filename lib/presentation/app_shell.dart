@@ -126,7 +126,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
-    final showFab = currentIndex == 0 || currentIndex == 1;
+    final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
 
     return Scaffold(
       body: IndexedStack(
@@ -167,7 +167,12 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ],
       ),
-      floatingActionButton: showFab ? const SpeedDialFab() : null,
+      floatingActionButton: showFab
+          ? SpeedDialFab(
+              transactionsTabOnly: currentIndex == 1,
+              showAllOptions: currentIndex != 2,
+            )
+          : null,
     );
   }
 }

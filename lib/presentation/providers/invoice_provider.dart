@@ -119,6 +119,13 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
     await load();
     return invoice;
   }
+
+  /// Promote a draft quote to [QuoteStatus.sent] after the user has confirmed
+  /// sharing the PDF. No-op for quotes already past draft.
+  Future<void> markSent(int id) async {
+    await _repo.markSent(id);
+    await load();
+  }
 }
 
 final quotesProvider =
@@ -179,6 +186,13 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
   /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [invoiceId].
   Future<void> markReminderSent(int invoiceId) async {
     await _repo.markReminderSent(invoiceId);
+    await load();
+  }
+
+  /// Promote a draft invoice to [InvoiceStatus.sent] after the user has
+  /// confirmed sharing the PDF. No-op for paid/overdue/partiallyPaid invoices.
+  Future<void> markSent(int id) async {
+    await _repo.markSent(id);
     await load();
   }
 }

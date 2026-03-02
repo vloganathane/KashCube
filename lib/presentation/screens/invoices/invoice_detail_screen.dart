@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
@@ -392,6 +393,7 @@ class _InvoiceDetailView extends ConsumerWidget {
           invoice: invoice,
           businessName: businessName,
           pdfFile: pdfFile,
+          onSent: () => ref.read(invoicesProvider.notifier).markSent(invoice.id!),
         ),
       );
     } catch (e) {
@@ -919,94 +921,129 @@ class _ShareOptionsSheet extends StatelessWidget {
     required this.invoice,
     required this.businessName,
     required this.pdfFile,
+    required this.onSent,
   });
 
   final Invoice invoice;
   final String businessName;
   final dynamic pdfFile; // File
+  /// Called after the share sheet is opened to mark the invoice as sent.
+  final Future<void> Function() onSent;
 
   @override
   Widget build(BuildContext context) {
+    final message = _generateMessage();
+    final colorScheme = Theme.of(context).colorScheme;
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.base),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base,
+          AppSpacing.lg,
+          AppSpacing.base,
+          AppSpacing.base,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Share Invoice',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
+            // ── Header ──────────────────────────────────────────────────────
+            Row(
+              children: [
+                Icon(Icons.send_outlined, color: colorScheme.primary),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'Share Invoice',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.lg),
-            
-            // Share PDF via system share sheet
-            ListTile(
-              leading: const Icon(Icons.share_outlined),
-              title: const Text('Share PDF'),
-              subtitle: const Text('Share via any app'),
-              onTap: () async {
-                Navigator.pop(context);
-                await Share.shareXFiles(
-                  [XFile(pdfFile.path)],
-                  subject: 'Invoice ${invoice.invoiceNo}',
-                  text: _generateMessage(),
-                );
-              },
+
+            // ── Message preview ─────────────────────────────────────────────
+            Text(
+              'Message preview',
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.outline,
+                  ),
             ),
-            
-            const Divider(),
-            
-            // WhatsApp - Share PDF + message
-            ListTile(
-              leading: const Icon(Icons.chat_outlined, color: Colors.green),
-              title: const Text('WhatsApp'),
-              subtitle: const Text('Send PDF via WhatsApp'),
-              onTap: () async {
-                Navigator.pop(context);
-                await Share.shareXFiles(
-                  [XFile(pdfFile.path)],
-                  subject: 'Invoice ${invoice.invoiceNo}',
-                  text: _generateMessage(),
-                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
-                );
-              },
+            const SizedBox(height: AppSpacing.xs),
+            Container(
+              constraints: const BoxConstraints(maxHeight: 140),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(AppSpacing.sm),
+              ),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Text(
+                  message,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
             ),
-            
-            // SMS - Share PDF + message
-            ListTile(
-              leading: const Icon(Icons.sms_outlined, color: Colors.blue),
-              title: const Text('SMS'),
-              subtitle: const Text('Send PDF via text message'),
-              onTap: () async {
-                Navigator.pop(context);
-                await Share.shareXFiles(
-                  [XFile(pdfFile.path)],
-                  subject: 'Invoice ${invoice.invoiceNo}',
-                  text: _generateMessage(),
-                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
-                );
-              },
+            const SizedBox(height: AppSpacing.xs),
+
+            // ── Copy message button ──────────────────────────────────────────
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                label: const Text('Copy message'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: message));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Message copied to clipboard'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
             ),
-            
-            // Email - Share PDF + message
-            ListTile(
-              leading: const Icon(Icons.email_outlined, color: Colors.orange),
-              title: const Text('Email'),
-              subtitle: const Text('Send PDF via email'),
-              onTap: () async {
-                Navigator.pop(context);
-                await Share.shareXFiles(
-                  [XFile(pdfFile.path)],
-                  subject: 'Invoice ${invoice.invoiceNo}',
-                  text: _generateMessage(),
-                  sharePositionOrigin: Rect.fromLTWH(0, 0, 100, 100),
-                );
-              },
-            ),
-            
+
             const SizedBox(height: AppSpacing.sm),
+
+            // ── Helper text ─────────────────────────────────────────────────
+            Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: colorScheme.outline,
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    'The PDF and message will be shared together. '
+                    'Pick WhatsApp, Email, SMS and more from the share sheet.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.outline,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Primary action ───────────────────────────────────────────────
+            FilledButton.icon(
+              icon: const Icon(Icons.send_outlined),
+              label: const Text('Send PDF + Message'),
+              onPressed: () async {
+                Navigator.pop(context);
+                await Share.shareXFiles(
+                  [XFile(pdfFile.path)],
+                  subject: 'Invoice ${invoice.invoiceNo}',
+                  text: message,
+                );
+                // Mark as sent after the share sheet is opened successfully.
+                await onSent();
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+
+            // ── Cancel ──────────────────────────────────────────────────────
             OutlinedButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),

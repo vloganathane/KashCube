@@ -16,6 +16,8 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/party_form_sheet.dart';
+import '../../widgets/vcard_qr_dialog.dart';
+import '../../../core/utils/vcard_builder.dart';
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -144,6 +146,16 @@ class PartyDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(party.name),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_2_outlined),
+            tooltip: 'Share QR',
+            onPressed: () => showVCardQrDialog(
+              context,
+              vcard: vCardFromParty(party),
+              displayName: party.name,
+              subtitle: party.phoneNumber ?? party.email,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',

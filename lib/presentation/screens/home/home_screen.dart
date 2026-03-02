@@ -28,6 +28,10 @@ import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/business_provider.dart';
+import '../../../core/utils/vcard_builder.dart';
+import '../../../data/models/business.dart';
+import '../../widgets/vcard_qr_dialog.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 
@@ -73,6 +77,11 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.qr_code_2_outlined),
+                  tooltip: 'My QR Cards',
+                  onPressed: () => _showQuickShareSheet(context, ref),
+                ),
                 IconButton(
                   icon: const Icon(Icons.search),
                   tooltip: 'Search',
@@ -185,6 +194,250 @@ class HomeScreen extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showQuickShareSheet(BuildContext context, WidgetRef ref) {
+    final showBusinesses = ref.read(businessModeProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _QuickShareQrSheet(showBusinesses: showBusinesses),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Quick Share QR Sheet
+// ---------------------------------------------------------------------------
+
+class _QuickShareQrSheet extends ConsumerStatefulWidget {
+  const _QuickShareQrSheet({required this.showBusinesses});
+  final bool showBusinesses;
+
+  @override
+  ConsumerState<_QuickShareQrSheet> createState() => _QuickShareQrSheetState();
+}
+
+class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
+  String? _name;
+  String? _phone;
+  String? _email;
+  String? _website;
+  String? _whatsapp;
+  String? _linkedin;
+  String? _instagram;
+  bool _loadingPersonal = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonal();
+  }
+
+  Future<void> _loadPersonal() async {
+    final repo = ref.read(settingsRepositoryProvider);
+    final vals = await Future.wait([
+      repo.get(SettingsKeys.ownerName),
+      repo.get(SettingsKeys.personalPhone),
+      repo.get(SettingsKeys.personalEmail),
+      repo.get(SettingsKeys.personalWebsite),
+      repo.get(SettingsKeys.personalWhatsapp),
+      repo.get(SettingsKeys.personalLinkedin),
+      repo.get(SettingsKeys.personalInstagram),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _name      = vals[0];
+      _phone     = vals[1];
+      _email     = vals[2];
+      _website   = vals[3];
+      _whatsapp  = vals[4];
+      _linkedin  = vals[5];
+      _instagram = vals[6];
+      _loadingPersonal = false;
+    });
+  }
+
+  void _openPersonalQr() {
+    final vcard = vCardFromPersonalSettings(
+      name: _name,
+      phone: _phone,
+      email: _email,
+      website: _website,
+      whatsapp: _whatsapp,
+      linkedin: _linkedin,
+      instagram: _instagram,
+    );
+    showVCardQrDialog(
+      context,
+      vcard: vcard,
+      displayName:
+          (_name != null && _name!.isNotEmpty) ? _name! : 'My Personal Card',
+      subtitle: _phone ?? _email,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final businesses = widget.showBusinesses
+        ? (ref.watch(businessesProvider).valueOrNull ?? [])
+        : <Business>[];
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.45,
+      minChildSize: 0.3,
+      maxChildSize: 0.85,
+      expand: false,
+      builder: (_, controller) => Column(
+        children: [
+          // Handle
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                const Icon(Icons.qr_code_2_outlined),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  'My QR Cards',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // List
+          Expanded(
+            child: ListView(
+              controller: controller,
+              children: [
+                // Personal card row
+                ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: cs.primaryContainer,
+                    child: Icon(Icons.person_outline, color: cs.primary),
+                  ),
+                  title: Text(
+                    (_name != null && _name!.isNotEmpty)
+                        ? _name!
+                        : 'My Personal Card',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    (_phone ?? _email ?? 'Tap to set up'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: _loadingPersonal
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(Icons.qr_code_2_outlined, color: cs.primary),
+                  onTap: _loadingPersonal ? null : _openPersonalQr,
+                ),
+                if (widget.showBusinesses && businesses.isNotEmpty) ...[
+                  const Divider(indent: AppSpacing.base, endIndent: AppSpacing.base),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.base, AppSpacing.xs, 0, AppSpacing.xs),
+                    child: Text(
+                      'Business Profiles',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            letterSpacing: 0.8,
+                          ),
+                    ),
+                  ),
+                  ...businesses.map((biz) => ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: cs.secondaryContainer,
+                          child: Text(
+                            biz.name.isNotEmpty
+                                ? biz.name[0].toUpperCase()
+                                : 'B',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: cs.onSecondaryContainer),
+                          ),
+                        ),
+                        title: Text(
+                          biz.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: Text(
+                          biz.phone ?? biz.email ?? biz.gstNo ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: biz.isActive
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: cs.primary.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'Active',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          color: cs.primary,
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Icon(Icons.qr_code_2_outlined,
+                                      color: cs.primary),
+                                ],
+                              )
+                            : Icon(Icons.qr_code_2_outlined,
+                                color: cs.onSurfaceVariant),
+                        onTap: () => showVCardQrDialog(
+                          context,
+                          vcard: vCardFromBusiness(biz),
+                          displayName:
+                              (biz.ownerName?.isNotEmpty ?? false)
+                                  ? biz.ownerName!
+                                  : biz.name,
+                          subtitle: biz.phone ?? biz.email,
+                        ),
+                      )),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

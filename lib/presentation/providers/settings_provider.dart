@@ -28,6 +28,15 @@ class SettingsKeys {
   static const defaultAccountId = 'default_account_id';
   static const businessModeEnabled = 'business_mode_enabled';
   static const businessName = 'business_name';
+
+  // Personal vCard / My Card fields
+  static const ownerName        = 'owner_name';
+  static const personalPhone    = 'personal_phone';
+  static const personalEmail    = 'personal_email';
+  static const personalWebsite  = 'personal_website';
+  static const personalWhatsapp = 'personal_whatsapp';
+  static const personalLinkedin = 'personal_linkedin';
+  static const personalInstagram= 'personal_instagram';
 }
 
 // ---------------------------------------------------------------------------

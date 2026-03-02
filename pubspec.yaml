@@ -58,6 +58,10 @@ dependencies:
   image_picker: ^1.2.1
   file_picker: ^10.3.10
 
+  # QR code generation & scanning (fully offline, no network)
+  qr_flutter: ^4.1.0
+  mobile_scanner: ^6.0.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

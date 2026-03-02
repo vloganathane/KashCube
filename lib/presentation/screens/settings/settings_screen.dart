@@ -15,6 +15,7 @@ import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
+import 'my_personal_card_screen.dart';
 import 'notification_settings_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
@@ -234,6 +235,25 @@ class SettingsScreen extends ConsumerWidget {
                   ],
                 );
               }),
+            ],
+          ),
+
+          // -- Contacts --
+          _SettingsSection(
+            title: 'Contacts',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.qr_code_2_outlined),
+                title: const Text('My Personal Card'),
+                subtitle:
+                    const Text('Share your contact as a QR code'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const MyPersonalCardScreen()),
+                ),
+              ),
             ],
           ),
 

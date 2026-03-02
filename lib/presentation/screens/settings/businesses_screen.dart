@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../providers/business_provider.dart';
+import '../../widgets/vcard_qr_dialog.dart';
 
 class BusinessesScreen extends ConsumerWidget {
   const BusinessesScreen({super.key});
@@ -175,14 +177,32 @@ class _BusinessTile extends StatelessWidget {
             ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (v) {
-            if (v == 'edit') onEdit();
-            if (v == 'delete') onDelete();
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'edit', child: Text('Edit')),
-            PopupMenuItem(value: 'delete', child: Text('Delete')),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.qr_code_2_outlined),
+              tooltip: 'Show QR',
+              onPressed: () => showVCardQrDialog(
+                context,
+                vcard: vCardFromBusiness(business),
+                displayName:
+                    (business.ownerName?.isNotEmpty ?? false)
+                        ? business.ownerName!
+                        : business.name,
+                subtitle: business.phone ?? business.email,
+              ),
+            ),
+            PopupMenuButton<String>(
+              onSelected: (v) {
+                if (v == 'edit') onEdit();
+                if (v == 'delete') onDelete();
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'edit', child: Text('Edit')),
+                PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
           ],
         ),
       ),
@@ -255,6 +275,7 @@ class _BusinessFormSheet extends StatefulWidget {
 class _BusinessFormSheetState extends State<_BusinessFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
+  late final TextEditingController _ownerName;
   late final TextEditingController _address;
   late final TextEditingController _city;
   late final TextEditingController _state;
@@ -262,29 +283,48 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
   late final TextEditingController _phone;
   late final TextEditingController _email;
   late final TextEditingController _gst;
+  late final TextEditingController _website;
+  late final TextEditingController _whatsapp;
+  late final TextEditingController _linkedin;
+  late final TextEditingController _instagram;
   String? _logoPath;
   bool _setActive = false;
   bool _saving = false;
+  bool _onlineExpanded = false;
 
   @override
   void initState() {
     super.initState();
     final b = widget.business;
-    _name = TextEditingController(text: b?.name ?? '');
-    _address = TextEditingController(text: b?.address ?? '');
-    _city = TextEditingController(text: b?.city ?? '');
-    _state = TextEditingController(text: b?.state ?? '');
-    _pincode = TextEditingController(text: b?.pincode ?? '');
-    _phone = TextEditingController(text: b?.phone ?? '');
-    _email = TextEditingController(text: b?.email ?? '');
-    _gst = TextEditingController(text: b?.gstNo ?? '');
+    _name      = TextEditingController(text: b?.name ?? '');
+    _ownerName = TextEditingController(text: b?.ownerName ?? '');
+    _address   = TextEditingController(text: b?.address ?? '');
+    _city      = TextEditingController(text: b?.city ?? '');
+    _state     = TextEditingController(text: b?.state ?? '');
+    _pincode   = TextEditingController(text: b?.pincode ?? '');
+    _phone     = TextEditingController(text: b?.phone ?? '');
+    _email     = TextEditingController(text: b?.email ?? '');
+    _gst       = TextEditingController(text: b?.gstNo ?? '');
+    _website   = TextEditingController(text: b?.website ?? '');
+    _whatsapp  = TextEditingController(text: b?.whatsapp ?? '');
+    _linkedin  = TextEditingController(text: b?.linkedin ?? '');
+    _instagram = TextEditingController(text: b?.instagram ?? '');
     _logoPath = b?.logoPath;
     _setActive = b?.isActive ?? false;
+    // Expand online presence if any field is pre-populated
+    _onlineExpanded = (b?.website ?? '').isNotEmpty ||
+        (b?.whatsapp ?? '').isNotEmpty ||
+        (b?.linkedin ?? '').isNotEmpty ||
+        (b?.instagram ?? '').isNotEmpty;
   }
 
   @override
   void dispose() {
-    for (final c in [_name, _address, _city, _state, _pincode, _phone, _email, _gst]) {
+    for (final c in [
+      _name, _ownerName, _address, _city, _state,
+      _pincode, _phone, _email, _gst,
+      _website, _whatsapp, _linkedin, _instagram,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -307,19 +347,27 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final now = DateTime.now();
+    String? nullIfEmpty(TextEditingController c) {
+      final s = c.text.trim();
+      return s.isEmpty ? null : s;
+    }
+
     final business = Business(
       id: widget.business?.id,
       name: _name.text.trim(),
-      address: _address.text.trim().isEmpty ? null : _address.text.trim(),
-      city: _city.text.trim().isEmpty ? null : _city.text.trim(),
-      state: _state.text.trim().isEmpty ? null : _state.text.trim(),
-      pincode: _pincode.text.trim().isEmpty ? null : _pincode.text.trim(),
-      phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-      email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-      gstNo: _gst.text.trim().isEmpty
-          ? null
-          : _gst.text.trim().toUpperCase(),
+      ownerName: nullIfEmpty(_ownerName),
+      address: nullIfEmpty(_address),
+      city: nullIfEmpty(_city),
+      state: nullIfEmpty(_state),
+      pincode: nullIfEmpty(_pincode),
+      phone: nullIfEmpty(_phone),
+      email: nullIfEmpty(_email),
+      gstNo: nullIfEmpty(_gst)?.toUpperCase(),
       logoPath: _logoPath,
+      website: nullIfEmpty(_website),
+      whatsapp: nullIfEmpty(_whatsapp),
+      linkedin: nullIfEmpty(_linkedin),
+      instagram: nullIfEmpty(_instagram),
       isActive: _setActive,
       createdAt: widget.business?.createdAt ?? now,
       updatedAt: now,
@@ -382,6 +430,19 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                 textCapitalization: TextCapitalization.words,
                 validator: (v) =>
                     v == null || v.trim().isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Owner / Contact Name
+              TextFormField(
+                controller: _ownerName,
+                decoration: const InputDecoration(
+                  labelText: 'Owner / Contact Name',
+                  hintText: 'e.g. Arjun Kumar',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                textCapitalization: TextCapitalization.words,
               ),
               const SizedBox(height: AppSpacing.sm),
 
@@ -487,6 +548,70 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Online Presence (collapsible)
+              const SizedBox(height: AppSpacing.sm),
+              Theme(
+                data: Theme.of(context).copyWith(
+                    dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  initiallyExpanded: _onlineExpanded,
+                  leading: const Icon(Icons.language_outlined),
+                  title: const Text('Online Presence'),
+                  subtitle: const Text(
+                    'Website, WhatsApp, LinkedIn, Instagram',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: EdgeInsets.zero,
+                  children: [
+                    TextFormField(
+                      controller: _website,
+                      decoration: const InputDecoration(
+                        labelText: 'Website',
+                        hintText: 'https://example.com',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.language_outlined),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _whatsapp,
+                      decoration: const InputDecoration(
+                        labelText: 'WhatsApp Number',
+                        hintText: '9876543210',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.chat_outlined),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _linkedin,
+                      decoration: const InputDecoration(
+                        labelText: 'LinkedIn',
+                        hintText: 'linkedin.com/company/name',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.work_outline),
+                      ),
+                      keyboardType: TextInputType.url,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextFormField(
+                      controller: _instagram,
+                      decoration: const InputDecoration(
+                        labelText: 'Instagram',
+                        hintText: '@handle',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.camera_alt_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.sm),
 

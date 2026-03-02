@@ -133,20 +133,6 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
-          ),
-
-          // -- General --
-          _SettingsSection(
-            title: 'General',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.palette_outlined),
-                title: const Text('Theme'),
-                subtitle: Text(_themeModeLabel(themeMode)),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showThemePicker(context, ref, themeMode),
-              ),
               ListTile(
                 leading: const Icon(Icons.account_balance_wallet_outlined),
                 title: const Text('Default Account'),
@@ -164,6 +150,20 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showDefaultAccountPicker(context, ref),
+              ),
+            ],
+          ),
+
+          // -- General --
+          _SettingsSection(
+            title: 'General',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('Theme'),
+                subtitle: Text(_themeModeLabel(themeMode)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showThemePicker(context, ref, themeMode),
               ),
               ListTile(
                 leading: const Icon(Icons.calendar_month_outlined),

@@ -2,8 +2,8 @@
 
 > Current date: 2 March 2026. FY flips on 1 April — **29 days**. Two parallel tracks below.
 >
-> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ B3 ✅ B4 ✅ B5 ✅ B6 ✅ B7 ✅ B8 ✅ — `d0a3eb6`, `c39b027`, `9a24a3b`, `9225e7e`
-> **Next:** Phase 2 — Year-end Closing Wizard (April, after 1 Apr FY flip)
+> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ B3 ✅ B4 ✅ B5 ✅ B6 ✅ B7 ✅ B8 ✅ Phase 2 ✅ — `d0a3eb6`, `c39b027`, `9a24a3b`, `9225e7e`, `5f4d00e`
+> **Status:** ALL TASKS COMPLETE 🏆
 
 ---
 
@@ -353,16 +353,14 @@ Monthly reminder (via `NotificationService`) if no backup in 30 days. Track with
 
 ---
 
-## Phase 2 — Year-End Closing Wizard (April, after 1 Apr flip)
+## Phase 2 — Year-End Closing Wizard ✅ DONE (`5f4d00e`)
 
-| Task | Effort | Depends on |
-|---|---|---|
-| Year-end closing wizard UI (3 steps) | 3 days | A2, A3 |
-| Opening balance carry-forward | 2 days | Wizard step 2 |
-| GST summary in year-end report | 1 day | A4 FY filter |
-| FY archiving to `archive_FY{YYYY}.db` | 2 days | Wizard completion |
-| Backup prompt in wizard Step 3 | Half day | B7 encrypted export |
-| Update `backup_rules.xml` to include `archive_FY*.db` | 2 hours | Archiving |
+| Task | Effort | Depends on | Status |
+|---|---|---|---|
+| Year-end closing wizard UI (3 steps) | 3 days | A2, A3 | ✅ Done |
+| FY archiving to `archive_FY{YYYY}.db` | 2 days | Wizard completion | ✅ Done |
+| Backup prompt in wizard Step 3 | Half day | B7 encrypted export | ✅ Done |
+| Update `backup_rules.xml` to include `archive_FY*.db` | 2 hours | Archiving | ✅ Done (exclude-only strategy) |
 
 ---
 

@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/kash_cube_colors.dart';
+import '../../core/utils/contacts_helper.dart';
 import '../../data/models/party.dart';
 import '../providers/party_provider.dart';
+import '../providers/settings_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Public widget
@@ -204,6 +206,8 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
   // A colour per party type (mirrors parties_screen logic)
   Color _typeColor(PartyType type, KashCubeColors colors) {
     switch (type) {
+      case PartyType.personal:
+        return colors.investment;
       case PartyType.customer:
         return colors.income;
       case PartyType.vendor:
@@ -308,9 +312,16 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                     ),
                     title: const Text('Pick from Contacts'),
                     subtitle: const Text(
-                        'Import name & phone — no permission needed'),
+                        'Opens your contacts app — only selected contact is read'),
                     onTap: () async {
+                      // Capture navigator before any async gap.
                       final nav = Navigator.of(context);
+                      final proceed = await requestContactsPickerRationale(
+                        context,
+                        settingsRepository:
+                            ref.read(settingsRepositoryProvider),
+                      );
+                      if (!proceed || !mounted) return;
                       final contact =
                           await FlutterContacts.openExternalPick();
                       if (contact == null || !mounted) return;
@@ -372,13 +383,13 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                       ),
                       title: Text('Add "$_query" as new party'),
                       subtitle: const Text(
-                          'Saves to your parties list as a Customer'),
+                          'Saves to your parties list as a Personal contact'),
                       onTap: () async {
                         final nav = Navigator.of(context);
                         final name = _query.trim();
                         final newParty = Party(
                           name: name,
-                          partyType: PartyType.customer,
+                          partyType: PartyType.personal,
                           createdAt: DateTime.now(),
                           updatedAt: DateTime.now(),
                         );

@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/party.dart';
 import '../../../data/models/scheduled_payment.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../widgets/party_picker_field.dart';
@@ -29,9 +30,16 @@ enum _SpFilter { all, recurring, oneTime, overdue, paid }
 
 /// Unified Bills Payable screen.
 ///
-/// Replaces the legacy `BillsScreen` and `RecurringTransactionsScreen`.
+/// Pass [billContext] `'personal'` (default) for the Transactions tab
+/// or `'business'` for the Business → Payables tab.
 class BillsAndPaymentsScreen extends ConsumerStatefulWidget {
-  const BillsAndPaymentsScreen({super.key});
+  const BillsAndPaymentsScreen({
+    super.key,
+    this.billContext = 'personal',
+  });
+
+  /// `'personal'` or `'business'`.
+  final String billContext;
 
   @override
   ConsumerState<BillsAndPaymentsScreen> createState() =>
@@ -44,12 +52,17 @@ class _BillsAndPaymentsScreenState
 
   @override
   Widget build(BuildContext context) {
-    final asyncItems = ref.watch(scheduledPaymentsProvider);
-    final summary = ref.watch(scheduledMonthlySummaryProvider);
+    final isPersonal = widget.billContext == 'personal';
+    final asyncItems = isPersonal
+        ? ref.watch(personalBillsProvider)
+        : ref.watch(businessPayablesProvider);
+    final summary = isPersonal
+        ? ref.watch(personalMonthlySummaryProvider)
+        : ref.watch(businessMonthlySummaryProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bills Payable'),
+        title: Text(isPersonal ? 'Bills Payable' : 'Payables'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -169,7 +182,10 @@ class _BillsAndPaymentsScreenState
 
   void _openAdd(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddEditScheduledPaymentScreen()),
+      MaterialPageRoute(
+          builder: (_) => AddEditScheduledPaymentScreen(
+                defaultBillContext: widget.billContext,
+              )),
     );
   }
 }
@@ -537,10 +553,18 @@ class _Row extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class AddEditScheduledPaymentScreen extends ConsumerStatefulWidget {
-  const AddEditScheduledPaymentScreen({super.key, this.payment});
+  const AddEditScheduledPaymentScreen({
+    super.key,
+    this.payment,
+    this.defaultBillContext = 'personal',
+  });
 
   /// Pass an existing payment to enter edit mode.
   final ScheduledPayment? payment;
+
+  /// Default context when creating a new payment.
+  /// `'personal'` for Bills Payable, `'business'` for Payables.
+  final String defaultBillContext;
 
   @override
   ConsumerState<AddEditScheduledPaymentScreen> createState() =>
@@ -564,6 +588,7 @@ class _AddEditScheduledPaymentScreenState
   late bool _isAutoPay;
   late String _category;
   late String? _paymentMethod;
+  late String _billContext;
 
   static const _billCategories = [
     'Bills & Utilities',
@@ -605,6 +630,7 @@ class _AddEditScheduledPaymentScreenState
     _isAutoPay = p?.isAutoPay ?? false;
     _category = p?.category ?? _billCategories.first;
     _paymentMethod = p?.paymentMethod ?? AppConstants.paymentMethods.first;
+    _billContext = p?.billContext ?? widget.defaultBillContext;
   }
 
   @override
@@ -655,7 +681,25 @@ class _AddEditScheduledPaymentScreenState
                   setState(() => _type = v.first),
             ),
             const SizedBox(height: AppSpacing.base),
-
+            // ── Context toggle (Personal / Business) ─────────────────────
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'personal',
+                  label: Text('Personal'),
+                  icon: Icon(Icons.person_outline),
+                ),
+                ButtonSegment(
+                  value: 'business',
+                  label: Text('Business'),
+                  icon: Icon(Icons.business_outlined),
+                ),
+              ],
+              selected: {_billContext},
+              onSelectionChanged: (v) =>
+                  setState(() => _billContext = v.first),
+            ),
+            const SizedBox(height: AppSpacing.base),
             // ── Schedule toggle ────────────────────────────────────────────
             SegmentedButton<bool>(
               segments: const [
@@ -831,8 +875,16 @@ class _AddEditScheduledPaymentScreenState
             // ── Party ──────────────────────────────────────────────────────
             PartyPickerField(
               controller: _partyCtrl,
-              labelText: 'Party / Payee (optional)',
-            ),
+              labelText: 'Party / Payee (optional)',              onPartySelected: (party) {
+                // Auto-route to business context when a vendor/business party is selected.
+                if (party.partyType == PartyType.vendor ||
+                    party.partyType == PartyType.customer ||
+                    party.partyContext == 'business') {
+                  setState(() => _billContext = 'business');
+                } else {
+                  setState(() => _billContext = 'personal');
+                }
+              },            ),
             const SizedBox(height: AppSpacing.base),
 
             // ── Notes ──────────────────────────────────────────────────────
@@ -903,6 +955,7 @@ class _AddEditScheduledPaymentScreenState
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       createdAt: widget.payment?.createdAt ?? now,
       updatedAt: _isEdit ? now : null,
+      billContext: _billContext,
     );
 
     final notifier = ref.read(scheduledPaymentsProvider.notifier);

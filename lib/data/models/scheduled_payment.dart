@@ -90,6 +90,7 @@ class ScheduledPayment extends Equatable {
     this.createdAt,
     this.updatedAt,
     this.deletedAt,
+    this.billContext = 'personal',
   });
 
   final int? id;
@@ -118,6 +119,10 @@ class ScheduledPayment extends Equatable {
   final bool isAutoPay;
 
   final bool isActive;
+
+  /// Context for routing: `'personal'` (Transactions tab) or
+  /// `'business'` (Business tab → Payables).
+  final String billContext;
 
   /// Stored next due date — updated after each payment or auto-generation.
   final DateTime nextDate;
@@ -201,6 +206,7 @@ class ScheduledPayment extends Equatable {
         'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),
         'deleted_at': deletedAt?.toIso8601String(),
+        'bill_context': billContext,
       };
 
   factory ScheduledPayment.fromMap(Map<String, dynamic> map) =>
@@ -237,6 +243,7 @@ class ScheduledPayment extends Equatable {
         deletedAt: map['deleted_at'] != null
             ? DateTime.parse(map['deleted_at'] as String)
             : null,
+        billContext: map['bill_context'] as String? ?? 'personal',
       );
 
   ScheduledPayment copyWith({
@@ -260,6 +267,7 @@ class ScheduledPayment extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    String? billContext,
   }) =>
       ScheduledPayment(
         id: id ?? this.id,
@@ -282,6 +290,7 @@ class ScheduledPayment extends Equatable {
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         deletedAt: deletedAt ?? this.deletedAt,
+        billContext: billContext ?? this.billContext,
       );
 
   @override
@@ -300,5 +309,6 @@ class ScheduledPayment extends Equatable {
         nextDate,
         lastPaidDate,
         lastGenerated,
+        billContext,
       ];
 }

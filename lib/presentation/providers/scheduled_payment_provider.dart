@@ -137,6 +137,76 @@ final scheduledMonthlySummaryProvider =
   );
 });
 
+// ---------------------------------------------------------------------------
+// Context-filtered lists (personal vs business)
+// ---------------------------------------------------------------------------
+
+/// Personal Bills Payable — utilities, subscriptions, rent, etc.
+final personalBillsProvider =
+    Provider<AsyncValue<List<ScheduledPayment>>>((ref) {
+  return ref.watch(scheduledPaymentsProvider).whenData(
+        (items) =>
+            items.where((p) => p.billContext == 'personal').toList(),
+      );
+});
+
+/// Business Payables — supplier / vendor dues, office expenses, etc.
+final businessPayablesProvider =
+    Provider<AsyncValue<List<ScheduledPayment>>>((ref) {
+  return ref.watch(scheduledPaymentsProvider).whenData(
+        (items) =>
+            items.where((p) => p.billContext == 'business').toList(),
+      );
+});
+
+/// Monthly summary for personal bills only.
+final personalMonthlySummaryProvider =
+    Provider<({double income, double expense})>((ref) {
+  final asyncList = ref.watch(personalBillsProvider);
+  return asyncList.when(
+    data: (items) {
+      double income = 0;
+      double expense = 0;
+      for (final p in items) {
+        if (p.isOneTime || p.frequency == null) continue;
+        final monthly = p.frequency!.toMonthly(p.amount);
+        if (p.type == 'income') {
+          income += monthly;
+        } else {
+          expense += monthly;
+        }
+      }
+      return (income: income, expense: expense);
+    },
+    loading: () => (income: 0.0, expense: 0.0),
+    error: (_, _) => (income: 0.0, expense: 0.0),
+  );
+});
+
+/// Monthly summary for business payables only.
+final businessMonthlySummaryProvider =
+    Provider<({double income, double expense})>((ref) {
+  final asyncList = ref.watch(businessPayablesProvider);
+  return asyncList.when(
+    data: (items) {
+      double income = 0;
+      double expense = 0;
+      for (final p in items) {
+        if (p.isOneTime || p.frequency == null) continue;
+        final monthly = p.frequency!.toMonthly(p.amount);
+        if (p.type == 'income') {
+          income += monthly;
+        } else {
+          expense += monthly;
+        }
+      }
+      return (income: income, expense: expense);
+    },
+    loading: () => (income: 0.0, expense: 0.0),
+    error: (_, _) => (income: 0.0, expense: 0.0),
+  );
+});
+
 /// Overdue scheduled payments (unpaid + past due date).
 final overdueScheduledProvider =
     FutureProvider<List<ScheduledPayment>>((ref) {

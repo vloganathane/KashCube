@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../bills/bills_and_payments_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
-import '../recurring/recurring_transactions_screen.dart';
+import 'category_management_screen.dart';
 import 'transactions_screen.dart';
 
 /// Transactions hub — entry point for all money-movement screens.
@@ -50,6 +51,25 @@ class TransactionsHubScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           _HubSection(
+            title: 'Obligations',
+            tiles: [
+              _HubTile(
+                icon: Icons.payments_outlined,
+                label: 'Bills Payable',
+                subtitle: 'Personal dues & subscriptions',
+                color: const Color(0xFF6A1B9A),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const BillsAndPaymentsScreen(
+                      billContext: 'personal',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
             title: 'Credit',
             tiles: [
               _HubTile(
@@ -63,14 +83,20 @@ class TransactionsHubScreen extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Manage',
+            tiles: [
               _HubTile(
-                icon: Icons.event_repeat_outlined,
-                label: 'Recurring',
-                subtitle: 'Scheduled transactions',
-                color: const Color(0xFF0D47A1),
+                icon: Icons.category_outlined,
+                label: 'Categories',
+                subtitle: 'View & manage transaction categories',
+                color: const Color(0xFF00695C),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const RecurringTransactionsScreen(),
+                    builder: (_) => const CategoryManagementScreen(),
                   ),
                 ),
               ),

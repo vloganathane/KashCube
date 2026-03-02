@@ -9,11 +9,13 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
+import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/suggestion_service.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/bill_provider.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/category_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/suggestion_provider.dart';
@@ -145,17 +147,145 @@ class _AddEditTransactionScreenState
     }
   }
 
-  List<String> get _categoriesForType {
-    if (_type == TransactionType.income) {
-      return AppConstants.incomeCategories;
-    }
-    if (_type.isTransfer) {
-      return ['Transfer'];
-    }
+  List<String> _categoriesForType(CustomCategoriesState custom) {
+    if (_type.isTransfer) return ['Transfer'];
     if (_type.isLending || _type.isSettlement || _type.isInvestment) {
       return ['Lending / Credit', 'Investment', 'Other'];
     }
-    return AppConstants.defaultCategories;
+    final typeKey = _type == TransactionType.income ? 'income' : 'expense';
+    return buildCategoryList(custom, typeKey)
+        .where((c) => c != kAddCustomCategorysentinel)
+        .toList();
+  }
+
+  Widget _buildCategoryDropdown() {
+    final custom = ref.watch(customCategoriesProvider);
+    final cats = _categoriesForType(custom);
+
+    // If the transaction's current category was a custom one that has since
+    // been deleted, it won't appear in `cats`. Preserve it as an "orphaned"
+    // option so editing the transaction never silently re-categorises it.
+    final isOrphaned = _category.isNotEmpty && !cats.contains(_category);
+    final allCats = isOrphaned ? [_category, ...cats] : cats;
+    final safeCategory = _category.isNotEmpty && allCats.contains(_category)
+        ? _category
+        : allCats.first;
+    // Use plain DropdownButton + InputDecorator instead of DropdownButtonFormField
+    // to avoid registering with the parent Form's _FormScope InheritedWidget.
+    // DropdownButtonFormField's _FormScope dependency causes _dependents.isEmpty
+    // assertion when the dialog's TextFormField opens the IME, which triggers a
+    // viewport-metrics rebuild on the underlying screen mid-animation.
+    return InputDecorator(
+      decoration: const InputDecoration(
+        labelText: 'Category',
+        prefixIcon: Icon(Icons.category_outlined),
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      child: DropdownButton<String>(
+        value: safeCategory,
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        isDense: true,
+        items: allCats.map((cat) {
+          if (cat == _category && isOrphaned) {
+            return DropdownMenuItem<String>(
+              value: cat,
+              child: Row(
+                children: [
+                  Icon(Icons.label_off_outlined,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.error),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      cat,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'deleted',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return DropdownMenuItem<String>(value: cat, child: Text(cat));
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) setState(() => _category = value);
+        },
+      ),
+    );
+  }
+
+  Future<void> _showAddCategoryDialog() async {
+    final typeKey = _type == TransactionType.income ? 'income' : 'expense';
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('New category'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(
+              labelText: 'Category name',
+              hintText: 'e.g. Pets, Gym, Charity',
+              prefixIcon: Icon(Icons.label_outline),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Enter a name';
+              if (v.trim().length > 40) return 'Too long (max 40 chars)';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(ctx, controller.text.trim());
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+
+    // Defer disposal to the next frame so the IME hide animation can complete
+    // without hitting a disposed controller.
+    WidgetsBinding.instance.addPostFrameCallback((_) => controller.dispose());
+
+    if (result == null || !mounted) return;
+
+    // Defer setState + provider update to the next frame.
+    // This ensures the IME hide / viewport-metrics rebuild triggered by the
+    // dialog closing has fully settled before we mutate state, avoiding the
+    // _dependents.isEmpty assertion caused by two simultaneous rebuilds.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() => _category = result);
+      // ignore: discarded_futures
+      ref.read(customCategoriesProvider.notifier).addCategory(result, typeKey);
+    });
   }
 
   @override
@@ -227,7 +357,10 @@ class _AddEditTransactionScreenState
                 setState(() {
                   _type = type;
                   // Reset category when type group changes
-                  final cats = _categoriesForType;
+                  final custom = ref.read(customCategoriesProvider);
+                  final cats = _categoriesForType(custom)
+                      .where((c) => c != kAddCustomCategorysentinel)
+                      .toList();
                   if (!cats.contains(_category)) {
                     _category = cats.first;
                   }
@@ -293,23 +426,18 @@ class _AddEditTransactionScreenState
 
             // Category — only for income / expense
             if (_type.isIncome || _type.isExpense) ...[
-              DropdownButtonFormField<String>(
-                initialValue: _categoriesForType.contains(_category)
-                    ? _category
-                    : _categoriesForType.first,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  prefixIcon: Icon(Icons.category_outlined),
+              _buildCategoryDropdown(),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: _showAddCategoryDialog,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('Add custom category'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
                 ),
-                items: _categoriesForType
-                    .map((cat) => DropdownMenuItem(
-                          value: cat,
-                          child: Text(cat),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => _category = value);
-                },
               ),
               if (_type.isExpense)
                 _BudgetHintRow(category: _category),
@@ -459,6 +587,20 @@ class _AddEditTransactionScreenState
       labelText: partyLabel,
       hintText: partyHint,
       onSelected: _fetchSuggestionForParty,
+      onPartySelected: (party) {
+        // Auto-set mode from party type — only meaningful for income/expense.
+        if (_type == TransactionType.income ||
+            _type == TransactionType.expense) {
+          final autoMode = switch ((party.partyType, party.partyContext)) {
+            (PartyType.vendor, _) ||
+            (PartyType.customer, _) ||
+            (_, 'business') =>
+              TransactionMode.business,
+            _ => TransactionMode.personal,
+          };
+          setState(() => _mode = autoMode);
+        }
+      },
       validator: partyRequired
           ? (v) => v == null || v.trim().isEmpty ? 'Required' : null
           : null,
@@ -533,7 +675,10 @@ class _AddEditTransactionScreenState
 
     setState(() {
       // Apply category if it exists in current type's list
-      final cats = _categoriesForType;
+      final custom = ref.read(customCategoriesProvider);
+      final cats = _categoriesForType(custom)
+          .where((c) => c != kAddCustomCategorysentinel)
+          .toList();
       if (cats.contains(suggestion.category)) {
         _category = suggestion.category;
       }

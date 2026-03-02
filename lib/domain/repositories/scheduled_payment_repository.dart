@@ -35,4 +35,8 @@ abstract class ScheduledPaymentRepository {
 
   /// Monthly income + expense totals (normalised by frequency).
   Future<({double income, double expense})> getMonthlySummary();
+
+  /// All active, non-deleted payments for a given context
+  /// (`'personal'` or `'business'`).
+  Future<List<ScheduledPayment>> getByContext(String context);
 }

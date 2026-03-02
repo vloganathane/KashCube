@@ -221,7 +221,8 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         phone_number TEXT,
         email TEXT,
-        party_type TEXT NOT NULL DEFAULT 'customer',
+        party_type TEXT NOT NULL DEFAULT 'personal',
+        party_context TEXT NOT NULL DEFAULT 'personal',
         total_transactions INTEGER DEFAULT 0,
         total_transaction_amount REAL DEFAULT 0,
         total_credit_given REAL DEFAULT 0,
@@ -388,7 +389,8 @@ class DatabaseHelper {
         notes TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
-        deleted_at TEXT
+        deleted_at TEXT,
+        bill_context TEXT NOT NULL DEFAULT 'personal'
       )
     ''');
 
@@ -576,7 +578,7 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 22,
+      'version': 24,
       'description': 'Full v22 schema (fresh install)',
     });
 
@@ -1263,6 +1265,32 @@ class DatabaseHelper {
         'description': 'Recreate budgets table with year/month/category/budget_amount schema',
       });
     }
+
+    if (oldVersion < 23) {
+      // Add bill_context column to separate personal Bills Payable from
+      // business Payables (supplier/vendor dues).
+      await db.execute(
+        "ALTER TABLE scheduled_payments ADD COLUMN bill_context TEXT NOT NULL DEFAULT 'personal'",
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_context ON scheduled_payments(bill_context)',
+      );
+      await db.insert('schema_version', {
+        'version': 23,
+        'description': 'Add bill_context column to scheduled_payments (personal/business split)',
+      });
+    }
+
+    if (oldVersion < 24) {
+      // Add party_context to distinguish personal vs business lenders/borrowers.
+      await db.execute(
+        "ALTER TABLE parties ADD COLUMN party_context TEXT NOT NULL DEFAULT 'personal'",
+      );
+      await db.insert('schema_version', {
+        'version': 24,
+        'description': 'Add party_context to parties table (personal/business for lender/borrower)',
+      });
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {
@@ -1334,6 +1362,64 @@ class DatabaseHelper {
       });
     }
   }
+
+  // ── Custom categories ──────────────────────────────────────────────────────
+
+  /// Returns all user-created (non-system) categories ordered by name.
+  Future<List<Map<String, dynamic>>> getCustomCategories() async {
+    final db = await database;
+    return db.query(
+      'categories',
+      where: 'is_system = 0 AND is_active = 1',
+      orderBy: 'name ASC',
+    );
+  }
+
+  /// Inserts a user-created category and returns its new row id.
+  /// Soft-deletes a user-created category by name. Returns rows affected.
+  Future<int> deleteCustomCategory(String name) async {
+    final db = await database;
+    return db.update(
+      'categories',
+      {'is_active': 0},
+      where: 'name = ? AND is_system = 0',
+      whereArgs: [name],
+    );
+  }
+
+  /// Returns the number of transactions using [category].
+  Future<int> countTransactionsByCategory(String category) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS c FROM transactions WHERE category = ?',
+      [category],
+    );
+    return result.first['c'] as int? ?? 0;
+  }
+
+  /// Silently ignores duplicates (returns -1).
+  Future<int> insertCustomCategory({
+    required String name,
+    required String categoryType, // 'expense' | 'income'
+  }) async {
+    final db = await database;
+    try {
+      return await db.insert('categories', {
+        'name': name,
+        'category_type': categoryType,
+        'mode': 'both',
+        'icon': 'label_outline',
+        'color': '#607D8B',
+        'sort_order': 999,
+        'is_system': 0,
+        'is_active': 1,
+      });
+    } on Exception {
+      return -1; // duplicate name — UNIQUE constraint
+    }
+  }
+
+  // ── Close ─────────────────────────────────────────────────────────────────
 
   /// Close the database connection.
   Future<void> close() async {

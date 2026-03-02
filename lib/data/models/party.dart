@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 /// The type of party relationship.
 enum PartyType {
+  personal,
   customer,
   vendor,
   lender,
@@ -9,6 +10,8 @@ enum PartyType {
 
   String get label {
     switch (this) {
+      case PartyType.personal:
+        return 'Personal';
       case PartyType.customer:
         return 'Customer';
       case PartyType.vendor:
@@ -34,6 +37,7 @@ class Party extends Equatable {
     this.state,
     this.pincode,
     required this.partyType,
+    this.partyContext = 'personal',
     this.totalTransactions = 0,
     this.totalTransactionAmount = 0,
     this.totalCreditGiven = 0,
@@ -60,6 +64,12 @@ class Party extends Equatable {
   /// Pincode — stored locally, never transmitted.
   final String? pincode;
   final PartyType partyType;
+
+  /// Whether this is a personal or business relationship.
+  /// Meaningful for `lender` and `borrower` types;
+  /// implied for `vendor`/`customer` (business) and `personal` (personal).
+  final String partyContext;
+
   final int totalTransactions;
   final double totalTransactionAmount;
   final double totalCreditGiven;
@@ -95,6 +105,7 @@ class Party extends Equatable {
     String? state,
     String? pincode,
     PartyType? partyType,
+    String? partyContext,
     int? totalTransactions,
     double? totalTransactionAmount,
     double? totalCreditGiven,
@@ -116,6 +127,7 @@ class Party extends Equatable {
       state: state ?? this.state,
       pincode: pincode ?? this.pincode,
       partyType: partyType ?? this.partyType,
+      partyContext: partyContext ?? this.partyContext,
       totalTransactions: totalTransactions ?? this.totalTransactions,
       totalTransactionAmount: totalTransactionAmount ?? this.totalTransactionAmount,
       totalCreditGiven: totalCreditGiven ?? this.totalCreditGiven,
@@ -140,6 +152,7 @@ class Party extends Equatable {
       'state': state,
       'pincode': pincode,
       'party_type': partyType.name,
+      'party_context': partyContext,
       'total_transactions': totalTransactions,
       'total_transaction_amount': totalTransactionAmount,
       'total_credit_given': totalCreditGiven,
@@ -164,9 +177,10 @@ class Party extends Equatable {
       state: map['state'] as String?,
       pincode: map['pincode'] as String?,
       partyType: PartyType.values.firstWhere(
-        (e) => e.name == (map['party_type'] as String? ?? 'customer'),
-        orElse: () => PartyType.customer,
+        (e) => e.name == (map['party_type'] as String? ?? 'personal'),
+        orElse: () => PartyType.personal,
       ),
+      partyContext: map['party_context'] as String? ?? 'personal',
       totalTransactions: (map['total_transactions'] as int?) ?? 0,
       totalTransactionAmount: (map['total_transaction_amount'] as num? ?? 0).toDouble(),
       totalCreditGiven: (map['total_credit_given'] as num? ?? 0).toDouble(),
@@ -180,5 +194,5 @@ class Party extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, partyType];
+  List<Object?> get props => [id, name, partyType, partyContext];
 }

@@ -10,6 +10,7 @@ import '../../../data/models/transaction.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import 'add_edit_transaction_screen.dart';
+import 'category_management_screen.dart';
 import 'transaction_detail_screen.dart';
 import '../search/search_screen.dart';
 import '../ledger/ledger_screen.dart';
@@ -179,6 +180,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   final transactions =
                       ref.read(transactionsProvider).valueOrNull ?? [];
                   _exportCsv(context, ref, _applyFilter(transactions));
+                } else if (v == 'manage_categories') {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const CategoryManagementScreen(),
+                  ));
                 } else if (v.startsWith('sort_')) {
                   final sortName = v.substring(5);
                   setState(() {
@@ -219,6 +224,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       ],
                     ),
                   ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: 'manage_categories',
+                  child: ListTile(
+                    leading: Icon(Icons.category_outlined),
+                    title: Text('Manage categories'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
                   value: 'export',

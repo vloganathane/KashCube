@@ -8,6 +8,7 @@ import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/budget.dart';
 import '../../providers/budget_provider.dart';
+import '../../providers/category_provider.dart';
 import '../../providers/report_provider.dart';
 
 /// Full-page budget management screen.
@@ -522,20 +523,6 @@ class _AddEditBudgetSheetState
   final _formKey = GlobalKey<FormState>();
   bool _saving = false;
 
-  // All expense categories from CategoryHelper
-  static const _categories = [
-    'Food & Dining',
-    'Transportation',
-    'Shopping',
-    'Bills & Utilities',
-    'Healthcare',
-    'Entertainment',
-    'Groceries',
-    'Education',
-    'Business Expense',
-    'Other',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -629,7 +616,9 @@ class _AddEditBudgetSheetState
                 prefixIcon: Icon(Icons.category_outlined),
                 border: OutlineInputBorder(),
               ),
-              items: _categories
+              items: buildCategoryList(
+                      ref.watch(customCategoriesProvider), 'expense')
+                  .where((c) => c != kAddCustomCategorysentinel)
                   .map((c) => DropdownMenuItem(
                         value: c,
                         child: Row(

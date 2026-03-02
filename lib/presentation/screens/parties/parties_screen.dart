@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../data/models/party.dart';
 import '../../providers/party_provider.dart';
+import '../../widgets/party_form_sheet.dart';
 import '../search/search_screen.dart';
 import 'party_detail_screen.dart';
 
@@ -168,6 +167,8 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
 
   Color _typeColor(PartyType type, KashCubeColors colors) {
     switch (type) {
+      case PartyType.personal:
+        return colors.investment;
       case PartyType.customer:
         return colors.income;
       case PartyType.vendor:
@@ -184,7 +185,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _AddEditPartySheet(
+      builder: (_) => PartyFormSheet(
         existing: existing,
         onSave: (party) {
           if (existing == null) {
@@ -270,6 +271,19 @@ class _PartyTile extends StatelessWidget {
               _TypeBadge(
                   label: party.partyType.label,
                   color: _typeColor(party.partyType, colors)),
+              // Show Personal / Business context badge for lender & borrower
+              if (party.partyType == PartyType.lender ||
+                  party.partyType == PartyType.borrower) ...[                
+                const SizedBox(width: AppSpacing.xs),
+                _TypeBadge(
+                  label: party.partyContext == 'business'
+                      ? 'Business'
+                      : 'Personal',
+                  color: party.partyContext == 'business'
+                      ? colors.expense.withValues(alpha: 0.7)
+                      : colors.investment.withValues(alpha: 0.7),
+                ),
+              ],
               if (party.phoneNumber != null) ...[
                 const SizedBox(width: AppSpacing.xs),
                 Icon(Icons.phone_outlined,
@@ -358,6 +372,8 @@ class _PartyTile extends StatelessWidget {
 
   Color _typeColor(PartyType type, KashCubeColors colors) {
     switch (type) {
+      case PartyType.personal:
+        return colors.investment;
       case PartyType.customer:
         return colors.income;
       case PartyType.vendor:
@@ -370,259 +386,6 @@ class _PartyTile extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Add / Edit bottom sheet
-// ---------------------------------------------------------------------------
-
-class _AddEditPartySheet extends ConsumerStatefulWidget {
-  const _AddEditPartySheet({this.existing, required this.onSave});
-
-  final Party? existing;
-  final void Function(Party) onSave;
-
-  @override
-  ConsumerState<_AddEditPartySheet> createState() =>
-      _AddEditPartySheetState();
-}
-
-class _AddEditPartySheetState extends ConsumerState<_AddEditPartySheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _name;
-  late final TextEditingController _phone;
-  late final TextEditingController _email;
-  late final TextEditingController _gstin;
-  late final TextEditingController _address;
-  late final TextEditingController _notes;
-  late PartyType _type;
-
-  @override
-  void initState() {
-    super.initState();
-    final p = widget.existing;
-    _name = TextEditingController(text: p?.name ?? '');
-    _phone = TextEditingController(text: p?.phoneNumber ?? '');
-    _email = TextEditingController(text: p?.email ?? '');
-    _gstin = TextEditingController(text: p?.gstin ?? '');
-    _address = TextEditingController(text: p?.address ?? '');
-    _notes = TextEditingController(text: p?.notes ?? '');
-    _type = p?.partyType ?? PartyType.customer;
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _phone.dispose();
-    _email.dispose();
-    _gstin.dispose();
-    _address.dispose();
-    _notes.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isEdit = widget.existing != null;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.base,
-        right: AppSpacing.base,
-        top: AppSpacing.base,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.base,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header ──────────────────────────────────────────────────
-            Row(
-              children: [
-                Text(isEdit ? 'Edit Contact' : 'Add Contact',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close)),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Pick from contacts ───────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _pickFromContacts,
-                icon: const Icon(Icons.contacts_outlined, size: 18),
-                label: const Text('Pick from Contacts'),
-                style: OutlinedButton.styleFrom(
-                    visualDensity: VisualDensity.compact),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Type selector ────────────────────────────────────────────
-            Wrap(
-              spacing: AppSpacing.sm,
-              children: PartyType.values.map((t) {
-                final selected = _type == t;
-                return ChoiceChip(
-                  label: Text(t.label),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _type = t),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Name ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _name,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Name *',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Name is required' : null,
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Phone ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'Phone',
-                hintText: '10-digit mobile number',
-                prefixIcon: Icon(Icons.phone_outlined),
-                prefixText: '+91 ',
-              ),
-              validator: (v) {
-                if (v == null || v.isEmpty) return null;
-                if (v.length != 10) return 'Enter 10-digit number';
-                return null;
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Email ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── GSTIN ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _gstin,
-              textCapitalization: TextCapitalization.characters,
-              maxLength: 15,
-              decoration: const InputDecoration(
-                labelText: 'GSTIN (optional)',
-                hintText: '22AAAAA0000A1Z5',
-                prefixIcon: Icon(Icons.receipt_long_outlined),
-                counterText: '',
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Address ────────────────────────────────────────────────────────────
-            TextFormField(
-              controller: _address,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Address (optional)',
-                prefixIcon: Icon(Icons.location_on_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── Notes ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _notes,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Notes',
-                prefixIcon: Icon(Icons.notes_outlined),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // ── Save ──────────────────────────────────────────────────────
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _save,
-                child: Text(isEdit ? 'Save Changes' : 'Add ${_type.label}'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickFromContacts() async {
-    try {
-      final contact = await FlutterContacts.openExternalPick();
-      if (contact == null) return;
-      setState(() {
-        if (contact.displayName.isNotEmpty) {
-          _name.text = contact.displayName;
-        }
-        if (contact.phones.isNotEmpty) {
-          final raw = contact.phones.first.number
-              .replaceAll(RegExp(r'[^\d]'), '');
-          // Strip leading country code: +91 / 91 prefix
-          final phone = raw.length == 12 && raw.startsWith('91')
-              ? raw.substring(2)
-              : raw.length > 10
-                  ? raw.substring(raw.length - 10)
-                  : raw;
-          _phone.text = phone;
-        }
-        if (contact.emails.isNotEmpty) {
-          _email.text = contact.emails.first.address;
-        }
-      });
-    } catch (_) {
-      // User cancelled or permission denied — silently ignore
-    }
-  }
-
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
-    final existing = widget.existing;
-    final party = Party(
-      id: existing?.id,
-      name: _name.text.trim(),
-      phoneNumber: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-      email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-      gstin: _gstin.text.trim().isEmpty ? null : _gstin.text.trim(),
-      address: _address.text.trim().isEmpty ? null : _address.text.trim(),
-      partyType: _type,
-      notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-      totalTransactions: existing?.totalTransactions ?? 0,
-      totalTransactionAmount: existing?.totalTransactionAmount ?? 0,
-      totalCreditGiven: existing?.totalCreditGiven ?? 0,
-      totalCreditReceived: existing?.totalCreditReceived ?? 0,
-      createdAt: existing?.createdAt,
-      updatedAt: DateTime.now(),
-    );
-    widget.onSave(party);
-    Navigator.pop(context);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
 

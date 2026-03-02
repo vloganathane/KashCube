@@ -3,10 +3,14 @@
 /// All data stays in the local key-value settings table. No network calls.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/vcard_qr_dialog.dart';
@@ -30,6 +34,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   late final TextEditingController _linkedin;
   late final TextEditingController _instagram;
 
+  String? _photoPath;
   bool _loading = true;
   bool _saving = false;
 
@@ -66,6 +71,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       repo.get(SettingsKeys.personalWhatsapp),
       repo.get(SettingsKeys.personalLinkedin),
       repo.get(SettingsKeys.personalInstagram),
+      repo.get(SettingsKeys.personalPhotoPath),
     ]);
     if (!mounted) return;
     _name.text      = vals[0] ?? '';
@@ -75,7 +81,22 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     _whatsapp.text  = vals[4] ?? '';
     _linkedin.text  = vals[5] ?? '';
     _instagram.text = vals[6] ?? '';
+    _photoPath      = vals[7];
     setState(() => _loading = false);
+  }
+
+  Future<void> _pickPhoto() async {
+    final picker = ImagePicker();
+    final xfile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+    if (xfile != null) {
+      final compressed = await compressPickedImage(xfile.path);
+      if (mounted) setState(() => _photoPath = compressed);
+    }
   }
 
   Future<void> _save() async {
@@ -84,13 +105,14 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     try {
       final repo = ref.read(settingsRepositoryProvider);
       await Future.wait([
-        _saveOrRemove(repo, SettingsKeys.ownerName,         _name.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalPhone,     _phone.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalEmail,     _email.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalWebsite,   _website.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalWhatsapp,  _whatsapp.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalLinkedin,  _linkedin.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalInstagram, _instagram.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.ownerName,          _name.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalPhone,      _phone.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalEmail,      _email.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalWebsite,    _website.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalWhatsapp,   _whatsapp.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalLinkedin,   _linkedin.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalInstagram,  _instagram.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalPhotoPath,  _photoPath ?? ''),
       ]);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,10 +173,15 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                   _InfoBanner(),
                   const SizedBox(height: AppSpacing.base),
 
-                  // ── Basic Info ─────────────────────────────────────────────
-                  _SectionHeader(title: 'Basic Info'),
-                  const SizedBox(height: AppSpacing.sm),
+                  // ── Profile Photo ──────────────────────────────────────────
+                  _PhotoPicker(
+                    photoPath: _photoPath,
+                    onPick: _pickPhoto,
+                    onRemove: () => setState(() => _photoPath = null),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
 
+                  // ── Name ──────────────────────────────────────────────────
                   TextFormField(
                     controller: _name,
                     decoration: const InputDecoration(
@@ -169,80 +196,103 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                   ),
                   const SizedBox(height: AppSpacing.sm),
 
-                  TextFormField(
-                    controller: _phone,
-                    decoration: const InputDecoration(
-                      labelText: 'Phone',
-                      hintText: '9876543210',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.phone_outlined),
-                    ),
-                    keyboardType: TextInputType.phone,
+                  // ── Phone + Email (side by side) ───────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone',
+                            hintText: '9876543210',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _email,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            hintText: 'you@example.com',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
 
-                  TextFormField(
-                    controller: _email,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'you@example.com',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email_outlined),
+                  // ── Online Presence (collapsible) ─────────────────────────
+                  Theme(
+                    data: Theme.of(context)
+                        .copyWith(dividerColor: Colors.transparent),
+                    child: ExpansionTile(
+                      initiallyExpanded: _website.text.isNotEmpty ||
+                          _whatsapp.text.isNotEmpty ||
+                          _linkedin.text.isNotEmpty ||
+                          _instagram.text.isNotEmpty,
+                      leading: const Icon(Icons.language_outlined),
+                      title: const Text('Online Presence'),
+                      subtitle: const Text(
+                        'Website, WhatsApp, LinkedIn, Instagram',
+                        style: TextStyle(fontSize: 11),
+                      ),
+                      tilePadding: EdgeInsets.zero,
+                      childrenPadding: EdgeInsets.zero,
+                      children: [
+                        TextFormField(
+                          controller: _website,
+                          decoration: const InputDecoration(
+                            labelText: 'Website',
+                            hintText: 'https://example.com',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.language_outlined),
+                          ),
+                          keyboardType: TextInputType.url,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          controller: _whatsapp,
+                          decoration: const InputDecoration(
+                            labelText: 'WhatsApp Number',
+                            hintText: '9876543210',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.chat_outlined),
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          controller: _linkedin,
+                          decoration: const InputDecoration(
+                            labelText: 'LinkedIn',
+                            hintText: 'linkedin.com/in/username',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.work_outline),
+                          ),
+                          keyboardType: TextInputType.url,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        TextFormField(
+                          controller: _instagram,
+                          decoration: const InputDecoration(
+                            labelText: 'Instagram',
+                            hintText: '@username',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.camera_alt_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
                     ),
-                    keyboardType: TextInputType.emailAddress,
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // ── Online Presence ─────────────────────────────────────────
-                  _SectionHeader(title: 'Online Presence'),
                   const SizedBox(height: AppSpacing.sm),
-
-                  TextFormField(
-                    controller: _website,
-                    decoration: const InputDecoration(
-                      labelText: 'Website',
-                      hintText: 'https://example.com',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.language_outlined),
-                    ),
-                    keyboardType: TextInputType.url,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-
-                  TextFormField(
-                    controller: _whatsapp,
-                    decoration: const InputDecoration(
-                      labelText: 'WhatsApp Number',
-                      hintText: '9876543210',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.chat_outlined),
-                    ),
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-
-                  TextFormField(
-                    controller: _linkedin,
-                    decoration: const InputDecoration(
-                      labelText: 'LinkedIn',
-                      hintText: 'linkedin.com/in/username',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.work_outline),
-                    ),
-                    keyboardType: TextInputType.url,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-
-                  TextFormField(
-                    controller: _instagram,
-                    decoration: const InputDecoration(
-                      labelText: 'Instagram',
-                      hintText: '@username',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.camera_alt_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
 
                   // ── Save + QR ──────────────────────────────────────────────
                   Row(
@@ -280,24 +330,99 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Photo Picker ──────────────────────────────────────────────────────────────
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-  final String title;
+class _PhotoPicker extends StatelessWidget {
+  const _PhotoPicker({
+    required this.photoPath,
+    required this.onPick,
+    required this.onRemove,
+  });
+  final String? photoPath;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Text(
-      title,
-      style: Theme.of(context)
-          .textTheme
-          .labelLarge
-          ?.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
+    final hasPhoto = photoPath != null && File(photoPath!).existsSync();
+
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: onPick,
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: cs.outlineVariant, width: 1.5),
+              image: hasPhoto
+                  ? DecorationImage(
+                      image: FileImage(File(photoPath!)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+              color: hasPhoto ? null : cs.surfaceContainerHighest,
+            ),
+            child: hasPhoto
+                ? null
+                : Icon(Icons.add_photo_alternate_outlined,
+                    size: 32, color: cs.outline),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.base),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Profile Photo',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Shown in your QR card.',
+                style: TextStyle(color: cs.outline, fontSize: 12),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Wrap(
+                spacing: AppSpacing.sm,
+                children: [
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    icon: const Icon(Icons.image_outlined, size: 14),
+                    label:
+                        const Text('Choose', style: TextStyle(fontSize: 12)),
+                    onPressed: onPick,
+                  ),
+                  if (hasPhoto)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor:
+                              Theme.of(context).colorScheme.error),
+                      icon: const Icon(Icons.delete_outline, size: 14),
+                      label: const Text('Remove',
+                          style: TextStyle(fontSize: 12)),
+                      onPressed: onRemove,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 class _InfoBanner extends StatelessWidget {
   @override

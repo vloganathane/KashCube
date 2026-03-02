@@ -37,6 +37,7 @@ class SettingsKeys {
   static const personalWhatsapp = 'personal_whatsapp';
   static const personalLinkedin = 'personal_linkedin';
   static const personalInstagram= 'personal_instagram';
+  static const personalPhotoPath = 'personal_photo_path';
 }
 
 // ---------------------------------------------------------------------------

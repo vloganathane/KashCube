@@ -635,6 +635,10 @@ class DatabaseHelper {
         place_of_supply TEXT,
         reverse_charge INTEGER NOT NULL DEFAULT 0,
         customer_gstin TEXT,
+        irn TEXT,
+        irn_ack_no TEXT,
+        irn_ack_date TEXT,
+        qr_code_data TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -1542,6 +1546,19 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 33,
         'description': 'GST Phase A4: hsn_or_sac column on item_catalog',
+      });
+    }
+
+    if (oldVersion < 34) {
+      // GST Phase C1: IRN / e-Invoice placeholder fields on invoices.
+      // Only invoices carry an IRN — quotes do not (per GSTN spec).
+      await db.execute('ALTER TABLE invoices ADD COLUMN irn TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN irn_ack_no TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN irn_ack_date TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN qr_code_data TEXT');
+      await db.insert('schema_version', {
+        'version': 34,
+        'description': 'GST Phase C1: irn/irn_ack_no/irn_ack_date/qr_code_data on invoices (e-Invoice placeholders)',
       });
     }
   }

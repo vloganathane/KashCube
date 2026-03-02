@@ -210,6 +210,10 @@ class Invoice extends Equatable {
     this.placeOfSupply,
     this.reverseCharge = false,
     this.customerGstin,
+    this.irn,
+    this.irnAckNo,
+    this.irnAckDate,
+    this.qrCodeData,
   });
 
   final int? id;
@@ -245,6 +249,19 @@ class Invoice extends Equatable {
   /// Buyer GSTIN — snapshot at time of invoice creation.
   final String? customerGstin;
 
+  // ── e-Invoice / IRP fields (v34) ─────────────────────────────────────────
+  /// IRN (Invoice Reference Number) assigned by the IRP portal.
+  final String? irn;
+  /// IRP acknowledgement number returned after IRN registration.
+  final String? irnAckNo;
+  /// IRP acknowledgement date (ISO8601 string, e.g. '2024-04-01T10:30:00').
+  final String? irnAckDate;
+  /// Signed QR code data from the IRP (for printing on invoice).
+  final String? qrCodeData;
+
+  /// `true` when an IRN has been assigned to this invoice.
+  bool get hasEInvoice => irn != null && irn!.isNotEmpty;
+
   double get balanceDue => total - paidAmount;
   bool get isOverdue =>
       dueDate != null &&
@@ -277,6 +294,10 @@ class Invoice extends Equatable {
     String? placeOfSupply,
     bool? reverseCharge,
     String? customerGstin,
+    String? irn,
+    String? irnAckNo,
+    String? irnAckDate,
+    String? qrCodeData,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -304,6 +325,10 @@ class Invoice extends Equatable {
       placeOfSupply: placeOfSupply ?? this.placeOfSupply,
       reverseCharge: reverseCharge ?? this.reverseCharge,
       customerGstin: customerGstin ?? this.customerGstin,
+      irn: irn ?? this.irn,
+      irnAckNo: irnAckNo ?? this.irnAckNo,
+      irnAckDate: irnAckDate ?? this.irnAckDate,
+      qrCodeData: qrCodeData ?? this.qrCodeData,
     );
   }
 
@@ -332,6 +357,10 @@ class Invoice extends Equatable {
         'place_of_supply': placeOfSupply,
         'reverse_charge': reverseCharge ? 1 : 0,
         'customer_gstin': customerGstin,
+        'irn': irn,
+        'irn_ack_no': irnAckNo,
+        'irn_ack_date': irnAckDate,
+        'qr_code_data': qrCodeData,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -368,6 +397,10 @@ class Invoice extends Equatable {
         placeOfSupply: map['place_of_supply'] as String?,
         reverseCharge: (map['reverse_charge'] as int? ?? 0) == 1,
         customerGstin: map['customer_gstin'] as String?,
+        irn: map['irn'] as String?,
+        irnAckNo: map['irn_ack_no'] as String?,
+        irnAckDate: map['irn_ack_date'] as String?,
+        qrCodeData: map['qr_code_data'] as String?,
       );
 
   @override

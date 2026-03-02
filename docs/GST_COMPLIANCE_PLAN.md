@@ -110,25 +110,32 @@ Grouped by HSN/SAC + rate combination (GSTN requirement).
 
 ---
 
-### Phase C — Advanced Compliance
+### Phase C — Advanced Compliance ✅ Done (DB v34)
 
 **Goal:** Ready for e-Invoice mandate and e-Way Bill integration.
 
-#### C1 — e-Invoice fields (IRN placeholder)
-Add `irn TEXT`, `irn_ack_no TEXT`, `irn_ack_date TEXT`, `qr_code_data TEXT` to `invoices`.
-Display "e-Invoice pending" badge when GSTIN turnover threshold is set.
-(Actual IRN generation requires GSTN API call — out of scope for now, network-free.)
+#### C1 — e-Invoice fields (IRN placeholder) ✅
+Added `irn TEXT`, `irn_ack_no TEXT`, `irn_ack_date TEXT`, `qr_code_data TEXT` to `invoices` table (DB v34).
+`Invoice` model updated: constructor, fields, `copyWith`, `toMap`, `fromMap`, `hasEInvoice` getter.
+(Actual IRN generation requires GSTN API call — out of scope for network-free app.)
 
-#### C2 — e-Way Bill export
-Export invoice as e-Way Bill JSON matching GSTN schema:
-- Uses `invoice_items.unit` (now official GSTN UOM codes from DB v31)
-- Uses `invoice_items.hsn_code`
-- Uses `invoices.place_of_supply`
-- Uses `parties.gstin` (transporter details TBD)
+#### C2 — e-Way Bill JSON export ✅
+`lib/data/services/eway_bill_service.dart` — `EwayBillService.instance.exportAndShare(invoice, ...)`.
+Builds GSTN `EWB_Import_Template`-compatible JSON:
+- `supplyType`, `subSupplyType`, `docType` (INV/BIL/CRN/DBN) from `InvoiceType`
+- From/To GSTIN, trade name, address, state code, pincode
+- Per-item: `hsnCode`, `qtyUnit` (app unit → GSTN UOM map, 40+ mappings), `taxableAmount`, CGST/SGST/IGST rates
+- Totals: `cgstValue`, `sgstValue`, `igstValue`, `totInvValue`
+- Transport fields left blank (user fills after export)
+- Shared via `share_plus` as `application/json`
 
-#### C3 — GSTIN validation
-Offline GSTIN format check (regex: `^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$`).
-State code (first 2 digits) must match selected state.
+#### C3 — GSTIN validation ✅
+`lib/core/utils/gstin_validator.dart` — pure offline utility, no I/O.
+- `GstinValidator.isValid(gstin)` — regex + state code coverage check
+- `GstinValidator.validate(value)` — `TextFormField.validator` callback
+- `GstinValidator.validateWithState(value, selectedState: ...)` — cross-checks embedded state code
+- `GstinValidator.stateCodeFrom(gstin)`, `stateNameFrom(gstin)`, `stateMatches(gstin, stateName)`
+- Wired into `party_form_sheet.dart` (with state cross-check) and `businesses_screen.dart` (replaces inline regex)
 
 ---
 

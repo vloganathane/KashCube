@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
+import '../../core/utils/gstin_validator.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
@@ -276,6 +277,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                     border: OutlineInputBorder(),
                     prefixIcon: Icon(Icons.receipt_long_outlined),
                     counterText: '',
+                  ),
+                  validator: (v) => GstinValidator.validateWithState(
+                    v,
+                    selectedState: _state.text,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.sm),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/gstin_validator.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
@@ -458,13 +459,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                   prefixIcon: Icon(Icons.receipt_long_outlined),
                 ),
                 textCapitalization: TextCapitalization.characters,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final gst = v.trim().toUpperCase();
-                  final re = RegExp(
-                      r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$');
-                  return re.hasMatch(gst) ? null : 'Invalid GST number format';
-                },
+                validator: GstinValidator.validate,
               ),
               const SizedBox(height: AppSpacing.sm),
 

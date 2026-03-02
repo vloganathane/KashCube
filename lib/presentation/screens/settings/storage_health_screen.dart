@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart' show Share, XFile;
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/constants/app_constants.dart';
@@ -13,6 +14,8 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../data/services/backup_service.dart';
 import '../../../data/services/pdf_cache_manager.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/transaction_provider.dart';
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
@@ -93,6 +96,8 @@ class StorageHealthScreen extends ConsumerStatefulWidget {
 
 class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
   bool _backingUp = false;
+  bool _restoring = false;
+  bool _exporting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +284,41 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       label: Text(_backingUp ? 'Backing up…' : 'Back Up Now'),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _restoring
+                              ? null
+                              : _showRestoreDialog,
+                          icon: const Icon(Icons.restore, size: 18),
+                          label: const Text('Restore'),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _exporting
+                              ? null
+                              : _exportCsv,
+                          icon: _exporting
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.file_download_outlined,
+                                  size: 18,
+                                ),
+                          label: const Text('Export CSV'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -298,6 +338,137 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
       if (mounted) context.showSnackBar('Backup failed: $e');
     } finally {
       if (mounted) setState(() => _backingUp = false);
+    }
+  }
+
+  Future<void> _showRestoreDialog() async {
+    final service = BackupService.instance;
+    final backups = await service.listBackups();
+
+    if (!mounted) return;
+
+    if (backups.isEmpty) {
+      context.showSnackBar('No backups found');
+      return;
+    }
+
+    if (mounted) setState(() => _restoring = true);
+
+    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
+
+    final selected = await showModalBottomSheet<BackupInfo>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.base),
+              child: Text(
+                'Select Backup',
+                style: ctx.textTheme.titleMedium,
+              ),
+            ),
+            const Divider(height: 1),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: backups.length,
+                itemBuilder: (_, i) {
+                  final b = backups[i];
+                  return ListTile(
+                    leading: const Icon(Icons.folder_zip_outlined),
+                    title: Text(dateFormat.format(b.createdAt)),
+                    subtitle: Text(b.formattedSize),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () async {
+                        await service.deleteBackup(b.path);
+                        if (ctx.mounted) {
+                          Navigator.pop(ctx);
+                          _showRestoreDialog();
+                        }
+                      },
+                    ),
+                    onTap: () => Navigator.pop(ctx, b),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) {
+      setState(() => _restoring = false);
+      return;
+    }
+
+    if (selected == null) {
+      setState(() => _restoring = false);
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Restore Backup?'),
+        content: const Text(
+          'This will replace all current data with the backup.\n\n'
+          'This action cannot be undone. Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: context.colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        await service.restoreFromBackup(selected.path);
+        if (mounted) {
+          context.showSnackBar('Backup restored. Please restart the app.');
+        }
+      } catch (e) {
+        if (mounted) {
+          context.showSnackBar('Restore failed: $e', isError: true);
+        }
+      }
+    }
+
+    if (mounted) setState(() => _restoring = false);
+  }
+
+  Future<void> _exportCsv() async {
+    setState(() => _exporting = true);
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      final transactions = await repo.getAll();
+
+      if (transactions.isEmpty) {
+        if (mounted) context.showSnackBar('No transactions to export');
+        return;
+      }
+
+      final csvService = ref.read(csvExportServiceProvider);
+      final path = await csvService.exportTransactions(transactions);
+      await Share.shareXFiles([XFile(path)]);
+    } catch (e) {
+      if (mounted) context.showSnackBar('Export failed: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
   }
 }

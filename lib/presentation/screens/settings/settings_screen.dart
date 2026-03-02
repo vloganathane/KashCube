@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../../data/services/backup_service.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/transaction_provider.dart';
 import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
@@ -219,24 +215,7 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.backup_outlined),
-                title: const Text('Create Backup'),
-                subtitle: const Text('Save database locally (unencrypted)'),
-                onTap: () => _createBackup(context, ref),
-              ),
-              ListTile(
-                leading: const Icon(Icons.restore),
-                title: const Text('Restore Backup'),
-                subtitle: const Text('Restore from a saved backup'),
-                onTap: () => _showRestoreDialog(context, ref),
-              ),
-              ListTile(
-                leading: const Icon(Icons.file_download_outlined),
-                title: const Text('Export CSV'),
-                subtitle: const Text('Export transactions to CSV'),
-                onTap: () => _exportCsv(context, ref),
-              ),
+
             ],
           ),
 
@@ -562,184 +541,6 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Backup
-  // ---------------------------------------------------------------------------
-
-  Future<void> _createBackup(BuildContext context, WidgetRef ref) async {
-    try {
-      final service = ref.read(backupServiceProvider);
-      final path = await service.createBackup();
-
-      if (!context.mounted) return;
-
-      final backupFile = path.split('/').last;
-      context.showSnackBar('Backup created: $backupFile');
-
-      final shouldShare = await showDialog<bool>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text('Backup Created'),
-          content: Text(
-            'Backup saved locally as:\n$backupFile\n\n'
-            'Would you like to share the backup file?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('No Thanks'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Share'),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldShare == true) {
-        await Share.shareXFiles([XFile(path)]);
-      }
-    } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Backup failed: $e', isError: true);
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Restore
-  // ---------------------------------------------------------------------------
-
-  Future<void> _showRestoreDialog(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final service = ref.read(backupServiceProvider);
-    final backups = await service.listBackups();
-
-    if (!context.mounted) return;
-
-    if (backups.isEmpty) {
-      context.showSnackBar('No backups found');
-      return;
-    }
-
-    final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
-
-    final selected = await showModalBottomSheet<BackupInfo>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              child: Text(
-                'Select Backup',
-                style: ctx.textTheme.titleMedium,
-              ),
-            ),
-            const Divider(height: 1),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: backups.length,
-                itemBuilder: (_, i) {
-                  final b = backups[i];
-                  return ListTile(
-                    leading: const Icon(Icons.folder_zip_outlined),
-                    title: Text(dateFormat.format(b.createdAt)),
-                    subtitle: Text(b.formattedSize),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () async {
-                        await service.deleteBackup(b.path);
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx);
-                          _showRestoreDialog(context, ref);
-                        }
-                      },
-                    ),
-                    onTap: () => Navigator.pop(ctx, b),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (selected == null || !context.mounted) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Restore Backup?'),
-        content: const Text(
-          'This will replace all current data with the backup.\n\n'
-          'This action cannot be undone. Are you sure?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: context.colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true || !context.mounted) return;
-
-    try {
-      await service.restoreFromBackup(selected.path);
-      if (context.mounted) {
-        context.showSnackBar(
-          'Backup restored. Please restart the app.',
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Restore failed: $e', isError: true);
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // CSV Export
-  // ---------------------------------------------------------------------------
-
-  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
-    try {
-      final repo = ref.read(transactionRepositoryProvider);
-      final transactions = await repo.getAll();
-
-      if (transactions.isEmpty) {
-        if (context.mounted) {
-          context.showSnackBar('No transactions to export');
-        }
-        return;
-      }
-
-      final csvService = ref.read(csvExportServiceProvider);
-      final path = await csvService.exportTransactions(transactions);
-
-      await Share.shareXFiles([XFile(path)]);
-    } catch (e) {
-      if (context.mounted) {
-        context.showSnackBar('Export failed: $e', isError: true);
-      }
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------

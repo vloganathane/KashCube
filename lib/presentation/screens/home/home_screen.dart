@@ -37,6 +37,7 @@ import '../../widgets/vcard_qr_dialog.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/encrypted_backup_screen.dart';
+import '../settings/fy_close_wizard_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -276,17 +277,13 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
                         ?.copyWith(color: warningColor),
                   ),
                 ),
-                // Close FY action (placeholder — wizard lands in Phase 2)
+                // Close FY action → Year-End Closing Wizard (Phase 2)
                 TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Year-end closing wizard coming in the next update.'),
-                        duration: Duration(seconds: 3),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const FyCloseWizardScreen()),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: warningColor,
                     padding: const EdgeInsets.symmetric(

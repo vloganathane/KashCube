@@ -2,22 +2,27 @@
 <!--
   Android Auto Backup rules for KashCube.
 
-  INCLUDED:
-    - kash_cube.db  — active FY database (all transactions, invoices, etc.)
+  STRATEGY: Exclude-only (no <include> tags).
+  When only <exclude> rules are present, Android backs up EVERYTHING
+  in the app's data directories EXCEPT what is explicitly excluded.
+  This automatically covers:
+    - kash_cube.db          (active FY database)
+    - kash_cube_archive_FY*.db  (year-end archives created by closing wizard)
 
-  NOTE: archive_FY*.db files will be added here when FY archiving lands
-  (Phase 2 year-end closing wizard). Until then, only the active DB is backed up.
+  EXCLUDED (to stay under the 25 MB Android Auto Backup limit):
+    - images/                   — user-importable; can be large
+    - pdfs/                     — ephemeral PDFs; always re-generatable from DB
+    - kash_cube_prev.db         — rolling daily snapshot; not needed in backup
+    - kash_cube_before_restore.db — pre-restore safety copy; temporary
 
-  EXCLUDED:
-    - images/  — re-importable by user; large; excluded to stay under 25 MB limit
-    - pdfs/    — ephemeral generated output; always re-generatable from DB
-    - kash_cube_prev.db — rolling snapshot; not needed in cloud backup
-
-  Android Auto Backup limit: 25 MB. Typical kash_cube.db is 1–5 MB.
+  Typical sizes:
+    kash_cube.db            1–5 MB
+    archive_FY*.db          1–5 MB each (one per year)
+    Total (5-year history)  ~25 MB — within Android's limit
 -->
 <full-backup-content>
-    <include domain="database" path="kash_cube.db" />
     <exclude domain="file" path="images/" />
     <exclude domain="file" path="pdfs/" />
     <exclude domain="database" path="kash_cube_prev.db" />
+    <exclude domain="database" path="kash_cube_before_restore.db" />
 </full-backup-content>

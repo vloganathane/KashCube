@@ -17,6 +17,7 @@ import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
 import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
+import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
 
@@ -99,6 +100,18 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _showDefaultAccountPicker(context, ref),
+              ),
+              ListTile(
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: const Text('Financial Year'),
+                subtitle: const Text('Year-end closing, archive & FY settings'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const FyCloseWizardScreen(),
+                  ),
+                ),
               ),
             ],
           ),

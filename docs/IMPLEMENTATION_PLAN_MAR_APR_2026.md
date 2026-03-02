@@ -2,8 +2,8 @@
 
 > Current date: 2 March 2026. FY flips on 1 April — **29 days**. Two parallel tracks below.
 >
-> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ B3 ✅ B4 ✅ B5 ✅ B6 ✅ — committed `d0a3eb6`, `c39b027`, `9a24a3b`
-> **Next:** B7 Encrypted `.kashcube` export 🔄 → B8 Onboarding backup nudge
+> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ B3 ✅ B4 ✅ B5 ✅ B6 ✅ B7 ✅ B8 ✅ — `d0a3eb6`, `c39b027`, `9a24a3b`, `9225e7e`
+> **Next:** Phase 2 — Year-end Closing Wizard (April, after 1 Apr FY flip)
 
 ---
 
@@ -290,7 +290,7 @@ await _maybeVacuum(db);
 
 ---
 
-### B7 — Encrypted `.kashcube` Export 🔄 IN PROGRESS
+### B7 — Encrypted `.kashcube` Export ✅ DONE (`9225e7e`)
 **File:** `lib/data/services/backup_service.dart` (major rewrite)
 **New dependency:** `pointycastle` (or `encrypt` package) for AES-256-GCM + PBKDF2
 **Effort:** 2 days
@@ -324,7 +324,7 @@ Max 5 passphrase attempts before lockout (cooldown, not wipe).
 
 ---
 
-### B8 — Onboarding Backup Nudge
+### B8 — Onboarding Backup Nudge ✅ DONE (`9225e7e`)
 **File:** `lib/presentation/screens/home/home_screen.dart` or first-run flow
 **Effort:** Half day
 
@@ -347,9 +347,9 @@ Monthly reminder (via `NotificationService`) if no backup in 30 days. Track with
 | **Week 1** (2–8 Mar) | B1 WAL + integrity + snapshot + B2 Android backup_rules.xml | ✅ Done |
 | **Week 2** (9–15 Mar) | B3 `PdfCacheManager` + B4 Storage Health Dashboard | ✅ Done |
 | **Week 3** (16–22 Mar) | B5 Image compression + B6 DB VACUUM | ✅ Done |
-| **Week 4** (23–29 Mar) | B7 Encrypted `.kashcube` export (generation side) | Pending |
-| **April Week 1** | B7 Encrypted import + restore flow | Pending |
-| **April Week 2** | B8 Onboarding nudge + FY close backup prompt (tied to Phase 2 wizard) | Pending |
+| **Week 4** (23–29 Mar) | B7 Encrypted `.kashcube` export (generation side) | ✅ Done |
+| **April Week 1** | B7 Encrypted import + restore flow | ✅ Done (combined in same commit) |
+| **April Week 2** | B8 Onboarding nudge + FY close backup prompt (tied to Phase 2 wizard) | ✅ Done |
 
 ---
 

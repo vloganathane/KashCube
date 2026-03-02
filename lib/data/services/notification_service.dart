@@ -6,6 +6,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/booking.dart';
 import '../../data/services/fiscal_year_service.dart';
+import '../../data/services/encrypted_backup_service.dart';
 import '../../presentation/providers/upcoming_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,8 @@ const _dayBeforeOffset = 5000;
 const _bookingBase = 30000;
 // Fiscal year alerts: 40_000
 const _fyBase = 40000;
+// Backup reminder: 50_000
+const _backupBase = 50000;
 
 const _bookingChannelId = 'kash_bookings';
 const _bookingChannelName = 'Booking Reminders';
@@ -279,6 +282,49 @@ class NotificationService {
         details,
       );
       debugPrint('[Notifications] Reset-due alert for $prevLabel');
+    }
+  }
+
+  // ── Backup Reminder ────────────────────────────────────────────────────────
+
+  /// Shows a local notification if no encrypted backup has been made in the
+  /// last 30 days (or ever). Safe to call on every launch — no-ops if a
+  /// recent backup exists.
+  Future<void> checkAndShowBackupReminder() async {
+    if (!_initialized) await initialize();
+
+    final days = await EncryptedBackupService.instance.daysSinceLastBackup();
+    final neverBacked = days == null;
+    final stale = days != null && days > 30;
+    if (!neverBacked && !stale) return;
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        icon: '@mipmap/ic_launcher',
+      ),
+    );
+
+    if (neverBacked) {
+      await _plugin.show(
+        _backupBase,
+        'Back up your Kash Cube data',
+        'Your data is only on this device. Create an encrypted backup to keep it safe.',
+        details,
+      );
+      debugPrint('[Notifications] Backup reminder: never backed up');
+    } else {
+      await _plugin.show(
+        _backupBase,
+        'Backup due',
+        'Your last backup was $days days ago. Back up now to protect your data.',
+        details,
+      );
+      debugPrint('[Notifications] Backup reminder: $days days since last backup');
     }
   }
 

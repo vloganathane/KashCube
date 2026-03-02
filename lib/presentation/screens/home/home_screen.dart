@@ -10,6 +10,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/fy_provider.dart';
+import '../../providers/backup_nudge_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
@@ -35,6 +36,7 @@ import '../../../data/models/business.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
+import '../settings/encrypted_backup_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -98,6 +100,8 @@ class HomeScreen extends ConsumerWidget {
             ),
             // Year-end warning banner (March 25 onwards, or if old FY not closed)
             const _YearEndBannerSliver(),
+            // Backup nudge (after 5 transactions, if no encrypted backup yet)
+            const _BackupNudgeBannerSliver(),
             SliverPadding(
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
@@ -315,6 +319,98 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
         'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ][m];
+}
+
+// ---------------------------------------------------------------------------
+// Backup Nudge Banner Sliver (B8)
+// ---------------------------------------------------------------------------
+
+/// One-time nudge shown after 5 transactions when no encrypted backup exists.
+/// Permanently dismissed via [dismissBackupNudge] (SharedPreferences).
+class _BackupNudgeBannerSliver extends ConsumerStatefulWidget {
+  const _BackupNudgeBannerSliver();
+
+  @override
+  ConsumerState<_BackupNudgeBannerSliver> createState() =>
+      _BackupNudgeBannerSliverState();
+}
+
+class _BackupNudgeBannerSliverState
+    extends ConsumerState<_BackupNudgeBannerSliver> {
+  bool _dismissedLocally = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissedLocally) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+    final visibleAsync = ref.watch(backupNudgeVisibleProvider);
+    return visibleAsync.when(
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (visible) {
+        if (!visible) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+        final scheme = Theme.of(context).colorScheme;
+        return SliverToBoxAdapter(
+          child: Container(
+            color: scheme.primaryContainer.withValues(alpha: 0.55),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.shield_outlined, size: 18,
+                    color: scheme.onPrimaryContainer),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Your data is only on this device. '
+                    'Set a backup passphrase so you never lose it.',
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: scheme.onPrimaryContainer),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const EncryptedBackupScreen(),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs, vertical: 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Back up'),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, size: 16,
+                      color: scheme.onPrimaryContainer),
+                  onPressed: () async {
+                    await dismissBackupNudge();
+                    if (mounted) {
+                      setState(() => _dismissedLocally = true);
+                    }
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Remind me later',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,9 @@ void main() async {
   // or if the old FY was never closed after the new year started.
   await NotificationService.instance.checkAndShowYearEndAlerts();
 
+  // Backup reminder if no encrypted backup in 30 days (or ever).
+  await NotificationService.instance.checkAndShowBackupReminder();
+
   runApp(const ProviderScope(child: KashCubeApp()));
 }
 

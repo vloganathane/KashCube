@@ -54,6 +54,9 @@ dependencies:
   # Image compression for party/business card photos — fully local
   flutter_image_compress: ^2.4.0
 
+  # AES-256-GCM encryption for .kashcube backup export — 100% on-device
+  encrypt: ^5.0.3
+
   # Utilities
   equatable: ^2.0.7
   uuid: ^4.5.1

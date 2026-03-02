@@ -2,8 +2,8 @@
 
 > Current date: 2 March 2026. FY flips on 1 April — **29 days**. Two parallel tracks below.
 >
-> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ — committed `d0a3eb6`, `c39b027`
-> **Next:** B3 PdfCacheManager → B4 Storage Health Dashboard → B5 Image Compression → B6 DB VACUUM
+> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ B3 ✅ B4 ✅ B5 ✅ B6 ✅ — committed `d0a3eb6`, `c39b027`, `9a24a3b`
+> **Next:** B7 Encrypted `.kashcube` export 🔄 → B8 Onboarding backup nudge
 
 ---
 
@@ -210,7 +210,7 @@ android:fullBackupContent="@xml/backup_rules"
 
 ---
 
-### B3 — `PdfCacheManager` (Ephemeral PDFs, FY-Prefixed Filenames) 🔄 IN PROGRESS
+### B3 — `PdfCacheManager` (Ephemeral PDFs, FY-Prefixed Filenames) ✅ DONE (`9a24a3b`)
 **New file:** `lib/data/services/pdf_cache_manager.dart`
 **Effort:** 1 day
 
@@ -225,7 +225,7 @@ Wire into `InvoicePdfService` — currently generates to a path that may persist
 
 ---
 
-### B4 — Storage Health Dashboard
+### B4 — Storage Health Dashboard ✅ DONE (`9a24a3b`)
 **File:** `lib/presentation/screens/settings/settings_screen.dart`
 **New file:** `lib/presentation/screens/settings/storage_health_screen.dart`
 **Effort:** 1 day
@@ -253,7 +253,7 @@ Last backup:  {date or "Never"}
 
 ---
 
-### B5 — Image Compression on Import
+### B5 — Image Compression on Import ✅ DONE (`9a24a3b`)
 **File:** `lib/presentation/widgets/party_form_sheet.dart` (and anywhere else images are picked)
 **Effort:** Half day
 
@@ -272,7 +272,7 @@ Warn user in `StorageHealthScreen` when total image storage > 20 MB.
 
 ---
 
-### B6 — DB `VACUUM` on Schedule
+### B6 — DB `VACUUM` on Schedule ✅ DONE (`9a24a3b`)
 **File:** `lib/data/services/database_helper.dart`
 **Effort:** 2 hours
 
@@ -290,7 +290,7 @@ await _maybeVacuum(db);
 
 ---
 
-### B7 — Encrypted `.kashcube` Export
+### B7 — Encrypted `.kashcube` Export 🔄 IN PROGRESS
 **File:** `lib/data/services/backup_service.dart` (major rewrite)
 **New dependency:** `pointycastle` (or `encrypt` package) for AES-256-GCM + PBKDF2
 **Effort:** 2 days
@@ -345,8 +345,8 @@ Monthly reminder (via `NotificationService`) if no backup in 30 days. Track with
 | Week | Tasks | Status |
 |---|---|---|
 | **Week 1** (2–8 Mar) | B1 WAL + integrity + snapshot + B2 Android backup_rules.xml | ✅ Done |
-| **Week 2** (9–15 Mar) | B3 `PdfCacheManager` + B4 Storage Health Dashboard | 🔄 In Progress |
-| **Week 3** (16–22 Mar) | B5 Image compression + B6 DB VACUUM | Pending |
+| **Week 2** (9–15 Mar) | B3 `PdfCacheManager` + B4 Storage Health Dashboard | ✅ Done |
+| **Week 3** (16–22 Mar) | B5 Image compression + B6 DB VACUUM | ✅ Done |
 | **Week 4** (23–29 Mar) | B7 Encrypted `.kashcube` export (generation side) | Pending |
 | **April Week 1** | B7 Encrypted import + restore flow | Pending |
 | **April Week 2** | B8 Onboarding nudge + FY close backup prompt (tied to Phase 2 wizard) | Pending |

@@ -4,9 +4,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../widgets/account_picker_sheet.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
@@ -39,8 +37,6 @@ class SettingsScreen extends ConsumerWidget {
     final appLockAsync = ref.watch(appLockEnabledProvider);
     final biometricAsync = ref.watch(biometricEnabledProvider);
     final themeMode = ref.watch(themeModeProvider);
-    final defaultAccountId = ref.watch(defaultAccountIdProvider);
-    final accountsAsync = ref.watch(accountsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -132,24 +128,6 @@ class SettingsScreen extends ConsumerWidget {
                     builder: (_) => const OpeningBalancesScreen(),
                   ),
                 ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.account_balance_wallet_outlined),
-                title: const Text('Default Account'),
-                subtitle: Text(
-                  accountsAsync.whenOrNull(
-                    data: (accounts) {
-                      if (defaultAccountId == null) return 'None (ask each time)';
-                      final match = accounts
-                          .where((a) => a.id == defaultAccountId)
-                          .firstOrNull;
-                      return match?.accountName ?? 'None (ask each time)';
-                    },
-                  ) ??
-                      'Loading…',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showDefaultAccountPicker(context, ref),
               ),
             ],
           ),
@@ -397,60 +375,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Default account
-  // ---------------------------------------------------------------------------
-
-  Future<void> _showDefaultAccountPicker(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    // Option to clear the default
-    final shouldClear = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base,
-                AppSpacing.base,
-                AppSpacing.base,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                'Default Account',
-                style: ctx.textTheme.titleMedium,
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.do_not_disturb_alt_outlined),
-              title: const Text('None (ask each time)'),
-              onTap: () => Navigator.pop(ctx, true),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (!context.mounted) return;
-
-    if (shouldClear == true) {
-      ref.read(defaultAccountIdProvider.notifier).setDefault(null);
-      return;
-    }
-
-    // Otherwise open the full account picker
-    final picked = await showAccountPicker(context, title: 'Default Account');
-    if (!context.mounted) return;
-    if (picked != null) {
-      ref.read(defaultAccountIdProvider.notifier).setDefault(picked.id);
-    }
   }
 
   // ---------------------------------------------------------------------------

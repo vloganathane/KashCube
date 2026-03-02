@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../data/models/account.dart';
 import '../../providers/account_provider.dart';
+import '../../providers/settings_provider.dart';
 
 /// Manage accounts — view, add, rename, archive.
 class AccountsManageScreen extends ConsumerWidget {
@@ -12,6 +13,7 @@ class AccountsManageScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accountsAsync = ref.watch(accountsProvider);
+    final defaultId = ref.watch(defaultAccountIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Accounts')),
@@ -55,14 +57,24 @@ class AccountsManageScreen extends ConsumerWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (account.isPrimary)
-                      Chip(
-                        label: const Text('Primary'),
-                        labelStyle: const TextStyle(fontSize: 11),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
+                    IconButton(
+                      icon: Icon(
+                        account.id == defaultId
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
+                        color: account.id == defaultId
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                    const SizedBox(width: AppSpacing.xs),
+                      tooltip: account.id == defaultId
+                          ? 'Remove as default'
+                          : 'Set as default',
+                      onPressed: () => ref
+                          .read(defaultAccountIdProvider.notifier)
+                          .setDefault(
+                            account.id == defaultId ? null : account.id,
+                          ),
+                    ),
                     Switch(
                       value: account.isActive,
                       onChanged: (val) => ref

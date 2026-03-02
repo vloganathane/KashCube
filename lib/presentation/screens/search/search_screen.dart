@@ -118,7 +118,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         SearchFilter.credits => 'Search credits & udhar…',
         SearchFilter.bills => 'Search bills…',
         SearchFilter.bookings => 'Search bookings…',
-        SearchFilter.parties => 'Search parties…',
+        SearchFilter.parties => 'Search by name or phone…',
       };
 
   @override

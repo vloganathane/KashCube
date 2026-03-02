@@ -23,20 +23,13 @@ class PartiesScreen extends ConsumerStatefulWidget {
 }
 
 class _PartiesScreenState extends ConsumerState<PartiesScreen> {
-  final _searchController = TextEditingController();
   PartyType? _typeFilter;
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
     final partiesAsync = ref.watch(partiesProvider);
-    final query = ref.watch(partySearchQueryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -50,34 +43,6 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
             ),
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, 0, AppSpacing.base, AppSpacing.sm),
-            child: SearchBar(
-              controller: _searchController,
-              hintText: 'Filter by name or phone…',
-              leading: const Icon(Icons.filter_list, size: 20),
-              trailing: query.isNotEmpty
-                  ? [
-                      IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          ref
-                              .read(partySearchQueryProvider.notifier)
-                              .state = '';
-                        },
-                        icon: const Icon(Icons.close, size: 18),
-                      )
-                    ]
-                  : null,
-              onChanged: (v) =>
-                  ref.read(partySearchQueryProvider.notifier).state = v,
-              elevation: const WidgetStatePropertyAll(0),
-            ),
-          ),
-        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,19 +82,14 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (all) {
-                final filtered = all.where((p) {
-                  final matchesType =
-                      _typeFilter == null || p.partyType == _typeFilter;
-                  final q = query.toLowerCase();
-                  final matchesQuery = q.isEmpty ||
-                      p.name.toLowerCase().contains(q) ||
-                      (p.phoneNumber?.contains(q) ?? false);
-                  return matchesType && matchesQuery;
-                }).toList();
+                final filtered = all
+                    .where((p) =>
+                        _typeFilter == null || p.partyType == _typeFilter)
+                    .toList();
 
                 if (filtered.isEmpty) {
                   return _EmptyState(
-                    hasQuery: query.isNotEmpty || _typeFilter != null,
+                    hasQuery: _typeFilter != null,
                     onAdd: () => _showAddEditSheet(context),
                   );
                 }

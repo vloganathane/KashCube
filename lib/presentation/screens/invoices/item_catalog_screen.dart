@@ -5,6 +5,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/unit_type_provider.dart';
 
 class ItemCatalogScreen extends ConsumerStatefulWidget {
   /// When [pickMode] is true, tapping an item pops with the selected [ItemCatalog].
@@ -306,10 +307,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _skuCtrl;
-  late final TextEditingController _unitCtrl;
   late final TextEditingController _priceCtrl;
   late final TextEditingController _taxCtrl;
   late final TextEditingController _hsnCtrl;
+  late String _selectedUnit;
   late ItemCategory _category;
   late bool _isFavorite;
   late bool _isBookable;
@@ -324,7 +325,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _descCtrl =
         TextEditingController(text: item?.description ?? '');
     _skuCtrl = TextEditingController(text: item?.sku ?? '');
-    _unitCtrl = TextEditingController(text: item?.unit ?? '');
+    _selectedUnit = item?.unit ?? 'pcs';
     _priceCtrl = TextEditingController(
         text: item == null ? '' : item.unitPrice.toStringAsFixed(2));
     _taxCtrl = TextEditingController(
@@ -358,7 +359,6 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _nameCtrl,
       _descCtrl,
       _skuCtrl,
-      _unitCtrl,
       _priceCtrl,
       _taxCtrl,
       _hsnCtrl
@@ -381,9 +381,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       sku: _skuCtrl.text.trim().isEmpty
           ? null
           : _skuCtrl.text.trim(),
-      unit: _unitCtrl.text.trim().isEmpty
-          ? 'pcs'
-          : _unitCtrl.text.trim(),
+      unit: _selectedUnit.isEmpty ? 'pcs' : _selectedUnit,
       unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
       taxPct: double.tryParse(_taxCtrl.text) ?? 0,
       hsnCode: _hsnCtrl.text.trim().isEmpty
@@ -500,12 +498,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: _unitCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Unit (pcs, kg…)',
-                        border: OutlineInputBorder(),
-                      ),
+                    child: _UnitDropdown(
+                      value: _selectedUnit,
+                      onChanged: (v) => setState(() => _selectedUnit = v),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -736,4 +731,52 @@ Future<void> showAddItemSheet(BuildContext context, WidgetRef ref) {
       onSave: (item) => ref.read(catalogProvider.notifier).add(item),
     ),
   );
+}
+
+// ── Unit Dropdown ─────────────────────────────────────────────────────────────
+
+/// Dropdown that lists managed unit types from [unitTypesProvider].
+/// If [value] is not in the list (legacy item), it's added as a dynamic option.
+class _UnitDropdown extends ConsumerWidget {
+  const _UnitDropdown({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final units = ref.watch(unitTypesProvider);
+    final labels = units.map((u) => u.label).toList();
+
+    // If existing item has a unit not yet in the managed list, show it anyway
+    if (value.isNotEmpty && !labels.contains(value)) {
+      labels.insert(0, value);
+    }
+
+    // Fallback if provider hasn't loaded yet
+    if (labels.isEmpty) {
+      return const SizedBox(
+        height: 56,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    // Ensure current value is valid; reset to first item if not
+    final safeValue = labels.contains(value) ? value : labels.first;
+
+    return DropdownButtonFormField<String>(
+      key: ValueKey(safeValue),
+      initialValue: safeValue,
+      decoration: const InputDecoration(
+        labelText: 'Unit',
+        border: OutlineInputBorder(),
+      ),
+      items: labels
+          .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
 }

@@ -700,6 +700,17 @@ class DatabaseHelper {
       'description': 'Full v22 schema (fresh install)',
     });
 
+    // -- unit_types table
+    await db.execute('''
+      CREATE TABLE unit_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        label TEXT NOT NULL UNIQUE,
+        is_system INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+    await _seedUnitTypes(db);
+
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);
@@ -1450,6 +1461,22 @@ class DatabaseHelper {
         'description': 'FY settings: invoice_no_format, fiscal_year_start_month/day, auto_reset_invoice_no, current_fy_start',
       });
     }
+
+    if (oldVersion < 28) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS unit_types (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          label TEXT NOT NULL UNIQUE,
+          is_system INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+      await _seedUnitTypes(db);
+      await db.insert('schema_version', {
+        'version': 28,
+        'description': 'Add unit_types table with seeded defaults',
+      });
+    }
   }
 
   /// Inserts fiscal-year defaults into the settings table.
@@ -1610,6 +1637,56 @@ class DatabaseHelper {
     } on Exception {
       return -1; // duplicate name — UNIQUE constraint
     }
+  }
+
+  /// Seeds the default system unit types. Uses ConflictAlgorithm.ignore
+  /// so re-running on upgrades is safe (won't clobber user data).
+  Future<void> _seedUnitTypes(Database db) async {
+    const systemUnits = [
+      'pcs', 'box', 'dozen', 'pair', 'set',
+      'kg', 'g', 'mg', 'litre', 'ml',
+      'metre', 'cm', 'sq.ft', 'sq.m', 'acre',
+      'hrs', 'days', 'month',
+    ];
+    for (int i = 0; i < systemUnits.length; i++) {
+      await db.insert(
+        'unit_types',
+        {'label': systemUnits[i], 'is_system': 1, 'sort_order': i},
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+  }
+
+  /// Returns all active unit types ordered by sort_order then label.
+  Future<List<Map<String, dynamic>>> getUnitTypes() async {
+    final db = await database;
+    return db.rawQuery(
+        'SELECT id, label, is_system FROM unit_types ORDER BY sort_order, label');
+  }
+
+  /// Inserts a custom unit type. Returns the new id, or -1 if duplicate.
+  Future<int> insertUnitType(String label) async {
+    final db = await database;
+    try {
+      return await db.insert('unit_types', {
+        'label': label.trim(),
+        'is_system': 0,
+        'sort_order': 999,
+      });
+    } on Exception {
+      return -1;
+    }
+  }
+
+  /// Deletes a custom (non-system) unit type by id.
+  /// No-op if the unit is a system unit.
+  Future<void> deleteUnitType(int id) async {
+    final db = await database;
+    await db.delete(
+      'unit_types',
+      where: 'id = ? AND is_system = 0',
+      whereArgs: [id],
+    );
   }
 
   // ── Close ─────────────────────────────────────────────────────────────────

@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'invoice.dart' show InvoiceType, InvoiceTypeExt;
+
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
@@ -51,6 +53,9 @@ class QuoteItem extends Equatable {
     this.taxPct = 0,
     this.discountPct = 0,
     required this.lineTotal,
+    this.hsnCode,
+    this.unit = 'PCS',
+    this.hsnOrSac = 'HSN',
   });
 
   final int? id;
@@ -62,6 +67,12 @@ class QuoteItem extends Equatable {
   final double taxPct;
   final double discountPct;
   final double lineTotal;
+  /// HSN (product) or SAC (service) code.
+  final String? hsnCode;
+  /// GST UOM code.
+  final String unit;
+  /// 'HSN' for products, 'SAC' for services.
+  final String hsnOrSac;
 
   QuoteItem copyWith({
     int? id,
@@ -73,6 +84,9 @@ class QuoteItem extends Equatable {
     double? taxPct,
     double? discountPct,
     double? lineTotal,
+    String? hsnCode,
+    String? unit,
+    String? hsnOrSac,
   }) {
     return QuoteItem(
       id: id ?? this.id,
@@ -84,6 +98,9 @@ class QuoteItem extends Equatable {
       taxPct: taxPct ?? this.taxPct,
       discountPct: discountPct ?? this.discountPct,
       lineTotal: lineTotal ?? this.lineTotal,
+      hsnCode: hsnCode ?? this.hsnCode,
+      unit: unit ?? this.unit,
+      hsnOrSac: hsnOrSac ?? this.hsnOrSac,
     );
   }
 
@@ -108,6 +125,9 @@ class QuoteItem extends Equatable {
         'tax_pct': taxPct,
         'discount_pct': discountPct,
         'line_total': lineTotal,
+        'hsn_code': hsnCode,
+        'unit': unit,
+        'hsn_or_sac': hsnOrSac,
       };
 
   factory QuoteItem.fromMap(Map<String, dynamic> map) => QuoteItem(
@@ -120,6 +140,9 @@ class QuoteItem extends Equatable {
         taxPct: (map['tax_pct'] as num?)?.toDouble() ?? 0,
         discountPct: (map['discount_pct'] as num?)?.toDouble() ?? 0,
         lineTotal: (map['line_total'] as num).toDouble(),
+        hsnCode: map['hsn_code'] as String?,
+        unit: (map['unit'] as String?) ?? 'PCS',
+        hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
       );
 
   @override
@@ -148,6 +171,10 @@ class Quote extends Equatable {
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
+    this.invoiceType = InvoiceType.taxInvoice,
+    this.placeOfSupply,
+    this.reverseCharge = false,
+    this.customerGstin,
   });
 
   final int? id;
@@ -165,6 +192,14 @@ class Quote extends Equatable {
   final List<QuoteItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
+  /// Tax Invoice / Bill of Supply (determines what this converts to).
+  final InvoiceType invoiceType;
+  /// GSTN place of supply state code.
+  final String? placeOfSupply;
+  /// Whether reverse charge applies.
+  final bool reverseCharge;
+  /// Buyer GSTIN snapshot.
+  final String? customerGstin;
 
   Quote copyWith({
     int? id,
@@ -182,6 +217,10 @@ class Quote extends Equatable {
     List<QuoteItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
+    InvoiceType? invoiceType,
+    String? placeOfSupply,
+    bool? reverseCharge,
+    String? customerGstin,
   }) {
     return Quote(
       id: id ?? this.id,
@@ -199,6 +238,10 @@ class Quote extends Equatable {
       items: items ?? this.items,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      invoiceType: invoiceType ?? this.invoiceType,
+      placeOfSupply: placeOfSupply ?? this.placeOfSupply,
+      reverseCharge: reverseCharge ?? this.reverseCharge,
+      customerGstin: customerGstin ?? this.customerGstin,
     );
   }
 
@@ -215,6 +258,10 @@ class Quote extends Equatable {
         'discount_pct': discountPct,
         'total': total,
         'notes': notes,
+        'invoice_type': invoiceType.dbValue,
+        'place_of_supply': placeOfSupply,
+        'reverse_charge': reverseCharge ? 1 : 0,
+        'customer_gstin': customerGstin,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -239,6 +286,10 @@ class Quote extends Equatable {
         items: items,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
+        invoiceType: InvoiceTypeExt.fromDb(map['invoice_type'] as String?),
+        placeOfSupply: map['place_of_supply'] as String?,
+        reverseCharge: (map['reverse_charge'] as int? ?? 0) == 1,
+        customerGstin: map['customer_gstin'] as String?,
       );
 
   @override

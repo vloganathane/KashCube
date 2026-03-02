@@ -48,6 +48,37 @@ extension InvoiceStatusExt on InvoiceStatus {
 }
 
 // ---------------------------------------------------------------------------
+// InvoiceType
+// ---------------------------------------------------------------------------
+
+enum InvoiceType { taxInvoice, billOfSupply, creditNote, debitNote }
+
+extension InvoiceTypeExt on InvoiceType {
+  String get label => const {
+    InvoiceType.taxInvoice:   'Tax Invoice',
+    InvoiceType.billOfSupply: 'Bill of Supply',
+    InvoiceType.creditNote:   'Credit Note',
+    InvoiceType.debitNote:    'Debit Note',
+  }[this]!;
+
+  String get dbValue => const {
+    InvoiceType.taxInvoice:   'tax_invoice',
+    InvoiceType.billOfSupply: 'bill_of_supply',
+    InvoiceType.creditNote:   'credit_note',
+    InvoiceType.debitNote:    'debit_note',
+  }[this]!;
+
+  static InvoiceType fromDb(String? v) {
+    switch (v) {
+      case 'bill_of_supply': return InvoiceType.billOfSupply;
+      case 'credit_note':    return InvoiceType.creditNote;
+      case 'debit_note':     return InvoiceType.debitNote;
+      default:               return InvoiceType.taxInvoice;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // InvoiceItem
 // ---------------------------------------------------------------------------
 
@@ -62,6 +93,9 @@ class InvoiceItem extends Equatable {
     this.taxPct = 0,
     this.discountPct = 0,
     required this.lineTotal,
+    this.hsnCode,
+    this.unit = 'PCS',
+    this.hsnOrSac = 'HSN',
   });
 
   final int? id;
@@ -73,6 +107,12 @@ class InvoiceItem extends Equatable {
   final double taxPct;
   final double discountPct;
   final double lineTotal;
+  /// HSN (product) or SAC (service) code — printed on invoice.
+  final String? hsnCode;
+  /// GST UOM code (e.g. 'PCS', 'KGS') from e-Way Bill master list.
+  final String unit;
+  /// 'HSN' for products, 'SAC' for services.
+  final String hsnOrSac;
 
   InvoiceItem copyWith({
     int? id,
@@ -84,6 +124,9 @@ class InvoiceItem extends Equatable {
     double? taxPct,
     double? discountPct,
     double? lineTotal,
+    String? hsnCode,
+    String? unit,
+    String? hsnOrSac,
   }) {
     return InvoiceItem(
       id: id ?? this.id,
@@ -95,6 +138,9 @@ class InvoiceItem extends Equatable {
       taxPct: taxPct ?? this.taxPct,
       discountPct: discountPct ?? this.discountPct,
       lineTotal: lineTotal ?? this.lineTotal,
+      hsnCode: hsnCode ?? this.hsnCode,
+      unit: unit ?? this.unit,
+      hsnOrSac: hsnOrSac ?? this.hsnOrSac,
     );
   }
 
@@ -108,6 +154,9 @@ class InvoiceItem extends Equatable {
         'tax_pct': taxPct,
         'discount_pct': discountPct,
         'line_total': lineTotal,
+        'hsn_code': hsnCode,
+        'unit': unit,
+        'hsn_or_sac': hsnOrSac,
       };
 
   factory InvoiceItem.fromMap(Map<String, dynamic> map) => InvoiceItem(
@@ -120,6 +169,9 @@ class InvoiceItem extends Equatable {
         taxPct: (map['tax_pct'] as num?)?.toDouble() ?? 0,
         discountPct: (map['discount_pct'] as num?)?.toDouble() ?? 0,
         lineTotal: (map['line_total'] as num).toDouble(),
+        hsnCode: map['hsn_code'] as String?,
+        unit: (map['unit'] as String?) ?? 'PCS',
+        hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
       );
 
   @override
@@ -154,6 +206,10 @@ class Invoice extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.reminderSentAt,
+    this.invoiceType = InvoiceType.taxInvoice,
+    this.placeOfSupply,
+    this.reverseCharge = false,
+    this.customerGstin,
   });
 
   final int? id;
@@ -180,6 +236,14 @@ class Invoice extends Equatable {
   final DateTime updatedAt;
   /// Timestamp of the last manual reminder sent (WhatsApp/SMS/Email).
   final DateTime? reminderSentAt;
+  /// Tax Invoice / Bill of Supply / Credit Note / Debit Note.
+  final InvoiceType invoiceType;
+  /// GSTN place of supply state code (e.g. '29' for Karnataka).
+  final String? placeOfSupply;
+  /// Whether reverse charge mechanism applies (GST rule 9).
+  final bool reverseCharge;
+  /// Buyer GSTIN — snapshot at time of invoice creation.
+  final String? customerGstin;
 
   double get balanceDue => total - paidAmount;
   bool get isOverdue =>
@@ -209,6 +273,10 @@ class Invoice extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? reminderSentAt,
+    InvoiceType? invoiceType,
+    String? placeOfSupply,
+    bool? reverseCharge,
+    String? customerGstin,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -232,6 +300,10 @@ class Invoice extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       reminderSentAt: reminderSentAt ?? this.reminderSentAt,
+      invoiceType: invoiceType ?? this.invoiceType,
+      placeOfSupply: placeOfSupply ?? this.placeOfSupply,
+      reverseCharge: reverseCharge ?? this.reverseCharge,
+      customerGstin: customerGstin ?? this.customerGstin,
     );
   }
 
@@ -256,6 +328,10 @@ class Invoice extends Equatable {
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
         'reminder_sent_at': reminderSentAt?.toIso8601String(),
+        'invoice_type': invoiceType.dbValue,
+        'place_of_supply': placeOfSupply,
+        'reverse_charge': reverseCharge ? 1 : 0,
+        'customer_gstin': customerGstin,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -288,6 +364,10 @@ class Invoice extends Equatable {
         reminderSentAt: map['reminder_sent_at'] != null
             ? DateTime.parse(map['reminder_sent_at'] as String)
             : null,
+        invoiceType: InvoiceTypeExt.fromDb(map['invoice_type'] as String?),
+        placeOfSupply: map['place_of_supply'] as String?,
+        reverseCharge: (map['reverse_charge'] as int? ?? 0) == 1,
+        customerGstin: map['customer_gstin'] as String?,
       );
 
   @override

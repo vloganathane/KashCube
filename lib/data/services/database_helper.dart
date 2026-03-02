@@ -579,6 +579,10 @@ class DatabaseHelper {
         total REAL NOT NULL DEFAULT 0,
         notes TEXT,
         business_id INTEGER,
+        invoice_type TEXT NOT NULL DEFAULT 'tax_invoice',
+        place_of_supply TEXT,
+        reverse_charge INTEGER NOT NULL DEFAULT 0,
+        customer_gstin TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -598,6 +602,9 @@ class DatabaseHelper {
         tax_pct REAL NOT NULL DEFAULT 0,
         discount_pct REAL NOT NULL DEFAULT 0,
         line_total REAL NOT NULL DEFAULT 0,
+        hsn_code TEXT,
+        unit TEXT DEFAULT 'PCS',
+        hsn_or_sac TEXT DEFAULT 'HSN',
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
       )
     ''');
@@ -623,6 +630,10 @@ class DatabaseHelper {
         paid_at TEXT,
         payment_method TEXT,
         reminder_sent_at TEXT,
+        invoice_type TEXT NOT NULL DEFAULT 'tax_invoice',
+        place_of_supply TEXT,
+        reverse_charge INTEGER NOT NULL DEFAULT 0,
+        customer_gstin TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -645,6 +656,9 @@ class DatabaseHelper {
         tax_pct REAL NOT NULL DEFAULT 0,
         discount_pct REAL NOT NULL DEFAULT 0,
         line_total REAL NOT NULL DEFAULT 0,
+        hsn_code TEXT,
+        unit TEXT DEFAULT 'PCS',
+        hsn_or_sac TEXT DEFAULT 'HSN',
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
       )
     ''');
@@ -1498,30 +1512,26 @@ class DatabaseHelper {
       });
     }
 
-    if (oldVersion < 31) {
-      // Add 'code' column; replace system units with official e-Way Bill GST
-      // UOM codes; migrate item_catalog.unit labels → codes where possible.
-      await db.execute('ALTER TABLE unit_types ADD COLUMN code TEXT');
-      await db.delete('unit_types', where: 'is_system = 1');
-      await _seedUnitTypes(db);
-      // Migrate existing item_catalog rows: old label → new GST code
-      const labelToCode = {
-        'nos': 'NOS', 'pcs': 'PCS', 'box': 'BOX', 'dozen': 'DOZ',
-        'pair': 'PRS', 'set': 'SET',
-        'kg': 'KGS', 'g': 'GMS',
-        'litre': 'LTR', 'ml': 'MLT',
-        'metre': 'MTR', 'cm': 'CMS',
-        'sq.ft': 'SQF', 'sq.m': 'SQM',
-      };
-      for (final entry in labelToCode.entries) {
-        await db.rawUpdate(
-          'UPDATE item_catalog SET unit = ? WHERE unit = ?',
-          [entry.value, entry.key],
-        );
-      }
+    if (oldVersion < 32) {
+      // GST Phase A: add HSN/unit to line items; add invoice_type/place_of_supply/
+      // reverse_charge/customer_gstin to invoice+quote headers.
+      await db.execute('ALTER TABLE invoice_items ADD COLUMN hsn_code TEXT');
+      await db.execute("ALTER TABLE invoice_items ADD COLUMN unit TEXT DEFAULT 'PCS'");
+      await db.execute("ALTER TABLE invoice_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
+      await db.execute('ALTER TABLE quote_items ADD COLUMN hsn_code TEXT');
+      await db.execute("ALTER TABLE quote_items ADD COLUMN unit TEXT DEFAULT 'PCS'");
+      await db.execute("ALTER TABLE quote_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
+      await db.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'");
+      await db.execute('ALTER TABLE invoices ADD COLUMN place_of_supply TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE invoices ADD COLUMN customer_gstin TEXT');
+      await db.execute("ALTER TABLE quotes ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'");
+      await db.execute('ALTER TABLE quotes ADD COLUMN place_of_supply TEXT');
+      await db.execute('ALTER TABLE quotes ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE quotes ADD COLUMN customer_gstin TEXT');
       await db.insert('schema_version', {
-        'version': 31,
-        'description': 'unit_types: add code column, replace with official e-Way Bill GST UOM codes; migrate item_catalog.unit labels to codes',
+        'version': 32,
+        'description': 'GST Phase A: hsn_code/unit/hsn_or_sac on invoice_items+quote_items; invoice_type/place_of_supply/reverse_charge/customer_gstin on invoices+quotes',
       });
     }
   }

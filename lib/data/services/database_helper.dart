@@ -703,10 +703,11 @@ class DatabaseHelper {
     // -- unit_types table
     await db.execute('''
       CREATE TABLE unit_types (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        label TEXT NOT NULL UNIQUE,
-        is_system INTEGER NOT NULL DEFAULT 0,
-        sort_order INTEGER NOT NULL DEFAULT 0
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        code        TEXT,
+        label       TEXT NOT NULL UNIQUE,
+        is_system   INTEGER NOT NULL DEFAULT 0,
+        sort_order  INTEGER NOT NULL DEFAULT 0
       )
     ''');
     await _seedUnitTypes(db);
@@ -1496,6 +1497,33 @@ class DatabaseHelper {
         'description': 'Seed nos / nos. unit types',
       });
     }
+
+    if (oldVersion < 31) {
+      // Add 'code' column; replace system units with official e-Way Bill GST
+      // UOM codes; migrate item_catalog.unit labels → codes where possible.
+      await db.execute('ALTER TABLE unit_types ADD COLUMN code TEXT');
+      await db.delete('unit_types', where: 'is_system = 1');
+      await _seedUnitTypes(db);
+      // Migrate existing item_catalog rows: old label → new GST code
+      const labelToCode = {
+        'nos': 'NOS', 'pcs': 'PCS', 'box': 'BOX', 'dozen': 'DOZ',
+        'pair': 'PRS', 'set': 'SET',
+        'kg': 'KGS', 'g': 'GMS',
+        'litre': 'LTR', 'ml': 'MLT',
+        'metre': 'MTR', 'cm': 'CMS',
+        'sq.ft': 'SQF', 'sq.m': 'SQM',
+      };
+      for (final entry in labelToCode.entries) {
+        await db.rawUpdate(
+          'UPDATE item_catalog SET unit = ? WHERE unit = ?',
+          [entry.value, entry.key],
+        );
+      }
+      await db.insert('schema_version', {
+        'version': 31,
+        'description': 'unit_types: add code column, replace with official e-Way Bill GST UOM codes; migrate item_catalog.unit labels to codes',
+      });
+    }
   }
 
   /// Inserts fiscal-year defaults into the settings table.
@@ -1658,30 +1686,99 @@ class DatabaseHelper {
     }
   }
 
-  /// Seeds the default system unit types. Uses ConflictAlgorithm.ignore
-  /// so re-running on upgrades is safe (won't clobber user data).
+  /// Seeds the default system unit types.
+  /// GST-coded units: official e-Way Bill UOM codes from GSTN master list.
+  /// Non-GST units: software / time / specialty (use OTH on e-way bill).
+  /// Uses [ConflictAlgorithm.ignore] so re-running on upgrades is safe.
   Future<void> _seedUnitTypes(Database db) async {
-    const systemUnits = [
-      // Physical / general
-      'nos', 'pcs', 'box', 'dozen', 'pair', 'set',
-      // Weight
-      'kg', 'g', 'mg',
-      // Volume
-      'litre', 'ml',
-      // Length / area
-      'metre', 'cm', 'sq.ft', 'sq.m', 'acre',
-      // Time
-      'hrs', 'days', 'week', 'month', 'year',
-      // Software / digital services
-      'license', 'seat', 'user', 'project', 'task',
-      'sprint', 'feature', 'screen', 'page', 'report',
-      'API call', 'request', 'token', 'deployment', 'instance',
-      'GB', 'MB', 'TB',
+    // [code, label, sortOrder] — code is null for non-GST units
+    const units = <List<Object?>>[
+      // ── Count / Quantity ────────────────────────────────
+      ['NOS', 'Numbers',            0],
+      ['PCS', 'Pieces',             1],
+      ['UNT', 'Units',              2],
+      ['DOZ', 'Dozens',             3],
+      ['PAC', 'Packs',              4],
+      ['BOX', 'Box',                5],
+      ['SET', 'Sets',               6],
+      ['PRS', 'Pairs',              7],
+      // ── Packaging ──────────────────────────────────────
+      ['BAG', 'Bags',               8],
+      ['BTL', 'Bottles',            9],
+      ['CTN', 'Cartons',           10],
+      ['ROL', 'Rolls',             11],
+      ['BDL', 'Bundles',           12],
+      ['BUN', 'Bunches',           13],
+      ['CAN', 'Cans',              14],
+      ['DRM', 'Drums',             15],
+      ['TUB', 'Tubes',             16],
+      ['TBS', 'Tablets',           17],
+      ['BAL', 'Bale',              18],
+      ['BKL', 'Buckles',           19],
+      // ── Bulk counts ────────────────────────────────────
+      ['GRS', 'Gross',             20],
+      ['GGK', 'Great Gross',       21],
+      ['TGM', 'Ten Gross',         22],
+      ['THD', 'Thousands',         23],
+      ['BOU', 'Billion of Units',  24],
+      // ── Weight ─────────────────────────────────────────
+      ['GMS', 'Grammes',           25],
+      ['KGS', 'Kilograms',         26],
+      ['QTL', 'Quintal',           27],
+      ['MTS', 'Metric Ton',        28],
+      ['TON', 'Tonnes',            29],
+      // ── Volume ─────────────────────────────────────────
+      ['MLT', 'Mililitre',         30],
+      ['LTR', 'Litres',            31],
+      ['KLR', 'Kilolitre',         32],
+      ['UGS', 'US Gallons',        33],
+      // ── Length ─────────────────────────────────────────
+      ['CMS', 'Centi Meters',      34],
+      ['MTR', 'Meters',            35],
+      ['KME', 'Kilometre',         36],
+      ['YDS', 'Yards',             37],
+      ['GYD', 'Gross Yards',       38],
+      // ── Area / Volume (3-D) ────────────────────────────
+      ['SQF', 'Square Feet',       39],
+      ['SQM', 'Square Meters',     40],
+      ['SQY', 'Square Yards',      41],
+      ['CBM', 'Cubic Meters',      42],
+      ['CCM', 'Cubic Centimeters', 43],
+      // ── Catch-all ──────────────────────────────────────
+      ['OTH', 'Others',            44],
+      // ── Non-GST: specialty physical ────────────────────
+      [null,  'mg',                50],
+      [null,  'acre',              51],
+      // ── Non-GST: time ──────────────────────────────────
+      [null,  'hrs',               52],
+      [null,  'days',              53],
+      [null,  'week',              54],
+      [null,  'month',             55],
+      [null,  'year',              56],
+      // ── Non-GST: software / digital services ───────────
+      [null,  'license',           57],
+      [null,  'seat',              58],
+      [null,  'user',              59],
+      [null,  'project',           60],
+      [null,  'task',              61],
+      [null,  'sprint',            62],
+      [null,  'feature',           63],
+      [null,  'screen',            64],
+      [null,  'page',              65],
+      [null,  'report',            66],
+      [null,  'API call',          67],
+      [null,  'request',           68],
+      [null,  'token',             69],
+      [null,  'deployment',        70],
+      [null,  'instance',          71],
+      [null,  'GB',                72],
+      [null,  'MB',                73],
+      [null,  'TB',                74],
     ];
-    for (int i = 0; i < systemUnits.length; i++) {
+    for (final u in units) {
       await db.insert(
         'unit_types',
-        {'label': systemUnits[i], 'is_system': 1, 'sort_order': i},
+        {'code': u[0], 'label': u[1], 'is_system': 1, 'sort_order': u[2]},
         conflictAlgorithm: ConflictAlgorithm.ignore,
       );
     }
@@ -1691,7 +1788,7 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getUnitTypes() async {
     final db = await database;
     return db.rawQuery(
-        'SELECT id, label, is_system FROM unit_types ORDER BY sort_order, label');
+        'SELECT id, code, label, is_system FROM unit_types ORDER BY sort_order, label');
   }
 
   /// Inserts a custom unit type. Returns the new id, or -1 if duplicate.

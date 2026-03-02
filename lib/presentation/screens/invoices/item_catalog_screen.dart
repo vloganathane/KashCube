@@ -325,7 +325,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _descCtrl =
         TextEditingController(text: item?.description ?? '');
     _skuCtrl = TextEditingController(text: item?.sku ?? '');
-    _selectedUnit = item?.unit ?? 'pcs';
+    _selectedUnit = item?.unit ?? 'PCS';
     _priceCtrl = TextEditingController(
         text: item == null ? '' : item.unitPrice.toStringAsFixed(2));
     _taxCtrl = TextEditingController(
@@ -381,7 +381,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       sku: _skuCtrl.text.trim().isEmpty
           ? null
           : _skuCtrl.text.trim(),
-      unit: _selectedUnit.isEmpty ? 'pcs' : _selectedUnit,
+      unit: _selectedUnit.isEmpty ? 'PCS' : _selectedUnit,
       unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
       taxPct: double.tryParse(_taxCtrl.text) ?? 0,
       hsnCode: _hsnCtrl.text.trim().isEmpty
@@ -746,23 +746,25 @@ class _UnitDropdown extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final units = ref.watch(unitTypesProvider);
-    final labels = units.map((u) => u.label).toList();
+    // storageValue = code for GST units, label for non-GST
+    final values = units.map((u) => u.storageValue).toList();
+    final displays = units.map((u) => u.displayLabel).toList();
 
-    // If existing item has a unit not yet in the managed list, show it anyway
-    if (value.isNotEmpty && !labels.contains(value)) {
-      labels.insert(0, value);
+    // If existing item has a unit not in the managed list (legacy), surface it
+    if (value.isNotEmpty && !values.contains(value)) {
+      values.insert(0, value);
+      displays.insert(0, value);
     }
 
     // Fallback if provider hasn't loaded yet
-    if (labels.isEmpty) {
+    if (values.isEmpty) {
       return const SizedBox(
         height: 56,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
-    // Ensure current value is valid; reset to first item if not
-    final safeValue = labels.contains(value) ? value : labels.first;
+    final safeValue = values.contains(value) ? value : values.first;
 
     return DropdownButtonFormField<String>(
       key: ValueKey(safeValue),
@@ -771,9 +773,10 @@ class _UnitDropdown extends ConsumerWidget {
         labelText: 'Unit',
         border: OutlineInputBorder(),
       ),
-      items: labels
-          .map((l) => DropdownMenuItem(value: l, child: Text(l)))
-          .toList(),
+      items: List.generate(
+        values.length,
+        (i) => DropdownMenuItem(value: values[i], child: Text(displays[i])),
+      ),
       onChanged: (v) {
         if (v != null) onChanged(v);
       },

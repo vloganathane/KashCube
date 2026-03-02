@@ -43,7 +43,7 @@ class UnitTypesScreen extends ConsumerWidget {
                     runSpacing: AppSpacing.sm,
                     children: systemUnits
                         .map((u) => Chip(
-                              label: Text(u.label),
+                              label: Text(u.displayLabel),
                               avatar: Icon(
                                 Icons.lock_outline,
                                 size: 14,

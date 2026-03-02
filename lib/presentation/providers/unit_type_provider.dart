@@ -8,11 +8,22 @@ class UnitType {
     required this.id,
     required this.label,
     required this.isSystem,
+    this.code,
   });
 
   final int id;
   final String label;
   final bool isSystem;
+  /// Official e-Way Bill GST UOM code (e.g. 'NOS', 'KGS').
+  /// Null for non-GST units (software, time, specialty).
+  final String? code;
+
+  /// Value stored in items.unit and used for e-way bill JSON.
+  /// GST-coded units: returns [code]. Non-GST units: returns [label].
+  String get storageValue => code ?? label;
+
+  /// Display string shown in dropdowns.
+  String get displayLabel => code != null ? '$code – $label' : label;
 }
 
 // ── Notifier ──────────────────────────────────────────────────────────────────
@@ -27,6 +38,7 @@ class UnitTypesNotifier extends StateNotifier<List<UnitType>> {
     state = rows
         .map((r) => UnitType(
               id: r['id'] as int,
+              code: r['code'] as String?,
               label: r['label'] as String,
               isSystem: (r['is_system'] as int) == 1,
             ))

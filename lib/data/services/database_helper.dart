@@ -1487,6 +1487,15 @@ class DatabaseHelper {
         'description': 'Seed software/digital unit types (week, year, license, seat, user, project, task, sprint, feature, screen, page, report, API call, request, token, deployment, instance, GB, MB, TB)',
       });
     }
+
+    if (oldVersion < 30) {
+      // Add nos / nos. (Indian formal unit for Numbers).
+      await _seedUnitTypes(db);
+      await db.insert('schema_version', {
+        'version': 30,
+        'description': 'Seed nos / nos. unit types',
+      });
+    }
   }
 
   /// Inserts fiscal-year defaults into the settings table.
@@ -1654,7 +1663,7 @@ class DatabaseHelper {
   Future<void> _seedUnitTypes(Database db) async {
     const systemUnits = [
       // Physical / general
-      'pcs', 'box', 'dozen', 'pair', 'set',
+      'nos', 'nos.', 'pcs', 'box', 'dozen', 'pair', 'set',
       // Weight
       'kg', 'g', 'mg',
       // Volume

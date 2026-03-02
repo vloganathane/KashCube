@@ -9,6 +9,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/fy_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
@@ -95,6 +96,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ],
             ),
+            // Year-end warning banner (March 25 onwards, or if old FY not closed)
+            const _YearEndBannerSliver(),
             SliverPadding(
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
@@ -206,6 +209,112 @@ class HomeScreen extends ConsumerWidget {
       builder: (_) => _QuickShareQrSheet(showBusinesses: showBusinesses),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Year-End Warning Banner Sliver
+// ---------------------------------------------------------------------------
+
+/// Dismissible warning banner shown from 7 days before FY end until the year
+/// is closed, and also when the old FY was never closed after the new year
+/// started. Renders as a [SliverToBoxAdapter] so it fits inside the home
+/// screen's [CustomScrollView].
+class _YearEndBannerSliver extends ConsumerStatefulWidget {
+  const _YearEndBannerSliver();
+
+  @override
+  ConsumerState<_YearEndBannerSliver> createState() =>
+      _YearEndBannerSliverState();
+}
+
+class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
+  bool _dismissed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_dismissed) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final warningAsync = ref.watch(yearEndWarningProvider);
+
+    return warningAsync.when(
+      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+      data: (warning) {
+        if (warning == null) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        final colors = Theme.of(context).extension<KashCubeColors>();
+        final warningColor =
+            colors?.overdue ?? Theme.of(context).colorScheme.error;
+
+        final message = warning.isResetDue
+            ? '${warning.fyLabel} ended — complete year-end closing to reset invoice numbering.'
+            : '${warning.fyLabel} ends on ${_formatDate(warning.fyEnd)} — review and close on time.';
+
+        return SliverToBoxAdapter(
+          child: Container(
+            color: warningColor.withValues(alpha: 0.1),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.calendar_today_outlined,
+                    size: 18, color: warningColor),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: warningColor),
+                  ),
+                ),
+                // Close FY action (placeholder — wizard lands in Phase 2)
+                TextButton(
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Year-end closing wizard coming in the next update.'),
+                        duration: Duration(seconds: 3),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: warningColor,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs, vertical: 0),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Close FY'),
+                ),
+                // Dismiss
+                IconButton(
+                  icon: Icon(Icons.close, size: 16, color: warningColor),
+                  onPressed: () => setState(() => _dismissed = true),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  tooltip: 'Dismiss for this session',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatDate(DateTime d) =>
+      '${d.day} ${_monthName(d.month)} ${d.year}';
+
+  String _monthName(int m) => const [
+        '',
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][m];
 }
 
 // ---------------------------------------------------------------------------

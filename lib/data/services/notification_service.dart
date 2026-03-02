@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/booking.dart';
+import '../../data/services/fiscal_year_service.dart';
 import '../../presentation/providers/upcoming_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,8 @@ const _loanBase = 20000;
 const _dayBeforeOffset = 5000;
 // Bookings: 30_000 + booking.id
 const _bookingBase = 30000;
+// Fiscal year alerts: 40_000
+const _fyBase = 40000;
 
 const _bookingChannelId = 'kash_bookings';
 const _bookingChannelName = 'Booking Reminders';
@@ -218,7 +221,68 @@ class NotificationService {
     debugPrint('[Notifications] Booking reminder cancelled for id=$bookingId');
   }
 
-  // ── Cancel ─────────────────────────────────────────────────────────────────
+  // ── Fiscal Year Alerts ──────────────────────────────────────────────────
+
+  /// Checks FY proximity on app startup and shows an immediate notification
+  /// if the FY ends within 7 days, or if the old FY was never closed after
+  /// the new FY has started.
+  ///
+  /// Safe to call every launch — only fires if a condition is met.
+  Future<void> checkAndShowYearEndAlerts() async {
+    if (!_initialized) await initialize();
+
+    final isApproaching =
+        await FiscalYearService.instance.isApproachingYearEnd(daysBeforeEnd: 7);
+    final isResetDue = await FiscalYearService.instance.isResetDue();
+
+    if (!isApproaching && !isResetDue) return;
+
+    final fy = await FiscalYearService.instance.currentFiscalYear;
+    final label = await FiscalYearService.instance.getFYLabel(fy);
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+        styleInformation: const DefaultStyleInformation(true, true),
+      ),
+    );
+
+    if (isApproaching && !isResetDue) {
+      final daysLeft = fy.end.difference(DateTime.now()).inDays;
+      final dayWord = daysLeft == 1 ? 'day' : 'days';
+      await _plugin.show(
+        _fyBase,
+        '$label is ending',
+        '$label ends in $daysLeft $dayWord — review and close on time.',
+        details,
+      );
+      debugPrint('[Notifications] Year-end alert: $daysLeft days left for $label');
+    }
+
+    if (isResetDue) {
+      // The FY has already flipped but the user never ran the closing wizard.
+      final fy = await FiscalYearService.instance.currentFiscalYear;
+      final prevFyEnd = fy.start.subtract(const Duration(days: 1));
+      final prevFy =
+          await FiscalYearService.instance.getFiscalYearFor(prevFyEnd);
+      final prevLabel =
+          await FiscalYearService.instance.getFYLabel(prevFy);
+      await _plugin.show(
+        _fyBase + 1,
+        'Year-end closing pending',
+        'Close $prevLabel to reset invoice numbering for the new year.',
+        details,
+      );
+      debugPrint('[Notifications] Reset-due alert for $prevLabel');
+    }
+  }
+
+  // ── Cancel ──────────────────────────────────────────────────────────────
 
   Future<void> cancelAll() async {
     await _plugin.cancelAll();

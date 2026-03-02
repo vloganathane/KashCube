@@ -40,6 +40,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     ref.invalidate(monthlyTotalsForCountProvider);
     ref.invalidate(allTimeInvestmentProvider);
     ref.invalidate(currentMonthBudgetsProvider);
+    // FY period providers
+    ref.invalidate(fyPnLProvider);
+    ref.invalidate(reportActiveDateRangeProvider);
     return Future.value();
   }
 
@@ -47,15 +50,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget build(BuildContext context) {
     final month = ref.watch(reportMonthProvider);
     final mode = ref.watch(reportModeProvider);
-    final pnlAsync = ref.watch(monthlyPnLProvider);
+    final periodMode = ref.watch(reportPeriodModeProvider);
+    final isFYPeriod = periodMode != 'month';
+    // Use FY P&L when a full-year period is active, monthly P&L otherwise.
+    final pnlAsync =
+        isFYPeriod ? ref.watch(fyPnLProvider) : ref.watch(monthlyPnLProvider);
+    final periodLabel =
+        ref.watch(reportPeriodLabelProvider).valueOrNull ?? 'Reports';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reports'),
+        title: Text(isFYPeriod ? periodLabel : 'Reports'),
       ),
       body: Column(
         children: [
-          _MonthSelector(month: month),
+          _FYPeriodSelector(periodMode: periodMode),
+          if (!isFYPeriod) _MonthSelector(month: month),
           _ModeFilter(selectedMode: mode),
           Expanded(
             child: RefreshIndicator(
@@ -69,6 +79,67 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Fiscal year / month period selector chips (This FY / Last FY / Month).
+class _FYPeriodSelector extends ConsumerWidget {
+  const _FYPeriodSelector({required this.periodMode});
+
+  final String periodMode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+      child: Row(
+        children: [
+          _PeriodChip(
+            label: 'This FY',
+            selected: periodMode == 'this_fy',
+            onSelected: () =>
+                ref.read(reportPeriodModeProvider.notifier).state = 'this_fy',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _PeriodChip(
+            label: 'Last FY',
+            selected: periodMode == 'last_fy',
+            onSelected: () =>
+                ref.read(reportPeriodModeProvider.notifier).state = 'last_fy',
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          _PeriodChip(
+            label: 'Month',
+            selected: periodMode == 'month',
+            onSelected: () =>
+                ref.read(reportPeriodModeProvider.notifier).state = 'month',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  const _PeriodChip({
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilterChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => onSelected(),
+      showCheckmark: false,
     );
   }
 }

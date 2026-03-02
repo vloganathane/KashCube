@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../data/models/transaction.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
+import '../../data/services/fiscal_year_service.dart';
 import '../../domain/repositories/transaction_repository.dart';
 
 /// Tracks which month the reports screen is displaying.
@@ -234,3 +236,86 @@ class DailyTotalsNotifier extends StateNotifier<AsyncValue<List<DailyTotal>>> {
     }
   }
 }
+
+// ── Fiscal Year Period Filter ────────────────────────────────────────────────────
+
+/// Active period mode for the Reports screen.
+/// 'this_fy'  — full current fiscal year (default)
+/// 'last_fy'  — full previous fiscal year
+/// 'month'    — individual calendar month (legacy monthly view)
+final reportPeriodModeProvider = StateProvider<String>((ref) => 'this_fy');
+
+/// Resolved (start, end) date range for the active report period.
+final reportActiveDateRangeProvider =
+    FutureProvider<({DateTime start, DateTime end})>((ref) async {
+  final periodMode = ref.watch(reportPeriodModeProvider);
+  final month = ref.watch(reportMonthProvider);
+  switch (periodMode) {
+    case 'this_fy':
+      final fy = await FiscalYearService.instance.currentFiscalYear;
+      return (
+        start: fy.start,
+        end: DateTime(fy.end.year, fy.end.month, fy.end.day, 23, 59, 59),
+      );
+    case 'last_fy':
+      final currentFy = await FiscalYearService.instance.currentFiscalYear;
+      final lastFyEnd = currentFy.start.subtract(const Duration(days: 1));
+      final lastFy =
+          await FiscalYearService.instance.getFiscalYearFor(lastFyEnd);
+      return (
+        start: lastFy.start,
+        end: DateTime(
+            lastFy.end.year, lastFy.end.month, lastFy.end.day, 23, 59, 59),
+      );
+    default: // 'month'
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
+      return (start: start, end: end);
+  }
+});
+
+/// Display label for the active report period.
+/// Examples: "FY 2025–26", "FY 2024–25", "March 2026".
+final reportPeriodLabelProvider = FutureProvider<String>((ref) async {
+  final periodMode = ref.watch(reportPeriodModeProvider);
+  final month = ref.watch(reportMonthProvider);
+  switch (periodMode) {
+    case 'this_fy':
+      return FiscalYearService.instance.currentFYLabel;
+    case 'last_fy':
+      final currentFy = await FiscalYearService.instance.currentFiscalYear;
+      final lastFyEnd = currentFy.start.subtract(const Duration(days: 1));
+      final lastFy =
+          await FiscalYearService.instance.getFiscalYearFor(lastFyEnd);
+      return FiscalYearService.instance.getFYLabel(lastFy);
+    default:
+      return DateFormat('MMMM yyyy').format(month);
+  }
+});
+
+/// P&L summary for the full active period (FY or month).
+/// Uses the same [MonthlyPnL] model regardless of period length.
+final fyPnLProvider = FutureProvider<MonthlyPnL>((ref) async {
+  final range = await ref.watch(reportActiveDateRangeProvider.future);
+  final mode = ref.watch(reportModeProvider);
+  final repo = TransactionRepositoryImpl();
+  final results = await Future.wait([
+    repo.getTotalIncome(range.start, range.end, mode: mode),
+    repo.getTotalExpense(range.start, range.end, mode: mode),
+    repo.getIncomeByCategorySummary(range.start, range.end, mode: mode),
+    repo.getExpenseByCategorySummary(range.start, range.end, mode: mode),
+    repo.getTopParties(range.start, range.end, mode: mode),
+    repo.getTopByAmount(range.start, range.end, limit: 5),
+  ]);
+  final income = results[0] as double;
+  final expense = results[1] as double;
+  return MonthlyPnL(
+    totalIncome: income,
+    totalExpense: expense,
+    netProfitLoss: income - expense,
+    incomeByCat: results[2] as Map<String, double>,
+    expenseByCat: results[3] as Map<String, double>,
+    topParties: results[4] as List<PartyTotal>,
+    largestTransactions: results[5] as List<Transaction>,
+  );
+});

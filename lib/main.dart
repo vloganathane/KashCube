@@ -23,6 +23,10 @@ void main() async {
   // since the last launch, so invoice numbers reset correctly.
   await FiscalYearService.instance.ensureCurrentFYStart();
 
+  // Show year-end notifications if the FY is within 7 days of ending
+  // or if the old FY was never closed after the new year started.
+  await NotificationService.instance.checkAndShowYearEndAlerts();
+
   runApp(const ProviderScope(child: KashCubeApp()));
 }
 

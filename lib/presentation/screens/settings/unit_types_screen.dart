@@ -121,45 +121,11 @@ class UnitTypesScreen extends ConsumerWidget {
   }
 
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-
     final label = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New unit type'),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.none,
-            decoration: const InputDecoration(
-              hintText: 'e.g. roll, bundle, acre…',
-              border: OutlineInputBorder(),
-            ),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? 'Enter a unit label' : null,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx, controller.text.trim());
-              }
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _AddUnitDialog(),
     );
 
-    controller.dispose();
     if (label == null || label.isEmpty) return;
 
     final ok = await ref.read(unitTypesProvider.notifier).addUnit(label);
@@ -189,6 +155,63 @@ class UnitTypesScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Add Unit Dialog ───────────────────────────────────────────────────────────
+
+/// Owns the TextEditingController so Flutter disposes it via the widget tree,
+/// avoiding "used after dispose" when the dialog close animation is running.
+class _AddUnitDialog extends StatefulWidget {
+  const _AddUnitDialog();
+
+  @override
+  State<_AddUnitDialog> createState() => _AddUnitDialogState();
+}
+
+class _AddUnitDialogState extends State<_AddUnitDialog> {
+  final _controller = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('New unit type'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.none,
+          decoration: const InputDecoration(
+            hintText: 'e.g. roll, bundle, acre…',
+            border: OutlineInputBorder(),
+          ),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? 'Enter a unit label' : null,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_formKey.currentState!.validate()) {
+              Navigator.pop(context, _controller.text.trim());
+            }
+          },
+          child: const Text('Add'),
+        ),
+      ],
     );
   }
 }

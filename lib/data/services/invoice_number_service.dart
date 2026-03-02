@@ -1,41 +1,22 @@
-import '../services/database_helper.dart';
+import 'fiscal_year_service.dart';
 
-/// Generates sequential invoice/quote numbers: INV-2026-001, QUO-2026-001
+/// Generates sequential invoice/quote numbers in FY-aware format.
+///
+/// Delegates entirely to [FiscalYearService], which reads the configured
+/// `invoice_no_format` / `quote_no_format` from settings and scopes the
+/// sequence to the current fiscal year.
+///
+/// Default formats (Indian GST-recommended):
+///   Invoice: INV-{YY}-{YY+1}-{SEQ}  → "INV-25-26-0042"
+///   Quote:   QT-{YY}-{YY+1}-{SEQ}   → "QT-25-26-0042"
+///
+/// This class is a thin facade kept for backward-compatibility so existing
+/// call-sites do not need to change.
 class InvoiceNumberService {
   InvoiceNumberService._();
   static final InvoiceNumberService instance = InvoiceNumberService._();
 
-  final _dbHelper = DatabaseHelper.instance;
+  Future<String> nextInvoiceNo() => FiscalYearService.instance.nextInvoiceNo();
 
-  Future<String> nextInvoiceNo() async {
-    final year = DateTime.now().year;
-    final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      "SELECT invoice_no FROM invoices WHERE invoice_no LIKE 'INV-$year-%' "
-      'ORDER BY id DESC LIMIT 1',
-    );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['invoice_no'] as String;
-      final parts = last.split('-');
-      if (parts.length == 3) seq = (int.tryParse(parts[2]) ?? 0) + 1;
-    }
-    return 'INV-$year-${seq.toString().padLeft(3, '0')}';
-  }
-
-  Future<String> nextQuoteNo() async {
-    final year = DateTime.now().year;
-    final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      "SELECT quote_no FROM quotes WHERE quote_no LIKE 'QUO-$year-%' "
-      'ORDER BY id DESC LIMIT 1',
-    );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['quote_no'] as String;
-      final parts = last.split('-');
-      if (parts.length == 3) seq = (int.tryParse(parts[2]) ?? 0) + 1;
-    }
-    return 'QUO-$year-${seq.toString().padLeft(3, '0')}';
-  }
+  Future<String> nextQuoteNo() => FiscalYearService.instance.nextQuoteNo();
 }

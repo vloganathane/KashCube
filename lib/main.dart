@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
+import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/notification_provider.dart';
@@ -16,6 +17,11 @@ void main() async {
   // 100% on-device — no network calls.
   await NotificationService.instance.initialize();
   await NotificationService.instance.requestPermission();
+
+  // Ensure current_fy_start is in sync with today's FY.
+  // This also triggers isResetDue() to return true if the FY has flipped
+  // since the last launch, so invoice numbers reset correctly.
+  await FiscalYearService.instance.ensureCurrentFYStart();
 
   runApp(const ProviderScope(child: KashCubeApp()));
 }

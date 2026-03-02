@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Auto Backup rules for KashCube.
+
+  INCLUDED:
+    - kash_cube.db  — active FY database (all transactions, invoices, etc.)
+
+  NOTE: archive_FY*.db files will be added here when FY archiving lands
+  (Phase 2 year-end closing wizard). Until then, only the active DB is backed up.
+
+  EXCLUDED:
+    - images/  — re-importable by user; large; excluded to stay under 25 MB limit
+    - pdfs/    — ephemeral generated output; always re-generatable from DB
+    - kash_cube_prev.db — rolling snapshot; not needed in cloud backup
+
+  Android Auto Backup limit: 25 MB. Typical kash_cube.db is 1–5 MB.
+-->
+<full-backup-content>
+    <include domain="database" path="kash_cube.db" />
+    <exclude domain="file" path="images/" />
+    <exclude domain="file" path="pdfs/" />
+    <exclude domain="database" path="kash_cube_prev.db" />
+</full-backup-content>

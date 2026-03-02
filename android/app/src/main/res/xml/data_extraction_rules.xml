@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) data extraction rules for KashCube.
+  Controls what is included in cloud backups AND device-to-device transfers.
+
+  Mirrors backup_rules.xml: include active DB, exclude images/PDFs/snapshots.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="kash_cube.db" />
+        <exclude domain="file" path="images/" />
+        <exclude domain="file" path="pdfs/" />
+        <exclude domain="database" path="kash_cube_prev.db" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="kash_cube.db" />
+        <exclude domain="file" path="images/" />
+        <exclude domain="file" path="pdfs/" />
+        <exclude domain="database" path="kash_cube_prev.db" />
+    </device-transfer>
+</data-extraction-rules>

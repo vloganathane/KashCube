@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -22,18 +24,83 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, AppConstants.dbName);
 
-    return openDatabase(
+    final db = await openDatabase(
       path,
       version: AppConstants.dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
     );
+
+    // Integrity check — detect corruption before the user notices wrong data.
+    await _runIntegrityCheck(db);
+    // Rolling daily snapshot — only if integrity passed.
+    if (!_integrityFailed) {
+      await _maybeSnapshot(db, path);
+    }
+    return db;
+  }
+
+  // ── Integrity & Snapshot ──────────────────────────────────────────────────
+
+  bool _integrityFailed = false;
+
+  /// True if the most recent startup integrity check detected corruption.
+  /// The UI can read this to offer a restore flow.
+  bool get integrityFailed => _integrityFailed;
+
+  Future<void> _runIntegrityCheck(Database db) async {
+    try {
+      final result = await db.rawQuery('PRAGMA integrity_check');
+      final ok = result.isNotEmpty && result.first.values.first == 'ok';
+      _integrityFailed = !ok;
+      if (!ok) {
+        debugPrint('[DB] ⚠️ Integrity check FAILED — restore from snapshot recommended');
+      } else {
+        debugPrint('[DB] Integrity check passed');
+      }
+    } catch (e) {
+      debugPrint('[DB] Integrity check error: $e');
+      _integrityFailed = true;
+    }
+  }
+
+  /// Copies the database to a `_prev.db` file once per calendar day,
+  /// after a passed integrity check. Used as a last-resort recovery snapshot.
+  Future<void> _maybeSnapshot(Database db, String dbPath) async {
+    try {
+      final stem = dbPath.substring(0, dbPath.lastIndexOf('.'));
+      final prevPath = '${stem}_prev.db';
+      final prevFile = File(prevPath);
+      final today = DateTime.now();
+
+      if (await prevFile.exists()) {
+        final lastMod = await prevFile.lastModified();
+        if (lastMod.year == today.year &&
+            lastMod.month == today.month &&
+            lastMod.day == today.day) {
+          return; // Already snapshotted today.
+        }
+      }
+
+      // Flush WAL pages into the main DB file before copying.
+      await db.rawQuery('PRAGMA wal_checkpoint(PASSIVE)');
+
+      final sourceFile = File(dbPath);
+      if (await sourceFile.exists()) {
+        await sourceFile.copy(prevPath);
+        debugPrint('[DB] Daily snapshot saved → $prevPath');
+      }
+    } catch (e) {
+      debugPrint('[DB] Snapshot skipped (non-critical): $e');
+    }
   }
 
   Future<void> _onConfigure(Database db) async {
-    // Enable foreign keys
     await db.execute('PRAGMA foreign_keys = ON');
+    // WAL mode: better crash safety — in-progress writes cannot corrupt the
+    // main DB file, and concurrent reads are allowed during writes.
+    await db.execute('PRAGMA journal_mode=WAL');
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -590,6 +657,7 @@ class DatabaseHelper {
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);
+    await _seedFySettings(db);
 
     debugPrint('Database created successfully.');
   }
@@ -1325,6 +1393,51 @@ class DatabaseHelper {
         'description': 'Add website, social fields to parties & businesses',
       });
     }
+
+    if (oldVersion < 27) {
+      // Fiscal year management settings.
+      // ConflictAlgorithm.ignore ensures user-configured values are not clobbered
+      // if somehow these keys already exist.
+      await _seedFySettings(db);
+      await db.insert('schema_version', {
+        'version': 27,
+        'description': 'FY settings: invoice_no_format, fiscal_year_start_month/day, auto_reset_invoice_no, current_fy_start',
+      });
+    }
+  }
+
+  /// Inserts fiscal-year defaults into the settings table.
+  /// Uses [ConflictAlgorithm.ignore] so existing values are never overwritten.
+  Future<void> _seedFySettings(Database db) async {
+    final fyStart = _currentFyStart();
+    final defaults = <String, String>{
+      'fiscal_year_start_month': '4',
+      'fiscal_year_start_day': '1',
+      'invoice_no_format': 'INV-{YY}-{YY+1}-{SEQ}',
+      'quote_no_format': 'QT-{YY}-{YY+1}-{SEQ}',
+      'auto_reset_invoice_no': '1',
+      'last_fy_close_date': '',
+      'current_fy_start': fyStart,
+    };
+    for (final entry in defaults.entries) {
+      await db.insert(
+        'settings',
+        {
+          'key': entry.key,
+          'value': entry.value,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
+  }
+
+  /// Returns the ISO8601 date (YYYY-MM-DD) of the April 1 that began the
+  /// current Indian fiscal year.
+  String _currentFyStart() {
+    final now = DateTime.now();
+    final fyStartYear = now.month >= 4 ? now.year : now.year - 1;
+    return DateTime(fyStartYear, 4, 1).toIso8601String().substring(0, 10);
   }
 
   Future<void> _seedAccounts(Database db) async {

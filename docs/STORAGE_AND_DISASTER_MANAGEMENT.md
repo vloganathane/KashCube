@@ -51,19 +51,26 @@ When a user picks a photo for a party or business card:
 
 ### 1.4 Tiered Data Access — Hot / Warm / Cold
 
-For users with years of data, tier access by age:
+For users with years of data, tier access by fiscal year — not raw age. FY boundaries are a semantically correct and user-understandable archiving unit. See [FISCAL_YEAR_MANAGEMENT.md](FISCAL_YEAR_MANAGEMENT.md) for FY close mechanics.
 
 ```
-HOT   → Last 90 days   → Always in memory index, fast queries
-WARM  → 90 days–2 yrs  → In DB, queried on demand, normal performance
-COLD  → 2+ years       → Archived (moved to separate archive.db)
+HOT   → Current FY (active)          → Always in memory index, fast queries
+WARM  → Last 1 closed FY             → In kash_cube.db, queried on demand
+COLD  → FYs closed 2+ years ago      → Archived to archive_FY{YYYY}.db
 ```
+
+**Why FY-based, not age-based:**
+- Users think in FY terms — "last year's data" not "data older than 730 days"
+- FY close is an explicit user action (via the Year-End Closing wizard) — archiving at close is deterministic and expected
+- Avoids splitting a FY's data across hot/cold tiers mid-year
+- The year-end closing wizard becomes the natural gateway to cold storage
 
 **Implementation:**
-- A separate `archive.db` SQLite file with the same schema
-- A background job runs quarterly, moves rows older than 2 years
-- "Archived" section visible in Reports screen on request
-- No data loss — users can query archived data, just not in the main list
+- A separate `archive_FY{YYYY}.db` SQLite file per archived FY (e.g. `archive_FY2024.db`)
+- FY close wizard (Phase 2) triggers archival of the closed FY after user confirmation
+- FYs more than 1 year old (i.e. not the most recently closed) move from warm to cold automatically
+- "Archived" section visible in Reports screen per FY on request
+- No data loss — users can query any archived FY, just not in the default main list
 
 ---
 
@@ -89,34 +96,49 @@ SQLite retains freed pages after deletes — `VACUUM` reclaims them.
 
 ### 1.7 Storage Health Dashboard (Settings Screen)
 
-Make storage visible so users can self-manage:
+Make storage visible so users can self-manage. Break down by FY so users understand what is taking space:
 
 ```
 Storage Usage
-─────────────────────────────────────
-Database         2.3 MB   ██░░░░░░
-PDFs (cached)   12.4 MB   ████████   [Clear cache]
-Images           8.1 MB   █████░░░   [Manage]
-─────────────────────────────────────
-Total           22.8 MB
-
-Oldest transaction:  14 Feb 2025
-Oldest invoice:       3 Jan 2025
-
-[Archive data older than 2 years]
+─────────────────────────────────────────────────
+FY 2025–26  (active)     1.2 MB   ██░░░░░░
+FY 2024–25  (closed)     3.4 MB   ████░░░░
+FY 2023–24  (archived)   2.8 MB   ███░░░░░   [Delete]
+PDFs (cached)           12.4 MB   ████████   [Clear cache]
+Images                   8.1 MB   █████░░░   [Manage]
+─────────────────────────────────────────────────
+Total                   27.9 MB
+─────────────────────────────────────────────────
+Last backup:  28 Feb 2026
+[Back Up Now]
 ```
+
+Notes:
+- "Delete" on an archived FY is irreversible — require a confirmation dialog with record count
+- "Back Up Now" links to the encrypted export flow (see §2.4)
+- Last backup date shown to surface users who have never backed up
 
 ---
 
-### 1.8 Priority Order
+### 1.8 PDF Filenames — Include FY Prefix
+
+PDF filenames should embed the FY prefix matching the invoice/quote number format:
+- `Invoice_INV-25-26-0042.pdf` not `Invoice_0042.pdf`
+- Makes orphan detection unambiguous — the FY is visible in the filename
+- Makes manual cleanup in Files app intuitive for users
+- `PdfCacheManager` orphan scan matches against `invoice_no` / `quote_no` in DB
+
+---
+
+### 1.9 Priority Order
 
 | Priority | Action | Effort |
 |---|---|---|
 | 1 — Now | PDF ephemeral policy + `PdfCacheManager` | 1 day |
-| 2 — Now | Storage dashboard in Settings | 1 day |
+| 2 — Now | Storage dashboard in Settings (per-FY breakdown) | 1 day |
 | 3 — Soon | Image compression on import | Half day |
 | 4 — Soon | DB VACUUM on schedule | 2 hours |
-| 5 — Later | Transaction archiving (cold tier) | 2 days |
+| 5 — At FY close | FY archiving to `archive_FY{YYYY}.db` (triggered by year-end closing wizard) | 2 days |
 | 6 — Later | Duplicate scan + review screen | 2 days |
 
 ---
@@ -148,16 +170,25 @@ Android Auto Backup and iOS iCloud Backup already back up app data if configured
   android:dataExtractionRules="@xml/data_extraction_rules">
 ```
 
-**`res/xml/backup_rules.xml`** — DB only, exclude images (they're from the user's gallery, not app-generated):
+**`res/xml/backup_rules.xml`** — include active DB and all FY archive DBs; exclude images and PDFs:
 ```xml
 <full-backup-content>
   <include domain="database" path="kash_cube.db" />
+  <include domain="database" path="archive_FY2024.db" />
+  <include domain="database" path="archive_FY2023.db" />
   <exclude domain="file" path="images/" />
   <exclude domain="file" path="pdfs/" />
 </full-backup-content>
 ```
 
-**Key constraint:** Android Auto Backup has a **25 MB limit**. Excluding images and PDFs keeps the backup safely under 5 MB for virtually all users.
+> **Note:** Because archive DB filenames include the FY year, `backup_rules.xml` must be regenerated each time a new FY archive is created. Alternatively, place all archive DBs in a dedicated `archives/` subdirectory and use a single `<include domain="database" path="archives/" />`.
+
+**Key constraint:** Android Auto Backup has a **25 MB limit**. All DBs combined (active + archives) must stay under this. With per-FY archiving, each archive file is typically 1–5 MB — 3–4 years of history fits comfortably. Heavy users should monitor via the Storage Health Dashboard (§1.7).
+
+**Year-end forced backup alert:**
+- On March 25 (7 days before FY end), if the last `.kashcube` encrypted backup is more than 14 days old, show a notification: "Your financial year ends in 7 days and your last backup was {N} days ago — back up now"
+- After completing year-end closing, the app prompts: "FY closed — back up now to preserve your full year of data" → opens encrypted export flow
+- See [FISCAL_YEAR_MANAGEMENT.md — Interaction with Backup](FISCAL_YEAR_MANAGEMENT.md#interaction-with-backup)
 
 - Backup runs automatically when device is on Wi-Fi and charging
 - Encrypted by Google using the user's Google account key — **the app never touches network**
@@ -187,7 +218,9 @@ Runs in ~100 ms for small DBs. Detect corruption before the user notices data is
 
 **Rolling "last known good" snapshot:**
 - Once per day, copy `kash_cube.db` → `kash_cube_prev.db`
-- If next startup fails integrity check, offer: "Restore yesterday's data?"
+- Also snapshot each `archive_FY{YYYY}.db` → `archive_FY{YYYY}_prev.db` if it exists and has been modified
+- If next startup fails integrity check on any DB, offer: "Restore yesterday's data?"
+- Archive DBs rarely change after FY close, so snapshot cost for them is minimal
 - Costs ~2× DB storage but is a zero-friction safety net for corruption
 
 ---
@@ -198,6 +231,8 @@ A portable, encrypted backup the user controls completely. The app never initiat
 
 #### File Format
 
+The payload includes the active DB and all FY archive DBs — a single file captures the user's complete financial history.
+
 ```
 [4 bytes]   Magic:            "KSHC"
 [1 byte]    Format version:   1
@@ -205,8 +240,19 @@ A portable, encrypted backup the user controls completely. The app never initiat
 [12 bytes]  IV                (random, for AES-256-GCM)
 [8 bytes]   DB schema version (unencrypted — needed for migration before decryption)
 [N bytes]   AES-256-GCM encrypted payload:
-              - Raw SQLite DB bytes
-              - Manifest JSON: { created_at, app_version, row_counts }
+              - Manifest JSON (first entry):
+                  {
+                    created_at, app_version,
+                    databases: [
+                      { filename: "kash_cube.db",        schema_version: 26, row_counts: {...} },
+                      { filename: "archive_FY2024.db",   schema_version: 24, row_counts: {...} },
+                      { filename: "archive_FY2023.db",   schema_version: 21, row_counts: {...} }
+                    ]
+                  }
+              - Raw bytes of kash_cube.db
+              - Raw bytes of archive_FY2024.db   (if exists)
+              - Raw bytes of archive_FY2023.db   (if exists)
+              - ... (one entry per archived FY)
 [16 bytes]  GCM auth tag      (tamper detection)
 ```
 
@@ -216,14 +262,24 @@ A portable, encrypted backup the user controls completely. The app never initiat
 
 **Why schema version is unencrypted:** The restore code needs to know which DB migrations to run before the data is usable — without needing to decrypt first.
 
+**Why multi-DB in one file:** A single encrypted file is simpler to manage, share, and restore than a zip of multiple files. Users cannot accidentally restore only the active DB and lose historical archive data.
+
 #### Trigger for Backup Generation
 
-Event-driven + weekly minimum:
-- Generate a new backup if `rowsChangedSinceLastBackup > 50` OR `daysSinceLastBackup >= 7`
+Event-driven + weekly minimum + FY-anchored:
+
+| Trigger | Condition |
+|---|---|
+| Data change threshold | `rowsChangedSinceLastBackup > 50` |
+| Weekly minimum | `daysSinceLastBackup >= 7` |
+| Pre-FY-end warning | 7 days before FY end AND last backup > 14 days ago |
+| Post-FY-close | Immediately after user completes year-end closing wizard |
+
 - Run on a background `Isolate` (not `workmanager` — simpler, no extra permission)
 - After generation, show a persistent notification: "Backup ready — save it somewhere safe"
 - User taps → OS share sheet → they pick Drive / WhatsApp / Files / USB
 - Keep at most 3 backup files locally; delete oldest on generation of a new one
+- Post-FY-close backup is shown inline in the closing wizard Step 3 confirmation — not just a notification
 
 #### Onboarding Nudge (shown once, after 5 transactions)
 
@@ -256,17 +312,20 @@ Prompt for passphrase → derive key (PBKDF2)
 AES-GCM decrypt → verify auth tag
   ├─ FAIL → "File is damaged or passphrase is incorrect" (max 5 attempts)
   └─ OK   ↓
-Read manifest → show user: "1,243 transactions, 87 invoices — created 1 Mar 2026"
+Read manifest → show user:
+  "Active: 1,243 transactions, 87 invoices — FY 2025–26
+   Archives: FY 2024–25 (634 transactions), FY 2023–24 (489 transactions)
+   Created: 1 Mar 2026"
 User confirms → [Full Restore]
        ↓
-Write imported DB to temp file
+For each DB in manifest (active + all archives):
+  ├─ Write imported DB bytes to temp file
+  ├─ Run DatabaseHelper migrations: stored schema_version → current
+  ├─ PRAGMA integrity_check on migrated DB
+  │    ├─ FAIL → "Restore failed for {filename} — backup may be incompatible"
+  │    └─ OK   → stage for swap
        ↓
-Run DatabaseHelper migrations: schema_version → current
-       ↓
-PRAGMA integrity_check on migrated DB
-  ├─ FAIL → "Restore failed — backup may be incompatible"
-  └─ OK   ↓
-Swap temp file with live kash_cube.db → restart app
+All temp files pass → atomically swap with live DB files → restart app
 ```
 
 #### Failure Modes to Handle
@@ -308,25 +367,32 @@ No KashCube server ever touched. The user's own OAuth credentials are used to wr
 Week 1
   ├─ OS Auto Backup config (AndroidManifest + backup_rules.xml)        2 hrs
   ├─ WAL mode verification                                              1 hr
-  └─ Integrity check on startup + rolling prev-DB snapshot             3 hrs
+  └─ Integrity check on startup + rolling prev-DB snapshot (active     3 hrs
+     + archive DBs)
 
 Week 2
-  ├─ PDF ephemeral policy + PdfCacheManager                            1 day
-  └─ Storage dashboard in Settings                                     1 day
+  ├─ PDF ephemeral policy + PdfCacheManager (FY-prefixed filenames)    1 day
+  └─ Storage dashboard in Settings (per-FY breakdown + last backup)    1 day
 
 Week 3
-  ├─ Encrypted export (.kashcube) — generation side                    2 days
-  └─ Encrypted import — restore side + migration                       1 day
+  ├─ Encrypted export (.kashcube) — multi-DB payload, generation side  2 days
+  └─ Encrypted import — restore side + per-DB migration                1 day
 
-Month 2
-  ├─ Event-driven backup notification                                  1 day
+Month 2 (coordinate with FY closing wizard in FISCAL_YEAR_MANAGEMENT.md Phase 2)
+  ├─ Event-driven + FY-anchored backup triggers                        1 day
   ├─ Onboarding backup nudge                                           half day
-  ├─ Transaction archiving (cold tier)                                 2 days
+  ├─ FY archiving to archive_FY{YYYY}.db — triggered by closing wizard 2 days
   └─ Image compression on import                                       half day
 
 Month 3 (optional)
   └─ User-provided Google Drive / Dropbox direct upload                1 week
 ```
+
+---
+
+## Related Documents
+
+- [FISCAL_YEAR_MANAGEMENT.md](FISCAL_YEAR_MANAGEMENT.md) — FY close triggers archiving and forced backup notification; year-end closing wizard is the gateway to cold storage
 
 ---
 

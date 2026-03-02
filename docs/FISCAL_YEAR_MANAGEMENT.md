@@ -88,7 +88,7 @@ Day-to-day screens (transactions, invoices, credits) default to current FY data.
 
 Options (in order of complexity):
 - **Filter model** — everything in one DB, all screens default to current FY filter *(recommended for v1)*
-- **Archive model** — prior FY rows archived to cold tier per STORAGE_AND_DISASTER_MANAGEMENT.md
+- **Archive model** — FY close triggers archiving of that FY's rows to `archive_FY{YYYY}.db`. This is the preferred long-term approach — see [STORAGE_AND_DISASTER_MANAGEMENT.md §1.4](STORAGE_AND_DISASTER_MANAGEMENT.md#14-tiered-data-access--hot--warm--cold) for the tiering model. FY close is the semantic gateway to cold storage — not a background age-based job.
 - **Multi-book model** — each FY is a separate logical book with a switcher UI *(future)*
 
 ---
@@ -189,13 +189,43 @@ Step 3 — Confirmation
 
  Invoice numbers will reset to
  INV-25-26-001 on 1 April 2026."
+
+⚠️  Back up your data
+"Your FY 2024–25 data is now complete.
+ Save an encrypted backup so it is
+ never lost."
+[Back Up Now]          [Later]
 ──────────────────────────────────────────
 [Done]
 ```
 
 ---
 
-## Graceful Degradation — What If User Ignores Year-End
+## Interaction with Backup and Storage
+
+FY management directly affects backup completeness and storage archiving. See [STORAGE_AND_DISASTER_MANAGEMENT.md](STORAGE_AND_DISASTER_MANAGEMENT.md) for full details.
+
+### FY Close = Archiving Gateway
+- The year-end closing wizard (Phase 2) is the trigger for moving the closed FY's data to `archive_FY{YYYY}.db`
+- This replaces the age-based "2 years → cold tier" rule in the storage doc with a semantically correct FY-boundary trigger
+- Users understand "last year's data" better than "data older than 730 days"
+
+### Year-End Forced Backup
+- **7 days before FY end:** If the last `.kashcube` encrypted backup is more than 14 days old, show a notification: "Your financial year ends in 7 days and your last backup was {N} days ago — back up now"
+- **After FY close (Step 3 of wizard):** Prompt "Back Up Now" inline — the FY is complete and the backup will contain the full year of data
+- This is the most important backup moment of the year — the closed FY's data will not change again
+
+### Backup File Completeness
+- A `.kashcube` backup includes `kash_cube.db` (active FY) **and** all `archive_FY{YYYY}.db` files
+- Restoring from backup restores the complete financial history, not just the current year
+- See [STORAGE_AND_DISASTER_MANAGEMENT.md §2.4](STORAGE_AND_DISASTER_MANAGEMENT.md#24-layer-3--encrypted-export--import-kashcube-format) for the multi-DB payload format and restore flow
+
+### Storage Dashboard
+- The Settings storage dashboard shows per-FY breakdown (active + closed + archived)
+- Users can delete an archived FY from Settings (irreversible, requires confirmation showing record count)
+
+---
+
 
 The app must not break if year-end closing is skipped:
 
@@ -212,6 +242,7 @@ The app must not break if year-end closing is skipped:
 | Date | Message |
 |---|---|
 | 25 March | "Your financial year ends in 7 days. Review and close FY 2024–25." |
+| 25 March (if backup stale) | "Your financial year ends in 7 days and your last backup was {N} days ago — back up now." |
 | 31 March | "Today is the last day of FY 2024–25. Close the year before midnight." |
 | 1 April (if not closed) | "FY 2025–26 has started. Complete year-end closing for FY 2024–25." |
 | Weekly reminder | "FY 2024–25 is still open — close it to reset invoice numbering." |
@@ -250,6 +281,8 @@ Once year-end closing exists, comparative views become possible:
 | Year-end closing wizard (summary + carry-forward UI) | 3 days |
 | Opening balance carry-forward to new FY | 2 days |
 | GST summary table in year-end report | 1 day |
+| FY archival to `archive_FY{YYYY}.db` on close (coordinate with storage doc) | 2 days |
+| Trigger encrypted backup export prompt in Step 3 of closing wizard | Half day |
 
 ### Phase 3 — Post-Launch
 
@@ -266,3 +299,9 @@ Once year-end closing exists, comparative views become possible:
 - KashCube does **not** file GST returns or ITR — it surfaces summary data for the user or their CA
 - No double-entry accounting — carry-forwards are recorded as simple balance transfers
 - No audit trail locking (v1) — records remain editable after FY close
+
+---
+
+## Related Documents
+
+- [STORAGE_AND_DISASTER_MANAGEMENT.md](STORAGE_AND_DISASTER_MANAGEMENT.md) — FY close drives cold-tier archiving; year-end is the key backup trigger; `.kashcube` backup format includes all FY archive DBs

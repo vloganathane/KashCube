@@ -162,13 +162,13 @@ State code (first 2 digits) must match selected state.
 
 | Phase | Task | Status | Commit |
 |-------|------|--------|--------|
-| A1 | DB v32: GST columns on invoice/quote tables | ✅ Done | `pending` |
-| A2 | Model updates (InvoiceItem, Invoice, QuoteItem, Quote) | ✅ Done | `pending` |
-| A3 | Invoice form: auto-populate HSN/unit from catalog | ⬜ | — |
-| A4 | SAC code toggle on item catalog | ⬜ | — |
-| B1 | GstCalculator service | ⬜ | — |
-| B2 | PDF: TAX INVOICE header with GSTINs | ⬜ | — |
-| B3 | PDF: HSN-grouped GST summary table | ⬜ | — |
+| A1 | DB v32: GST columns on invoice/quote tables | ✅ Done | `2a781f6` |
+| A2 | Model updates (InvoiceItem, Invoice, QuoteItem, Quote) | ✅ Done | `2a781f6` |
+| A3 | Invoice form: auto-populate HSN/unit from catalog | ✅ Done | `f9e997f` |
+| A4 | SAC code toggle on item catalog | ✅ Done | `f9e997f` |
+| B1 | GstCalculator service | ✅ Done | `dde9b3e` |
+| B2 | PDF: TAX INVOICE header with GSTINs | ✅ Done | `dde9b3e` |
+| B3 | PDF: HSN-grouped GST summary table | ✅ Done | `dde9b3e` |
 | C1 | e-Invoice IRN placeholder fields | ⬜ | — |
 | C2 | e-Way Bill JSON export | ⬜ | — |
 | C3 | Offline GSTIN validation | ⬜ | — |

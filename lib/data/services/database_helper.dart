@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/constants/app_constants.dart';
@@ -38,6 +39,8 @@ class DatabaseHelper {
     if (!_integrityFailed) {
       await _maybeSnapshot(db, path);
     }
+    // Periodic VACUUM — runs at most once every 30 days (background op).
+    await _maybeVacuum(db);
     return db;
   }
 
@@ -93,6 +96,40 @@ class DatabaseHelper {
       }
     } catch (e) {
       debugPrint('[DB] Snapshot skipped (non-critical): $e');
+    }
+  }
+
+  // ── Periodic VACUUM ───────────────────────────────────────────────────────
+
+  static const _prefKeyLastVacuum = 'db_last_vacuum_date';
+  static const _vacuumIntervalDays = 30;
+
+  /// Runs `PRAGMA VACUUM` at most once every [_vacuumIntervalDays] days.
+  ///
+  /// VACUUM reclaims free pages left by deleted rows, keeping the DB compact.
+  /// It runs synchronously here but is fast enough on a typical KashCube DB
+  /// (< 10 MB); if it becomes a concern, move to a background Isolate.
+  Future<void> _maybeVacuum(Database db) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastStr = prefs.getString(_prefKeyLastVacuum);
+      final now = DateTime.now();
+
+      if (lastStr != null) {
+        final last = DateTime.tryParse(lastStr);
+        if (last != null && now.difference(last).inDays < _vacuumIntervalDays) {
+          return; // Too soon — skip.
+        }
+      }
+
+      final sw = Stopwatch()..start();
+      await db.rawQuery('VACUUM');
+      sw.stop();
+      debugPrint('[DB] VACUUM completed in ${sw.elapsedMilliseconds} ms');
+
+      await prefs.setString(_prefKeyLastVacuum, now.toIso8601String());
+    } catch (e) {
+      debugPrint('[DB] VACUUM skipped (non-critical): $e');
     }
   }
 

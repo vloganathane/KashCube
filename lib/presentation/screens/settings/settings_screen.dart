@@ -17,6 +17,7 @@ import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
 import 'my_personal_card_screen.dart';
 import 'notification_settings_screen.dart';
+import 'storage_health_screen.dart';
 
 /// Settings screen for app preferences, backup, security, and export.
 class SettingsScreen extends ConsumerWidget {
@@ -180,6 +181,18 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsSection(
             title: 'Data',
             children: [
+              ListTile(
+                leading: const Icon(Icons.health_and_safety_outlined),
+                title: const Text('Storage & Backup'),
+                subtitle: const Text('Usage, backup & cache management'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const StorageHealthScreen(),
+                  ),
+                ),
+              ),
               ListTile(
                 leading: const Icon(Icons.backup_outlined),
                 title: const Text('Create Backup'),

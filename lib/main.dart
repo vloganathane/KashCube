@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'core/theme/kash_cube_theme.dart';
 import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
+import 'data/services/pdf_cache_manager.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
@@ -79,6 +80,8 @@ class _LockGateState extends ConsumerState<_LockGate>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
+      // Evict stale/excess PDFs whenever the app comes back to foreground.
+      PdfCacheManager.instance.evict();
       // Re-lock when app comes back from background
       _checkLock();
     }

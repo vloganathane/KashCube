@@ -1,6 +1,9 @@
 # Implementation Plan — March / April 2026
 
 > Current date: 2 March 2026. FY flips on 1 April — **29 days**. Two parallel tracks below.
+>
+> **Progress:** A1 ✅ A2 ✅ A3 ✅ A4 ✅ A5 ✅ A6 ✅ B1 ✅ B2 ✅ — committed `d0a3eb6`, `c39b027`
+> **Next:** B3 PdfCacheManager → B4 Storage Health Dashboard → B5 Image Compression → B6 DB VACUUM
 
 ---
 
@@ -8,7 +11,7 @@
 
 Phase 1 is purely mechanical — settings, service, number format, report filter, warning notification. The Year-End Closing Wizard is Phase 2 (April).
 
-### A1 — DB Schema: FY Settings Columns
+### A1 — DB Schema: FY Settings Columns ✅ DONE (`d0a3eb6`)
 **File:** `lib/data/services/database_helper.dart`
 **Effort:** 2 hours
 
@@ -31,7 +34,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 
 ---
 
-### A2 — `FiscalYearService`
+### A2 — `FiscalYearService` ✅ DONE (`d0a3eb6`)
 **New file:** `lib/data/services/fiscal_year_service.dart`
 **Effort:** 1 day
 
@@ -68,7 +71,7 @@ Implementation notes:
 
 ---
 
-### A3 — Refactor `InvoiceNumberService`
+### A3 — Refactor `InvoiceNumberService` ✅ DONE (`d0a3eb6`)
 **File:** `lib/data/services/invoice_number_service.dart`
 **Effort:** 1 day
 
@@ -83,7 +86,7 @@ New logic:
 
 ---
 
-### A4 — FY Quick Filter in Reports Screen
+### A4 — FY Quick Filter in Reports Screen ✅ DONE (`c39b027`)
 **File:** `lib/presentation/screens/reports/reports_screen.dart`
 **File:** `lib/presentation/providers/report_provider.dart`
 **Effort:** 1 day
@@ -103,7 +106,7 @@ Add chip row above the existing month selector:
 
 ---
 
-### A5 — Year-End Warning Notification
+### A5 — Year-End Warning Notification ✅ DONE (`c39b027`)
 **File:** `lib/data/services/notification_service.dart`
 **Effort:** Half day
 
@@ -122,7 +125,7 @@ Schedule at app startup (and on foreground resume):
 
 ---
 
-### A6 — Home Screen Banner (March 25 onwards)
+### A6 — Home Screen Banner (March 25 onwards) ✅ DONE (`c39b027`)
 **File:** `lib/presentation/screens/home/home_screen.dart`
 **Effort:** 2 hours
 
@@ -141,13 +144,13 @@ Dismissible `MaterialBanner` at top of Home screen:
 
 ### Phase 1 Summary — Timeline
 
-| Week | Tasks |
-|---|---|
-| **Week 1** (2–8 Mar) | A1 DB schema + A2 `FiscalYearService` |
-| **Week 2** (9–15 Mar) | A3 Refactor `InvoiceNumberService` |
-| **Week 3** (16–22 Mar) | A4 FY filter in Reports |
-| **Week 4** (23–29 Mar) | A5 Notifications + A6 Banner — must land by March 25 |
-| **Buffer** (30–31 Mar) | Polish, test on device, hotfix if needed |
+| Week | Tasks | Status |
+|---|---|---|
+| **Week 1** (2–8 Mar) | A1 DB schema + A2 `FiscalYearService` | ✅ Done |
+| **Week 2** (9–15 Mar) | A3 Refactor `InvoiceNumberService` | ✅ Done |
+| **Week 3** (16–22 Mar) | A4 FY filter in Reports | ✅ Done |
+| **Week 4** (23–29 Mar) | A5 Notifications + A6 Banner — must land by March 25 | ✅ Done |
+| **Buffer** (30–31 Mar) | Polish, test on device, hotfix if needed | Pending |
 
 ---
 
@@ -155,7 +158,7 @@ Dismissible `MaterialBanner` at top of Home screen:
 
 No hard deadline, but items B1–B3 are low-risk and high-impact — do them in parallel with Track A.
 
-### B1 — WAL Mode + Integrity Check + Rolling Snapshot
+### B1 — WAL Mode + Integrity Check + Rolling Snapshot ✅ DONE (`d0a3eb6`)
 **File:** `lib/data/services/database_helper.dart`
 **Effort:** 3 hours
 
@@ -183,7 +186,7 @@ await _maybeSnapshot(db);
 
 ---
 
-### B2 — Android `backup_rules.xml`
+### B2 — Android `backup_rules.xml` ✅ DONE (`d0a3eb6`)
 **File:** `android/app/src/main/res/xml/backup_rules.xml` (new)
 **File:** `android/app/src/main/AndroidManifest.xml`
 **Effort:** 2 hours
@@ -207,7 +210,7 @@ android:fullBackupContent="@xml/backup_rules"
 
 ---
 
-### B3 — `PdfCacheManager` (Ephemeral PDFs, FY-Prefixed Filenames)
+### B3 — `PdfCacheManager` (Ephemeral PDFs, FY-Prefixed Filenames) 🔄 IN PROGRESS
 **New file:** `lib/data/services/pdf_cache_manager.dart`
 **Effort:** 1 day
 
@@ -339,14 +342,14 @@ Monthly reminder (via `NotificationService`) if no backup in 30 days. Track with
 
 ### Track B Summary — Timeline
 
-| Week | Tasks |
-|---|---|
-| **Week 1** (2–8 Mar) | B1 WAL + integrity + snapshot + B2 Android backup_rules.xml |
-| **Week 2** (9–15 Mar) | B3 `PdfCacheManager` + B4 Storage Health Dashboard |
-| **Week 3** (16–22 Mar) | B5 Image compression + B6 DB VACUUM |
-| **Week 4** (23–29 Mar) | B7 Encrypted `.kashcube` export (generation side) |
-| **April Week 1** | B7 Encrypted import + restore flow |
-| **April Week 2** | B8 Onboarding nudge + FY close backup prompt (tied to Phase 2 wizard) |
+| Week | Tasks | Status |
+|---|---|---|
+| **Week 1** (2–8 Mar) | B1 WAL + integrity + snapshot + B2 Android backup_rules.xml | ✅ Done |
+| **Week 2** (9–15 Mar) | B3 `PdfCacheManager` + B4 Storage Health Dashboard | 🔄 In Progress |
+| **Week 3** (16–22 Mar) | B5 Image compression + B6 DB VACUUM | Pending |
+| **Week 4** (23–29 Mar) | B7 Encrypted `.kashcube` export (generation side) | Pending |
+| **April Week 1** | B7 Encrypted import + restore flow | Pending |
+| **April Week 2** | B8 Onboarding nudge + FY close backup prompt (tied to Phase 2 wizard) | Pending |
 
 ---
 

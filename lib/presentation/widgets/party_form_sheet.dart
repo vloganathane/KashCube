@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
+import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
 import 'qr_scanner_sheet.dart';
@@ -465,7 +466,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       maxWidth: 1600,
     );
     if (picked != null && mounted) {
-      setState(() => _businessCardImagePath = picked.path);
+      final compressed = await compressPickedImage(picked.path);
+      setState(() => _businessCardImagePath = compressed);
     }
   }
 

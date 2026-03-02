@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 
 import '../models/business.dart';
+import 'pdf_cache_manager.dart';
 import '../models/invoice.dart';
 import '../models/party.dart';
 import '../models/quote.dart';
@@ -835,8 +835,10 @@ class InvoicePdfService {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   Future<File> _savePdf(pw.Document pdf, String filename) async {
-    final dir = await getTemporaryDirectory();
-    final file = File('${dir.path}/$filename');
+    // Route through PdfCacheManager — enforces FY-prefixed names,
+    // 24-hour eviction, and the 3-file cap.
+    final path = await PdfCacheManager.instance.tempPath(filename);
+    final file = File(path);
     await file.writeAsBytes(await pdf.save());
     return file;
   }

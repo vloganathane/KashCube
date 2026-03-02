@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../providers/business_provider.dart';
@@ -339,7 +340,8 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       imageQuality: 85,
     );
     if (xfile != null) {
-      setState(() => _logoPath = xfile.path);
+      final compressed = await compressPickedImage(xfile.path);
+      setState(() => _logoPath = compressed);
     }
   }
 

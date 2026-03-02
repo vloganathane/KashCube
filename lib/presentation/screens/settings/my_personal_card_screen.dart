@@ -29,6 +29,10 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   late final TextEditingController _name;
   late final TextEditingController _phone;
   late final TextEditingController _email;
+  late final TextEditingController _address;
+  late final TextEditingController _city;
+  late final TextEditingController _state;
+  late final TextEditingController _pincode;
   late final TextEditingController _website;
   late final TextEditingController _whatsapp;
   late final TextEditingController _linkedin;
@@ -44,6 +48,10 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     _name      = TextEditingController();
     _phone     = TextEditingController();
     _email     = TextEditingController();
+    _address   = TextEditingController();
+    _city      = TextEditingController();
+    _state     = TextEditingController();
+    _pincode   = TextEditingController();
     _website   = TextEditingController();
     _whatsapp  = TextEditingController();
     _linkedin  = TextEditingController();
@@ -54,7 +62,9 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   @override
   void dispose() {
     for (final c in [
-      _name, _phone, _email, _website, _whatsapp, _linkedin, _instagram
+      _name, _phone, _email,
+      _address, _city, _state, _pincode,
+      _website, _whatsapp, _linkedin, _instagram,
     ]) {
       c.dispose();
     }
@@ -67,6 +77,10 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       repo.get(SettingsKeys.ownerName),
       repo.get(SettingsKeys.personalPhone),
       repo.get(SettingsKeys.personalEmail),
+      repo.get(SettingsKeys.personalAddress),
+      repo.get(SettingsKeys.personalCity),
+      repo.get(SettingsKeys.personalState),
+      repo.get(SettingsKeys.personalPincode),
       repo.get(SettingsKeys.personalWebsite),
       repo.get(SettingsKeys.personalWhatsapp),
       repo.get(SettingsKeys.personalLinkedin),
@@ -77,11 +91,15 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     _name.text      = vals[0] ?? '';
     _phone.text     = vals[1] ?? '';
     _email.text     = vals[2] ?? '';
-    _website.text   = vals[3] ?? '';
-    _whatsapp.text  = vals[4] ?? '';
-    _linkedin.text  = vals[5] ?? '';
-    _instagram.text = vals[6] ?? '';
-    _photoPath      = vals[7];
+    _address.text   = vals[3] ?? '';
+    _city.text      = vals[4] ?? '';
+    _state.text     = vals[5] ?? '';
+    _pincode.text   = vals[6] ?? '';
+    _website.text   = vals[7] ?? '';
+    _whatsapp.text  = vals[8] ?? '';
+    _linkedin.text  = vals[9] ?? '';
+    _instagram.text = vals[10] ?? '';
+    _photoPath      = vals[11];
     setState(() => _loading = false);
   }
 
@@ -108,6 +126,10 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
         _saveOrRemove(repo, SettingsKeys.ownerName,          _name.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalPhone,      _phone.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalEmail,      _email.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalAddress,    _address.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalCity,       _city.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalState,      _state.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalPincode,    _pincode.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalWebsite,    _website.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalWhatsapp,   _whatsapp.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalLinkedin,   _linkedin.text.trim()),
@@ -133,6 +155,10 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       name:      _name.text.trim().isEmpty ? null : _name.text.trim(),
       phone:     _phone.text.trim().isEmpty ? null : _phone.text.trim(),
       email:     _email.text.trim().isEmpty ? null : _email.text.trim(),
+      address:   _address.text.trim().isEmpty ? null : _address.text.trim(),
+      city:      _city.text.trim().isEmpty ? null : _city.text.trim(),
+      state:     _state.text.trim().isEmpty ? null : _state.text.trim(),
+      pincode:   _pincode.text.trim().isEmpty ? null : _pincode.text.trim(),
       website:   _website.text.trim().isEmpty ? null : _website.text.trim(),
       whatsapp:  _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
       linkedin:  _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
@@ -222,6 +248,61 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                             prefixIcon: Icon(Icons.email_outlined),
                           ),
                           keyboardType: TextInputType.emailAddress,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // ── Street Address ─────────────────────────────────────────
+                  TextFormField(
+                    controller: _address,
+                    decoration: const InputDecoration(
+                      labelText: 'Street Address',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // ── City + State + Pincode ─────────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _city,
+                          decoration: const InputDecoration(
+                            labelText: 'City',
+                            border: OutlineInputBorder(),
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _state,
+                          decoration: const InputDecoration(
+                            labelText: 'State',
+                            border: OutlineInputBorder(),
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        flex: 2,
+                        child: TextFormField(
+                          controller: _pincode,
+                          decoration: const InputDecoration(
+                            labelText: 'Pincode',
+                            border: OutlineInputBorder(),
+                          ),
+                          keyboardType: TextInputType.number,
                         ),
                       ),
                     ],

@@ -38,6 +38,10 @@ class SettingsKeys {
   static const personalLinkedin = 'personal_linkedin';
   static const personalInstagram= 'personal_instagram';
   static const personalPhotoPath = 'personal_photo_path';
+  static const personalAddress  = 'personal_address';
+  static const personalCity     = 'personal_city';
+  static const personalState    = 'personal_state';
+  static const personalPincode  = 'personal_pincode';
 }
 
 // ---------------------------------------------------------------------------

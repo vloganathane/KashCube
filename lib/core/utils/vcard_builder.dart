@@ -108,15 +108,26 @@ String vCardFromPersonalSettings({
   required String? name,
   String? phone,
   String? email,
+  String? address,
+  String? city,
+  String? state,
+  String? pincode,
   String? website,
   String? whatsapp,
   String? linkedin,
   String? instagram,
 }) {
+  final addrParts = [
+    if (address != null && address.isNotEmpty) address,
+    if (city != null && city.isNotEmpty) city,
+    if (state != null && state.isNotEmpty) state,
+    if (pincode != null && pincode.isNotEmpty) pincode,
+  ];
   return buildVCard(
     name: (name != null && name.isNotEmpty) ? name : 'My Card',
     phone: phone,
     email: email,
+    address: addrParts.isEmpty ? null : addrParts.join(', '),
     website: website,
     whatsapp: whatsapp,
     linkedin: linkedin,

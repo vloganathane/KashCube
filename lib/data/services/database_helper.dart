@@ -33,7 +33,10 @@ class DatabaseHelper {
       onConfigure: _onConfigure,
     );
 
-    // Integrity check — detect corruption before the user notices wrong data.
+    // Enable WAL mode here (not in onConfigure — sqflite/Android restricts
+    // execute() calls inside the onConfigure callback).
+    await db.execute('PRAGMA journal_mode=WAL');
+
     await _runIntegrityCheck(db);
     // Rolling daily snapshot — only if integrity passed.
     if (!_integrityFailed) {
@@ -134,10 +137,10 @@ class DatabaseHelper {
   }
 
   Future<void> _onConfigure(Database db) async {
+    // Enable foreign key constraints.  Note: journal_mode=WAL is set after
+    // openDatabase() returns because sqflite on Android disallows execute()
+    // in the onConfigure callback (only rawQuery/query are permitted there).
     await db.execute('PRAGMA foreign_keys = ON');
-    // WAL mode: better crash safety — in-progress writes cannot corrupt the
-    // main DB file, and concurrent reads are allowed during writes.
-    await db.execute('PRAGMA journal_mode=WAL');
   }
 
   Future<void> _onCreate(Database db, int version) async {

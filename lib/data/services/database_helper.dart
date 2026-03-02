@@ -342,6 +342,11 @@ class DatabaseHelper {
         city TEXT,
         state TEXT,
         pincode TEXT,
+        business_card_image_path TEXT,
+        website TEXT,
+        whatsapp TEXT,
+        linkedin TEXT,
+        instagram TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT

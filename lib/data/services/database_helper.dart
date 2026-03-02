@@ -1663,7 +1663,7 @@ class DatabaseHelper {
   Future<void> _seedUnitTypes(Database db) async {
     const systemUnits = [
       // Physical / general
-      'nos', 'nos.', 'pcs', 'box', 'dozen', 'pair', 'set',
+      'nos', 'pcs', 'box', 'dozen', 'pair', 'set',
       // Weight
       'kg', 'g', 'mg',
       // Volume

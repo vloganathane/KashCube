@@ -1791,6 +1791,17 @@ class DatabaseHelper {
         'description': 'Delivery Challan tables — GST Rule 55 (supply without tax invoice)',
       });
     }
+
+    if (oldVersion < 40) {
+      // Link invoices back to their source delivery challan
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN challan_id INTEGER REFERENCES delivery_challans(id) ON DELETE SET NULL',
+      );
+      await db.insert('schema_version', {
+        'version': 40,
+        'description': 'Add challan_id to invoices for DC → Invoice link-back',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

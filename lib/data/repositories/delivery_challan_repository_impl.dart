@@ -134,6 +134,7 @@ class DeliveryChallanRepositoryImpl implements DeliveryChallanRepository {
 
     final invoice = Invoice(
       invoiceNo: invoiceNo,
+      challanId: challanId,
       customerPartyId: challan.customerPartyId,
       customerName: challan.customerName,
       businessId: challan.businessId,

@@ -28,6 +28,9 @@ import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import '../../widgets/reminder_bottom_sheet.dart';
 import '../bookings/booking_detail_screen.dart';
+import '../../../data/models/delivery_challan.dart';
+import '../../providers/delivery_challan_provider.dart';
+import 'delivery_challan_detail_screen.dart';
 
 import '../transactions/transaction_detail_screen.dart';
 import 'ewb_preview_screen.dart';
@@ -212,6 +215,10 @@ class _InvoiceDetailView extends ConsumerWidget {
           if (invoice.id != null) ...[
             const SizedBox(height: AppSpacing.base),
             _LinkedBookingCard(invoiceId: invoice.id!),
+          ],
+          if (invoice.challanId != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            _LinkedChallanCard(challanId: invoice.challanId!),
           ],
           const SizedBox(height: AppSpacing.xxxl),
         ],
@@ -1441,6 +1448,93 @@ class _LinkedBookingCard extends ConsumerWidget {
                 ),
                 child: Text(
                   booking.status.label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Linked Challan Card ───────────────────────────────────────────────────────
+
+class _LinkedChallanCard extends ConsumerWidget {
+  const _LinkedChallanCard({required this.challanId});
+  final int challanId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final challan = ref.watch(challanByIdProvider(challanId)).value;
+    if (challan == null) return const SizedBox.shrink();
+
+    final statusColor = switch (challan.status) {
+      ChallanStatus.draft => Theme.of(context).colorScheme.outline,
+      ChallanStatus.dispatched => Colors.blue,
+      ChallanStatus.returned => Theme.of(context).colorScheme.primary,
+      ChallanStatus.converted => Theme.of(context).colorScheme.primary,
+    };
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Icon(
+                Icons.local_shipping_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Source Delivery Challan',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      challan.challanNo,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Text(
+                  challan.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: statusColor,
                         fontWeight: FontWeight.w600,

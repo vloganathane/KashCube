@@ -176,6 +176,6 @@ Builds GSTN `EWB_Import_Template`-compatible JSON:
 | B1 | GstCalculator service | ✅ Done | `dde9b3e` |
 | B2 | PDF: TAX INVOICE header with GSTINs | ✅ Done | `dde9b3e` |
 | B3 | PDF: HSN-grouped GST summary table | ✅ Done | `dde9b3e` |
-| C1 | e-Invoice IRN placeholder fields | ⬜ | — |
-| C2 | e-Way Bill JSON export | ⬜ | — |
-| C3 | Offline GSTIN validation | ⬜ | — |
+| C1 | e-Invoice IRN placeholder fields | ✅ Done | `9f8914b` |
+| C2 | e-Way Bill JSON export | ✅ Done | `9f8914b` |
+| C3 | Offline GSTIN validation | ✅ Done | `9f8914b` |

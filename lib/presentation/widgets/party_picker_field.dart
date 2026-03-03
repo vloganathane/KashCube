@@ -240,12 +240,14 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
         .any((p) => p.name.toLowerCase() == _query.toLowerCase());
     final showAddNew = _query.isNotEmpty && !hasExactMatch;
 
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (context, scrollController) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (context, scrollController) {
         return Column(
           children: [
             // ── Handle ───────────────────────────────────────────────────
@@ -422,6 +424,7 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
           ],
         );
       },
+      ),
     );
   }
 }

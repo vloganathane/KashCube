@@ -8,12 +8,10 @@ import '../../providers/budget_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/party_provider.dart';
-import '../../providers/recurring_provider.dart';
 import '../../providers/report_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
-import '../recurring/recurring_transactions_screen.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 import 'category_management_screen.dart';
@@ -201,34 +199,6 @@ class TransactionsHubScreen extends ConsumerWidget {
                 color: const Color(0xFF6A1B9A),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const BudgetScreen()),
-                ),
-              ),
-              _HubTile(
-                icon: Icons.repeat_outlined,
-                label: 'Recurring',
-                subtitle: Consumer(
-                  builder: (ctx, r, _) {
-                    final text =
-                        r.watch(recurringTransactionsProvider).whenOrNull(
-                              data: (list) {
-                                final active =
-                                    list.where((t) => t.isActive).length;
-                                return active == 0
-                                    ? 'No active rules'
-                                    : '$active active rule${active == 1 ? '' : 's'}';
-                              },
-                            ) ??
-                        'Auto-scheduled transactions';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
-                  },
-                ),
-                color: const Color(0xFF00695C),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const RecurringTransactionsScreen(),
-                  ),
                 ),
               ),
             ],

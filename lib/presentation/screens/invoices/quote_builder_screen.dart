@@ -298,7 +298,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       } else {
         await _saveQuote(send: send);
       }
-      if (mounted) Navigator.pop(context);
+      if (mounted && !send) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Saved'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -341,6 +348,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } else {
       savedId = await ref.read(quotesProvider.notifier).add(quote, _quoteItems);
     }
+    if (mounted) setState(() => _existingQuote = quote.copyWith(id: savedId));
     if (send) {
       final bizName =
           ref.read(activeBusinessProvider)?.name ?? 'My Business';
@@ -430,6 +438,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } else {
       savedId = await ref.read(invoicesProvider.notifier).add(invoice, _invoiceItems);
     }
+    if (mounted) setState(() => _existingInvoice = invoice.copyWith(id: savedId));
     if (send) {
       final bizName =
           ref.read(activeBusinessProvider)?.name ?? 'My Business';

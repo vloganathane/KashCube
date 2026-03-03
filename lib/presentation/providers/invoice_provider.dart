@@ -282,6 +282,18 @@ final quoteByIdProvider =
   return ref.read(quoteRepositoryProvider).getById(id);
 });
 
+/// Finds a Quote from the in-memory list by its ID.
+/// Used by InvoiceDetailScreen to show the source quote card synchronously.
+final quoteFromListByIdProvider = Provider.family<Quote?, int>((ref, id) {
+  final all =
+      ref.watch(quotesProvider).whenOrNull(data: (list) => list) ?? [];
+  try {
+    return all.firstWhere((q) => q.id == id);
+  } catch (_) {
+    return null;
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Overdue invoices summary (for home screen alert)
 // ---------------------------------------------------------------------------

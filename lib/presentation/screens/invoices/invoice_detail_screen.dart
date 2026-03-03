@@ -13,6 +13,7 @@ import '../../../data/models/booking.dart';
 import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../../data/models/quote.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/database_helper.dart';
 import '../../../data/services/eway_bill_service.dart';
@@ -211,6 +212,10 @@ class _InvoiceDetailView extends ConsumerWidget {
           if (invoice.notes != null && invoice.notes!.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.base),
             _NotesCard(notes: invoice.notes!),
+          ],
+          if (invoice.quoteId != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            _LinkedQuoteCard(quoteId: invoice.quoteId!),
           ],
           if (invoice.id != null) ...[
             const SizedBox(height: AppSpacing.base),
@@ -1448,6 +1453,93 @@ class _LinkedBookingCard extends ConsumerWidget {
                 ),
                 child: Text(
                   booking.status.label,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: statusColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Icon(
+                Icons.chevron_right,
+                size: 18,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Linked Quote Card ───────────────────────────────────────────────────────
+
+class _LinkedQuoteCard extends ConsumerWidget {
+  const _LinkedQuoteCard({required this.quoteId});
+  final int quoteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final quote = ref.watch(quoteFromListByIdProvider(quoteId));
+    if (quote == null) return const SizedBox.shrink();
+
+    final statusColor = switch (quote.status) {
+      QuoteStatus.draft => Theme.of(context).colorScheme.outline,
+      QuoteStatus.sent => Colors.blue,
+      QuoteStatus.accepted => Theme.of(context).colorScheme.primary,
+      QuoteStatus.rejected => Theme.of(context).colorScheme.error,
+    };
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => QuoteBuilderScreen(quoteId: quote.id),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Icon(
+                Icons.description_outlined,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Source Quote',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      quote.quoteNo,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Text(
+                  quote.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: statusColor,
                         fontWeight: FontWeight.w600,

@@ -139,7 +139,10 @@ class GstCalculator {
     'odisha': 'odisha',
     'orissa': 'odisha',
     'puducherry': 'puducherry',
+    'puducherey': 'puducherry', // common typo
     'pondicherry': 'puducherry',
+    'pondicheery': 'puducherry', // common typo
+    'pondicherey': 'puducherry', // common typo
     'punjab': 'punjab',
     'rajasthan': 'rajasthan',
     'sikkim': 'sikkim',

@@ -13,6 +13,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/indian_state_dropdown.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 
 class MyPersonalCardScreen extends ConsumerStatefulWidget {
@@ -284,14 +285,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         flex: 3,
-                        child: TextFormField(
-                          controller: _state,
-                          decoration: const InputDecoration(
-                            labelText: 'State',
-                            border: OutlineInputBorder(),
-                          ),
-                          textCapitalization: TextCapitalization.words,
-                        ),
+                        child: IndianStateDropdown(controller: _state),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(

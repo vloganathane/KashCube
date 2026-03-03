@@ -10,6 +10,7 @@ import '../../../core/utils/image_compressor.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../providers/business_provider.dart';
+import '../../widgets/indian_state_dropdown.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 
 class BusinessesScreen extends ConsumerWidget {
@@ -523,14 +524,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
-                    child: TextFormField(
-                      controller: _state,
-                      decoration: const InputDecoration(
-                        labelText: 'State',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
+                    child: IndianStateDropdown(controller: _state),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(

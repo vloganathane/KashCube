@@ -12,6 +12,7 @@ import '../../core/utils/gstin_validator.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
+import 'indian_state_dropdown.dart';
 import 'qr_scanner_sheet.dart';
 
 /// Unified add / edit party bottom sheet.
@@ -316,14 +317,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
-                    child: TextFormField(
-                      controller: _state,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'State',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
+                    child: IndianStateDropdown(controller: _state),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(

@@ -530,8 +530,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                             ButtonSegment(value: 'SAC', label: Text('SAC')),
                           ],
                           selected: {_hsnOrSac},
-                          onSelectionChanged: (s) =>
-                              setState(() => _hsnOrSac = s.first),
+                          onSelectionChanged: (s) => setState(() {
+                            _hsnOrSac = s.first;
+                            _hsnCtrl.clear();
+                          }),
                           style: const ButtonStyle(
                             visualDensity: VisualDensity.compact,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -539,6 +541,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                         ),
                         const SizedBox(height: AppSpacing.xs),
                         _HsnSearchField(
+                          key: ValueKey(_hsnOrSac),
                           type: _hsnOrSac,
                           initialCode: _hsnCtrl.text,
                           onSelected: (entry) => setState(() {
@@ -776,6 +779,7 @@ Future<void> showAddItemSheet(BuildContext context, WidgetRef ref) {
 /// The field always shows the [initialCode] as its starting text.
 class _HsnSearchField extends StatefulWidget {
   const _HsnSearchField({
+    super.key,
     required this.type,
     required this.onSelected,
     this.initialCode = '',
@@ -791,29 +795,6 @@ class _HsnSearchField extends StatefulWidget {
 }
 
 class _HsnSearchFieldState extends State<_HsnSearchField> {
-  late final TextEditingController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = TextEditingController(text: widget.initialCode);
-  }
-
-  @override
-  void didUpdateWidget(_HsnSearchField old) {
-    super.didUpdateWidget(old);
-    // When the HSN/SAC toggle changes, clear the field.
-    if (old.type != widget.type) {
-      _ctrl.clear();
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Autocomplete<HsnEntry>(

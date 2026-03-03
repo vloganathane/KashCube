@@ -29,6 +29,13 @@ class InvoicePdfService {
     return _indianFormat.format(amount.abs());
   }
 
+  /// Format a GST rate for display: drops the decimal when it is a whole
+  /// number (e.g. 9.0 → "9", 2.5 → "2.5").
+  static String _fmtRate(double rate) =>
+      rate == rate.truncateToDouble()
+          ? rate.toStringAsFixed(0)
+          : rate.toStringAsFixed(1);
+
   /// Load business logo from file system if available
   Future<pw.MemoryImage?> _loadBusinessLogo(Business business) async {
     if (business.logoPath == null || business.logoPath!.isEmpty) {
@@ -603,21 +610,17 @@ pw.Widget _buildTotalsWithGst(
       (sum, item) =>
           sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
     );
-    final isInterState = GstCalculator.isInterState(sellerState, buyerState);
-    double totalCgst = 0, totalSgst = 0, totalIgst = 0;
-    for (final item in invoice.items) {
-      if (item.taxPct <= 0) continue;
-      final taxable = item.qty * item.unitPrice * (1 - item.discountPct / 100);
-      final split = GstCalculator.calculate(
-        sellerState: sellerState,
-        buyerState: buyerState,
-        taxableAmount: taxable,
-        gstPct: item.taxPct,
-      );
-      totalCgst += split.cgst;
-      totalSgst += split.sgst;
-      totalIgst += split.igst;
-    }
+
+    // Use the same summarised rows as the GST summary table so the
+    // totals section shows one line per GST rate rather than one lumped total.
+    final rows = GstCalculator.summarise(
+      sellerState: sellerState,
+      buyerState: buyerState,
+      items: invoice.items.toSplitInputs(),
+    );
+    final isInterState = rows.isNotEmpty
+        ? rows.first.isInterState
+        : GstCalculator.isInterState(sellerState, buyerState);
 
     return pw.Container(
       width: 280,
@@ -625,11 +628,30 @@ pw.Widget _buildTotalsWithGst(
         children: [
           _totalsRow('Subtotal', subtotal),
           pw.Divider(color: PdfColors.grey300),
-          if (!isInterState) ...[  
-            _totalsRow('CGST', totalCgst, isSmall: true),
-            _totalsRow('SGST', totalSgst, isSmall: true),
-          ] else
-            _totalsRow('IGST', totalIgst, isSmall: true),
+          if (rows.isEmpty)
+            // No taxable items — zero tax line for completeness
+            _totalsRow(isInterState ? 'IGST' : 'CGST + SGST', 0, isSmall: true)
+          else
+            for (final r in rows) ...[  
+              if (isInterState)
+                _totalsRow(
+                  'IGST @${_fmtRate(r.gstPct)}%',
+                  r.igst,
+                  isSmall: true,
+                )
+              else ...[
+                _totalsRow(
+                  'CGST @${_fmtRate(r.gstPct / 2)}%',
+                  r.cgst,
+                  isSmall: true,
+                ),
+                _totalsRow(
+                  'SGST @${_fmtRate(r.gstPct / 2)}%',
+                  r.sgst,
+                  isSmall: true,
+                ),
+              ],
+            ],
           pw.Divider(color: PdfColors.grey400),
           _totalsRow('Total', invoice.total, isBold: true, isLarge: true),
           if (invoice.paidAmount > 0) ...[
@@ -1213,21 +1235,15 @@ pw.Widget _buildTotalsWithGst(
       (sum, item) =>
           sum + (item.qty * item.unitPrice * (1 - item.discountPct / 100)),
     );
-    double totalCgst = 0, totalSgst = 0, totalIgst = 0;
-    for (final item in quote.items) {
-      if (item.taxPct <= 0) continue;
-      final taxable = item.qty * item.unitPrice * (1 - item.discountPct / 100);
-      final split = GstCalculator.calculate(
-        sellerState: sellerState,
-        buyerState: buyerState,
-        taxableAmount: taxable,
-        gstPct: item.taxPct,
-      );
-      totalCgst += split.cgst;
-      totalSgst += split.sgst;
-      totalIgst += split.igst;
-    }
-    final isInterState = GstCalculator.isInterState(sellerState, buyerState);
+
+    final rows = GstCalculator.summarise(
+      sellerState: sellerState,
+      buyerState: buyerState,
+      items: quote.items.toSplitInputs(),
+    );
+    final isInterState = rows.isNotEmpty
+        ? rows.first.isInterState
+        : GstCalculator.isInterState(sellerState, buyerState);
 
     return pw.Container(
       width: 280,
@@ -1235,11 +1251,29 @@ pw.Widget _buildTotalsWithGst(
         children: [
           _totalsRow('Subtotal', subtotal),
           pw.Divider(color: PdfColors.grey300),
-          if (!isInterState) ...[  
-            _totalsRow('CGST', totalCgst, isSmall: true),
-            _totalsRow('SGST', totalSgst, isSmall: true),
-          ] else
-            _totalsRow('IGST', totalIgst, isSmall: true),
+          if (rows.isEmpty)
+            _totalsRow(isInterState ? 'IGST' : 'CGST + SGST', 0, isSmall: true)
+          else
+            for (final r in rows) ...[  
+              if (isInterState)
+                _totalsRow(
+                  'IGST @${_fmtRate(r.gstPct)}%',
+                  r.igst,
+                  isSmall: true,
+                )
+              else ...[
+                _totalsRow(
+                  'CGST @${_fmtRate(r.gstPct / 2)}%',
+                  r.cgst,
+                  isSmall: true,
+                ),
+                _totalsRow(
+                  'SGST @${_fmtRate(r.gstPct / 2)}%',
+                  r.sgst,
+                  isSmall: true,
+                ),
+              ],
+            ],
           pw.Divider(color: PdfColors.grey400),
           _totalsRow('Total', quote.total, isBold: true, isLarge: true),
         ],

@@ -94,6 +94,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo-white.png
+    - assets/data/in_pincodes.json
     - assets/hns_sac/HSN_SAC - HSN_MSTR.csv
     - assets/hns_sac/HSN_SAC - SAC_MSTR.csv
   #         style: italic

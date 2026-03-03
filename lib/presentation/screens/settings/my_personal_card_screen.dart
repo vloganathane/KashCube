@@ -16,6 +16,7 @@ import 'package:world_countries/world_countries.dart';
 
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
+import '../../../data/services/pincode_lookup_service.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/country_picker_field.dart';
 import '../../widgets/indian_state_dropdown.dart';
@@ -49,6 +50,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   bool _saving = false;
   WorldCountry? _selectedCountry; // null = India (default)
   String _dialCode = '91';
+  bool _pincodeAutoFilled = false;
 
   @override
   void initState() {
@@ -64,11 +66,14 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     _whatsapp  = TextEditingController();
     _linkedin  = TextEditingController();
     _instagram = TextEditingController();
+    PincodeLookupService.ensureLoaded();
+    _pincode.addListener(_onPincodeChanged);
     _loadSettings();
   }
 
   @override
   void dispose() {
+    _pincode.removeListener(_onPincodeChanged);
     for (final c in [
       _name, _phone, _email,
       _address, _city, _state, _pincode,
@@ -77,6 +82,25 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  void _onPincodeChanged() {
+    final pin = _pincode.text.trim();
+    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    final result = PincodeLookupService.lookup(pin);
+    if (result == null) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    setState(() {
+      if (_city.text.isEmpty) _city.text = result.city;
+      _state.text = result.state;
+      _pincodeAutoFilled = true;
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -319,9 +343,13 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                         flex: 2,
                         child: TextFormField(
                           controller: _pincode,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Postcode',
-                            border: OutlineInputBorder(),
+                            border: const OutlineInputBorder(),
+                            suffixIcon: _pincodeAutoFilled
+                                ? const Icon(Icons.check_circle_outline,
+                                    color: Colors.green, size: 18)
+                                : null,
                           ),
                           keyboardType: TextInputType.number,
                         ),

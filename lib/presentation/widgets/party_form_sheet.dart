@@ -14,6 +14,7 @@ import 'package:world_countries/world_countries.dart';
 import '../../core/utils/phone_utils.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
+import '../../data/services/pincode_lookup_service.dart';
 import '../providers/settings_provider.dart';
 import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
@@ -60,6 +61,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   bool _onlineExpanded = false;
   WorldCountry? _selectedCountry; // null = India (default)
   String _dialCode = '91';
+  bool _pincodeAutoFilled = false;
 
   @override
   void initState() {
@@ -90,10 +92,13 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
         (p?.whatsapp ?? '').isNotEmpty ||
         (p?.linkedin ?? '').isNotEmpty ||
         (p?.instagram ?? '').isNotEmpty;
-  }
+    // Warm up pincode lookup (India only) in the background
+    PincodeLookupService.ensureLoaded();
+    _pincode.addListener(_onPincodeChanged);
 
   @override
   void dispose() {
+    _pincode.removeListener(_onPincodeChanged);
     _name.dispose();
     _phone.dispose();
     _email.dispose();
@@ -108,6 +113,26 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _linkedin.dispose();
     _instagram.dispose();
     super.dispose();
+  }
+
+  void _onPincodeChanged() {
+    final pin = _pincode.text.trim();
+    // Only auto-fill for India and exactly 6 digits
+    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    final result = PincodeLookupService.lookup(pin);
+    if (result == null) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    setState(() {
+      if (_city.text.isEmpty) _city.text = result.city;
+      _state.text = result.state; // always sync state (drives GST)
+      _pincodeAutoFilled = true;
+    });
   }
 
   @override
@@ -355,9 +380,15 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                     child: TextFormField(
                       controller: _pincode,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
+                      maxLength: 10,
+                      decoration: InputDecoration(
                         labelText: 'Postcode',
-                        border: OutlineInputBorder(),
+                        border: const OutlineInputBorder(),
+                        counterText: '',
+                        suffixIcon: _pincodeAutoFilled
+                            ? const Icon(Icons.check_circle_outline,
+                                color: Colors.green, size: 18)
+                            : null,
                       ),
                     ),
                   ),

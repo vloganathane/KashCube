@@ -547,21 +547,20 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // City + State + Pincode
+              // City
+              TextFormField(
+                controller: _city,
+                decoration: const InputDecoration(
+                  labelText: 'City',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // State + Pincode
               Row(
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: _city,
-                      decoration: const InputDecoration(
-                        labelText: 'City',
-                        border: OutlineInputBorder(),
-                      ),
-                      textCapitalization: TextCapitalization.words,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
                     child: (_selectedCountry == null ||

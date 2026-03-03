@@ -177,6 +177,29 @@ class FiscalYearService {
     return _applyTokens(format, fy, seq);
   }
 
+  /// Generates the next delivery challan number for today's FY.
+  ///
+  /// Default format: 'DC-{YY}-{YY+1}-{SEQ}' → "DC-25-26-0001"
+  Future<String> nextChallanNo() async {
+    final now = DateTime.now();
+    final fy = await getFiscalYearFor(now);
+    final format =
+        await _settings.get('challan_no_format') ?? 'DC-{YY}-{YY+1}-{SEQ}';
+    final prefix = _fyPrefixFromRange(format, fy);
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT challan_no FROM delivery_challans WHERE challan_no LIKE ? ORDER BY id DESC LIMIT 1',
+      ['$prefix%'],
+    );
+    int seq = 1;
+    if (result.isNotEmpty) {
+      final last = result.first['challan_no'] as String;
+      final seqStr = last.substring(prefix.length);
+      seq = (int.tryParse(seqStr) ?? 0) + 1;
+    }
+    return _applyTokens(format, fy, seq);
+  }
+
   // ── Startup Hook ────────────────────────────────────────────────────────
 
   /// Call once at app startup (after DB open) to keep `current_fy_start` in

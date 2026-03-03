@@ -766,6 +766,57 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)');
     await _seedHsnMaster(db);
 
+    // -- delivery_challans table (DB v39)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS delivery_challans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        challan_no TEXT NOT NULL UNIQUE,
+        customer_party_id INTEGER,
+        customer_name TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'draft',
+        challan_date TEXT NOT NULL,
+        dispatch_date TEXT,
+        expected_return_date TEXT,
+        purpose TEXT NOT NULL DEFAULT 'supply',
+        subtotal REAL NOT NULL DEFAULT 0,
+        notes TEXT,
+        business_id INTEGER,
+        customer_gstin TEXT,
+        place_of_supply TEXT,
+        vehicle_no TEXT,
+        transporter_name TEXT,
+        transport_mode TEXT,
+        distance_km INTEGER,
+        converted_invoice_id INTEGER,
+        ewb_no TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (customer_party_id) REFERENCES parties(id),
+        FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS delivery_challan_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        challan_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        description TEXT,
+        qty REAL NOT NULL DEFAULT 1,
+        unit TEXT DEFAULT 'PCS',
+        unit_price REAL NOT NULL DEFAULT 0,
+        line_total REAL NOT NULL DEFAULT 0,
+        hsn_code TEXT,
+        hsn_or_sac TEXT DEFAULT 'HSN',
+        FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)');
+
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);
@@ -1680,6 +1731,64 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 38,
         'description': 'Country and dial code for international customers/vendors (parties + businesses)',
+      });
+    }
+
+    if (oldVersion < 39) {
+      // Delivery Challan feature (GST Rule 55)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS delivery_challans (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          challan_no TEXT NOT NULL UNIQUE,
+          customer_party_id INTEGER,
+          customer_name TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'draft',
+          challan_date TEXT NOT NULL,
+          dispatch_date TEXT,
+          expected_return_date TEXT,
+          purpose TEXT NOT NULL DEFAULT 'supply',
+          subtotal REAL NOT NULL DEFAULT 0,
+          notes TEXT,
+          business_id INTEGER,
+          customer_gstin TEXT,
+          place_of_supply TEXT,
+          vehicle_no TEXT,
+          transporter_name TEXT,
+          transport_mode TEXT,
+          distance_km INTEGER,
+          converted_invoice_id INTEGER,
+          ewb_no TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (customer_party_id) REFERENCES parties(id),
+          FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS delivery_challan_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          challan_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          description TEXT,
+          qty REAL NOT NULL DEFAULT 1,
+          unit TEXT DEFAULT 'PCS',
+          unit_price REAL NOT NULL DEFAULT 0,
+          line_total REAL NOT NULL DEFAULT 0,
+          hsn_code TEXT,
+          hsn_or_sac TEXT DEFAULT 'HSN',
+          FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)');
+
+      await db.insert('schema_version', {
+        'version': 39,
+        'description': 'Delivery Challan tables — GST Rule 55 (supply without tax invoice)',
       });
     }
   }

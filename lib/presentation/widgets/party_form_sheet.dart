@@ -95,6 +95,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     // Warm up pincode lookup (India only) in the background
     PincodeLookupService.ensureLoaded();
     _pincode.addListener(_onPincodeChanged);
+  }
 
   @override
   void dispose() {
@@ -344,21 +345,20 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // ── City + State + Pincode ────────────────────────────────
+              // ── City ─────────────────────────────────────────────────
+              TextFormField(
+                controller: _city,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'City',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // ── State + Pincode ───────────────────────────────────────
               Row(
                 children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextFormField(
-                      controller: _city,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: const InputDecoration(
-                        labelText: 'City',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
                     // Show IndianStateDropdown only for India; plain text for other countries

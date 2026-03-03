@@ -5,10 +5,12 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/report_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
+import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
 import '../reports/reports_screen.dart';
@@ -78,6 +80,28 @@ class BusinessHubScreen extends ConsumerWidget {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const InvoicesScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.local_shipping_outlined,
+                label: 'Delivery Challans',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final summary = r.watch(challanSummaryProvider);
+                    final text = summary.dispatched > 0
+                        ? '${summary.dispatched} dispatched · ${summary.total} total'
+                        : summary.total > 0
+                            ? '${summary.total} challan${summary.total == 1 ? '' : 's'}'
+                            : 'Goods dispatch documents';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF00838F),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const DeliveryChallansScreen()),
                 ),
               ),
               _HubTile(

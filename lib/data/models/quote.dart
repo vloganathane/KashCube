@@ -175,6 +175,9 @@ class Quote extends Equatable {
     this.placeOfSupply,
     this.reverseCharge = false,
     this.customerGstin,
+    this.freightAmt = 0,
+    this.insuranceAmt = 0,
+    this.packingAmt = 0,
   });
 
   final int? id;
@@ -200,6 +203,12 @@ class Quote extends Equatable {
   final bool reverseCharge;
   /// Buyer GSTIN snapshot.
   final String? customerGstin;
+  /// Freight charges (post-tax, shown separately on quote).
+  final double freightAmt;
+  /// Insurance charges (post-tax, shown separately on quote).
+  final double insuranceAmt;
+  /// Packing & forwarding charges (post-tax, shown separately on quote).
+  final double packingAmt;
 
   Quote copyWith({
     int? id,
@@ -221,6 +230,9 @@ class Quote extends Equatable {
     String? placeOfSupply,
     bool? reverseCharge,
     String? customerGstin,
+    double? freightAmt,
+    double? insuranceAmt,
+    double? packingAmt,
   }) {
     return Quote(
       id: id ?? this.id,
@@ -242,6 +254,9 @@ class Quote extends Equatable {
       placeOfSupply: placeOfSupply ?? this.placeOfSupply,
       reverseCharge: reverseCharge ?? this.reverseCharge,
       customerGstin: customerGstin ?? this.customerGstin,
+      freightAmt: freightAmt ?? this.freightAmt,
+      insuranceAmt: insuranceAmt ?? this.insuranceAmt,
+      packingAmt: packingAmt ?? this.packingAmt,
     );
   }
 
@@ -262,6 +277,9 @@ class Quote extends Equatable {
         'place_of_supply': placeOfSupply,
         'reverse_charge': reverseCharge ? 1 : 0,
         'customer_gstin': customerGstin,
+        'freight_amt': freightAmt,
+        'insurance_amt': insuranceAmt,
+        'packing_amt': packingAmt,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -290,6 +308,9 @@ class Quote extends Equatable {
         placeOfSupply: map['place_of_supply'] as String?,
         reverseCharge: (map['reverse_charge'] as int? ?? 0) == 1,
         customerGstin: map['customer_gstin'] as String?,
+        freightAmt: (map['freight_amt'] as num?)?.toDouble() ?? 0,
+        insuranceAmt: (map['insurance_amt'] as num?)?.toDouble() ?? 0,
+        packingAmt: (map['packing_amt'] as num?)?.toDouble() ?? 0,
       );
 
   @override

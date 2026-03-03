@@ -1656,6 +1656,20 @@ class DatabaseHelper {
         'description': 'e-Way Bill fields on invoices + transporters table + GSP settings keys',
       });
     }
+
+    if (oldVersion < 37) {
+      // Freight, insurance, packing & forwarding charges on invoices and quotes.
+      await db.execute('ALTER TABLE invoices ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE invoices ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE invoices ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE quotes ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE quotes ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE quotes ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0');
+      await db.insert('schema_version', {
+        'version': 37,
+        'description': 'Freight, insurance, packing charges on invoices and quotes (CBIC Rule 46)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

@@ -653,6 +653,12 @@ pw.Widget _buildTotalsWithGst(
               ],
             ],
           pw.Divider(color: PdfColors.grey400),
+          if (invoice.freightAmt > 0)
+            _totalsRow('Freight', invoice.freightAmt, isSmall: true),
+          if (invoice.insuranceAmt > 0)
+            _totalsRow('Insurance', invoice.insuranceAmt, isSmall: true),
+          if (invoice.packingAmt > 0)
+            _totalsRow('Packing & Forwarding', invoice.packingAmt, isSmall: true),
           _totalsRow('Total', invoice.total, isBold: true, isLarge: true),
           if (invoice.paidAmount > 0) ...[
             pw.SizedBox(height: 8),
@@ -1275,6 +1281,12 @@ pw.Widget _buildTotalsWithGst(
               ],
             ],
           pw.Divider(color: PdfColors.grey400),
+          if (quote.freightAmt > 0)
+            _totalsRow('Freight', quote.freightAmt, isSmall: true),
+          if (quote.insuranceAmt > 0)
+            _totalsRow('Insurance', quote.insuranceAmt, isSmall: true),
+          if (quote.packingAmt > 0)
+            _totalsRow('Packing & Forwarding', quote.packingAmt, isSmall: true),
           _totalsRow('Total', quote.total, isBold: true, isLarge: true),
         ],
       ),

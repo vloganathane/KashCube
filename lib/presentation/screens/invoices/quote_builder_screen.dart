@@ -53,9 +53,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   DateTime? _dueDate;
 
   final List<_LineItem> _items = [];
+  double _freightAmt = 0;
+  double _insuranceAmt = 0;
+  double _packingAmt = 0;
   final _notesController = TextEditingController();
   late final TextEditingController _customerCtrl;
   late final TextEditingController _documentNoCtrl;
+  late final TextEditingController _freightCtrl;
+  late final TextEditingController _insuranceCtrl;
+  late final TextEditingController _packingCtrl;
 
   Quote? _existingQuote;
   Invoice? _existingInvoice;
@@ -66,6 +72,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     super.initState();
     _customerCtrl = TextEditingController();
     _documentNoCtrl = TextEditingController();
+    _freightCtrl = TextEditingController();
+    _insuranceCtrl = TextEditingController();
+    _packingCtrl = TextEditingController();
     if (widget.docType == DocumentType.invoice) {
       if (widget.invoiceId != null) {
         _loadInvoice();
@@ -108,6 +117,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _validUntil = quote.validUntil ??
           DateTime.now().add(const Duration(days: 30));
       _notesController.text = quote.notes ?? '';
+      _freightAmt = quote.freightAmt;
+      _insuranceAmt = quote.insuranceAmt;
+      _packingAmt = quote.packingAmt;
+      _freightCtrl.text = quote.freightAmt > 0 ? quote.freightAmt.toStringAsFixed(2) : '';
+      _insuranceCtrl.text = quote.insuranceAmt > 0 ? quote.insuranceAmt.toStringAsFixed(2) : '';
+      _packingCtrl.text = quote.packingAmt > 0 ? quote.packingAmt.toStringAsFixed(2) : '';
       _items.clear();
       _items.addAll(quote.items.map(
         (qi) => _LineItem(
@@ -165,6 +180,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _issueDate = invoice.issueDate;
       _dueDate = invoice.dueDate;
       _notesController.text = invoice.notes ?? '';
+      _freightAmt = invoice.freightAmt;
+      _insuranceAmt = invoice.insuranceAmt;
+      _packingAmt = invoice.packingAmt;
+      _freightCtrl.text = invoice.freightAmt > 0 ? invoice.freightAmt.toStringAsFixed(2) : '';
+      _insuranceCtrl.text = invoice.insuranceAmt > 0 ? invoice.insuranceAmt.toStringAsFixed(2) : '';
+      _packingCtrl.text = invoice.packingAmt > 0 ? invoice.packingAmt.toStringAsFixed(2) : '';
       _items.clear();
       _items.addAll(invoice.items.map(
         (ii) => _LineItem(
@@ -187,6 +208,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     _notesController.dispose();
     _customerCtrl.dispose();
     _documentNoCtrl.dispose();
+    _freightCtrl.dispose();
+    _insuranceCtrl.dispose();
+    _packingCtrl.dispose();
     super.dispose();
   }
 
@@ -207,7 +231,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               (1 + i.taxPct / 100) *
               (i.discountPct / 100));
 
-  double get _total => _subtotal + _taxTotal - _discountAmt;
+  double get _total => _subtotal + _taxTotal - _discountAmt + _freightAmt + _insuranceAmt + _packingAmt;
 
   List<QuoteItem> get _quoteItems => _items.map((li) {
         final lineTotal = QuoteItem.computeLineTotal(
@@ -300,6 +324,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       taxTotal: _taxTotal,
       discountPct: 0,
       total: _total,
+      freightAmt: _freightAmt,
+      insuranceAmt: _insuranceAmt,
+      packingAmt: _packingAmt,
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
@@ -385,6 +412,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       taxTotal: _taxTotal,
       discountPct: 0,
       total: _total,
+      freightAmt: _freightAmt,
+      insuranceAmt: _insuranceAmt,
+      packingAmt: _packingAmt,
       paidAmount: _existingInvoice?.paidAmount ?? 0,
       notes: _notesController.text.trim().isEmpty
           ? null
@@ -1103,6 +1133,21 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                     if (_discountAmt > 0)
                       _TotalsRow(
                           'Discount', '-${CurrencyFormatter.format(_discountAmt)}'),
+                    _ChargeInputRow(
+                      label: 'Freight',
+                      controller: _freightCtrl,
+                      onChanged: (v) => setState(() => _freightAmt = v),
+                    ),
+                    _ChargeInputRow(
+                      label: 'Insurance',
+                      controller: _insuranceCtrl,
+                      onChanged: (v) => setState(() => _insuranceAmt = v),
+                    ),
+                    _ChargeInputRow(
+                      label: 'Packing & Fwdg',
+                      controller: _packingCtrl,
+                      onChanged: (v) => setState(() => _packingAmt = v),
+                    ),
                     const Divider(height: AppSpacing.base),
                     _TotalsRow('Total', CurrencyFormatter.format(_total),
                         bold: true),
@@ -1577,6 +1622,54 @@ class _TotalsRow extends StatelessWidget {
               style: TextStyle(
                   fontWeight:
                       bold ? FontWeight.bold : FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact editable charge row shown inside the totals card.
+/// Renders a label on the left and a slim amount [TextField] on the right.
+/// Passes 0 when the field is empty or invalid.
+class _ChargeInputRow extends StatelessWidget {
+  const _ChargeInputRow({
+    required this.label,
+    required this.controller,
+    required this.onChanged,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey)),
+          SizedBox(
+            width: 110,
+            height: 36,
+            child: TextField(
+              controller: controller,
+              textAlign: TextAlign.right,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(fontSize: 14),
+              decoration: const InputDecoration(
+                hintText: '0.00',
+                hintStyle: TextStyle(color: Colors.grey),
+                isDense: true,
+                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (text) {
+                onChanged(double.tryParse(text) ?? 0);
+              },
+            ),
+          ),
         ],
       ),
     );

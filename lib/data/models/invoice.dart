@@ -223,6 +223,9 @@ class Invoice extends Equatable {
     this.transporterGstin,
     this.transportMode,
     this.distanceKm,
+    this.freightAmt = 0,
+    this.insuranceAmt = 0,
+    this.packingAmt = 0,
   });
 
   final int? id;
@@ -288,6 +291,12 @@ class Invoice extends Equatable {
   final String? transportMode;
   /// Distance in km — used to compute validity period.
   final int? distanceKm;
+  /// Freight charges (post-tax, shown separately on invoice).
+  final double freightAmt;
+  /// Insurance charges (post-tax, shown separately on invoice).
+  final double insuranceAmt;
+  /// Packing & forwarding charges (post-tax, shown separately on invoice).
+  final double packingAmt;
 
   /// `true` when an e-Way Bill has been generated for this invoice.
   bool get hasEwb => ewbNo != null && ewbNo!.isNotEmpty;
@@ -342,6 +351,9 @@ class Invoice extends Equatable {
     String? transporterGstin,
     String? transportMode,
     int? distanceKm,
+    double? freightAmt,
+    double? insuranceAmt,
+    double? packingAmt,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -381,6 +393,9 @@ class Invoice extends Equatable {
       transporterGstin: transporterGstin ?? this.transporterGstin,
       transportMode: transportMode ?? this.transportMode,
       distanceKm: distanceKm ?? this.distanceKm,
+      freightAmt: freightAmt ?? this.freightAmt,
+      insuranceAmt: insuranceAmt ?? this.insuranceAmt,
+      packingAmt: packingAmt ?? this.packingAmt,
     );
   }
 
@@ -421,6 +436,9 @@ class Invoice extends Equatable {
         'transporter_gstin': transporterGstin,
         'transport_mode': transportMode,
         'distance_km': distanceKm,
+        'freight_amt': freightAmt,
+        'insurance_amt': insuranceAmt,
+        'packing_amt': packingAmt,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -473,6 +491,9 @@ class Invoice extends Equatable {
         transporterGstin: map['transporter_gstin'] as String?,
         transportMode: map['transport_mode'] as String?,
         distanceKm: map['distance_km'] as int?,
+        freightAmt: (map['freight_amt'] as num?)?.toDouble() ?? 0,
+        insuranceAmt: (map['insurance_amt'] as num?)?.toDouble() ?? 0,
+        packingAmt: (map['packing_amt'] as num?)?.toDouble() ?? 0,
       );
 
   @override

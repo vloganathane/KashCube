@@ -216,9 +216,9 @@ class _InvoiceDetailView extends ConsumerWidget {
             const SizedBox(height: AppSpacing.base),
             _LinkedBookingCard(invoiceId: invoice.id!),
           ],
-          if (invoice.challanId != null) ...[
+          if (invoice.id != null) ...[
             const SizedBox(height: AppSpacing.base),
-            _LinkedChallanCard(challanId: invoice.challanId!),
+            _LinkedChallanCard(invoiceId: invoice.id!),
           ],
           const SizedBox(height: AppSpacing.xxxl),
         ],
@@ -1471,12 +1471,12 @@ class _LinkedBookingCard extends ConsumerWidget {
 // ── Linked Challan Card ───────────────────────────────────────────────────────
 
 class _LinkedChallanCard extends ConsumerWidget {
-  const _LinkedChallanCard({required this.challanId});
-  final int challanId;
+  const _LinkedChallanCard({required this.invoiceId});
+  final int invoiceId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final challan = ref.watch(challanByIdProvider(challanId)).value;
+    final challan = ref.watch(challanByInvoiceIdProvider(invoiceId));
     if (challan == null) return const SizedBox.shrink();
 
     final statusColor = switch (challan.status) {

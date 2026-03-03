@@ -74,6 +74,19 @@ final challanByIdProvider =
   return ref.read(deliveryChallanRepositoryProvider).getById(id);
 });
 
+/// Finds the Delivery Challan that was converted into a given invoice.
+/// Uses the in-memory list so no extra DB round-trip is needed.
+final challanByInvoiceIdProvider =
+    Provider.family<DeliveryChallan?, int>((ref, invoiceId) {
+  final all =
+      ref.watch(challansProvider).whenOrNull(data: (list) => list) ?? [];
+  try {
+    return all.firstWhere((c) => c.convertedInvoiceId == invoiceId);
+  } catch (_) {
+    return null;
+  }
+});
+
 // ── Filter ───────────────────────────────────────────────────────────────────
 
 final challanStatusFilterProvider = StateProvider<ChallanStatus?>((ref) => null);

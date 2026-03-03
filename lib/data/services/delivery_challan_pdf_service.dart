@@ -110,18 +110,18 @@ class DeliveryChallanPdfService {
                     fontWeight: pw.FontWeight.bold,
                   ),
                 ),
-                if (business?.gstin != null && business!.gstin!.isNotEmpty) ...[
+                if (business?.gstNo != null && business!.gstNo!.isNotEmpty) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    'GSTIN: ${business.gstin}',
+                    'GSTIN: ${business.gstNo}',
                     style: pw.TextStyle(color: _headerFg, fontSize: 9),
                   ),
                 ],
                 if (business?.address != null &&
-                    business!.address.isNotEmpty) ...[
+                    business!.address!.isNotEmpty) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    business.address,
+                    business.address!,
                     style: pw.TextStyle(color: _headerFg, fontSize: 9),
                   ),
                 ],
@@ -145,7 +145,7 @@ class DeliveryChallanPdfService {
                 style: pw.TextStyle(color: _headerFg, fontSize: 9),
               ),
               pw.Text(
-                'Date: ${DateFormatter.formatDisplay(challan.challanDate)}',
+                'Date: ${DateFormatter.formatFull(challan.challanDate)}',
                 style: pw.TextStyle(color: _headerFg, fontSize: 9),
               ),
               pw.Text(
@@ -191,8 +191,8 @@ class DeliveryChallanPdfService {
     if (b == null) return ['Your Business'];
     return [
       b.name,
-      if (b.gstin != null && b.gstin!.isNotEmpty) 'GSTIN: ${b.gstin}',
-      if (b.address.isNotEmpty) b.address,
+      if (b.gstNo != null && b.gstNo!.isNotEmpty) 'GSTIN: ${b.gstNo}',
+      if (b.address != null && b.address!.isNotEmpty) b.address!,
       if (b.phone != null && b.phone!.isNotEmpty) 'Ph: ${b.phone}',
     ];
   }
@@ -203,7 +203,7 @@ class DeliveryChallanPdfService {
       if (c.customerGstin != null && c.customerGstin!.isNotEmpty)
         'GSTIN: ${c.customerGstin}',
       if (p != null && p.address != null && p.address!.isNotEmpty) p.address!,
-      if (p?.phone != null && p!.phone!.isNotEmpty) 'Ph: ${p.phone}',
+      if (p?.phoneNumber != null && p!.phoneNumber!.isNotEmpty) 'Ph: ${p.phoneNumber}',
       if (c.placeOfSupply != null && c.placeOfSupply!.isNotEmpty)
         'Place of Supply: ${c.placeOfSupply}',
     ];
@@ -371,7 +371,7 @@ class DeliveryChallanPdfService {
     if (c.distanceKm != null)
       items['Distance'] = '${c.distanceKm} km';
     if (c.dispatchDate != null)
-      items['Dispatch Date'] = DateFormatter.formatDisplay(c.dispatchDate!);
+      items['Dispatch Date'] = DateFormatter.formatFull(c.dispatchDate!);
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),

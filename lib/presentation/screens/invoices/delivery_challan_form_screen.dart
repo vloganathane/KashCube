@@ -816,8 +816,8 @@ class _DateField extends StatelessWidget {
           ),
           controller: TextEditingController(
             text: value != null
-                ? DateFormatter.formatDisplay(value!)
-                : (optional ? '' : DateFormatter.formatDisplay(DateTime.now())),
+                ? DateFormatter.formatFull(value!)
+                : (optional ? '' : DateFormatter.formatFull(DateTime.now())),
           ),
           validator: optional
               ? null

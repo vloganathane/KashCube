@@ -34,15 +34,15 @@ class ChallansNotifier
   Future<void> invalidate() => _load();
 
   Future<DeliveryChallan> add(DeliveryChallan challan) async {
-    final created = await _repo.insert(challan);
+    final id = await _repo.insert(challan, challan.items);
     await _load();
-    return created;
+    return challan.copyWith(id: id);
   }
 
   Future<DeliveryChallan> edit(DeliveryChallan challan) async {
-    final updated = await _repo.update(challan);
+    await _repo.update(challan, challan.items);
     await _load();
-    return updated;
+    return challan;
   }
 
   Future<void> remove(int id) async {

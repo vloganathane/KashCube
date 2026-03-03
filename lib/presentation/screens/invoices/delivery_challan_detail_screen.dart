@@ -453,7 +453,7 @@ class _InfoCard extends StatelessWidget {
             _Row('Challan No.', challan.challanNo),
             _Row('Customer', challan.customerName),
             _Row('Date',
-                DateFormatter.formatDisplay(challan.challanDate)),
+                DateFormatter.formatFull(challan.challanDate)),
             _Row('Purpose', challan.purpose.label),
             if (challan.customerGstin != null &&
                 challan.customerGstin!.isNotEmpty)
@@ -463,10 +463,10 @@ class _InfoCard extends StatelessWidget {
               _Row('Place of Supply', challan.placeOfSupply!),
             if (challan.dispatchDate != null)
               _Row('Dispatched On',
-                  DateFormatter.formatDisplay(challan.dispatchDate!)),
+                  DateFormatter.formatFull(challan.dispatchDate!)),
             if (challan.expectedReturnDate != null)
               _Row('Expected Return',
-                  DateFormatter.formatDisplay(challan.expectedReturnDate!)),
+                  DateFormatter.formatFull(challan.expectedReturnDate!)),
             if (challan.ewbNo != null && challan.ewbNo!.isNotEmpty)
               _Row('EWB No.', challan.ewbNo!),
           ],

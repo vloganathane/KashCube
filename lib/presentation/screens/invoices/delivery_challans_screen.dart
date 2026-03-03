@@ -195,7 +195,7 @@ class _ChallanCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      DateFormatter.formatDisplay(challan.challanDate),
+                      DateFormatter.formatFull(challan.challanDate),
                       style: context.textTheme.bodySmall?.copyWith(
                         color: colors.outline,
                       ),

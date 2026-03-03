@@ -187,27 +187,12 @@ class _InvoiceTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          // Draft invoices are editable, others are view-only
-          if (invoice.status == InvoiceStatus.draft) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => QuoteBuilderScreen(
-                  invoiceId: invoice.id!,
-                  docType: DocumentType.invoice,
-                ),
-              ),
-            ).then((_) => ref.invalidate(invoicesProvider));
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
-              ),
-            ).then((_) => ref.invalidate(invoicesProvider));
-          }
-        },
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+          ),
+        ).then((_) => ref.invalidate(invoicesProvider)),
         onLongPress: () => _confirmDelete(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),

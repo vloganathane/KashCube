@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
@@ -730,6 +732,19 @@ class DatabaseHelper {
       )
     ''');
     await _seedUnitTypes(db);
+
+    // hsn_master: offline HSN + SAC code lookup (DB v35)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS hsn_master (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        code        TEXT NOT NULL,
+        description TEXT NOT NULL,
+        type        TEXT NOT NULL DEFAULT 'HSN'
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)');
+    await _seedHsnMaster(db);
 
     // Seed default categories + default accounts
     await _seedCategories(db);
@@ -1562,6 +1577,91 @@ class DatabaseHelper {
         'description': 'GST Phase C1: irn/irn_ack_no/irn_ack_date/qr_code_data on invoices (e-Invoice placeholders)',
       });
     }
+
+    if (oldVersion < 35) {
+      // Offline HSN + SAC code lookup master table (seeded from bundled CSVs).
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS hsn_master (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          code        TEXT NOT NULL,
+          description TEXT NOT NULL,
+          type        TEXT NOT NULL DEFAULT 'HSN'
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)');
+      await _seedHsnMaster(db);
+      await db.insert('schema_version', {
+        'version': 35,
+        'description': 'HSN/SAC master table seeded from bundled CBIC CSVs',
+      });
+    }
+  }
+
+  /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
+  ///
+  /// Uses a single transaction with batch inserts for performance.
+  /// Each CSV has columns: CODE,DESCRIPTION  (header row skipped).
+  /// Re-entrant: uses [ConflictAlgorithm.ignore] so rows are never duplicated.
+  Future<void> _seedHsnMaster(Database db) async {
+    debugPrint('[DB] Seeding hsn_master from bundled CSVs…');
+    const assets = [
+      ('assets/hns_sac/HSN_SAC - HSN_MSTR.csv', 'HSN'),
+      ('assets/hns_sac/HSN_SAC - SAC_MSTR.csv', 'SAC'),
+    ];
+
+    await db.transaction((txn) async {
+      for (final (assetPath, type) in assets) {
+        late String raw;
+        try {
+          raw = await rootBundle.loadString(assetPath);
+        } catch (e) {
+          debugPrint('[DB] Could not load $assetPath: $e');
+          continue;
+        }
+
+        final lines = const LineSplitter().convert(raw);
+        final batch = txn.batch();
+        var inserted = 0;
+
+        for (var i = 1; i < lines.length; i++) {
+          final line = lines[i].trim();
+          if (line.isEmpty) continue;
+
+          // Handle CSV: code is always first field; description may be quoted.
+          String code;
+          String desc;
+          if (line.startsWith('"')) {
+            // Entire line is a quoted field — malformed; skip.
+            continue;
+          } else if (line.contains(',')) {
+            final firstComma = line.indexOf(',');
+            code = line.substring(0, firstComma).trim();
+            var rest = line.substring(firstComma + 1).trim();
+            // Strip surrounding quotes from description if present.
+            if (rest.startsWith('"') && rest.endsWith('"')) {
+              rest = rest.substring(1, rest.length - 1)
+                  .replaceAll('""', '"');
+            }
+            desc = rest;
+          } else {
+            continue;
+          }
+
+          if (code.isEmpty || desc.isEmpty) continue;
+
+          batch.insert(
+            'hsn_master',
+            {'code': code, 'description': desc, 'type': type},
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+          inserted++;
+        }
+
+        await batch.commit(noResult: true);
+        debugPrint('[DB] hsn_master: inserted $inserted $type rows');
+      }
+    });
   }
 
   /// Inserts fiscal-year defaults into the settings table.

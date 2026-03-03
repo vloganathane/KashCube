@@ -86,6 +86,8 @@ flutter:
   assets:
     - assets/logo.png
     - assets/logo-white.png
+    - assets/hns_sac/HSN_SAC - HSN_MSTR.csv
+    - assets/hns_sac/HSN_SAC - SAC_MSTR.csv
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:

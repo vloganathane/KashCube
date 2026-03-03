@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/hsn_entry.dart';
 import '../../../data/models/item_catalog.dart';
+import '../../../data/services/hsn_search_service.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/unit_type_provider.dart';
 
@@ -536,12 +538,12 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xs),
-                        TextFormField(
-                          controller: _hsnCtrl,
-                          decoration: InputDecoration(
-                            labelText: '$_hsnOrSac Code',
-                            border: const OutlineInputBorder(),
-                          ),
+                        _HsnSearchField(
+                          type: _hsnOrSac,
+                          initialCode: _hsnCtrl.text,
+                          onSelected: (entry) => setState(() {
+                            _hsnCtrl.text = entry.code;
+                          }),
                         ),
                       ],
                     ),
@@ -766,6 +768,127 @@ Future<void> showAddItemSheet(BuildContext context, WidgetRef ref) {
   );
 }
 
+// ── HSN / SAC Search Field ───────────────────────────────────────────────────
+
+/// Autocomplete text field that searches [hsn_master] as the user types.
+///
+/// On selection the [onSelected] callback receives the chosen [HsnEntry].
+/// The field always shows the [initialCode] as its starting text.
+class _HsnSearchField extends StatefulWidget {
+  const _HsnSearchField({
+    required this.type,
+    required this.onSelected,
+    this.initialCode = '',
+  });
+
+  /// 'HSN' or 'SAC'
+  final String type;
+  final ValueChanged<HsnEntry> onSelected;
+  final String initialCode;
+
+  @override
+  State<_HsnSearchField> createState() => _HsnSearchFieldState();
+}
+
+class _HsnSearchFieldState extends State<_HsnSearchField> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialCode);
+  }
+
+  @override
+  void didUpdateWidget(_HsnSearchField old) {
+    super.didUpdateWidget(old);
+    // When the HSN/SAC toggle changes, clear the field.
+    if (old.type != widget.type) {
+      _ctrl.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<HsnEntry>(
+      initialValue: TextEditingValue(text: widget.initialCode),
+      optionsBuilder: (textEditingValue) async {
+        final q = textEditingValue.text.trim();
+        if (q.isEmpty) return [];
+        return HsnSearchService.instance
+            .search(q, type: widget.type);
+      },
+      displayStringForOption: (e) => e.code,
+      fieldViewBuilder: (context, ctrl, focusNode, onSubmit) =>
+          TextFormField(
+            controller: ctrl,
+            focusNode: focusNode,
+            onFieldSubmitted: (_) => onSubmit(),
+            decoration: InputDecoration(
+              labelText: '${widget.type} Code',
+              border: const OutlineInputBorder(),
+              suffixIcon: ctrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        ctrl.clear();
+                        // Propagate empty selection back to parent.
+                        widget.onSelected(
+                          HsnEntry(
+                            code: '',
+                            description: '',
+                            isSac: widget.type == 'SAC',
+                          ),
+                        );
+                      },
+                    )
+                  : null,
+            ),
+          ),
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240, maxWidth: 320),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final entry = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      entry.code,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      entry.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => onSelected(entry),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      onSelected: widget.onSelected,
+    );
+  }
+}
+
 // ── Unit Dropdown ─────────────────────────────────────────────────────────────
 
 /// Dropdown that lists managed unit types from [unitTypesProvider].
@@ -802,6 +925,7 @@ class _UnitDropdown extends ConsumerWidget {
     return DropdownButtonFormField<String>(
       key: ValueKey(safeValue),
       initialValue: safeValue,
+      isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Unit',
         border: OutlineInputBorder(),

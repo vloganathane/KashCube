@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
@@ -188,13 +186,9 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     try {
       final business = ref.read(activeBusinessProvider);
       final party = quote.customerPartyId != null
-          ? ref
-              .read(partiesProvider)
-              .whenOrNull(data: (list) => list)
-              ?.where((p) => p.id == quote.customerPartyId)
-              .firstOrNull
+          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
           : null;
-      final tc = ref.read(settingsProvider).termsAndConditions;
+      final tc = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         quote,
         business: business,
@@ -218,13 +212,9 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     try {
       final business = ref.read(activeBusinessProvider);
       final party = quote.customerPartyId != null
-          ? ref
-              .read(partiesProvider)
-              .whenOrNull(data: (list) => list)
-              ?.where((p) => p.id == quote.customerPartyId)
-              .firstOrNull
+          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
           : null;
-      final tc = ref.read(settingsProvider).termsAndConditions;
+      final tc = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         quote,
         business: business,
@@ -232,11 +222,15 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         termsAndConditions: tc,
       );
       if (!mounted) return;
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(pdfFile.path)],
-          text: 'Quote ${quote.quoteNo} from ${business?.name ?? ''}',
-        ),
+      final due = quote.validUntil;
+      final message = 'Hi ${quote.customerName},\n\n'
+          'Quote ${quote.quoteNo} for ${CurrencyFormatter.format(quote.total)}'
+          '${due != null ? '\nValid till ${DateFormatter.formatFull(due)}' : ''}'
+          '\n\n— ${business?.name ?? 'My Business'}';
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        subject: 'Quote ${quote.quoteNo}',
+        text: message,
       );
     } catch (e) {
       if (!mounted) return;

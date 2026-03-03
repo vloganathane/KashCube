@@ -1,12 +1,14 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/gstin_validator.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../providers/business_provider.dart';
@@ -171,7 +173,7 @@ class _BusinessTile extends StatelessWidget {
                 if (business.phone != null && business.phone!.isNotEmpty)
                   _Badge(
                       icon: Icons.phone_outlined,
-                      label: business.phone!),
+                      label: '+91 ${business.phone!}'),
                 if (business.gstNo != null && business.gstNo!.isNotEmpty)
                   _Badge(
                       icon: Icons.receipt_outlined,
@@ -193,7 +195,7 @@ class _BusinessTile extends StatelessWidget {
                     (business.ownerName?.isNotEmpty ?? false)
                         ? business.ownerName!
                         : business.name,
-                subtitle: business.phone ?? business.email,
+                subtitle: PhoneUtils.formatDisplay(business.phone) ?? business.email,
               ),
             ),
             PopupMenuButton<String>(
@@ -364,7 +366,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       city: nullIfEmpty(_city),
       state: nullIfEmpty(_state),
       pincode: nullIfEmpty(_pincode),
-      phone: nullIfEmpty(_phone),
+      phone: PhoneUtils.normalize(_phone.text),
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
       logoPath: _logoPath,
@@ -470,10 +472,14 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _phone,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly
+                      ],
                       decoration: const InputDecoration(
                         labelText: 'Phone',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.phone_outlined),
+                        prefixText: '+91 ',
                       ),
                       keyboardType: TextInputType.phone,
                     ),

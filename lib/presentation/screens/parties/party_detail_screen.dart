@@ -18,6 +18,7 @@ import '../../providers/booking_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 import '../../../core/utils/vcard_builder.dart';
+import '../../../core/utils/phone_utils.dart';
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -153,7 +154,7 @@ class PartyDetailScreen extends ConsumerWidget {
               context,
               vcard: vCardFromParty(party),
               displayName: party.name,
-              subtitle: party.phoneNumber ?? party.email,
+              subtitle: PhoneUtils.formatDisplay(party.phoneNumber) ?? party.email,
             ),
           ),
           IconButton(

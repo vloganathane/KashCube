@@ -6,11 +6,13 @@ library;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/image_compressor.dart';
+import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/indian_state_dropdown.dart';
@@ -125,7 +127,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       final repo = ref.read(settingsRepositoryProvider);
       await Future.wait([
         _saveOrRemove(repo, SettingsKeys.ownerName,          _name.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalPhone,      _phone.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalPhone,      PhoneUtils.normalize(_phone.text) ?? ''),
         _saveOrRemove(repo, SettingsKeys.personalEmail,      _email.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalAddress,    _address.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalCity,       _city.text.trim()),
@@ -169,7 +171,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       context,
       vcard: vcard,
       displayName: _name.text.trim().isEmpty ? 'My Card' : _name.text.trim(),
-      subtitle: _phone.text.trim().isEmpty ? _email.text.trim() : _phone.text.trim(),
+      subtitle: PhoneUtils.formatDisplay(_phone.text.trim()) ?? _email.text.trim(),
     );
   }
 
@@ -229,11 +231,15 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                       Expanded(
                         child: TextFormField(
                           controller: _phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
                           decoration: const InputDecoration(
                             labelText: 'Phone',
                             hintText: '9876543210',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.phone_outlined),
+                            prefixText: '+91 ',
                           ),
                           keyboardType: TextInputType.phone,
                         ),

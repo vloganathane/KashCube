@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
 import '../../core/utils/gstin_validator.dart';
+import '../../core/utils/phone_utils.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
@@ -535,7 +536,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     final party = Party(
       id: existing?.id,
       name: _name.text.trim(),
-      phoneNumber: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+      phoneNumber: PhoneUtils.normalize(_phone.text),
       email: _email.text.trim().isEmpty ? null : _email.text.trim(),
       gstin: _gstin.text.trim().isEmpty ? null : _gstin.text.trim(),
       address: _address.text.trim().isEmpty ? null : _address.text.trim(),

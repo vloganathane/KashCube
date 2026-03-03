@@ -258,7 +258,7 @@ class _PartyTile extends StatelessWidget {
                     size: 12,
                     color: Theme.of(context).colorScheme.outline),
                 const SizedBox(width: 2),
-                Text(party.phoneNumber!,
+                Text('+91 ${party.phoneNumber!}',
                     style: Theme.of(context).textTheme.bodySmall),
               ],
             ],

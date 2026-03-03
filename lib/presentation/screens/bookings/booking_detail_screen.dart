@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/phone_utils.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
@@ -315,10 +316,8 @@ class _BookingDetailView extends ConsumerWidget {
     if (phone == null || phone.isEmpty) return; // No phone — skip silently
 
     final message = _buildConfirmationMessage();
-    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-    final uri = Uri.parse(
-      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
-    );
+    final uri = PhoneUtils.waUri(phone, message: message);
+    if (uri == null) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }

@@ -364,7 +364,7 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                         ),
                         title: Text(party.name),
                         subtitle: party.phoneNumber != null
-                            ? Text(party.phoneNumber!)
+                            ? Text('+91 ${party.phoneNumber!}')
                             : null,
                         trailing: _TypeBadge(
                             label: party.partyType.label, color: tc),

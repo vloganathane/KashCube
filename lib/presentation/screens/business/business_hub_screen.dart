@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../providers/booking_provider.dart';
+import '../../providers/invoice_provider.dart';
+import '../../providers/report_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
+import '../reports/reports_screen.dart';
 
 /// Business hub — top-level entry point for all business-related screens.
 /// Accessible from the bottom nav "Business" tab.
-class BusinessHubScreen extends StatelessWidget {
+class BusinessHubScreen extends ConsumerWidget {
   const BusinessHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final now = DateTime.now();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Business'),
@@ -28,7 +35,18 @@ class BusinessHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.inventory_2_outlined,
                 label: 'Item Catalog',
-                subtitle: 'Products & services',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text = r.watch(catalogProvider).whenOrNull(
+                              data: (list) =>
+                                  '${list.length} item${list.length == 1 ? '' : 's'}',
+                            ) ??
+                        'Products & services';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -44,7 +62,18 @@ class BusinessHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.receipt_long_outlined,
                 label: 'Invoices & Quotes',
-                subtitle: 'Raise & track invoices',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final summary = r.watch(overdueInvoicesSummaryProvider);
+                    final text = (summary != null && summary.count > 0)
+                        ? '${summary.count} unpaid'
+                            ' · ${CurrencyFormatter.formatCompact(summary.totalDue)} due'
+                        : 'Raise & track invoices';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFF0D47A1),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -54,7 +83,7 @@ class BusinessHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.payments_outlined,
                 label: 'Payables',
-                subtitle: 'Supplier & vendor dues',
+                subtitle: const _StaticSubtitle('Supplier & vendor dues'),
                 color: const Color(0xFFE65100),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -66,12 +95,53 @@ class BusinessHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.calendar_month_outlined,
                 label: 'Bookings',
-                subtitle: 'Appointments & services',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final stats = r.watch(bookingMonthStatsProvider(now));
+                    final text = stats.hasData
+                        ? '${stats.confirmedCount + stats.pendingCount} upcoming'
+                            ' · ${CurrencyFormatter.formatCompact(stats.completedRevenue)} earned'
+                        : 'Appointments & services';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFF4A148C),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const BookingsScreen()),
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Insights',
+            tiles: [
+              _HubTile(
+                icon: Icons.trending_up_outlined,
+                label: 'Business Reports',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text = r.watch(fyPnLProvider).whenOrNull(
+                              data: (p) =>
+                                  'Rev ${CurrencyFormatter.formatCompact(p.totalIncome)}'
+                                  ' · Net ${CurrencyFormatter.formatCompact(p.netProfitLoss)} this FY',
+                            ) ??
+                        'Full fiscal year P&L';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF1565C0),
+                onTap: () {
+                  ref.read(reportPeriodModeProvider.notifier).state = 'this_fy';
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                  );
+                },
               ),
             ],
           ),
@@ -136,7 +206,7 @@ class _HubTile extends StatelessWidget {
   });
   final IconData icon;
   final String label;
-  final String subtitle;
+  final Widget subtitle;
   final Color color;
   final VoidCallback onTap;
 
@@ -156,14 +226,24 @@ class _HubTile extends StatelessWidget {
       title: Text(label,
           style: context.textTheme.bodyMedium
               ?.copyWith(fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle,
-          style: context.textTheme.bodySmall
-              ?.copyWith(color: context.colorScheme.outline)),
+      subtitle: subtitle,
       trailing: Icon(Icons.chevron_right,
           color: context.colorScheme.outlineVariant),
       contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.base, vertical: AppSpacing.xs),
     );
+  }
+}
+
+class _StaticSubtitle extends StatelessWidget {
+  const _StaticSubtitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text,
+        style: context.textTheme.bodySmall
+            ?.copyWith(color: context.colorScheme.outline));
   }
 }
 

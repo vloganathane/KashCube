@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../providers/budget_provider.dart';
+import '../../providers/dashboard_provider.dart';
+import '../../providers/loan_provider.dart';
+import '../../providers/party_provider.dart';
+import '../../providers/recurring_provider.dart';
+import '../../providers/report_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
+import '../recurring/recurring_transactions_screen.dart';
+import '../reports/budget_screen.dart';
+import '../reports/reports_screen.dart';
 import 'category_management_screen.dart';
 import 'transactions_screen.dart';
 
 /// Transactions hub — entry point for all money-movement screens.
-class TransactionsHubScreen extends StatelessWidget {
+class TransactionsHubScreen extends ConsumerWidget {
   const TransactionsHubScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transactions'),
@@ -28,7 +39,20 @@ class TransactionsHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.receipt_long_outlined,
                 label: 'Transactions',
-                subtitle: 'All income & expenses',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text =
+                        r.watch(dashboardSummaryProvider).whenOrNull(
+                              data: (s) =>
+                                  '${CurrencyFormatter.formatCompact(s.totalIncome)} in'
+                                  ' · ${CurrencyFormatter.formatCompact(s.totalExpense)} out',
+                            ) ??
+                        'All income & expenses';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -39,7 +63,18 @@ class TransactionsHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.menu_book_outlined,
                 label: 'Ledger',
-                subtitle: 'Party-wise account book',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text = r.watch(partiesProvider).whenOrNull(
+                              data: (list) =>
+                                  '${list.length} ${list.length == 1 ? 'party' : 'parties'}',
+                            ) ??
+                        'Party-wise account book';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFF006064),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -56,7 +91,8 @@ class TransactionsHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.payments_outlined,
                 label: 'Bills Payable',
-                subtitle: 'Personal dues & subscriptions',
+                subtitle:
+                    const _StaticSubtitle('Personal dues & subscriptions'),
                 color: const Color(0xFF6A1B9A),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -75,7 +111,21 @@ class TransactionsHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.account_balance_wallet_outlined,
                 label: 'Loans & Credits',
-                subtitle: 'Lent, borrowed & udhar',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final lentAmt =
+                        r.watch(totalPendingLentProvider).valueOrNull;
+                    final borrAmt =
+                        r.watch(totalPendingBorrowedProvider).valueOrNull;
+                    final text = (lentAmt != null || borrAmt != null)
+                        ? '${CurrencyFormatter.formatCompact(lentAmt ?? 0)} lent'
+                            ' · ${CurrencyFormatter.formatCompact(borrAmt ?? 0)} owed'
+                        : 'Lent, borrowed & udhar';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
                 color: const Color(0xFFE65100),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -92,11 +142,92 @@ class TransactionsHubScreen extends StatelessWidget {
               _HubTile(
                 icon: Icons.category_outlined,
                 label: 'Categories',
-                subtitle: 'View & manage transaction categories',
+                subtitle: const _StaticSubtitle(
+                    'View & manage transaction categories'),
                 color: const Color(0xFF00695C),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const CategoryManagementScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Reports',
+            tiles: [
+              _HubTile(
+                icon: Icons.bar_chart_outlined,
+                label: 'P&L & Analytics',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text =
+                        r.watch(dashboardSummaryProvider).whenOrNull(
+                              data: (s) =>
+                                  'Net ${CurrencyFormatter.formatCompact(s.balance)} this month',
+                            ) ??
+                        'Income vs expense analysis';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF1565C0),
+                onTap: () {
+                  ref.read(reportPeriodModeProvider.notifier).state = 'month';
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                  );
+                },
+              ),
+              _HubTile(
+                icon: Icons.donut_large_outlined,
+                label: 'Budgets',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text =
+                        r.watch(currentMonthBudgetsProvider).whenOrNull(
+                              data: (list) => list.isEmpty
+                                  ? 'No budgets set'
+                                  : '${list.length} budget${list.length == 1 ? '' : 's'} active',
+                            ) ??
+                        'Monthly spend limits';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF6A1B9A),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.repeat_outlined,
+                label: 'Recurring',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final text =
+                        r.watch(recurringTransactionsProvider).whenOrNull(
+                              data: (list) {
+                                final active =
+                                    list.where((t) => t.isActive).length;
+                                return active == 0
+                                    ? 'No active rules'
+                                    : '$active active rule${active == 1 ? '' : 's'}';
+                              },
+                            ) ??
+                        'Auto-scheduled transactions';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF00695C),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const RecurringTransactionsScreen(),
                   ),
                 ),
               ),
@@ -163,7 +294,7 @@ class _HubTile extends StatelessWidget {
   });
   final IconData icon;
   final String label;
-  final String subtitle;
+  final Widget subtitle;
   final Color color;
   final VoidCallback onTap;
 
@@ -183,13 +314,23 @@ class _HubTile extends StatelessWidget {
       title: Text(label,
           style: context.textTheme.bodyMedium
               ?.copyWith(fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle,
-          style: context.textTheme.bodySmall
-              ?.copyWith(color: context.colorScheme.outline)),
+      subtitle: subtitle,
       trailing: Icon(Icons.chevron_right,
           color: context.colorScheme.outlineVariant),
       contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.base, vertical: AppSpacing.xs),
     );
+  }
+}
+
+class _StaticSubtitle extends StatelessWidget {
+  const _StaticSubtitle(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(text,
+        style: context.textTheme.bodySmall
+            ?.copyWith(color: context.colorScheme.outline));
   }
 }

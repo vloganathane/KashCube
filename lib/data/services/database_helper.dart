@@ -1486,6 +1486,7 @@ class DatabaseHelper {
       await db.execute('''
         CREATE TABLE IF NOT EXISTS unit_types (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT,
           label TEXT NOT NULL UNIQUE,
           is_system INTEGER NOT NULL DEFAULT 0,
           sort_order INTEGER NOT NULL DEFAULT 0
@@ -1728,6 +1729,13 @@ class DatabaseHelper {
   /// Non-GST units: software / time / specialty (use OTH on e-way bill).
   /// Uses [ConflictAlgorithm.ignore] so re-running on upgrades is safe.
   Future<void> _seedUnitTypes(Database db) async {
+    // Ensure the `code` column exists — it was added to the _onCreate schema
+    // later than the v28 migration DDL. Silently ignored if already present.
+    try {
+      await db.execute('ALTER TABLE unit_types ADD COLUMN code TEXT');
+    } catch (_) {
+      // Column already exists — ignore.
+    }
     // [code, label, sortOrder] — code is null for non-GST units
     const units = <List<Object?>>[
       // ── Count / Quantity ────────────────────────────────

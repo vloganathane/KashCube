@@ -10,6 +10,8 @@ class Business extends Equatable {
     this.city,
     this.state,
     this.pincode,
+    this.country,
+    this.dialCode,
     this.phone,
     this.email,
     this.gstNo,
@@ -30,6 +32,10 @@ class Business extends Equatable {
   final String? city;
   final String? state;
   final String? pincode;
+  /// Country name (e.g. 'India', 'United Arab Emirates'). Null means India.
+  final String? country;
+  /// Dial code digits without '+' (e.g. '91', '971'). Null means '91' (India).
+  final String? dialCode;
   final String? phone;
   final String? email;
   final String? gstNo;
@@ -57,6 +63,7 @@ class Business extends Equatable {
       if (city != null && city!.isNotEmpty) city!,
       if (state != null && state!.isNotEmpty) state!,
       if (pincode != null && pincode!.isNotEmpty) pincode!,
+      if (country != null && country!.isNotEmpty && country != 'India') country!,
     ];
     return parts.join(', ');
   }
@@ -68,6 +75,8 @@ class Business extends Equatable {
     String? city,
     String? state,
     String? pincode,
+    String? country,
+    String? dialCode,
     String? phone,
     String? email,
     String? gstNo,
@@ -88,6 +97,8 @@ class Business extends Equatable {
         city: city ?? this.city,
         state: state ?? this.state,
         pincode: pincode ?? this.pincode,
+        country: country ?? this.country,
+        dialCode: dialCode ?? this.dialCode,
         phone: phone ?? this.phone,
         email: email ?? this.email,
         gstNo: gstNo ?? this.gstNo,
@@ -109,6 +120,8 @@ class Business extends Equatable {
         'city': city,
         'state': state,
         'pincode': pincode,
+        'country': country,
+        'dial_code': dialCode,
         'phone': phone,
         'email': email,
         'gst_no': gstNo,
@@ -130,6 +143,8 @@ class Business extends Equatable {
         city: map['city'] as String?,
         state: map['state'] as String?,
         pincode: map['pincode'] as String?,
+        country: map['country'] as String?,
+        dialCode: map['dial_code'] as String?,
         phone: map['phone'] as String?,
         email: map['email'] as String?,
         gstNo: map['gst_no'] as String?,

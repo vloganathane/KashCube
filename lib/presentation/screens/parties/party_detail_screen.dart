@@ -154,7 +154,7 @@ class PartyDetailScreen extends ConsumerWidget {
               context,
               vcard: vCardFromParty(party),
               displayName: party.name,
-              subtitle: PhoneUtils.formatDisplay(party.phoneNumber) ?? party.email,
+              subtitle: PhoneUtils.formatDisplay(party.phoneNumber, dialCode: party.dialCode ?? '91') ?? party.email,
             ),
           ),
           IconButton(
@@ -338,7 +338,7 @@ class _HeaderCard extends StatelessWidget {
                 if (party.phoneNumber != null)
                   _InfoRow(
                       icon: Icons.phone_outlined,
-                      text: '+91 ${party.phoneNumber!}'),
+                      text: '+${party.dialCode ?? '91'} ${party.phoneNumber!}'),
                 if (party.email != null)
                   _InfoRow(
                       icon: Icons.email_outlined, text: party.email!),
@@ -539,19 +539,20 @@ class _ContactActions extends StatelessWidget {
             _ActionButton(
               icon: Icons.phone_outlined,
               label: 'Call',
-              onTap: () => _launch('tel:+91${party.phoneNumber}'),
+              onTap: () => _launch(
+                  PhoneUtils.telUri(party.phoneNumber, dialCode: party.dialCode ?? '91').toString()),
             ),
             _ActionButton(
               icon: Icons.message_outlined,
               label: 'SMS',
-              onTap: () =>
-                  _launch('sms:+91${party.phoneNumber}?body=Hi,'),
+              onTap: () => _launch(
+                  PhoneUtils.smsUri(party.phoneNumber, dialCode: party.dialCode ?? '91', body: 'Hi,').toString()),
             ),
             _ActionButton(
               icon: Icons.chat_outlined,
               label: 'WhatsApp',
               onTap: () => _launch(
-                  'https://wa.me/91${party.phoneNumber}?text=Hi%2C'),
+                  PhoneUtils.waUri(party.phoneNumber, dialCode: party.dialCode ?? '91', message: 'Hi,').toString()),
             ),
           ],
           if (party.email != null)

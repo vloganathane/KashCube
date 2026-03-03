@@ -1670,6 +1670,18 @@ class DatabaseHelper {
         'description': 'Freight, insurance, packing charges on invoices and quotes (CBIC Rule 46)',
       });
     }
+
+    if (oldVersion < 38) {
+      // Country + dial code for international party / business support.
+      await db.execute('ALTER TABLE parties ADD COLUMN country TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN dial_code TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN country TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN dial_code TEXT');
+      await db.insert('schema_version', {
+        'version': 38,
+        'description': 'Country and dial code for international customers/vendors (parties + businesses)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

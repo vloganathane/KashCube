@@ -12,9 +12,12 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/image_compressor.dart';
+import 'package:world_countries/world_countries.dart';
+
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/country_picker_field.dart';
 import '../../widgets/indian_state_dropdown.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 
@@ -44,6 +47,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   String? _photoPath;
   bool _loading = true;
   bool _saving = false;
+  WorldCountry? _selectedCountry; // null = India (default)
+  String _dialCode = '91';
 
   @override
   void initState() {
@@ -89,6 +94,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       repo.get(SettingsKeys.personalLinkedin),
       repo.get(SettingsKeys.personalInstagram),
       repo.get(SettingsKeys.personalPhotoPath),
+      repo.get(SettingsKeys.personalCountry),
+      repo.get(SettingsKeys.personalDialCode),
     ]);
     if (!mounted) return;
     _name.text      = vals[0] ?? '';
@@ -103,6 +110,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     _linkedin.text  = vals[9] ?? '';
     _instagram.text = vals[10] ?? '';
     _photoPath      = vals[11];
+    if (vals[12] != null) _selectedCountry = countryByName(vals[12]);
+    _dialCode = vals[13] ?? '91';
     setState(() => _loading = false);
   }
 
@@ -133,6 +142,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
         _saveOrRemove(repo, SettingsKeys.personalCity,       _city.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalState,      _state.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalPincode,    _pincode.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalCountry,    _selectedCountry?.name.common ?? ''),
+        _saveOrRemove(repo, SettingsKeys.personalDialCode,   _selectedCountry != null ? _dialCode : ''),
         _saveOrRemove(repo, SettingsKeys.personalWebsite,    _website.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalWhatsapp,   _whatsapp.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalLinkedin,   _linkedin.text.trim()),
@@ -171,7 +182,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       context,
       vcard: vcard,
       displayName: _name.text.trim().isEmpty ? 'My Card' : _name.text.trim(),
-      subtitle: PhoneUtils.formatDisplay(_phone.text.trim()) ?? _email.text.trim(),
+      subtitle: PhoneUtils.formatDisplay(_phone.text.trim(), dialCode: _dialCode) ?? _email.text.trim(),
     );
   }
 
@@ -234,12 +245,12 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly
                           ],
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Phone',
                             hintText: '9876543210',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.phone_outlined),
-                            prefixText: '+91 ',
+                            border: const OutlineInputBorder(),
+                            prefixIcon: const Icon(Icons.phone_outlined),
+                            prefixText: '+$_dialCode ',
                           ),
                           keyboardType: TextInputType.phone,
                         ),
@@ -291,7 +302,17 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         flex: 3,
-                        child: IndianStateDropdown(controller: _state),
+                        child: (_selectedCountry == null ||
+                                _selectedCountry!.name.common == 'India')
+                            ? IndianStateDropdown(controller: _state)
+                            : TextFormField(
+                                controller: _state,
+                                textCapitalization: TextCapitalization.words,
+                                decoration: const InputDecoration(
+                                  labelText: 'State / Province',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -299,13 +320,26 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                         child: TextFormField(
                           controller: _pincode,
                           decoration: const InputDecoration(
-                            labelText: 'Pincode',
+                            labelText: 'Postcode',
                             border: OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // ── Country ────────────────────────────────────────────────
+                  CountryPickerField(
+                    selectedCountry: _selectedCountry,
+                    onChanged: (country) {
+                      setState(() {
+                        _selectedCountry = country;
+                        _dialCode = dialCodeFor(country);
+                        if (country.name.common != 'India') _state.clear();
+                      });
+                    },
                   ),
                   const SizedBox(height: AppSpacing.sm),
 

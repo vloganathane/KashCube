@@ -8,10 +8,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/gstin_validator.dart';
 import '../../../core/utils/image_compressor.dart';
+import 'package:world_countries/world_countries.dart';
+
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../providers/business_provider.dart';
+import '../../widgets/country_picker_field.dart';
 import '../../widgets/indian_state_dropdown.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 
@@ -195,7 +198,7 @@ class _BusinessTile extends StatelessWidget {
                     (business.ownerName?.isNotEmpty ?? false)
                         ? business.ownerName!
                         : business.name,
-                subtitle: PhoneUtils.formatDisplay(business.phone) ?? business.email,
+                subtitle: PhoneUtils.formatDisplay(business.phone, dialCode: business.dialCode ?? '91') ?? business.email,
               ),
             ),
             PopupMenuButton<String>(
@@ -296,6 +299,8 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
   bool _setActive = false;
   bool _saving = false;
   bool _onlineExpanded = false;
+  WorldCountry? _selectedCountry; // null = India (default)
+  String _dialCode = '91';
 
   @override
   void initState() {
@@ -316,6 +321,9 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
     _instagram = TextEditingController(text: b?.instagram ?? '');
     _logoPath = b?.logoPath;
     _setActive = b?.isActive ?? false;
+    // Country & dial code — load from existing business if set
+    if (b?.country != null) _selectedCountry = countryByName(b!.country);
+    _dialCode = b?.dialCode ?? '91';
     // Expand online presence if any field is pre-populated
     _onlineExpanded = (b?.website ?? '').isNotEmpty ||
         (b?.whatsapp ?? '').isNotEmpty ||
@@ -366,7 +374,9 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       city: nullIfEmpty(_city),
       state: nullIfEmpty(_state),
       pincode: nullIfEmpty(_pincode),
-      phone: PhoneUtils.normalize(_phone.text),
+      country: _selectedCountry?.name.common,
+      dialCode: _selectedCountry != null ? _dialCode : null,
+      phone: PhoneUtils.normalize(_phone.text, dialCode: _dialCode),
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
       logoPath: _logoPath,
@@ -475,11 +485,11 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly
                       ],
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Phone',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone_outlined),
-                        prefixText: '+91 ',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        prefixText: '+$_dialCode ',
                       ),
                       keyboardType: TextInputType.phone,
                     ),
@@ -530,7 +540,17 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
-                    child: IndianStateDropdown(controller: _state),
+                    child: (_selectedCountry == null ||
+                            _selectedCountry!.name.common == 'India')
+                        ? IndianStateDropdown(controller: _state)
+                        : TextFormField(
+                            controller: _state,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'State / Province',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
@@ -538,13 +558,26 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                     child: TextFormField(
                       controller: _pincode,
                       decoration: const InputDecoration(
-                        labelText: 'Pincode',
+                        labelText: 'Postcode',
                         border: OutlineInputBorder(),
                       ),
                       keyboardType: TextInputType.number,
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // Country
+              CountryPickerField(
+                selectedCountry: _selectedCountry,
+                onChanged: (country) {
+                  setState(() {
+                    _selectedCountry = country;
+                    _dialCode = dialCodeFor(country);
+                    if (country.name.common != 'India') _state.clear();
+                  });
+                },
               ),
               const SizedBox(height: AppSpacing.sm),
 

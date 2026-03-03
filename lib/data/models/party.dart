@@ -36,6 +36,8 @@ class Party extends Equatable {
     this.city,
     this.state,
     this.pincode,
+    this.country,
+    this.dialCode,
     required this.partyType,
     this.partyContext = 'personal',
     this.totalTransactions = 0,
@@ -68,6 +70,10 @@ class Party extends Equatable {
   final String? state;
   /// Pincode — stored locally, never transmitted.
   final String? pincode;
+  /// Country name (e.g. 'India', 'United Arab Emirates'). Null means India.
+  final String? country;
+  /// Dial code digits without '+' (e.g. '91', '971'). Null means '91' (India).
+  final String? dialCode;
   final PartyType partyType;
 
   /// Whether this is a personal or business relationship.
@@ -101,6 +107,8 @@ class Party extends Equatable {
       if (city != null && city!.isNotEmpty) city!,
       if (state != null && state!.isNotEmpty) state!,
       if (pincode != null && pincode!.isNotEmpty) pincode!,
+      // Show country only when explicitly set (non-India customers/vendors)
+      if (country != null && country!.isNotEmpty && country != 'India') country!,
     ];
     return parts.isEmpty ? null : parts.join(', ');
   }
@@ -115,6 +123,8 @@ class Party extends Equatable {
     String? city,
     String? state,
     String? pincode,
+    String? country,
+    String? dialCode,
     PartyType? partyType,
     String? partyContext,
     int? totalTransactions,
@@ -142,6 +152,8 @@ class Party extends Equatable {
       city: city ?? this.city,
       state: state ?? this.state,
       pincode: pincode ?? this.pincode,
+      country: country ?? this.country,
+      dialCode: dialCode ?? this.dialCode,
       partyType: partyType ?? this.partyType,
       partyContext: partyContext ?? this.partyContext,
       totalTransactions: totalTransactions ?? this.totalTransactions,
@@ -172,6 +184,8 @@ class Party extends Equatable {
       'city': city,
       'state': state,
       'pincode': pincode,
+      'country': country,
+      'dial_code': dialCode,
       'party_type': partyType.name,
       'party_context': partyContext,
       'total_transactions': totalTransactions,
@@ -202,6 +216,8 @@ class Party extends Equatable {
       city: map['city'] as String?,
       state: map['state'] as String?,
       pincode: map['pincode'] as String?,
+      country: map['country'] as String?,
+      dialCode: map['dial_code'] as String?,
       partyType: PartyType.values.firstWhere(
         (e) => e.name == (map['party_type'] as String? ?? 'personal'),
         orElse: () => PartyType.personal,

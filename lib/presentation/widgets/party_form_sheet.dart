@@ -9,10 +9,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
 import '../../core/utils/gstin_validator.dart';
+import 'package:world_countries/world_countries.dart';
+
 import '../../core/utils/phone_utils.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../providers/settings_provider.dart';
+import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
 import 'qr_scanner_sheet.dart';
 
@@ -55,6 +58,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   late String _partyContext;
   String? _businessCardImagePath;
   bool _onlineExpanded = false;
+  WorldCountry? _selectedCountry; // null = India (default)
+  String _dialCode = '91';
 
   @override
   void initState() {
@@ -76,6 +81,11 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _type = p?.partyType ?? PartyType.personal;
     _partyContext = p?.partyContext ?? 'personal';
     _businessCardImagePath = p?.businessCardImagePath;
+    // Country & dial code — load from existing party if set
+    if (p?.country != null) {
+      _selectedCountry = countryByName(p!.country);
+    }
+    _dialCode = p?.dialCode ?? '91';
     _onlineExpanded = (p?.website ?? '').isNotEmpty ||
         (p?.whatsapp ?? '').isNotEmpty ||
         (p?.linkedin ?? '').isNotEmpty ||
@@ -238,15 +248,23 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly
                       ],
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Phone',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone_outlined),
-                        prefixText: '+91 ',
+                        border: const OutlineInputBorder(),
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        prefixText: '+$_dialCode ',
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return null;
-                        if (v.length != 10) return 'Enter 10-digit number';
+                        // India requires exactly 10 digits; allow 7-15 for other countries
+                        final isIndia = _selectedCountry == null ||
+                            _selectedCountry!.name.common == 'India';
+                        if (isIndia && v.length != 10) {
+                          return 'Enter 10-digit number';
+                        }
+                        if (!isIndia && (v.length < 7 || v.length > 15)) {
+                          return 'Enter a valid phone number';
+                        }
                         return null;
                       },
                     ),
@@ -318,7 +336,18 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     flex: 3,
-                    child: IndianStateDropdown(controller: _state),
+                    // Show IndianStateDropdown only for India; plain text for other countries
+                    child: (_selectedCountry == null ||
+                            _selectedCountry!.name.common == 'India')
+                        ? IndianStateDropdown(controller: _state)
+                        : TextFormField(
+                            controller: _state,
+                            textCapitalization: TextCapitalization.words,
+                            decoration: const InputDecoration(
+                              labelText: 'State / Province',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
@@ -327,12 +356,28 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       controller: _pincode,
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
-                        labelText: 'Pincode',
+                        labelText: 'Postcode',
                         border: OutlineInputBorder(),
                       ),
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // ── Country ───────────────────────────────────────────────
+              CountryPickerField(
+                selectedCountry: _selectedCountry,
+                onChanged: (country) {
+                  setState(() {
+                    _selectedCountry = country;
+                    _dialCode = dialCodeFor(country);
+                    // Clear state field when switching away from India
+                    if (country.name.common != 'India') {
+                      _state.clear();
+                    }
+                  });
+                },
               ),
               const SizedBox(height: AppSpacing.sm),
 
@@ -476,7 +521,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     if (parsed == null || !mounted) return;
     setState(() {
       if (parsed['name'] != null) _name.text = parsed['name']!;
-      if (parsed['phone'] != null) _phone.text = parsed['phone']!;
+      if (parsed['phone'] != null) {
+        // Normalize phone using current dial code (strips leading country prefix)
+        _phone.text = PhoneUtils.normalize(parsed['phone'], dialCode: _dialCode) ?? parsed['phone']!;
+      }
       if (parsed['email'] != null) _email.text = parsed['email']!;
       if (parsed['address'] != null) _address.text = parsed['address']!;
       if (parsed['city'] != null) _city.text = parsed['city']!;
@@ -543,6 +591,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       city: _city.text.trim().isEmpty ? null : _city.text.trim(),
       state: _state.text.trim().isEmpty ? null : _state.text.trim(),
       pincode: _pincode.text.trim().isEmpty ? null : _pincode.text.trim(),
+      country: _selectedCountry?.name.common,
+      dialCode: _selectedCountry != null ? _dialCode : null,
       partyType: _type,
       partyContext: _partyContext,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),

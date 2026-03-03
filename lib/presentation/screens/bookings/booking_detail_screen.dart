@@ -316,7 +316,7 @@ class _BookingDetailView extends ConsumerWidget {
     if (phone == null || phone.isEmpty) return; // No phone — skip silently
 
     final message = _buildConfirmationMessage();
-    final uri = PhoneUtils.waUri(phone, message: message);
+    final uri = PhoneUtils.waUri(phone, dialCode: party?.dialCode ?? '91', message: message);
     if (uri == null) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);

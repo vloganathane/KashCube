@@ -73,6 +73,9 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.4
 
+  # Country / phone-code picker — all data is bundled, zero network calls
+  world_countries: ^4.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -294,6 +294,18 @@ final quoteFromListByIdProvider = Provider.family<Quote?, int>((ref, id) {
   }
 });
 
+/// Finds the Invoice that was converted from a given Quote.
+/// Used by QuoteDetailScreen to show the linked invoice card synchronously.
+final invoiceByQuoteIdProvider = Provider.family<Invoice?, int>((ref, quoteId) {
+  final all =
+      ref.watch(invoicesProvider).whenOrNull(data: (list) => list) ?? [];
+  try {
+    return all.firstWhere((inv) => inv.quoteId == quoteId);
+  } catch (_) {
+    return null;
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Overdue invoices summary (for home screen alert)
 // ---------------------------------------------------------------------------

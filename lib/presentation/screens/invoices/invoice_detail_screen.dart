@@ -36,6 +36,7 @@ import 'delivery_challan_detail_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import 'ewb_preview_screen.dart';
 import 'quote_builder_screen.dart';
+import 'quote_detail_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
   const InvoiceDetailScreen({super.key, required this.invoiceId});
@@ -1496,7 +1497,7 @@ class _LinkedQuoteCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => QuoteBuilderScreen(quoteId: quote.id),
+            builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
           ),
         ),
         child: Padding(

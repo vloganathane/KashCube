@@ -12,6 +12,7 @@ import '../search/search_screen.dart';
 import '../../widgets/speed_dial_fab.dart';
 import 'invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
+import 'quote_detail_screen.dart';
 
 class InvoicesScreen extends ConsumerStatefulWidget {
   const InvoicesScreen({super.key});
@@ -417,7 +418,7 @@ class _QuoteTile extends ConsumerWidget {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => QuoteBuilderScreen(quoteId: quote.id),
+            builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
           ),
         ).then((_) => ref.invalidate(quotesProvider)),
         onLongPress: () => _confirmDelete(context, ref),

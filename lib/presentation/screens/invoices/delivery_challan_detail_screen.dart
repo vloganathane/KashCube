@@ -7,12 +7,11 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
-import '../../../data/repositories/delivery_challan_repository_impl.dart';
 import '../../../data/services/delivery_challan_pdf_service.dart';
 import '../../../data/services/fiscal_year_service.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
-import 'delivery_challan_form_screen.dart';
+import 'quote_builder_screen.dart';
 
 /// Detail view for a single Delivery Challan with action buttons.
 class DeliveryChallanDetailScreen extends ConsumerWidget {
@@ -200,7 +199,10 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
   Future<void> _edit() async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DeliveryChallanFormScreen(existing: challan),
+      builder: (_) => QuoteBuilderScreen(
+        docType: DocumentType.deliveryChallan,
+        challanId: challan.id,
+      ),
     ));
     ref.read(challansProvider.notifier).invalidate();
   }

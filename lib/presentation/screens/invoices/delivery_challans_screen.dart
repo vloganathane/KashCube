@@ -8,7 +8,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../providers/delivery_challan_provider.dart';
 import 'delivery_challan_detail_screen.dart';
-import 'delivery_challan_form_screen.dart';
+import 'quote_builder_screen.dart';
 
 class DeliveryChallansScreen extends ConsumerStatefulWidget {
   const DeliveryChallansScreen({super.key});
@@ -42,7 +42,9 @@ class _DeliveryChallansScreenState
         tooltip: 'New Delivery Challan',
         onPressed: () => Navigator.of(context)
             .push(MaterialPageRoute(
-              builder: (_) => const DeliveryChallanFormScreen(),
+              builder: (_) => const QuoteBuilderScreen(
+                docType: DocumentType.deliveryChallan,
+              ),
             ))
             .then((_) => ref.read(challansProvider.notifier).invalidate()),
         child: const Icon(Icons.add),

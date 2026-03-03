@@ -10,30 +10,37 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
+import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/quote.dart';
+import '../../../data/services/delivery_challan_pdf_service.dart';
+import '../../../data/services/fiscal_year_service.dart';
 import '../../../data/services/invoice_number_service.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import 'invoice_detail_screen.dart';
 import 'item_catalog_screen.dart';
 
-enum DocumentType { quote, invoice }
+enum DocumentType { quote, invoice, deliveryChallan }
 
 class QuoteBuilderScreen extends ConsumerStatefulWidget {
   const QuoteBuilderScreen({
     super.key,
     this.quoteId,
     this.invoiceId,
+    this.challanId,
     this.docType = DocumentType.quote,
   });
   final int? quoteId;
   final int? invoiceId;
+  final int? challanId;
   final DocumentType docType;
 
   @override
@@ -65,6 +72,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Quote? _existingQuote;
   Invoice? _existingInvoice;
+  DeliveryChallan? _existingChallan;
+  // DC-specific state
+  ChallanPurpose _challanPurpose = ChallanPurpose.supply;
+  DateTime _challanDate = DateTime.now();
+  DateTime? _expectedReturnDate;
+  String _transportMode = '1'; // '1'=Road, '2'=Rail, '3'=Air, '4'=Ship
+  late final TextEditingController _vehicleNoCtrl;
+  late final TextEditingController _transporterCtrl;
+  late final TextEditingController _distanceCtrl;
+  late final TextEditingController _ewbNoCtrl;
+  late final TextEditingController _custGstinCtrl;
+  late final TextEditingController _placeOfSupplyCtrl;
   bool _isSaving = false;
 
   @override
@@ -75,11 +94,24 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     _freightCtrl = TextEditingController();
     _insuranceCtrl = TextEditingController();
     _packingCtrl = TextEditingController();
+    _vehicleNoCtrl = TextEditingController();
+    _transporterCtrl = TextEditingController();
+    _distanceCtrl = TextEditingController();
+    _ewbNoCtrl = TextEditingController();
+    _custGstinCtrl = TextEditingController();
+    _placeOfSupplyCtrl = TextEditingController();
     if (widget.docType == DocumentType.invoice) {
       if (widget.invoiceId != null) {
         _loadInvoice();
       } else {
         _dueDate = DateTime.now().add(const Duration(days: 30));
+        _items.add(const _LineItem());
+        _initDocumentNumber();
+      }
+    } else if (widget.docType == DocumentType.deliveryChallan) {
+      if (widget.challanId != null) {
+        _loadChallan();
+      } else {
         _items.add(const _LineItem());
         _initDocumentNumber();
       }
@@ -96,7 +128,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   Future<void> _initDocumentNumber() async {
     final number = widget.docType == DocumentType.invoice
         ? await InvoiceNumberService.instance.nextInvoiceNo()
-        : await InvoiceNumberService.instance.nextQuoteNo();
+        : widget.docType == DocumentType.deliveryChallan
+            ? await FiscalYearService.instance.nextChallanNo()
+            : await InvoiceNumberService.instance.nextQuoteNo();
     if (mounted) {
       _documentNoCtrl.text = number;
     }
@@ -203,6 +237,45 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     });
   }
 
+  Future<void> _loadChallan() async {
+    final challan = await ref
+        .read(deliveryChallanRepositoryProvider)
+        .getById(widget.challanId!);
+    if (challan == null) return;
+    if (!mounted) return;
+    setState(() {
+      _existingChallan = challan;
+      _customerName = challan.customerName;
+      _customerCtrl.text = challan.customerName;
+      _documentNoCtrl.text = challan.challanNo;
+      _customerPartyId = challan.customerPartyId;
+      _selectedBusinessId = challan.businessId;
+      _challanDate = challan.challanDate;
+      _expectedReturnDate = challan.expectedReturnDate;
+      _challanPurpose = challan.purpose;
+      _transportMode = challan.transportMode ?? '1';
+      _vehicleNoCtrl.text = challan.vehicleNo ?? '';
+      _transporterCtrl.text = challan.transporterName ?? '';
+      _distanceCtrl.text = challan.distanceKm?.toString() ?? '';
+      _ewbNoCtrl.text = challan.ewbNo ?? '';
+      _custGstinCtrl.text = challan.customerGstin ?? '';
+      _placeOfSupplyCtrl.text = challan.placeOfSupply ?? '';
+      _notesController.text = challan.notes ?? '';
+      _items.clear();
+      _items.addAll(challan.items.map(
+        (ci) => _LineItem(
+          itemName: ci.itemName,
+          description: ci.description ?? '',
+          qty: ci.qty,
+          unitPrice: ci.unitPrice,
+          hsnCode: ci.hsnCode,
+          unit: ci.unit,
+          hsnOrSac: ci.hsnOrSac,
+        ),
+      ));
+    });
+  }
+
   @override
   void dispose() {
     _notesController.dispose();
@@ -211,6 +284,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     _freightCtrl.dispose();
     _insuranceCtrl.dispose();
     _packingCtrl.dispose();
+    _vehicleNoCtrl.dispose();
+    _transporterCtrl.dispose();
+    _distanceCtrl.dispose();
+    _ewbNoCtrl.dispose();
+    _custGstinCtrl.dispose();
+    _placeOfSupplyCtrl.dispose();
     super.dispose();
   }
 
@@ -275,6 +354,19 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         );
       }).toList();
 
+  List<ChallanItem> get _challanItems => _items
+      .map((li) => ChallanItem(
+            challanId: 0,
+            itemName: li.itemName,
+            description: li.description.isEmpty ? null : li.description,
+            qty: li.qty,
+            unit: li.unit,
+            unitPrice: li.unitPrice,
+            hsnCode: li.hsnCode,
+            hsnOrSac: li.hsnOrSac,
+          ))
+      .toList();
+
   Future<void> _save({bool send = false}) async {
     if (!_formKey.currentState!.validate()) return;
     _customerName = _customerCtrl.text.trim();
@@ -295,6 +387,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     try {
       if (widget.docType == DocumentType.invoice) {
         await _saveInvoice(send: send);
+      } else if (widget.docType == DocumentType.deliveryChallan) {
+        await _saveChallan();
       } else {
         await _saveQuote(send: send);
       }
@@ -473,6 +567,60 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           );
         },
       );
+    }
+  }
+
+  Future<void> _saveChallan() async {
+    final activeBusiness = ref.read(activeBusinessProvider);
+    final businessId = _selectedBusinessId ?? activeBusiness?.id;
+    final subtotal =
+        _items.fold<double>(0, (s, i) => s + i.qty * i.unitPrice);
+    final challan = DeliveryChallan(
+      id: _existingChallan?.id,
+      challanNo: _documentNoCtrl.text.trim().isEmpty
+          ? await FiscalYearService.instance.nextChallanNo()
+          : _documentNoCtrl.text.trim(),
+      businessId: businessId,
+      customerPartyId: _customerPartyId,
+      customerName: _customerName,
+      status: _existingChallan?.status ?? ChallanStatus.draft,
+      challanDate: _challanDate,
+      expectedReturnDate: _expectedReturnDate,
+      purpose: _challanPurpose,
+      subtotal: subtotal,
+      vehicleNo: _vehicleNoCtrl.text.trim().isEmpty
+          ? null
+          : _vehicleNoCtrl.text.trim(),
+      transporterName: _transporterCtrl.text.trim().isEmpty
+          ? null
+          : _transporterCtrl.text.trim(),
+      transportMode: _transportMode,
+      distanceKm: int.tryParse(_distanceCtrl.text),
+      ewbNo:
+          _ewbNoCtrl.text.trim().isEmpty ? null : _ewbNoCtrl.text.trim(),
+      customerGstin: _custGstinCtrl.text.trim().isEmpty
+          ? null
+          : _custGstinCtrl.text.trim(),
+      placeOfSupply: _placeOfSupplyCtrl.text.trim().isEmpty
+          ? null
+          : _placeOfSupplyCtrl.text.trim(),
+      notes: _notesController.text.trim().isEmpty
+          ? null
+          : _notesController.text.trim(),
+      items: _challanItems,
+      createdAt: _existingChallan?.createdAt ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    final int savedId;
+    if (_existingChallan != null) {
+      await ref.read(challansProvider.notifier).edit(challan);
+      savedId = challan.id!;
+    } else {
+      final saved = await ref.read(challansProvider.notifier).add(challan);
+      savedId = saved.id!;
+    }
+    if (mounted) {
+      setState(() => _existingChallan = challan.copyWith(id: savedId));
     }
   }
 
@@ -905,13 +1053,152 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
+  Future<void> _previewChallan() async {
+    if (_existingChallan == null) return;
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      Business? business;
+      if (_existingChallan!.businessId != null) {
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingChallan!.businessId!);
+      }
+      Party? customerParty;
+      if (_existingChallan!.customerPartyId != null) {
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingChallan!.customerPartyId!);
+      }
+      final pdfFile = await DeliveryChallanPdfService.instance.generateChallanPdf(
+        _existingChallan!,
+        business: business,
+        customerParty: customerParty,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      final result = await OpenFile.open(pdfFile.path);
+      if (result.type != ResultType.done && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open PDF: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _shareChallanPdf() async {
+    if (_existingChallan == null) return;
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      Business? business;
+      if (_existingChallan!.businessId != null) {
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingChallan!.businessId!);
+      }
+      Party? customerParty;
+      if (_existingChallan!.customerPartyId != null) {
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingChallan!.customerPartyId!);
+      }
+      final pdfFile = await DeliveryChallanPdfService.instance.generateChallanPdf(
+        _existingChallan!,
+        business: business,
+        customerParty: customerParty,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      final businessName = business?.name ?? 'My Business';
+      final message = 'Hi ${_existingChallan!.customerName},\n\n'
+          'Delivery Challan ${_existingChallan!.challanNo} '
+          '(${_existingChallan!.items.length} item(s)).\n\n'
+          '— $businessName';
+      await Share.shareXFiles(
+        [XFile(pdfFile.path)],
+        subject: 'Delivery Challan ${_existingChallan!.challanNo}',
+        text: message,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _convertChallanToInvoice() async {
+    if (_existingChallan?.id == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Convert to Invoice?'),
+        content: const Text(
+            'This will create a new invoice from this challan and mark it as converted.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Convert')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final invoiceNo = await FiscalYearService.instance.nextInvoiceNo();
+      final invoice = await ref
+          .read(deliveryChallanRepositoryProvider)
+          .convertToInvoice(_existingChallan!.id!, invoiceNo);
+      ref.read(challansProvider.notifier).invalidate();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invoice ${invoice.invoiceNo} created')),
+        );
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Conversion failed: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isInvoice = widget.docType == DocumentType.invoice;
-    final isEdit = isInvoice ? _existingInvoice != null : _existingQuote != null;
+    final isDC = widget.docType == DocumentType.deliveryChallan;
+    final isEdit = isInvoice
+        ? _existingInvoice != null
+        : isDC
+            ? _existingChallan != null
+            : _existingQuote != null;
     String title;
     if (isInvoice) {
       title = isEdit ? 'Edit Invoice' : 'New Invoice';
+    } else if (isDC) {
+      title = isEdit ? _existingChallan!.challanNo : 'New Challan';
     } else {
       title = isEdit ? 'Edit Quote' : 'New Quote';
     }
@@ -923,15 +1210,24 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             IconButton(
               icon: const Icon(Icons.visibility_outlined),
               tooltip: 'Preview PDF',
-              onPressed: () => isInvoice ? _previewInvoice() : _previewQuote(),
+              onPressed: isDC
+                  ? _previewChallan
+                  : isInvoice
+                      ? _previewInvoice
+                      : _previewQuote,
             ),
           if (isEdit)
             IconButton(
               icon: const Icon(Icons.share_outlined),
               tooltip: 'Share PDF',
-              onPressed: () => isInvoice ? _shareInvoicePdf() : _shareQuotePdf(),
+              onPressed: isDC
+                  ? _shareChallanPdf
+                  : isInvoice
+                      ? _shareInvoicePdf
+                      : _shareQuotePdf,
             ),
           if (!isInvoice &&
+              !isDC &&
               isEdit &&
               _existingQuote?.status != QuoteStatus.accepted)
             TextButton.icon(
@@ -939,10 +1235,19 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               label: const Text('Invoice'),
               onPressed: _convertToInvoice,
             ),
-          TextButton(
-            onPressed: _isSaving ? null : () => _save(send: true),
-            child: const Text('Send'),
-          ),
+          if (isDC &&
+              isEdit &&
+              _existingChallan?.status != ChallanStatus.converted)
+            TextButton.icon(
+              icon: const Icon(Icons.receipt_long_outlined, size: 18),
+              label: const Text('Invoice'),
+              onPressed: _convertChallanToInvoice,
+            ),
+          if (!isDC)
+            TextButton(
+              onPressed: _isSaving ? null : () => _save(send: true),
+              child: const Text('Send'),
+            ),
         ],
       ),
       body: Form(
@@ -1061,13 +1366,21 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             TextFormField(
               controller: _documentNoCtrl,
               decoration: InputDecoration(
-                labelText: isInvoice ? 'Invoice Number' : 'Quote Number',
-                hintText: isInvoice ? 'INV-2026-001' : 'QUO-2026-001',
+                labelText: isInvoice
+                    ? 'Invoice Number'
+                    : isDC
+                        ? 'Challan Number'
+                        : 'Quote Number',
+                hintText: isInvoice
+                    ? 'INV-2026-001'
+                    : isDC
+                        ? 'DC-25-26-0001'
+                        : 'QUO-2026-001',
                 prefixIcon: const Icon(Icons.confirmation_number_outlined),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter ${isInvoice ? 'invoice' : 'quote'} number';
+                  return 'Please enter ${isInvoice ? 'invoice' : isDC ? 'challan' : 'quote'} number';
                 }
                 return null;
               },
@@ -1087,6 +1400,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 value: _dueDate,
                 onChanged: (d) => setState(() => _dueDate = d),
               ),
+            ] else if (isDC) ...[  
+              _DateField(
+                label: 'Challan Date',
+                value: _challanDate,
+                onChanged: (d) => setState(() => _challanDate = d),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              _OptionalDateField(
+                label: 'Expected Return Date (optional)',
+                value: _expectedReturnDate,
+                onChanged: (d) => setState(() => _expectedReturnDate = d),
+              ),
             ] else
               _DateField(
                 label: 'Valid Until',
@@ -1095,16 +1420,134 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               ),
             const SizedBox(height: AppSpacing.base),
 
+            // DC-specific: Purpose + Transport
+            if (isDC) ...[  
+              DropdownButtonFormField<ChallanPurpose>(
+                value: _challanPurpose,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Purpose',
+                  prefixIcon: Icon(Icons.category_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                items: ChallanPurpose.values
+                    .map((p) => DropdownMenuItem(
+                          value: p,
+                          child: Text(p.label, overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (v) => setState(() => _challanPurpose = v!),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              _SectionHeader('Transport Details'),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _vehicleNoCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Vehicle No. (optional)',
+                        hintText: 'KA01AB1234',
+                        prefixIcon: Icon(Icons.local_shipping_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _transportMode,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Mode',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: '1', child: Text('Road')),
+                        DropdownMenuItem(value: '2', child: Text('Rail')),
+                        DropdownMenuItem(value: '3', child: Text('Air')),
+                        DropdownMenuItem(value: '4', child: Text('Ship')),
+                      ],
+                      onChanged: (v) => setState(() => _transportMode = v!),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextFormField(
+                      controller: _transporterCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Transporter (optional)',
+                        prefixIcon: Icon(Icons.business_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _distanceCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Distance (km)',
+                        prefixIcon: Icon(Icons.straighten_outlined),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _ewbNoCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'EWB No. (optional)',
+                  hintText: 'e-Way Bill Number',
+                  prefixIcon: Icon(Icons.receipt_outlined),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _custGstinCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Customer GSTIN (optional)',
+                        prefixIcon: Icon(Icons.numbers_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _placeOfSupplyCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Place of Supply (optional)',
+                        hintText: '29 - Karnataka',
+                        prefixIcon: Icon(Icons.place_outlined),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
+
             // Line items
             _LineItemsSection(
               items: _items,
               onChanged: () => setState(() {}),
+              showTaxDiscount: !isDC,
               onAddFromCatalog: (item) {
                 final catalogItem = _LineItem(
                   itemName: item.name,
                   description: item.description ?? '',
                   unitPrice: item.unitPrice,
-                  taxPct: item.taxPct,
+                  taxPct: isDC ? 0 : item.taxPct,
                   hsnCode: item.hsnCode,
                   unit: item.unit.toUpperCase(),
                   hsnOrSac: item.hsnOrSac,
@@ -1137,9 +1580,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 child: Column(
                   children: [
                     _TotalsRow('Subtotal', CurrencyFormatter.format(_subtotal)),
-                    if (_taxTotal > 0)
+                    if (!isDC && _taxTotal > 0)
                       _TotalsRow('Tax', CurrencyFormatter.format(_taxTotal)),
-                    if (_discountAmt > 0)
+                    if (!isDC && _discountAmt > 0)
                       _TotalsRow(
                           'Discount', '-${CurrencyFormatter.format(_discountAmt)}'),
                     _ChargeInputRow(
@@ -1186,7 +1629,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(isInvoice ? 'Save Invoice' : 'Save as Draft'),
+                  : Text(isInvoice ? 'Save Invoice' : isDC ? 'Save Challan' : 'Save as Draft'),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
@@ -1203,11 +1646,13 @@ class _LineItemsSection extends StatelessWidget {
     required this.items,
     required this.onChanged,
     required this.onAddFromCatalog,
+    this.showTaxDiscount = true,
   });
 
   final List<_LineItem> items;
   final VoidCallback onChanged;
   final ValueChanged<ItemCatalog> onAddFromCatalog;
+  final bool showTaxDiscount;
 
   @override
   Widget build(BuildContext context) {
@@ -1246,6 +1691,7 @@ class _LineItemsSection extends StatelessWidget {
                   (e) => _LineItemRow(
                     index: e.key,
                     item: e.value,
+                    showTaxDiscount: showTaxDiscount,
                     onChanged: (updated) {
                       items[e.key] = updated;
                       onChanged();
@@ -1330,11 +1776,13 @@ class _LineItemRow extends StatefulWidget {
       {required this.index,
       required this.item,
       required this.onChanged,
-      this.onRemove});
+      this.onRemove,
+      this.showTaxDiscount = true});
   final int index;
   final _LineItem item;
   final ValueChanged<_LineItem> onChanged;
   final VoidCallback? onRemove;
+  final bool showTaxDiscount;
 
   @override
   State<_LineItemRow> createState() => _LineItemRowState();
@@ -1477,23 +1925,25 @@ class _LineItemRowState extends State<_LineItemRow> {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _NumField(
-                    ctrl: _taxCtrl,
-                    label: 'Tax %',
-                    onChanged: (_) => _emit()),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _NumField(
-                    ctrl: _discCtrl,
-                    label: 'Discount %',
-                    onChanged: (_) => _emit()),
-              ),
-            ],
-          ),
+          if (widget.showTaxDiscount) ...[  
+            Row(
+              children: [
+                Expanded(
+                  child: _NumField(
+                      ctrl: _taxCtrl,
+                      label: 'Tax %',
+                      onChanged: (_) => _emit()),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _NumField(
+                      ctrl: _discCtrl,
+                      label: 'Discount %',
+                      onChanged: (_) => _emit()),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -1681,6 +2131,22 @@ class _ChargeInputRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
     );
   }
 }

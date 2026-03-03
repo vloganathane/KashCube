@@ -22,6 +22,7 @@ import '../../providers/business_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
@@ -348,12 +349,16 @@ class _InvoiceDetailView extends ConsumerWidget {
       if (invoice.customerPartyId != null) {
         customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
       }
+
+      // Read default invoice terms from settings
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
       
       // Generate PDF
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         invoice,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: terms,
       );
       
       if (!context.mounted) return;
@@ -397,12 +402,16 @@ class _InvoiceDetailView extends ConsumerWidget {
       if (invoice.customerPartyId != null) {
         customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
       }
+
+      // Read default invoice terms from settings
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
       
       // Generate PDF
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         invoice,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: terms,
       );
       
       if (!context.mounted) return;

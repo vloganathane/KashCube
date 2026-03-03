@@ -1740,6 +1740,25 @@ class DatabaseHelper {
       'gsp_enabled': '0',
       'gsp_provider': 'masters_india',
       'gsp_consent_given_at': '',
+      // Default T&C for PDFs
+      'invoice_terms':
+          '1. Payment is due within the period stated on this invoice.\n'
+          '2. Goods once sold will not be taken back or exchanged.\n'
+          '3. Interest @ 18% p.a. will be charged on overdue amounts.\n'
+          '4. Subject to local jurisdiction only.\n'
+          '5. E. & O.E.',
+      'quote_terms':
+          '1. This quotation is valid for the period mentioned above.\n'
+          '2. Prices are subject to change without prior notice after validity.\n'
+          '3. Delivery timelines will be confirmed upon order placement.\n'
+          '4. 50% advance required to confirm the order.\n'
+          '5. Subject to local jurisdiction only.',
+      'booking_terms':
+          '1. Booking is confirmed only upon receipt of advance payment.\n'
+          '2. Cancellations must be notified at least 48 hours in advance.\n'
+          '3. No refunds for last-minute cancellations or no-shows.\n'
+          '4. The management reserves the right to modify or cancel bookings.\n'
+          '5. Subject to local jurisdiction only.',
     };
     for (final entry in defaults.entries) {
       await db.insert(

@@ -42,6 +42,11 @@ class SettingsKeys {
   static const personalCity     = 'personal_city';
   static const personalState    = 'personal_state';
   static const personalPincode  = 'personal_pincode';
+
+  // Default T&C shown in PDF footers
+  static const invoiceTerms = 'invoice_terms';
+  static const quoteTerms   = 'quote_terms';
+  static const bookingTerms = 'booking_terms';
 }
 
 // ---------------------------------------------------------------------------

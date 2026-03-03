@@ -19,6 +19,7 @@ import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import 'item_catalog_screen.dart';
 
@@ -338,10 +339,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .read(partyRepositoryProvider)
                 .getById(_customerPartyId!);
           }
+          final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
           return InvoicePdfService.instance.generateQuotePdf(
             quote,
             business: business,
             customerParty: customerParty,
+            termsAndConditions: quoteTerms,
           );
         },
       );
@@ -422,10 +425,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .read(partyRepositoryProvider)
                 .getById(_customerPartyId!);
           }
+          final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
           return InvoicePdfService.instance.generateInvoicePdf(
             invoice,
             business: business,
             customerParty: customerParty,
+            termsAndConditions: invoiceTerms,
           );
         },
       );
@@ -658,10 +663,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       }
       
       // Generate PDF
+      final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         _existingQuote!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: quoteTerms,
       );
       
       if (!mounted) return;
@@ -709,10 +716,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       }
       
       // Generate PDF
+      final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         _existingQuote!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: quoteTerms,
       );
       
       if (!mounted) return;
@@ -768,10 +777,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       }
       
       // Generate PDF
+      final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         _existingInvoice!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: invoiceTerms,
       );
       
       if (!mounted) return;
@@ -827,10 +838,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       }
       
       // Generate PDF
+      final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         _existingInvoice!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: invoiceTerms,
       );
       
       if (!mounted) return;

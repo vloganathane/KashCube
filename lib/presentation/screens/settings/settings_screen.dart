@@ -10,6 +10,7 @@ import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
 import 'unit_types_screen.dart';
+import 'document_terms_screen.dart';
 import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
@@ -250,6 +251,18 @@ class SettingsScreen extends ConsumerWidget {
                         context,
                         MaterialPageRoute(
                             builder: (_) => const UnitTypesScreen()),
+                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.gavel_outlined),
+                      title: const Text('Default Terms & Conditions'),
+                      subtitle: const Text(
+                          'T&C footer for invoice, quote & booking PDFs'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const DocumentTermsScreen()),
                       ),
                     ),
                   ],

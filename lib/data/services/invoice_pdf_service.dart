@@ -47,7 +47,7 @@ class InvoicePdfService {
   }
 
   /// Generate PDF for an invoice with GST breakdown.
-  Future<File> generateInvoicePdf(Invoice invoice, {Business? business, Party? customerParty}) async {
+  Future<File> generateInvoicePdf(Invoice invoice, {Business? business, Party? customerParty, String? termsAndConditions}) async {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
@@ -74,7 +74,7 @@ class InvoicePdfService {
           _buildTotalsWithGst(invoice,
               sellerState: sellerState, buyerState: buyerState),
           pw.SizedBox(height: 32),
-          _buildFooter(invoice),
+          _buildFooter(invoice, termsAndConditions: termsAndConditions),
         ],
       ),
     );
@@ -83,7 +83,7 @@ class InvoicePdfService {
   }
 
   /// Generate PDF for a quote.
-  Future<File> generateQuotePdf(Quote quote, {Business? business, Party? customerParty}) async {
+  Future<File> generateQuotePdf(Quote quote, {Business? business, Party? customerParty, String? termsAndConditions}) async {
     final pdf = pw.Document();
     final logo = business != null ? await _loadBusinessLogo(business) : null;
 
@@ -110,7 +110,7 @@ class InvoicePdfService {
           _buildQuoteTotalsWithGst(quote,
               sellerState: sellerState, buyerState: buyerState),
           pw.SizedBox(height: 32),
-          _buildQuoteFooter(quote),
+          _buildQuoteFooter(quote, termsAndConditions: termsAndConditions),
         ],
       ),
     );
@@ -681,7 +681,7 @@ pw.Widget _buildTotalsWithGst(
     );
   }
 
-  pw.Widget _buildFooter(Invoice invoice) {
+  pw.Widget _buildFooter(Invoice invoice, {String? termsAndConditions}) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -692,6 +692,25 @@ pw.Widget _buildTotalsWithGst(
             fontWeight: pw.FontWeight.bold,
           ),
         ),
+        if (termsAndConditions != null && termsAndConditions.isNotEmpty) ...[  
+          pw.SizedBox(height: 16),
+          pw.Divider(color: PdfColors.grey300),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'TERMS & CONDITIONS',
+            style: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            termsAndConditions,
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
+          ),
+        ],
         pw.SizedBox(height: 8),
         pw.Text(
           'Generated on ${DateFormatter.formatFull(DateTime.now())}',
@@ -1228,7 +1247,7 @@ pw.Widget _buildTotalsWithGst(
     );
   }
 
-  pw.Widget _buildQuoteFooter(Quote quote) {
+  pw.Widget _buildQuoteFooter(Quote quote, {String? termsAndConditions}) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
@@ -1236,6 +1255,25 @@ pw.Widget _buildTotalsWithGst(
           'This quote is valid until ${quote.validUntil != null ? DateFormatter.format(quote.validUntil!) : "acceptance"}.',
           style: const pw.TextStyle(fontSize: 12),
         ),
+        if (termsAndConditions != null && termsAndConditions.isNotEmpty) ...[  
+          pw.SizedBox(height: 16),
+          pw.Divider(color: PdfColors.grey300),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'TERMS & CONDITIONS',
+            style: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.grey700,
+              letterSpacing: 0.8,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            termsAndConditions,
+            style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey800),
+          ),
+        ],
         pw.SizedBox(height: 8),
         pw.Text(
           'Generated on ${DateFormatter.formatFull(DateTime.now())}',

@@ -641,6 +641,14 @@ class DatabaseHelper {
         irn_ack_no TEXT,
         irn_ack_date TEXT,
         qr_code_data TEXT,
+        ewb_no TEXT,
+        ewb_generated_at TEXT,
+        ewb_valid_until TEXT,
+        vehicle_no TEXT,
+        transporter_name TEXT,
+        transporter_gstin TEXT,
+        transport_mode TEXT DEFAULT '1',
+        distance_km INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -650,6 +658,7 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_invoices_due ON invoices(due_date)');
     await db.execute('CREATE INDEX idx_invoices_business ON invoices(business_id)');
     await db.execute('CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
+    await db.execute('CREATE INDEX idx_invoices_ewb ON invoices(ewb_no)');
 
     // -- invoice_items table (v13)
     await db.execute('''
@@ -732,6 +741,17 @@ class DatabaseHelper {
       )
     ''');
     await _seedUnitTypes(db);
+
+    // -- transporters table (DB v36) — frequent transporter autocomplete for EWB
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS transporters (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        name         TEXT NOT NULL,
+        gstin        TEXT,
+        last_used_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)');
 
     // hsn_master: offline HSN + SAC code lookup (DB v35)
     await db.execute('''
@@ -1596,6 +1616,46 @@ class DatabaseHelper {
         'description': 'HSN/SAC master table seeded from bundled CBIC CSVs',
       });
     }
+
+    if (oldVersion < 36) {
+      // e-Way Bill fields on invoices: transport details + EWB registry.
+      await db.execute('ALTER TABLE invoices ADD COLUMN ewb_no TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN ewb_generated_at TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN ewb_valid_until TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN vehicle_no TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN transporter_name TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN transporter_gstin TEXT');
+      await db.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT DEFAULT '1'");
+      await db.execute('ALTER TABLE invoices ADD COLUMN distance_km INTEGER');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_invoices_ewb ON invoices(ewb_no)');
+      // Frequent transporters table for EWB autocomplete.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS transporters (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          name         TEXT NOT NULL,
+          gstin        TEXT,
+          last_used_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)');
+      // GSP settings keys (all disabled by default — consent required to enable).
+      final gspDefaults = <String, String>{
+        'gsp_enabled': '0',
+        'gsp_provider': 'masters_india',
+        'gsp_consent_given_at': '',
+      };
+      for (final e in gspDefaults.entries) {
+        await db.insert('settings', {
+          'key': e.key,
+          'value': e.value,
+          'updated_at': DateTime.now().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      await db.insert('schema_version', {
+        'version': 36,
+        'description': 'e-Way Bill fields on invoices + transporters table + GSP settings keys',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -1676,6 +1736,10 @@ class DatabaseHelper {
       'auto_reset_invoice_no': '1',
       'last_fy_close_date': '',
       'current_fy_start': fyStart,
+      // GSP (e-Way Bill Option B) \u2014 disabled by default, consent required.
+      'gsp_enabled': '0',
+      'gsp_provider': 'masters_india',
+      'gsp_consent_given_at': '',
     };
     for (final entry in defaults.entries) {
       await db.insert(
@@ -1959,6 +2023,53 @@ class DatabaseHelper {
       where: 'id = ? AND is_system = 0',
       whereArgs: [id],
     );
+  }
+
+  // ── Transporters ──────────────────────────────────────────────────────────
+
+  /// Returns all transporters ordered by most recently used.
+  Future<List<Map<String, dynamic>>> getTransporters() async {
+    final db = await database;
+    return db.query(
+      'transporters',
+      orderBy: 'last_used_at DESC',
+      limit: 30,
+    );
+  }
+
+  /// Upsert a transporter into the `transporters` table.
+  ///
+  /// If a transporter with [name] already exists, updates its `last_used_at`
+  /// and optionally [gstin]. Otherwise inserts a new row.
+  Future<void> saveTransporter({
+    required String name,
+    String? gstin,
+  }) async {
+    final db = await database;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final existing = await db.query(
+      'transporters',
+      where: 'name = ?',
+      whereArgs: [name],
+      limit: 1,
+    );
+    if (existing.isEmpty) {
+      await db.insert('transporters', {
+        'name': name,
+        'gstin': gstin,
+        'last_used_at': now,
+      });
+    } else {
+      await db.update(
+        'transporters',
+        {
+          'gstin': ?gstin,
+          'last_used_at': now,
+        },
+        where: 'name = ?',
+        whereArgs: [name],
+      );
+    }
   }
 
   // ── Close ─────────────────────────────────────────────────────────────────

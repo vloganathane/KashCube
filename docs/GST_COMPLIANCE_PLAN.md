@@ -165,6 +165,38 @@ Builds GSTN `EWB_Import_Template`-compatible JSON:
 
 ---
 
+### Phase D — e-Way Bill Complete (Option A + Option B scaffold)
+
+**Goal:** e-Way Bill generation is fully usable in-app (Option A). Option B (GSP API) is cleanly scaffolded behind an explicit consent gate — no network code runs unless the user opts in.
+
+#### D1 — Transport details + threshold guard + validity (Option A) ⬜
+- `_EwayBillSheet` bottom sheet on invoice detail screen collects:
+  - Transport mode: Road / Rail / Air / Ship
+  - Vehicle number (regex validated: `AA00AA0000`)
+  - Transporter name + GSTIN (optional)
+  - Distance (km) — drives validity calculation
+- Threshold guard: warning banner when `invoice.total < ₹50,000` (EWB not mandatory, but still allowed)
+- Validity display: `valid_until = generated_at + floor(distance / 100)` days (min 1 day, GSTN rule)
+- EWB fields persisted on `invoices` table (DB v36): `ewb_no`, `ewb_generated_at`, `ewb_valid_until`, `vehicle_no`, `transporter_name`, `transporter_gstin`, `transport_mode`, `distance_km`
+- EWB status badge on invoice detail: *"EWB generated · Valid until 5 Mar"*
+- Frequent transporters stored in `transporters` table (DB v36) — autocomplete on transporter name field
+
+#### D2 — GSP connector scaffold (Option B) ⬜
+- Abstract interface: `lib/domain/repositories/gsp_connector.dart` — `generateEwb()`, `cancelEwb()`, `updateVehicle()`
+- Result model: `GspEwbResult` with `ewbNo`, `validUntil`
+- Stub implementation: `lib/data/services/gsp/masters_india_connector.dart` (throws `UnimplementedError` — no network code)
+- `flutter_secure_storage` added to pubspec (for future API key storage — unused until D3)
+- Settings keys pre-seeded in `settings` table: `gsp_enabled=0`, `gsp_provider=masters_india`, `gsp_consent_given_at=`
+
+#### D3 — Consent UI + live GSP integration (future, explicit opt-in) ⬜
+- Settings screen: "GSP Connect" tile — disabled by default
+- Consent dialog (shown once): explicit warning that invoice data leaves the device
+- API key entry via `flutter_secure_storage`
+- `MastersIndiaConnector` fully implemented
+- Privacy policy updated with GSP section
+
+---
+
 ## Progress
 
 | Phase | Task | Status | Commit |
@@ -178,4 +210,9 @@ Builds GSTN `EWB_Import_Template`-compatible JSON:
 | B3 | PDF: HSN-grouped GST summary table | ✅ Done | `dde9b3e` |
 | C1 | e-Invoice IRN placeholder fields | ✅ Done | `9f8914b` |
 | C2 | e-Way Bill JSON export | ✅ Done | `9f8914b` |
+| C3 | GSTIN validation utility | ✅ Done | `9f8914b` |
+| — | HSN/SAC offline autocomplete (DB v35) | ✅ Done | `fdd3a4f` |
+| D1 | Transport dialog, threshold guard, validity, EWB registry | ⬜ In progress | — |
+| D2 | GspConnector scaffold (Option B stub) | ⬜ In progress | — |
+| D3 | Consent UI + live GSP integration | ⬜ Future | — |
 | C3 | Offline GSTIN validation | ✅ Done | `9f8914b` |

@@ -9,9 +9,12 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/booking.dart';
+import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/services/database_helper.dart';
+import '../../../data/services/eway_bill_service.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../../data/services/payment_preferences_service.dart';
 import '../../providers/business_provider.dart';
@@ -93,6 +96,8 @@ class _InvoiceDetailView extends ConsumerWidget {
                   _voidInvoice(context, ref);
                 case 'duplicate':
                   _duplicateInvoice(context, ref);
+                case 'eway_bill':
+                  _showEwayBillSheet(context, invoice, ref);
               }
             },
             itemBuilder: (context) => [
@@ -126,6 +131,16 @@ class _InvoiceDetailView extends ConsumerWidget {
                     Icon(Icons.content_copy_outlined),
                     SizedBox(width: 12),
                     Text('Duplicate'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'eway_bill',
+                child: Row(
+                  children: [
+                    Icon(Icons.local_shipping_outlined),
+                    SizedBox(width: 12),
+                    Text('e-Way Bill'),
                   ],
                 ),
               ),
@@ -526,6 +541,380 @@ class _InvoiceDetailView extends ConsumerWidget {
         ),
       );
     }
+  }
+
+  void _showEwayBillSheet(
+    BuildContext context,
+    Invoice invoice,
+    WidgetRef ref,
+  ) {
+    final business = ref.read(activeBusinessProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _EwayBillSheet(invoice: invoice, business: business),
+    );
+  }
+}
+
+// ── e-Way Bill Sheet ──────────────────────────────────────────────────────────
+
+class _EwayBillSheet extends StatefulWidget {
+  const _EwayBillSheet({required this.invoice, this.business});
+
+  final Invoice invoice;
+  final Business? business;
+
+  @override
+  State<_EwayBillSheet> createState() => _EwayBillSheetState();
+}
+
+class _EwayBillSheetState extends State<_EwayBillSheet> {
+  final _formKey = GlobalKey<FormState>();
+
+  String _mode = '1'; // Road default
+  final _vehicleCtrl = TextEditingController();
+  final _transporterNameCtrl = TextEditingController();
+  final _transporterGstinCtrl = TextEditingController();
+  final _distanceCtrl = TextEditingController();
+  final _docNoCtrl = TextEditingController();
+  final _docDateCtrl = TextEditingController();
+
+  List<Map<String, dynamic>> _frequentTransporters = [];
+  bool _exporting = false;
+
+  static const _modes = [
+    ('1', 'Road'),
+    ('2', 'Rail'),
+    ('3', 'Air'),
+    ('4', 'Ship'),
+  ];
+
+  static const _vehicleRegex =
+      r'^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$';
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill from invoice if EWB was previously generated.
+    if (widget.invoice.transportMode != null) {
+      _mode = widget.invoice.transportMode!;
+    }
+    if (widget.invoice.vehicleNo != null) {
+      _vehicleCtrl.text = widget.invoice.vehicleNo!;
+    }
+    if (widget.invoice.transporterName != null) {
+      _transporterNameCtrl.text = widget.invoice.transporterName!;
+    }
+    if (widget.invoice.transporterGstin != null) {
+      _transporterGstinCtrl.text = widget.invoice.transporterGstin!;
+    }
+    if (widget.invoice.distanceKm != null) {
+      _distanceCtrl.text = widget.invoice.distanceKm.toString();
+    }
+    _loadFrequentTransporters();
+  }
+
+  Future<void> _loadFrequentTransporters() async {
+    final db = DatabaseHelper.instance;
+    final rows = await db.getTransporters();
+    if (mounted) setState(() => _frequentTransporters = rows);
+  }
+
+  @override
+  void dispose() {
+    _vehicleCtrl.dispose();
+    _transporterNameCtrl.dispose();
+    _transporterGstinCtrl.dispose();
+    _distanceCtrl.dispose();
+    _docNoCtrl.dispose();
+    _docDateCtrl.dispose();
+    super.dispose();
+  }
+
+  int? get _validityDays {
+    final km = int.tryParse(_distanceCtrl.text.trim());
+    if (km == null || km <= 0) return null;
+    return km < 100 ? 1 : (km / 100).floor();
+  }
+
+  Future<void> _export() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _exporting = true);
+
+    final transport = EwbTransportDetails(
+      mode: _mode,
+      vehicleNo: _vehicleCtrl.text.trim().isEmpty ? null : _vehicleCtrl.text.trim(),
+      transporterName: _transporterNameCtrl.text.trim().isEmpty
+          ? null
+          : _transporterNameCtrl.text.trim(),
+      transporterGstin: _transporterGstinCtrl.text.trim().isEmpty
+          ? null
+          : _transporterGstinCtrl.text.trim(),
+      distanceKm: int.tryParse(_distanceCtrl.text.trim()),
+      transDocNo: _docNoCtrl.text.trim().isEmpty ? null : _docNoCtrl.text.trim(),
+      transDocDate:
+          _docDateCtrl.text.trim().isEmpty ? null : _docDateCtrl.text.trim(),
+    );
+
+    try {
+      await EwayBillService.instance.exportAndShare(
+        widget.invoice,
+        business: widget.business,
+        transport: transport,
+      );
+
+      // Persist frequent transporter if name was provided.
+      if (transport.transporterName != null) {
+        await DatabaseHelper.instance.saveTransporter(
+          name: transport.transporterName!,
+          gstin: transport.transporterGstin,
+        );
+      }
+
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isBelowThreshold =
+        EwayBillService.instance.isBelowThreshold(widget.invoice);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.base,
+        right: AppSpacing.base,
+        top: AppSpacing.base,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'e-Way Bill',
+              style: theme.textTheme.titleLarge,
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Invoice ${widget.invoice.invoiceNo}',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── threshold warning
+            if (isBelowThreshold) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 18, color: theme.colorScheme.secondary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Invoice total is below ₹50,000. EWB is optional for this consignment.',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+
+            // ── existing EWB badge
+            if (widget.invoice.hasEwb) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        size: 18, color: theme.colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'EWB already generated: ${widget.invoice.ewbNo ?? ''}'
+                        '${widget.invoice.ewbValidUntil != null ? '\nValid until ${DateFormatter.format(widget.invoice.ewbValidUntil!)}' : ''}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+
+            // ── transport mode selector
+            Text('Transport Mode', style: theme.textTheme.labelMedium),
+            const SizedBox(height: AppSpacing.xs),
+            SegmentedButton<String>(
+              segments: [
+                for (final (code, label) in _modes)
+                  ButtonSegment(value: code, label: Text(label)),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (s) => setState(() => _mode = s.first),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── vehicle number
+            if (_mode == '1' || _mode == '4') ...[
+              TextFormField(
+                controller: _vehicleCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Vehicle Number',
+                  hintText: 'MH12AB1234',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  final val = v?.trim() ?? '';
+                  if (val.isEmpty) return null; // optional
+                  if (!RegExp(_vehicleRegex).hasMatch(val)) {
+                    return 'Format: MH12AB1234 (state + RTO + alpha + serial)';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+
+            // ── transporter name (with autocomplete)
+            Autocomplete<String>(
+              optionsBuilder: (v) {
+                if (v.text.isEmpty) return const [];
+                return _frequentTransporters
+                    .map((r) => r['name'] as String)
+                    .where((n) =>
+                        n.toLowerCase().contains(v.text.toLowerCase()));
+              },
+              onSelected: (name) {
+                _transporterNameCtrl.text = name;
+                final match = _frequentTransporters
+                    .firstWhere((r) => r['name'] == name,
+                        orElse: () => {});
+                if (match['gstin'] != null) {
+                  _transporterGstinCtrl.text = match['gstin'] as String;
+                }
+              },
+              fieldViewBuilder:
+                  (context, ctrl, focusNode, onEditingComplete) {
+                // Keep our controller in sync.
+                ctrl.text = _transporterNameCtrl.text;
+                ctrl.addListener(() => _transporterNameCtrl.text = ctrl.text);
+                return TextFormField(
+                  controller: ctrl,
+                  focusNode: focusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'Transporter Name (optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── transporter GSTIN
+            TextFormField(
+              controller: _transporterGstinCtrl,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                labelText: 'Transporter GSTIN (optional)',
+                hintText: '22AAAAA0000A1Z5',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // ── distance + live validity preview
+            Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _distanceCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Distance (km)',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    validator: (v) {
+                      final val = v?.trim() ?? '';
+                      if (val.isEmpty) return null;
+                      if (int.tryParse(val) == null) return 'Enter a number';
+                      if (int.parse(val) <= 0) return 'Must be > 0';
+                      return null;
+                    },
+                  ),
+                ),
+                if (_validityDays != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  Chip(
+                    avatar: const Icon(Icons.timer_outlined, size: 16),
+                    label: Text(
+                      'Valid $_validityDays day${_validityDays == 1 ? '' : 's'}',
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── export button
+            FilledButton.icon(
+              onPressed: _exporting ? null : _export,
+              icon: _exporting
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_outlined),
+              label: const Text('Export JSON'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

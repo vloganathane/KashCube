@@ -15,8 +15,11 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:flutter/foundation.dart';
+
 import '../../core/utils/gstin_validator.dart' show GstinValidator;
 import '../models/business.dart';
+import '../models/ewb_transport_details.dart';
 import '../models/invoice.dart';
 import '../models/party.dart';
 import 'gst_calculator.dart';
@@ -34,6 +37,11 @@ import 'gst_calculator.dart';
 class EwayBillService {
   EwayBillService._();
   static final EwayBillService instance = EwayBillService._();
+
+  // ─── Constants ──────────────────────────────────────────────────────────
+
+  /// Consignment value threshold above which EWB is mandatory (CGST Rule 138).
+  static const double ewbThreshold = 50000.0;
 
   // ─── GSTN UOM code mapping ──────────────────────────────────────────────
   // Maps app unit strings (case-insensitive) → GSTN EWB UOM codes.
@@ -119,31 +127,44 @@ class EwayBillService {
   ///
   /// [business] is the seller (your business profile).
   /// [customerParty] is the buyer (optional; name/GSTIN are also on the invoice).
+  /// [transport] carries vehicle/transporter/distance details.
   ///
-  /// Returns the temporary [File] that was created and shared.
-  Future<File> exportAndShare(
+  /// Returns [EwbExportResult] with the shared file and computed validity.
+  Future<EwbExportResult> exportAndShare(
     Invoice invoice, {
     Business? business,
     Party? customerParty,
+    EwbTransportDetails transport = const EwbTransportDetails(),
   }) async {
-    final file = await _writeJson(invoice, business: business, customerParty: customerParty);
+    final result = await _buildResult(
+      invoice,
+      business: business,
+      customerParty: customerParty,
+      transport: transport,
+    );
     await Share.shareXFiles(
-      [XFile(file.path, mimeType: 'application/json')],
+      [XFile(result.file.path, mimeType: 'application/json')],
       subject: 'e-Way Bill — ${invoice.invoiceNo}',
       text: 'e-Way Bill JSON for invoice ${invoice.invoiceNo}',
     );
-    return file;
+    return result;
   }
 
-  /// Builds the e-Way Bill JSON for [invoice] and returns the [File].
+  /// Builds the e-Way Bill JSON and returns the [EwbExportResult].
   ///
-  /// Does not share — use this when you need the file path (e.g. to open it).
-  Future<File> buildJsonFile(
+  /// Does not share — use this when you need the file path.
+  Future<EwbExportResult> buildJsonFile(
     Invoice invoice, {
     Business? business,
     Party? customerParty,
+    EwbTransportDetails transport = const EwbTransportDetails(),
   }) =>
-      _writeJson(invoice, business: business, customerParty: customerParty);
+      _buildResult(
+        invoice,
+        business: business,
+        customerParty: customerParty,
+        transport: transport,
+      );
 
   /// Returns the e-Way Bill payload as a [Map] without writing any file.
   ///
@@ -152,21 +173,51 @@ class EwayBillService {
     Invoice invoice, {
     Business? business,
     Party? customerParty,
+    EwbTransportDetails transport = const EwbTransportDetails(),
   }) =>
-      _buildPayload(invoice, business: business, customerParty: customerParty);
+      _buildPayload(invoice,
+          business: business, customerParty: customerParty, transport: transport);
+
+  /// Returns `true` if the invoice total is below the EWB threshold (₹50,000).
+  /// EWB is still allowed below threshold; this is just a UX warning signal.
+  bool isBelowThreshold(Invoice invoice) => invoice.total < ewbThreshold;
 
   // ─── Internal ────────────────────────────────────────────────────────────
 
-  Future<File> _writeJson(
+  Future<EwbExportResult> _buildResult(
     Invoice invoice, {
     Business? business,
     Party? customerParty,
+    required EwbTransportDetails transport,
   }) async {
-    final payload = _buildPayload(invoice, business: business, customerParty: customerParty);
-    final json = const JsonEncoder.withIndent('  ').convert(payload);
+    final now = DateTime.now();
+    final validUntil = transport.validUntil(now);
+    final file = await _writeJsonInternal(
+      invoice,
+      business: business,
+      customerParty: customerParty,
+      transport: transport,
+    );
+    return EwbExportResult(
+      file: file,
+      generatedAt: now,
+      validUntil: validUntil,
+      isBelowThreshold: isBelowThreshold(invoice),
+    );
+  }
 
+  Future<File> _writeJsonInternal(
+    Invoice invoice, {
+    Business? business,
+    Party? customerParty,
+    required EwbTransportDetails transport,
+  }) async {
+    final payload = _buildPayload(invoice,
+        business: business, customerParty: customerParty, transport: transport);
+    final json = const JsonEncoder.withIndent('  ').convert(payload);
     final dir = await _ewayDir();
-    final filename = 'EWB_${invoice.invoiceNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_')}.json';
+    final filename =
+        'EWB_${invoice.invoiceNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_')}.json';
     final file = File('${dir.path}/$filename');
     await file.writeAsString(json, flush: true);
     return file;
@@ -183,6 +234,7 @@ class EwayBillService {
     Invoice invoice, {
     Business? business,
     Party? customerParty,
+    required EwbTransportDetails transport,
   }) {
     // ── Supply-type detection ─────────────────────────────────────────────
     // 'O' = outward (sales invoice), 'I' = inward (purchase).
@@ -307,14 +359,14 @@ class EwayBillService {
       'otherValue': 0.0,
       'totInvValue': totInvValue,
 
-      // ── transport (user fills after export) ────────────────────────────
-      'transMode': '1',
-      'transDistance': '',
-      'transporterName': '',
-      'transporterId': '',
-      'transDocNo': '',
-      'transDocDate': '',
-      'vehicleNo': '',
+      // ── transport ──────────────────────────────────────────────────────
+      'transMode': transport.mode,
+      'transDistance': transport.distanceKm?.toString() ?? '',
+      'transporterName': transport.transporterName ?? '',
+      'transporterId': transport.transporterGstin ?? '',
+      'transDocNo': transport.transDocNo ?? '',
+      'transDocDate': transport.transDocDate ?? '',
+      'vehicleNo': transport.vehicleNo ?? '',
       'vehicleType': 'R',
 
       // ── items ─────────────────────────────────────────────────────────
@@ -431,4 +483,30 @@ class EwayBillService {
     if (item.taxPct == 0) return _round2(item.lineTotal);
     return _round2(item.lineTotal / (1 + item.taxPct / 100));
   }
+}
+
+// ─── Result type ──────────────────────────────────────────────────────────────
+
+/// Returned by [EwayBillService.exportAndShare] and [EwayBillService.buildJsonFile].
+///
+/// [file]             — the written JSON file.
+/// [generatedAt]      — timestamp when the file was created (= EWB gen time).
+/// [validUntil]       — computed validity date based on transport distance.
+/// [isBelowThreshold] — `true` when invoice total < ₹50,000 (EWB optional but
+///                       still allowed; surface as a warning in the UI).
+@immutable
+class EwbExportResult {
+  const EwbExportResult({
+    required this.file,
+    required this.generatedAt,
+    required this.validUntil,
+    required this.isBelowThreshold,
+  });
+
+  final File file;
+  final DateTime generatedAt;
+  final DateTime validUntil;
+  final bool isBelowThreshold;
+
+  bool get isValid => validUntil.isAfter(DateTime.now());
 }

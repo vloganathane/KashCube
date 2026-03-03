@@ -214,6 +214,15 @@ class Invoice extends Equatable {
     this.irnAckNo,
     this.irnAckDate,
     this.qrCodeData,
+    // ── e-Way Bill fields (v36) ────────────────────────────────────────────
+    this.ewbNo,
+    this.ewbGeneratedAt,
+    this.ewbValidUntil,
+    this.vehicleNo,
+    this.transporterName,
+    this.transporterGstin,
+    this.transportMode,
+    this.distanceKm,
   });
 
   final int? id;
@@ -262,6 +271,33 @@ class Invoice extends Equatable {
   /// `true` when an IRN has been assigned to this invoice.
   bool get hasEInvoice => irn != null && irn!.isNotEmpty;
 
+  // ── e-Way Bill fields (v36) ───────────────────────────────────────────────
+  /// EWB number assigned by GSTN portal (manually entered or via GSP).
+  final String? ewbNo;
+  /// When the EWB was generated / entered.
+  final DateTime? ewbGeneratedAt;
+  /// Validity expiry computed as generated_at + floor(distance/100) days.
+  final DateTime? ewbValidUntil;
+  /// Vehicle registration number (e.g. KA01AB1234).
+  final String? vehicleNo;
+  /// Transporter trade name.
+  final String? transporterName;
+  /// Transporter GSTIN (optional).
+  final String? transporterGstin;
+  /// GSTN transport mode code: '1'=Road, '2'=Rail, '3'=Air, '4'=Ship.
+  final String? transportMode;
+  /// Distance in km — used to compute validity period.
+  final int? distanceKm;
+
+  /// `true` when an e-Way Bill has been generated for this invoice.
+  bool get hasEwb => ewbNo != null && ewbNo!.isNotEmpty;
+
+  /// Validity status: null if no EWB; true if still valid; false if expired.
+  bool? get ewbIsValid {
+    if (!hasEwb || ewbValidUntil == null) return null;
+    return ewbValidUntil!.isAfter(DateTime.now());
+  }
+
   double get balanceDue => total - paidAmount;
   bool get isOverdue =>
       dueDate != null &&
@@ -298,6 +334,14 @@ class Invoice extends Equatable {
     String? irnAckNo,
     String? irnAckDate,
     String? qrCodeData,
+    String? ewbNo,
+    DateTime? ewbGeneratedAt,
+    DateTime? ewbValidUntil,
+    String? vehicleNo,
+    String? transporterName,
+    String? transporterGstin,
+    String? transportMode,
+    int? distanceKm,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -329,6 +373,14 @@ class Invoice extends Equatable {
       irnAckNo: irnAckNo ?? this.irnAckNo,
       irnAckDate: irnAckDate ?? this.irnAckDate,
       qrCodeData: qrCodeData ?? this.qrCodeData,
+      ewbNo: ewbNo ?? this.ewbNo,
+      ewbGeneratedAt: ewbGeneratedAt ?? this.ewbGeneratedAt,
+      ewbValidUntil: ewbValidUntil ?? this.ewbValidUntil,
+      vehicleNo: vehicleNo ?? this.vehicleNo,
+      transporterName: transporterName ?? this.transporterName,
+      transporterGstin: transporterGstin ?? this.transporterGstin,
+      transportMode: transportMode ?? this.transportMode,
+      distanceKm: distanceKm ?? this.distanceKm,
     );
   }
 
@@ -361,6 +413,14 @@ class Invoice extends Equatable {
         'irn_ack_no': irnAckNo,
         'irn_ack_date': irnAckDate,
         'qr_code_data': qrCodeData,
+        'ewb_no': ewbNo,
+        'ewb_generated_at': ewbGeneratedAt?.toIso8601String(),
+        'ewb_valid_until': ewbValidUntil?.toIso8601String(),
+        'vehicle_no': vehicleNo,
+        'transporter_name': transporterName,
+        'transporter_gstin': transporterGstin,
+        'transport_mode': transportMode,
+        'distance_km': distanceKm,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -401,6 +461,18 @@ class Invoice extends Equatable {
         irnAckNo: map['irn_ack_no'] as String?,
         irnAckDate: map['irn_ack_date'] as String?,
         qrCodeData: map['qr_code_data'] as String?,
+        ewbNo: map['ewb_no'] as String?,
+        ewbGeneratedAt: map['ewb_generated_at'] != null
+            ? DateTime.parse(map['ewb_generated_at'] as String)
+            : null,
+        ewbValidUntil: map['ewb_valid_until'] != null
+            ? DateTime.parse(map['ewb_valid_until'] as String)
+            : null,
+        vehicleNo: map['vehicle_no'] as String?,
+        transporterName: map['transporter_name'] as String?,
+        transporterGstin: map['transporter_gstin'] as String?,
+        transportMode: map['transport_mode'] as String?,
+        distanceKm: map['distance_km'] as int?,
       );
 
   @override

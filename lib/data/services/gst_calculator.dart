@@ -92,8 +92,10 @@ class GstSummaryRow {
   final bool isInterState;
 
   /// Display label for the code column, e.g. "998314 (SAC)" or "8541 (HSN)".
+  /// Shows "— (HSN)" / "— (SAC)" when no code is stored so it is visually
+  /// distinct from the column header and clearly indicates a missing code.
   String get codeLabel =>
-      code.isNotEmpty ? '$code ($hsnOrSac)' : hsnOrSac;
+      code.isNotEmpty ? '$code ($hsnOrSac)' : '— ($hsnOrSac)';
 }
 
 /// Stateless GST calculation utilities.

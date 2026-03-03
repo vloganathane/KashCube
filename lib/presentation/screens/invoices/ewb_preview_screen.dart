@@ -64,7 +64,7 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
 
   Future<void> _openPortal() async {
     final uri = Uri.parse(_portalUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open browser')),

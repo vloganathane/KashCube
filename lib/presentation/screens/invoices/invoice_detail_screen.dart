@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -28,6 +29,7 @@ import '../../widgets/reminder_bottom_sheet.dart';
 import '../bookings/booking_detail_screen.dart';
 
 import '../transactions/transaction_detail_screen.dart';
+import 'ewb_preview_screen.dart';
 import 'quote_builder_screen.dart';
 
 class InvoiceDetailScreen extends ConsumerWidget {
@@ -152,6 +154,11 @@ class _InvoiceDetailView extends ConsumerWidget {
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
           _HeaderCard(invoice: invoice),
+          // EWB status badge
+          if (invoice.hasEwb) ...[
+            const SizedBox(height: AppSpacing.sm),
+            _EwbStatusBadge(invoice: invoice),
+          ],
           // Lock indicator for paid/partially paid invoices
           if (invoice.status == InvoiceStatus.paid ||
               invoice.status == InvoiceStatus.partiallyPaid) ...[
@@ -673,7 +680,7 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
     );
 
     try {
-      final result = await EwayBillService.instance.exportAndShare(
+      final result = await EwayBillService.instance.buildJsonFile(
         widget.invoice,
         business: widget.business,
         transport: transport,
@@ -711,7 +718,18 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
         );
       }
 
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) {
+        // Close the sheet then push the preview screen.
+        Navigator.of(context).pop();
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EwbPreviewScreen(
+              result: result,
+              invoice: widget.invoice,
+            ),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -949,6 +967,100 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
             ),
           ],
         ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── EWB Status Badge ─────────────────────────────────────────────────────────
+
+class _EwbStatusBadge extends StatelessWidget {
+  const _EwbStatusBadge({required this.invoice});
+  final Invoice invoice;
+
+  static const _portalUrl = 'https://ewaybillgst.gov.in';
+
+  String _fmt(DateTime dt) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun',
+                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  Future<void> _openPortal(BuildContext context) async {
+    final uri = Uri.parse(_portalUrl);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open browser')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isValid = invoice.ewbIsValid ?? false;
+    final validUntil = invoice.ewbValidUntil;
+
+    return InkWell(
+      onTap: () => _openPortal(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: isValid
+              ? theme.colorScheme.primaryContainer
+              : theme.colorScheme.errorContainer,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isValid ? Icons.local_shipping_outlined : Icons.warning_amber_rounded,
+              size: 18,
+              color: isValid
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isValid ? 'e-Way Bill Generated' : 'e-Way Bill Expired',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: isValid
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onErrorContainer,
+                    ),
+                  ),
+                  if (validUntil != null)
+                    Text(
+                      isValid
+                          ? 'Valid until ${_fmt(validUntil)}'
+                          : 'Expired on ${_fmt(validUntil)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: isValid
+                            ? theme.colorScheme.onPrimaryContainer
+                            : theme.colorScheme.onErrorContainer,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.open_in_new,
+              size: 16,
+              color: isValid
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.error,
+            ),
+          ],
         ),
       ),
     );

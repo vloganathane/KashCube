@@ -136,19 +136,26 @@ class EwayBillService {
     Party? customerParty,
     EwbTransportDetails transport = const EwbTransportDetails(),
   }) async {
-    final result = await _buildResult(
+    final result = await buildJsonFile(
       invoice,
       business: business,
       customerParty: customerParty,
       transport: transport,
     );
-    await Share.shareXFiles(
-      [XFile(result.file.path, mimeType: 'application/json')],
-      subject: 'e-Way Bill — ${invoice.invoiceNo}',
-      text: 'e-Way Bill JSON for invoice ${invoice.invoiceNo}',
-    );
+    await shareResult(result, invoice);
     return result;
   }
+
+  /// Shares an already-built [EwbExportResult].
+  ///
+  /// Use this on the preview screen's "Share JSON" button so the file is
+  /// not rebuilt a second time.
+  Future<void> shareResult(EwbExportResult result, Invoice invoice) =>
+      Share.shareXFiles(
+        [XFile(result.file.path, mimeType: 'application/json')],
+        subject: 'e-Way Bill — ${invoice.invoiceNo}',
+        text: 'e-Way Bill JSON for invoice ${invoice.invoiceNo}',
+      );
 
   /// Builds the e-Way Bill JSON and returns the [EwbExportResult].
   ///
@@ -192,29 +199,20 @@ class EwayBillService {
   }) async {
     final now = DateTime.now();
     final validUntil = transport.validUntil(now);
-    final file = await _writeJsonInternal(
-      invoice,
-      business: business,
-      customerParty: customerParty,
-      transport: transport,
-    );
+    final payload = _buildPayload(invoice,
+        business: business, customerParty: customerParty, transport: transport);
+    final jsonContent = const JsonEncoder.withIndent('  ').convert(payload);
+    final file = await _writeJsonFromString(invoice, jsonContent);
     return EwbExportResult(
       file: file,
+      jsonContent: jsonContent,
       generatedAt: now,
       validUntil: validUntil,
       isBelowThreshold: isBelowThreshold(invoice),
     );
   }
 
-  Future<File> _writeJsonInternal(
-    Invoice invoice, {
-    Business? business,
-    Party? customerParty,
-    required EwbTransportDetails transport,
-  }) async {
-    final payload = _buildPayload(invoice,
-        business: business, customerParty: customerParty, transport: transport);
-    final json = const JsonEncoder.withIndent('  ').convert(payload);
+  Future<File> _writeJsonFromString(Invoice invoice, String json) async {
     final dir = await _ewayDir();
     final filename =
         'EWB_${invoice.invoiceNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_')}.json';
@@ -490,6 +488,7 @@ class EwayBillService {
 /// Returned by [EwayBillService.exportAndShare] and [EwayBillService.buildJsonFile].
 ///
 /// [file]             — the written JSON file.
+/// [jsonContent]      — the JSON string (for in-app preview without re-reading the file).
 /// [generatedAt]      — timestamp when the file was created (= EWB gen time).
 /// [validUntil]       — computed validity date based on transport distance.
 /// [isBelowThreshold] — `true` when invoice total < ₹50,000 (EWB optional but
@@ -498,12 +497,14 @@ class EwayBillService {
 class EwbExportResult {
   const EwbExportResult({
     required this.file,
+    required this.jsonContent,
     required this.generatedAt,
     required this.validUntil,
     required this.isBelowThreshold,
   });
 
   final File file;
+  final String jsonContent;
   final DateTime generatedAt;
   final DateTime validUntil;
   final bool isBelowThreshold;

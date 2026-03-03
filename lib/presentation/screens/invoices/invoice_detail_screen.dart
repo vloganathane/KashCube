@@ -556,7 +556,11 @@ class _InvoiceDetailView extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _EwayBillSheet(invoice: invoice, business: business),
+      builder: (_) => _EwayBillSheet(
+        invoice: invoice,
+        business: business,
+        onExported: (_) => ref.read(invoicesProvider.notifier).load(),
+      ),
     );
   }
 }
@@ -564,10 +568,17 @@ class _InvoiceDetailView extends ConsumerWidget {
 // ── e-Way Bill Sheet ──────────────────────────────────────────────────────────
 
 class _EwayBillSheet extends StatefulWidget {
-  const _EwayBillSheet({required this.invoice, this.business});
+  const _EwayBillSheet({
+    required this.invoice,
+    this.business,
+    this.onExported,
+  });
 
   final Invoice invoice;
   final Business? business;
+  /// Called with the updated [Invoice] (EWB fields filled) after a successful
+  /// export. The caller should use this to refresh the provider.
+  final void Function(Invoice updatedInvoice)? onExported;
 
   @override
   State<_EwayBillSheet> createState() => _EwayBillSheetState();
@@ -662,11 +673,35 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
     );
 
     try {
-      await EwayBillService.instance.exportAndShare(
+      final result = await EwayBillService.instance.exportAndShare(
         widget.invoice,
         business: widget.business,
         transport: transport,
       );
+
+      // ── Write EWB fields back to the invoice ─────────────────────────────
+      if (widget.invoice.id != null) {
+        await DatabaseHelper.instance.updateEwbFields(
+          widget.invoice.id!,
+          ewbGeneratedAt: result.generatedAt,
+          ewbValidUntil: result.validUntil,
+          vehicleNo: transport.vehicleNo,
+          transporterName: transport.transporterName,
+          transporterGstin: transport.transporterGstin,
+          transportMode: transport.mode,
+          distanceKm: transport.distanceKm,
+        );
+        final updated = widget.invoice.copyWith(
+          ewbGeneratedAt: result.generatedAt,
+          ewbValidUntil: result.validUntil,
+          vehicleNo: transport.vehicleNo,
+          transporterName: transport.transporterName,
+          transporterGstin: transport.transporterGstin,
+          transportMode: transport.mode,
+          distanceKm: transport.distanceKm,
+        );
+        widget.onExported?.call(updated);
+      }
 
       // Persist frequent transporter if name was provided.
       if (transport.transporterName != null) {

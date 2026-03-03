@@ -2025,6 +2025,42 @@ class DatabaseHelper {
     );
   }
 
+  // ── e-Way Bill ──────────────────────────────────────────────────────────────
+
+  /// Updates only the EWB columns on an invoice row.
+  ///
+  /// Call this after a successful export/generation to persist the EWB
+  /// metadata without touching invoice lines or amounts.
+  Future<void> updateEwbFields(
+    int invoiceId, {
+    String? ewbNo,
+    required DateTime ewbGeneratedAt,
+    required DateTime ewbValidUntil,
+    String? vehicleNo,
+    String? transporterName,
+    String? transporterGstin,
+    required String transportMode,
+    int? distanceKm,
+  }) async {
+    final db = await database;
+    await db.update(
+      'invoices',
+      {
+        'ewb_no': ewbNo,
+        'ewb_generated_at': ewbGeneratedAt.toIso8601String(),
+        'ewb_valid_until': ewbValidUntil.toIso8601String(),
+        'vehicle_no': vehicleNo,
+        'transporter_name': transporterName,
+        'transporter_gstin': transporterGstin,
+        'transport_mode': transportMode,
+        'distance_km': distanceKm,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
+
   // ── Transporters ──────────────────────────────────────────────────────────
 
   /// Returns all transporters ordered by most recently used.

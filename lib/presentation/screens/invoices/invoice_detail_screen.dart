@@ -703,10 +703,11 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
       ),
       child: Form(
         key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // ── handle
             Center(
               child: Container(
@@ -912,6 +913,7 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
               label: const Text('Export JSON'),
             ),
           ],
+        ),
         ),
       ),
     );

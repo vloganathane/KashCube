@@ -12,6 +12,7 @@ import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../../../data/models/booking_item.dart';
 
 /// Helper function to format duration in minutes to readable text
 String _formatDuration(int minutes) {
@@ -47,21 +48,23 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   final _formKey = GlobalKey<FormState>();
   final _customerController = TextEditingController();
   final _notesController = TextEditingController();
-  final _amountController = TextEditingController();
   final _advanceController = TextEditingController();
+  // Used for Schedule (personal) title field only
   final _customServiceController = TextEditingController();
 
   int? _selectedBusinessId;
-  int? _selectedPartyId;  // Track selected party ID
-  ItemCatalog? _selectedService;
-  bool _isCustomService = false;  // Track if using custom service
-  bool _serviceLoaded = false;  // Track if we've loaded service in edit mode
+  int? _selectedPartyId;
+
+  /// Line items for business bookings. Empty for Schedule / personal.
+  final List<_ItemDraft> _items = [];
+  bool _itemsLoaded = false;
+
   DateTime _startDate = DateTime.now().add(const Duration(hours: 1));
   TimeOfDay _startTime = TimeOfDay.now();
   DateTime? _endDate;
   TimeOfDay? _endTime;
   int? _customDuration;
-  bool _hasEndTime = false;  // Simple toggle for end time
+  bool _hasEndTime = false;
   BookingType _bookingType = BookingType.business;
 
   @override
@@ -70,6 +73,15 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     _bookingType = widget.booking?.bookingType ?? widget.defaultBookingType;
     if (widget.booking != null) {
       _loadBookingData();
+      // Load items after first frame so ref is available
+      if (_bookingType == BookingType.business && widget.booking!.id != null) {
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _loadItemsForEdit(widget.booking!.id!),
+        );
+      }
+    } else if (_bookingType == BookingType.business) {
+      // New business booking: start with one empty item row
+      _items.add(_ItemDraft());
     }
   }
 
@@ -78,11 +90,6 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     _customerController.text = booking.customerName;
     _selectedBusinessId = booking.businessId;
     _selectedPartyId = booking.customerPartyId;
-    _isCustomService = booking.serviceItemId == null;
-    if (_isCustomService) {
-      _customServiceController.text = booking.serviceName;
-    }
-    // Note: _selectedService will be set from catalog if serviceItemId exists
     _startDate = booking.startDatetime;
     _startTime = TimeOfDay.fromDateTime(booking.startDatetime);
     if (booking.endDatetime != null) {
@@ -91,10 +98,11 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       _endTime = TimeOfDay.fromDateTime(booking.endDatetime!);
     }
     _customDuration = booking.durationMinutes;
-    _amountController.text = booking.totalAmount.toStringAsFixed(0);
     _advanceController.text = booking.advanceAmount.toStringAsFixed(0);
-    if (booking.notes != null) {
-      _notesController.text = booking.notes!;
+    if (booking.notes != null) _notesController.text = booking.notes!;
+    // Schedule (personal) stores its title in serviceName
+    if (booking.bookingType == BookingType.personal) {
+      _customServiceController.text = booking.serviceName;
     }
   }
 
@@ -102,75 +110,114 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   void dispose() {
     _customerController.dispose();
     _notesController.dispose();
-    _amountController.dispose();
     _advanceController.dispose();
     _customServiceController.dispose();
+    for (final item in _items) {
+      item.dispose();
+    }
     super.dispose();
   }
 
-  void _onServiceSelected(ItemCatalog service) {
-    setState(() {
-      _selectedService = service;
-      _isCustomService = false;
-      _customServiceController.clear();
+  // ── Item management ──────────────────────────────────────────────────────
 
-      // Set duration and smart end time handling
-      if (service.durationMinutes != null) {
-        _customDuration = service.durationMinutes;
-        // Auto-enable end time for multi-day services
-        if (service.durationMinutes! >= 1440) {
-          _hasEndTime = true;
-          final days = (service.durationMinutes! / 1440).ceil();
-          _endDate ??= _startDate.add(Duration(days: days));
-        }
+  /// Applies a catalog selection to an existing [draft] row.
+  void _applyServiceToItem(_ItemDraft draft, ItemCatalog service) {
+    final isDayBased = (service.durationMinutes ?? 0) >= 1440;
+    setState(() {
+      draft.nameCtrl.text = service.name;
+      draft.priceCtrl.text = service.unitPrice.toStringAsFixed(0);
+      draft.serviceItemId = service.id;
+      draft.isDayBased = isDayBased;
+      draft.taxPct = service.taxPct;
+      draft.sacCtrl.text = service.hsnCode ?? '';
+      draft.unit = isDayBased
+          ? 'days'
+          : ((service.durationMinutes ?? 0) >= 60 ? 'hrs' : 'session');
+      _customDuration = service.durationMinutes;
+      if (isDayBased) {
+        _hasEndTime = true;
+        final days = ((service.durationMinutes ?? 1440) / 1440).ceil();
+        _endDate ??= _startDate.add(Duration(days: days));
       }
-
-      // Set amount — will be recalculated below if day-based + end date set
-      _amountController.text = service.unitPrice.toStringAsFixed(0);
     });
-    // Recalc after setState so _endDate is updated
-    _recalcAmount();
+    _recalcDayBasedItems();
   }
 
-  /// Recalculates [_amountController] based on date range when the active
-  /// catalog service is day-based (durationMinutes ≥ 1440).
-  ///
-  /// No-op for custom services, hourly services, or when end date is not set.
-  void _recalcAmount() {
-    final service = _selectedService;
-    if (service == null) return;
+  void _addItem() => setState(() => _items.add(_ItemDraft()));
+
+  void _removeItem(int index) {
+    setState(() {
+      _items[index].dispose();
+      _items.removeAt(index);
+    });
+  }
+
+  /// Updates qty on every day-based row using the current start/end date diff.
+  void _recalcDayBasedItems() {
     if (!_hasEndTime || _endDate == null) return;
-    if ((service.durationMinutes ?? 0) < 1440) return;
-
     final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
-    final end   = DateTime(_endDate!.year,  _endDate!.month,  _endDate!.day);
-    final days  = end.difference(start).inDays;
+    final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+    final days = end.difference(start).inDays;
     if (days <= 0) return;
-
-    final total = service.unitPrice * days;
     setState(() {
-      _amountController.text = total.toStringAsFixed(0);
+      for (final item in _items) {
+        if (item.isDayBased) item.qtyCtrl.text = days.toString();
+      }
     });
   }
 
-  void _onCustomServiceMode() {
+  /// Loads existing booking items from DB when editing.
+  /// Falls back to a single synthetic item for legacy bookings with no items.
+  Future<void> _loadItemsForEdit(int bookingId) async {
+    final repo = ref.read(bookingRepositoryProvider);
+    final existing = await repo.getItems(bookingId);
+    if (!mounted) return;
     setState(() {
-      _isCustomService = true;
-      _selectedService = null;
-      _amountController.clear();
+      for (final d in _items) {
+        d.dispose();
+      }
+      _items.clear();
+      if (existing.isEmpty) {
+        // Legacy booking: synthesise one row from scalar fields
+        final b = widget.booking!;
+        _items.add(_ItemDraft(
+          itemName: b.serviceName,
+          qty: '1',
+          unitPrice: b.totalAmount.toStringAsFixed(0),
+          unit: 'session',
+        ));
+      } else {
+        _items.addAll(existing.map((item) => _ItemDraft(
+              id: item.id,
+              itemName: item.itemName,
+              qty: item.qty == item.qty.roundToDouble()
+                  ? item.qty.toStringAsFixed(0)
+                  : item.qty.toString(),
+              unitPrice: item.unitPrice.toStringAsFixed(0),
+              unit: item.unit,
+              taxPct: item.taxPct,
+              discountPct: item.discountPct,
+              sacCode: item.sacCode,
+              serviceItemId: item.serviceItemId,
+              isDayBased: item.unit == 'days',
+            )));
+      }
+      _itemsLoaded = true;
     });
   }
 
-  Future<void> _showCatalogPicker(BuildContext context, List<ItemCatalog> services) async {
+  Future<void> _showCatalogPickerForItem(
+    BuildContext context,
+    _ItemDraft draft,
+    List<ItemCatalog> services,
+  ) async {
     final result = await showModalBottomSheet<ItemCatalog>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _ServicePickerSheet(services: services, selected: _selectedService),
+      builder: (_) => _ServicePickerSheet(services: services),
     );
-    if (result != null) {
-      _onServiceSelected(result);
-    }
+    if (result != null) _applyServiceToItem(draft, result);
   }
 
   Future<void> _selectStartDate() async {
@@ -182,7 +229,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
     if (date != null) {
       setState(() => _startDate = date);
-      _recalcAmount();
+      _recalcDayBasedItems();
     }
   }
 
@@ -205,7 +252,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
     if (date != null) {
       setState(() => _endDate = date);
-      _recalcAmount();
+      _recalcDayBasedItems();
     }
   }
 
@@ -222,22 +269,15 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   Future<void> _saveBooking() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // For business bookings: validate service selection
     if (_bookingType == BookingType.business) {
-      if (!_isCustomService && _selectedService == null) {
+      final named = _items.where((d) => d.nameCtrl.text.trim().isNotEmpty).toList();
+      if (named.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a service')),
-        );
-        return;
-      }
-      if (_isCustomService && _customServiceController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter service name')),
+          const SnackBar(content: Text('Add at least one service')),
         );
         return;
       }
     } else {
-      // Personal: validate title field
       if (_customServiceController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please enter a title')),
@@ -246,24 +286,15 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       }
     }
 
-    // Combine date and time
     final startDatetime = DateTime(
-      _startDate.year,
-      _startDate.month,
-      _startDate.day,
-      _startTime.hour,
-      _startTime.minute,
+      _startDate.year, _startDate.month, _startDate.day,
+      _startTime.hour, _startTime.minute,
     );
-
     DateTime? endDatetime;
     if (_hasEndTime && _endDate != null) {
-      final endTime = _endTime ?? const TimeOfDay(hour: 18, minute: 0);
+      final t = _endTime ?? const TimeOfDay(hour: 18, minute: 0);
       endDatetime = DateTime(
-        _endDate!.year,
-        _endDate!.month,
-        _endDate!.day,
-        endTime.hour,
-        endTime.minute,
+        _endDate!.year, _endDate!.month, _endDate!.day, t.hour, t.minute,
       );
     }
 
@@ -271,31 +302,44 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         ? 'Walk-in Customer'
         : _customerController.text.trim();
 
+    // Derive totals and summary fields from items
+    final validItems = _bookingType == BookingType.business
+        ? _items.where((d) => d.nameCtrl.text.trim().isNotEmpty).toList()
+        : <_ItemDraft>[];
+    final totalAmount = validItems.fold(0.0, (s, d) => s + d.lineTotal);
+    final advanceAmount = _bookingType == BookingType.business
+        ? (double.tryParse(_advanceController.text) ?? 0)
+        : 0.0;
+    final firstName =
+        validItems.isNotEmpty ? validItems.first.nameCtrl.text.trim() : '';
+    final serviceName = _bookingType == BookingType.personal
+        ? _customServiceController.text.trim()
+        : (validItems.length > 1
+            ? '$firstName +${validItems.length - 1} more'
+            : firstName);
+
     final bookingData = Booking(
-      id: widget.booking?.id,  // Preserve ID if editing
-      customerPartyId: _bookingType == BookingType.business ? _selectedPartyId : null,
-      customerName: _bookingType == BookingType.business ? customerName : '',
-      serviceItemId: (_isCustomService || _bookingType == BookingType.personal) ? null : _selectedService!.id,
-      serviceName: _bookingType == BookingType.personal
-          ? _customServiceController.text.trim()
-          : (_isCustomService
-              ? _customServiceController.text.trim()
-              : _selectedService!.name),
+      id: widget.booking?.id,
+      customerPartyId:
+          _bookingType == BookingType.business ? _selectedPartyId : null,
+      customerName:
+          _bookingType == BookingType.business ? customerName : '',
+      serviceItemId:
+          validItems.isNotEmpty ? validItems.first.serviceItemId : null,
+      serviceName: serviceName,
       startDatetime: startDatetime,
       endDatetime: endDatetime,
       durationMinutes: _customDuration,
       status: widget.booking?.status ?? BookingStatus.pending,
-      totalAmount: _bookingType == BookingType.business
-          ? (double.tryParse(_amountController.text) ?? 0)
-          : 0,
-      advanceAmount: _bookingType == BookingType.business
-          ? (double.tryParse(_advanceController.text) ?? 0)
-          : 0,
+      totalAmount: totalAmount,
+      advanceAmount: advanceAmount,
+      // On first save, paidAmount = advance; on edit, keep existing paidAmount
+      paidAmount: widget.booking?.paidAmount ?? advanceAmount,
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
-      invoiceId: widget.booking?.invoiceId,  // Preserve invoice link
-      bookingRef: widget.booking?.bookingRef,  // Preserve booking reference
+      invoiceId: widget.booking?.invoiceId,
+      bookingRef: widget.booking?.bookingRef,
       bookingType: _bookingType,
       businessId: _bookingType == BookingType.business
           ? (_selectedBusinessId ?? ref.read(activeBusinessProvider)?.id)
@@ -304,33 +348,39 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       updatedAt: DateTime.now(),
     );
 
-    if (widget.booking != null) {
-      // Update existing booking
-      await ref.read(bookingsProvider.notifier).edit(bookingData);
-      
-      // Update linked invoice if exists
-      if (widget.booking!.invoiceId != null) {
-        final invoice = await ref.read(invoiceByIdProvider(widget.booking!.invoiceId!).future);
-        if (invoice != null) {
-          // Update invoice with new customer info
-          await ref.read(invoicesProvider.notifier).edit(
-            invoice.copyWith(
-              customerName: customerName,
-              customerPartyId: _selectedPartyId,
-            ),
-            invoice.items,  // Invoice already includes its items
-          );
-        }
+    final itemsToSave = validItems
+        .asMap()
+        .entries
+        .map((e) => e.value.toBookingItem(sortOrder: e.key))
+        .toList();
+
+    await ref
+        .read(bookingsProvider.notifier)
+        .saveWithItems(bookingData, itemsToSave);
+
+    // Keep linked invoice customer info in sync
+    if (widget.booking?.invoiceId != null) {
+      final invoice =
+          await ref.read(invoiceByIdProvider(widget.booking!.invoiceId!).future);
+      if (invoice != null) {
+        await ref.read(invoicesProvider.notifier).edit(
+          invoice.copyWith(
+            customerName: customerName,
+            customerPartyId: _selectedPartyId,
+          ),
+          invoice.items,
+        );
       }
-    } else {
-      // Create new booking
-      await ref.read(bookingsProvider.notifier).add(bookingData);
     }
 
     if (mounted) {
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking created')),
+        SnackBar(
+          content: Text(
+            widget.booking != null ? 'Booking updated' : 'Booking created',
+          ),
+        ),
       );
     }
   }
@@ -341,22 +391,6 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       (item) => item.isBookable && item.isActive,
     ).toList() ?? [];
     final businessEnabled = ref.watch(businessModeProvider);
-
-    // Load selected service from catalog when editing (only once)
-    if (widget.booking != null && 
-        widget.booking!.serviceItemId != null && 
-        !_serviceLoaded && 
-        bookableServices.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final service = bookableServices.where((s) => s.id == widget.booking!.serviceItemId).firstOrNull;
-        if (service != null && mounted) {
-          setState(() {
-            _selectedService = service;
-            _serviceLoaded = true;
-          });
-        }
-      });
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -424,7 +458,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               DropdownButtonFormField<int>(
-                                value: selectedId,
+                                initialValue: selectedId,
                                 decoration: const InputDecoration(
                                   labelText: 'Business',
                                   border: OutlineInputBorder(),
@@ -478,114 +512,13 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                   ),
                   const SizedBox(height: AppSpacing.base),
 
-                  // Service Selection - Dual Buttons
+                  // ── Services / Items ─────────────────────────────────────
                   Text(
-                    'Service *',
+                    'Services',
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _showCatalogPicker(context, bookableServices),
-                          icon: const Icon(Icons.list_alt),
-                          label: const Text('From Catalog'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.md,
-                              horizontal: AppSpacing.sm,
-                            ),
-                            side: _selectedService != null
-                                ? BorderSide(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    width: 2,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _onCustomServiceMode,
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Custom'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.md,
-                              horizontal: AppSpacing.sm,
-                            ),
-                            side: _isCustomService
-                                ? BorderSide(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    width: 2,
-                                  )
-                                : null,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.base),
-
-                  // Selected Service Display or Custom Input
-                  if (_selectedService != null) ...[
-                    Card(
-                      child: ListTile(
-                        title: Text(_selectedService!.name),
-                        subtitle: Text(
-                          '${CurrencyFormatter.format(_selectedService!.unitPrice)}'
-                          '${_selectedService!.durationMinutes != null ? ' • ${_formatDuration(_selectedService!.durationMinutes!)}' : ''}',
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => setState(() {
-                            _selectedService = null;
-                            _amountController.clear();
-                          }),
-                          tooltip: 'Remove service',
-                        ),
-                      ),
-                    ),
-                  ] else if (_isCustomService) ...[
-                    TextFormField(
-                      controller: _customServiceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Service Name',
-                        hintText: 'e.g., Emergency repair',
-                        border: OutlineInputBorder(),
-                      ),
-                      validator: (v) => v?.isEmpty ?? true ? 'Service name required' : null,
-                    ),
-                  ] else ...[
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.arrow_upward,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            size: 20,
-                          ),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(
-                            'Select from catalog or use custom service',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  _buildItemsSection(context, bookableServices),
                   const SizedBox(height: AppSpacing.base),
                 ],
 
@@ -644,14 +577,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       if (!v) {
                         _endDate = null;
                         _endTime = null;
-                        // Reset to single-unit price when end time is removed
-                        if (_selectedService != null) {
-                          _amountController.text =
-                              _selectedService!.unitPrice.toStringAsFixed(0);
-                        }
                       }
                     });
-                    if (v) _recalcAmount();
+                    if (v) _recalcDayBasedItems();
                   },
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -693,51 +621,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                   const SizedBox(height: AppSpacing.base),
                 ],
 
-                // Amount & Advance (business only)
-                if (_bookingType == BookingType.business) ...[
-                  TextFormField(
-                    controller: _amountController,
-                    decoration: InputDecoration(
-                      labelText: 'Total Amount *',
-                      prefixText: '₹',
-                      border: const OutlineInputBorder(),
-                      helperText: () {
-                          if (_selectedService == null) {
-                            return _isCustomService ? 'Custom pricing' : null;
-                          }
-                          final svc = _selectedService!;
-                          final isDayBased = (svc.durationMinutes ?? 0) >= 1440;
-                          if (isDayBased && _hasEndTime && _endDate != null) {
-                            final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
-                            final end   = DateTime(_endDate!.year,  _endDate!.month,  _endDate!.day);
-                            final days  = end.difference(start).inDays;
-                            if (days > 0) {
-                              return '₹${svc.unitPrice.toStringAsFixed(0)} × $days day${days == 1 ? '' : 's'}';
-                            }
-                          }
-                          return 'From catalog';
-                        }(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (v) {
-                      if (v?.isEmpty ?? true) return 'Amount required';
-                      if (double.tryParse(v!) == null) return 'Invalid amount';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: AppSpacing.base),
-
-                  TextFormField(
-                    controller: _advanceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Advance Payment (optional)',
-                      prefixText: '₹',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
+                // Payment summary (business only)
+                if (_bookingType == BookingType.business && _items.isNotEmpty) ...[
+                  _buildPaymentSummary(context),
                   const SizedBox(height: AppSpacing.base),
                 ],
 
@@ -755,17 +641,365 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
           ),
         );
   }
+
+  // ── Build helpers ──────────────────────────────────────────────────────────
+
+  Widget _buildItemsSection(BuildContext context, List<ItemCatalog> services) {
+    // Show spinner while loading existing items in edit mode
+    if (widget.booking?.id != null && !_itemsLoaded && _items.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.base),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (int i = 0; i < _items.length; i++) ...[
+          _buildItemRow(context, i, services),
+          if (i < _items.length - 1) const SizedBox(height: AppSpacing.sm),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: _addItem,
+          icon: const Icon(Icons.add, size: 18),
+          label: const Text('Add Service'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemRow(
+      BuildContext context, int index, List<ItemCatalog> services) {
+    final draft = _items[index];
+    final cs = Theme.of(context).colorScheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          // ── Name row ────────────────────────────────────────────────────
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: draft.nameCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'Service name',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.base,
+                      vertical: AppSpacing.sm,
+                    ),
+                  ),
+                  textCapitalization: TextCapitalization.sentences,
+                  validator: (v) =>
+                      (v?.trim().isEmpty ?? true) ? 'Name required' : null,
+                ),
+              ),
+              if (services.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.list_alt, size: 20),
+                  tooltip: 'Pick from catalog',
+                  onPressed: () =>
+                      _showCatalogPickerForItem(context, draft, services),
+                ),
+              if (_items.length > 1)
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  color: cs.error,
+                  tooltip: 'Remove',
+                  onPressed: () => _removeItem(index),
+                ),
+            ],
+          ),
+          const Divider(height: 1),
+          // ── Qty × Rate = Total ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: TextFormField(
+                    controller: draft.qtyCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Qty',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                    ],
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                  child: Text(
+                    draft.unit,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const Text('×'),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: TextFormField(
+                    controller: draft.priceCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Rate',
+                      prefixText: '₹',
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: AppSpacing.sm,
+                      ),
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+                  child: Text('='),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    CurrencyFormatter.format(draft.lineTotal),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: cs.onPrimaryContainer,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // ── SAC & GST (collapsed by default) ────────────────────────────
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              dense: true,
+              title: Text(
+                draft.sacCtrl.text.isNotEmpty || draft.taxPct > 0
+                    ? 'SAC: ${draft.sacCtrl.text}  •  GST ${draft.taxPct.toStringAsFixed(0)}%'
+                    : 'SAC & GST (optional)',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base,
+              ),
+              childrenPadding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                0,
+                AppSpacing.base,
+                AppSpacing.sm,
+              ),
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: draft.sacCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'SAC Code',
+                          border: OutlineInputBorder(),
+                          hintText: '998311',
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    SizedBox(
+                      width: 110,
+                      child: DropdownButtonFormField<double>(
+                        decoration: const InputDecoration(
+                          labelText: 'GST %',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [0.0, 5.0, 12.0, 18.0, 28.0]
+                            .map((v) => DropdownMenuItem(
+                                  value: v,
+                                  child: Text('${v.toStringAsFixed(0)}%'),
+                                ))
+                            .toList(),
+                        initialValue: draft.taxPct,
+                        onChanged: (v) =>
+                            setState(() => draft.taxPct = v ?? 0),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSummary(BuildContext context) {
+    final subtotal = _items.fold(0.0, (s, d) => s + d.lineTotal);
+    final advance = double.tryParse(_advanceController.text) ?? 0;
+    final balance = (subtotal - advance).clamp(0.0, double.infinity);
+    final cs = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Subtotal', style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              CurrencyFormatter.format(subtotal),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        const Divider(height: AppSpacing.xl),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          controller: _advanceController,
+          decoration: const InputDecoration(
+            labelText: 'Advance Paid (optional)',
+            prefixText: '₹',
+            border: OutlineInputBorder(),
+          ),
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          onChanged: (_) => setState(() {}),
+        ),
+        if (advance > 0) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Balance Due',
+                  style: Theme.of(context).textTheme.bodyMedium),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: balance > 0 ? cs.errorContainer : cs.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  CurrencyFormatter.format(balance),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: balance > 0
+                        ? cs.onErrorContainer
+                        : cs.onSecondaryContainer,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ── _ItemDraft ─────────────────────────────────────────────────────────────────
+
+/// Mutable UI-layer draft for a single booking line item.
+/// Not an Equatable model — converted to [BookingItem] on save via [toBookingItem].
+class _ItemDraft {
+  _ItemDraft({
+    this.id,
+    String itemName = '',
+    String qty = '1',
+    String unitPrice = '0',
+    this.unit = 'session',
+    this.taxPct = 0,
+    this.discountPct = 0,
+    this.sacCode,
+    this.serviceItemId,
+    this.isDayBased = false,
+  })  : nameCtrl = TextEditingController(text: itemName),
+        qtyCtrl = TextEditingController(text: qty),
+        priceCtrl = TextEditingController(text: unitPrice),
+        sacCtrl = TextEditingController() {
+    if (sacCode != null) sacCtrl.text = sacCode!;
+  }
+
+  /// Non-null when editing an existing [BookingItem] row.
+  final int? id;
+  final TextEditingController nameCtrl;
+  final TextEditingController qtyCtrl;
+  final TextEditingController priceCtrl;
+  final TextEditingController sacCtrl;
+
+  String unit;
+  double taxPct;
+  double discountPct;
+  String? sacCode;
+  int? serviceItemId;
+
+  /// True when this row is priced per calendar day.
+  /// [qtyCtrl] is auto-updated by [_recalcDayBasedItems] when dates change.
+  bool isDayBased;
+
+  double get qty => double.tryParse(qtyCtrl.text) ?? 0;
+  double get unitPrice => double.tryParse(priceCtrl.text) ?? 0;
+  double get lineTotal => qty * unitPrice;
+
+  /// Build a [BookingItem] for persistence.
+  /// [bookingId] is overwritten by [BookingRepositoryImpl.saveItems]; pass 0.
+  BookingItem toBookingItem({int bookingId = 0, int sortOrder = 0}) =>
+      BookingItem(
+        id: id,
+        bookingId: bookingId,
+        itemName: nameCtrl.text.trim(),
+        qty: qty,
+        unit: unit,
+        unitPrice: unitPrice,
+        taxPct: taxPct,
+        discountPct: discountPct,
+        lineTotal: lineTotal,
+        sacCode: sacCtrl.text.trim().isEmpty ? null : sacCtrl.text.trim(),
+        sortOrder: sortOrder,
+        serviceItemId: serviceItemId,
+      );
+
+  void dispose() {
+    nameCtrl.dispose();
+    qtyCtrl.dispose();
+    priceCtrl.dispose();
+    sacCtrl.dispose();
+  }
 }
 
 // ── Service Picker Sheet ─────────────────────────────────────────────────────
 
 class _ServicePickerSheet extends StatefulWidget {
   const _ServicePickerSheet({
-    required this.services, 
-    this.selected,
+    required this.services,
   });
   final List<ItemCatalog> services;
-  final ItemCatalog? selected;
 
   @override
   State<_ServicePickerSheet> createState() => _ServicePickerSheetState();
@@ -855,7 +1089,6 @@ class _ServicePickerSheetState extends State<_ServicePickerSheet> {
                       itemCount: _filtered.length,
                       itemBuilder: (context, index) {
                         final service = _filtered[index];
-                        final isSelected = service.id == widget.selected?.id;
                         return ListTile(
                           title: Text(service.name),
                           subtitle: Text(
@@ -863,12 +1096,6 @@ class _ServicePickerSheetState extends State<_ServicePickerSheet> {
                                 ? '${CurrencyFormatter.format(service.unitPrice)} • ${_formatDuration(service.durationMinutes!)}'
                                 : CurrencyFormatter.format(service.unitPrice),
                           ),
-                          trailing: isSelected
-                              ? Icon(
-                                  Icons.check_circle,
-                                  color: Theme.of(context).colorScheme.primary,
-                                )
-                              : null,
                           onTap: () => Navigator.pop(context, service),
                         );
                       },

@@ -145,7 +145,10 @@ class _BookingDetailView extends ConsumerWidget {
             _CustomerCard(booking: booking),
             const SizedBox(height: AppSpacing.base),
           ],
-          _ServiceCard(booking: booking),
+          if (booking.bookingType == BookingType.business)
+            _ServiceItemsCard(booking: booking)
+          else
+            _ServiceCard(booking: booking),
           const SizedBox(height: AppSpacing.base),
           if (booking.bookingType == BookingType.business)
             _AmountCard(booking: booking),
@@ -219,74 +222,112 @@ class _BookingDetailView extends ConsumerWidget {
           AppSpacing.base,
           AppSpacing.xl,
         ),
-        child: FilledButton.icon(
-          icon: const Icon(Icons.receipt_long_outlined),
-          label: const Text('Complete & Create Invoice'),
-          onPressed: () async {
-            // Mark booking as completed first
-            await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
-            
-            // Generate invoice from booking
-            final invoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
-            final now = DateTime.now();
-            
-            // Calculate amounts (subtract advance from total)
-            final amountToInvoice = booking.totalAmount - booking.advanceAmount;
-            
-            // Create invoice
-            final invoice = Invoice(
-              invoiceNo: invoiceNo,
-              businessId: booking.businessId,
-              customerPartyId: booking.customerPartyId,
-              customerName: booking.customerName,
-              status: InvoiceStatus.draft,
-              issueDate: now,
-              dueDate: now,
-              subtotal: amountToInvoice,
-              taxTotal: 0,
-              discountPct: 0,
-              total: amountToInvoice,
-              paidAmount: 0,
-              notes: booking.notes != null && booking.notes!.isNotEmpty
-                  ? 'Booking: ${booking.bookingRef}\n${booking.notes}'
-                  : 'Booking: ${booking.bookingRef}',
-              items: [],
-              createdAt: now,
-              updatedAt: now,
-            );
-            
-            // Create invoice item from booking service
-            final invoiceItem = InvoiceItem(
-              invoiceId: 0, // Placeholder - will be set by repository
-              itemName: booking.serviceName,
-              description: 'Service completed on ${DateFormat('d MMM yyyy').format(booking.startDatetime)}${booking.advanceAmount > 0 ? ' (Advance paid: ${CurrencyFormatter.format(booking.advanceAmount)})' : ''}',
-              qty: 1,
-              unitPrice: amountToInvoice,
-              discountPct: 0,
-              lineTotal: amountToInvoice,
-            );
-            
-            // Save invoice
-            final invoiceId = await ref.read(invoicesProvider.notifier).add(
-              invoice,
-              [invoiceItem],
-            );
-            
-            // Link invoice to booking
-            await ref.read(bookingsProvider.notifier).linkInvoice(
-              booking.id!,
-              invoiceId,
-            );
-            
-            if (context.mounted) {
-              // Navigate to invoice detail for review/send
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => InvoiceDetailScreen(invoiceId: invoiceId),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Record partial payment before invoicing
+            if (booking.bookingType == BookingType.business &&
+                !booking.isFullyPaid)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.payments_outlined),
+                  label: const Text('Record Payment'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  onPressed: () => _showRecordPaymentDialog(context, ref),
                 ),
-              );
-            }
-          },
+              ),
+            FilledButton.icon(
+              icon: const Icon(Icons.receipt_long_outlined),
+              label: const Text('Complete & Create Invoice'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              onPressed: () async {
+                // Mark booking as completed
+                await ref
+                    .read(bookingsProvider.notifier)
+                    .markAsCompleted(booking.id!);
+
+                final invoiceNo =
+                    await InvoiceNumberService.instance.nextInvoiceNo();
+                final now = DateTime.now();
+
+                // Load booking line items (multi-service support)
+                final bookingItems = await ref
+                    .read(bookingRepositoryProvider)
+                    .getItems(booking.id!);
+
+                // Tax total derived from items
+                final taxTotal = bookingItems.fold(
+                  0.0,
+                  (sum, bi) => sum + bi.taxAmount,
+                );
+
+                // Invoice carries FULL booking amount; advance already paid
+                final invoice = Invoice(
+                  invoiceNo: invoiceNo,
+                  businessId: booking.businessId,
+                  customerPartyId: booking.customerPartyId,
+                  customerName: booking.customerName,
+                  status: booking.paidAmount > 0
+                      ? InvoiceStatus.partiallyPaid
+                      : InvoiceStatus.draft,
+                  issueDate: now,
+                  dueDate: now,
+                  subtotal: booking.totalAmount,
+                  taxTotal: taxTotal,
+                  discountPct: 0,
+                  total: booking.totalAmount,
+                  paidAmount: booking.paidAmount,
+                  notes: booking.notes != null && booking.notes!.isNotEmpty
+                      ? 'Booking: ${booking.bookingRef}\n${booking.notes}'
+                      : 'Booking: ${booking.bookingRef}',
+                  items: [],
+                  createdAt: now,
+                  updatedAt: now,
+                );
+
+                // Map items 1:1 — preserves SAC code, taxPct, discountPct
+                final List<InvoiceItem> invoiceItems;
+                if (bookingItems.isNotEmpty) {
+                  invoiceItems =
+                      bookingItems.map((bi) => bi.toInvoiceItem(0)).toList();
+                } else {
+                  // Legacy fallback for bookings with no line items
+                  invoiceItems = [
+                    InvoiceItem(
+                      invoiceId: 0,
+                      itemName: booking.serviceName,
+                      description:
+                          'Service completed on ${DateFormat('d MMM yyyy').format(booking.startDatetime)}',
+                      qty: 1,
+                      unitPrice: booking.totalAmount,
+                      discountPct: 0,
+                      lineTotal: booking.totalAmount,
+                    ),
+                  ];
+                }
+
+                final invoiceId = await ref
+                    .read(invoicesProvider.notifier)
+                    .add(invoice, invoiceItems);
+
+                await ref
+                    .read(bookingsProvider.notifier)
+                    .linkInvoice(booking.id!, invoiceId);
+
+                if (!context.mounted) return;
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => InvoiceDetailScreen(invoiceId: invoiceId),
+                  ),
+                );
+              },
+            ),
+          ],
         ),
       );
     } else if (booking.status == BookingStatus.completed &&
@@ -324,11 +365,14 @@ class _BookingDetailView extends ConsumerWidget {
           ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
           : null;
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
+      final bookingItems =
+          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
       final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
         booking,
         business: business,
         customerParty: customerParty,
         termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+        items: bookingItems.isNotEmpty ? bookingItems : null,
       );
       final result = await OpenFile.open(file.path);
       if (result.type != ResultType.done && context.mounted) {
@@ -354,11 +398,14 @@ class _BookingDetailView extends ConsumerWidget {
           ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
           : null;
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
+      final bookingItems =
+          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
       final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
         booking,
         business: business,
         customerParty: customerParty,
         termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+        items: bookingItems.isNotEmpty ? bookingItems : null,
       );
       await Share.shareXFiles(
         [XFile(file.path)],
@@ -497,6 +544,56 @@ class _BookingDetailView extends ConsumerWidget {
         );
       }
     }
+  }
+
+  Future<void> _showRecordPaymentDialog(
+      BuildContext context, WidgetRef ref) async {
+    final amountCtrl = TextEditingController(
+      text: booking.balanceDue > 0
+          ? booking.balanceDue.toStringAsFixed(0)
+          : '',
+    );
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Record Payment'),
+        content: TextField(
+          controller: amountCtrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            labelText: 'Amount received',
+            prefixText: '₹ ',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final amount =
+                  double.tryParse(amountCtrl.text.replaceAll(',', '')) ?? 0;
+              if (amount > 0) Navigator.pop(ctx, amount);
+            },
+            child: const Text('Record'),
+          ),
+        ],
+      ),
+    );
+    amountCtrl.dispose();
+    if (result == null || result <= 0 || !context.mounted) return;
+    await ref.read(bookingsProvider.notifier).recordPayment(
+          bookingId: booking.id!,
+          amount: result,
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Payment of ${CurrencyFormatter.format(result)} recorded'),
+      ),
+    );
   }
 }
 
@@ -730,6 +827,143 @@ class _CustomerCard extends ConsumerWidget {
   }
 }
 
+// ── Service Items Card (business bookings) ──────────────────────────────────
+
+class _ServiceItemsCard extends ConsumerWidget {
+  const _ServiceItemsCard({required this.booking});
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final itemsAsync = ref.watch(bookingItemsProvider(booking.id!));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Services',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            itemsAsync.when(
+              loading: () =>
+                  const Center(child: CircularProgressIndicator()),
+              error: (_, _) => Text(
+                booking.serviceName,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              data: (items) {
+                if (items.isEmpty) {
+                  return Text(
+                    booking.serviceName,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.w500),
+                  );
+                }
+                return Column(
+                  children: items.asMap().entries.map((e) {
+                    final i = e.key;
+                    final item = e.value;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (i > 0) const Divider(height: AppSpacing.base),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.itemName,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.w500),
+                                  ),
+                                  if (item.sacCode != null &&
+                                      item.sacCode!.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'SAC: ${item.sacCode}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  CurrencyFormatter.format(item.lineTotal),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                          fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  '${_fmtQty(item.qty)} ${item.unit} × ${CurrencyFormatter.format(item.unitPrice)}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                                if (item.taxPct > 0)
+                                  Text(
+                                    'GST ${item.taxPct.toStringAsFixed(0)}%',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmtQty(double qty) => qty == qty.truncateToDouble()
+      ? qty.toInt().toString()
+      : qty.toStringAsFixed(2);
+}
+
 // ── Service Card ─────────────────────────────────────────────────────────────
 
 class _ServiceCard extends StatelessWidget {
@@ -774,7 +1008,6 @@ class _AmountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
-    final balance = booking.totalAmount - booking.advanceAmount;
 
     return Card(
       child: Padding(
@@ -796,17 +1029,19 @@ class _AmountCard extends StatelessWidget {
               color: colors.income,
               isBold: true,
             ),
-            if (booking.advanceAmount > 0) ...[
+            if (booking.paidAmount > 0) ...[
               const SizedBox(height: AppSpacing.sm),
               _AmountRow(
-                label: 'Advance Paid',
-                amount: booking.advanceAmount,
+                label: booking.paidAmount > booking.advanceAmount
+                    ? 'Total Paid'
+                    : 'Advance Paid',
+                amount: booking.paidAmount,
                 color: Theme.of(context).colorScheme.onSurface,
               ),
               const SizedBox(height: AppSpacing.sm),
               _AmountRow(
                 label: 'Balance Due',
-                amount: balance,
+                amount: booking.balanceDue,
                 color: colors.expense,
                 isBold: true,
               ),

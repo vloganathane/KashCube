@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/booking.dart';
+import '../models/booking_item.dart';
 import '../models/business.dart';
 import '../models/party.dart';
 import 'pdf_document_data.dart';
@@ -27,6 +28,7 @@ class BookingConfirmationPdfService {
     Business? business,
     Party? customerParty,
     String? termsAndConditions,
+    List<BookingItem>? items,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
     final data = _bookingToData(
@@ -35,6 +37,7 @@ class BookingConfirmationPdfService {
       customerParty: customerParty,
       logo: logo,
       termsAndConditions: termsAndConditions,
+      items: items,
     );
     final ref = (booking.bookingRef ?? 'BK-${booking.id}')
         .replaceAll('/', '-')
@@ -54,6 +57,7 @@ class BookingConfirmationPdfService {
     Party? customerParty,
     pw.MemoryImage? logo,
     String? termsAndConditions,
+    List<BookingItem>? items,
   }) {
     final fmt = DateFormat('d MMM yyyy');
     final timeFmt = DateFormat('h:mm a');
@@ -82,16 +86,35 @@ class BookingConfirmationPdfService {
       notesParts.add(booking.notes!);
     }
 
-    // Single line item for the booked service
-    final lineItems = [
-      PdfLineItem(
-        name: booking.serviceName,
-        description: notesParts.isNotEmpty ? notesParts.first : null,
-        qty: 1,
-        unitPrice: booking.totalAmount,
-        lineTotal: booking.totalAmount,
-      ),
-    ];
+    // Line items — multi-service if items provided, else single fallback
+    final List<PdfLineItem> lineItems;
+    if (items != null && items.isNotEmpty) {
+      lineItems = items
+          .map(
+            (bi) => PdfLineItem(
+              name: bi.itemName,
+              description: bi.description,
+              hsnCode: bi.sacCode,
+              qty: bi.qty,
+              unit: bi.unit,
+              unitPrice: bi.unitPrice,
+              taxPct: bi.taxPct,
+              discountPct: bi.discountPct,
+              lineTotal: bi.lineTotal,
+            ),
+          )
+          .toList();
+    } else {
+      lineItems = [
+        PdfLineItem(
+          name: booking.serviceName,
+          description: notesParts.isNotEmpty ? notesParts.first : null,
+          qty: 1,
+          unitPrice: booking.totalAmount,
+          lineTotal: booking.totalAmount,
+        ),
+      ];
+    }
 
     return PdfDocumentData(
       type: PdfDocumentType.booking,
@@ -115,7 +138,7 @@ class BookingConfirmationPdfService {
       totals: PdfTotals(
         subtotal: booking.totalAmount,
         grandTotal: booking.totalAmount,
-        paidAmount: booking.advanceAmount,
+        paidAmount: booking.paidAmount,
       ),
       termsAndConditions: termsAndConditions,
       footerNote: 'Thank you for your booking! We look forward to serving you.',

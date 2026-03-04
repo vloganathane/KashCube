@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/settings_repository_impl.dart';
 import '../../data/services/backup_service.dart';
 import '../../data/services/csv_export_service.dart';
+import '../../data/services/pdf_document_data.dart';
 import '../../domain/repositories/settings_repository.dart';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,9 @@ class SettingsKeys {
   static const invoiceTerms = 'invoice_terms';
   static const quoteTerms   = 'quote_terms';
   static const bookingTerms = 'booking_terms';
+
+  // PDF document template
+  static const documentTemplate = 'document_template';
 }
 
 // ---------------------------------------------------------------------------
@@ -213,6 +217,36 @@ class BusinessNameNotifier extends StateNotifier<String> {
 final businessNameProvider =
     StateNotifierProvider<BusinessNameNotifier, String>(
   (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
+);
+
+// ---------------------------------------------------------------------------
+// Document Template
+// ---------------------------------------------------------------------------
+
+class DocumentTemplateNotifier extends StateNotifier<DocumentTemplate> {
+  DocumentTemplateNotifier(this._repo) : super(DocumentTemplate.modern) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    final stored = await _repo.get(SettingsKeys.documentTemplate);
+    final template = DocumentTemplate.fromId(stored ?? DocumentTemplate.modern.id);
+    DocumentTemplate.setActive(template);
+    state = template;
+  }
+
+  Future<void> setTemplate(DocumentTemplate template) async {
+    await _repo.set(SettingsKeys.documentTemplate, template.id);
+    DocumentTemplate.setActive(template);
+    state = template;
+  }
+}
+
+final documentTemplateProvider =
+    StateNotifierProvider<DocumentTemplateNotifier, DocumentTemplate>(
+  (ref) => DocumentTemplateNotifier(ref.read(settingsRepositoryProvider)),
 );
 
 // ---------------------------------------------------------------------------

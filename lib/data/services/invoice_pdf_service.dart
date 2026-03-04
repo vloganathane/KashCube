@@ -38,7 +38,7 @@ class InvoicePdfService {
     );
     return PdfLayoutEngine.instance.generate(
       data,
-      DocumentTemplate.modern,
+      DocumentTemplate.active,
       'Invoice_${invoice.invoiceNo}.pdf',
     );
   }
@@ -59,7 +59,7 @@ class InvoicePdfService {
     );
     return PdfLayoutEngine.instance.generate(
       data,
-      DocumentTemplate.modern,
+      DocumentTemplate.active,
       'Quote_${quote.quoteNo}.pdf',
     );
   }

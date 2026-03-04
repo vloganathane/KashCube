@@ -30,7 +30,7 @@ class DeliveryChallanPdfService {
     final data = _challanToData(challan, business: business, customerParty: customerParty, logo: logo);
     return PdfLayoutEngine.instance.generate(
       data,
-      DocumentTemplate.classic,
+      DocumentTemplate.active,
       'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
     );
   }

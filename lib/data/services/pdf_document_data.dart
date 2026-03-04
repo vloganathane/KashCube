@@ -73,6 +73,11 @@ class DocumentTemplate {
 
   static DocumentTemplate fromId(String id) =>
       presets.firstWhere((t) => t.id == id, orElse: () => modern);
+
+  // ── Active template singleton (written by Riverpod notifier on startup/change)
+  static DocumentTemplate _active = modern;
+  static DocumentTemplate get active => _active;
+  static void setActive(DocumentTemplate t) => _active = t;
 }
 
 // ── Document type ─────────────────────────────────────────────────────────────

@@ -94,6 +94,7 @@ class Booking extends Equatable {
     this.createdAt,
     this.updatedAt,
     this.reminderSentAt,
+    this.paidAmount = 0,
   });
 
   final int? id;
@@ -108,6 +109,9 @@ class Booking extends Equatable {
   final BookingType bookingType;
   final double totalAmount;
   final double advanceAmount;
+  /// Running total of all payments received (advance + subsequent payments).
+  /// Mirrors [Invoice.paidAmount]. Set to [advanceAmount] at booking creation.
+  final double paidAmount;
   final int? invoiceId;
   final String? notes;
   final DateTime? notificationScheduledAt;
@@ -118,6 +122,12 @@ class Booking extends Equatable {
   final DateTime? updatedAt;
   /// Timestamp of the last manual reminder sent (WhatsApp/SMS/Email).
   final DateTime? reminderSentAt;
+
+  /// Outstanding balance = [totalAmount] − [paidAmount].
+  double get balanceDue => (totalAmount - paidAmount).clamp(0, double.infinity);
+
+  /// True when [paidAmount] covers the full [totalAmount].
+  bool get isFullyPaid => paidAmount >= totalAmount;
 
   Booking copyWith({
     int? id,
@@ -132,6 +142,7 @@ class Booking extends Equatable {
     BookingType? bookingType,
     double? totalAmount,
     double? advanceAmount,
+    double? paidAmount,
     int? invoiceId,
     String? notes,
     DateTime? notificationScheduledAt,
@@ -155,6 +166,7 @@ class Booking extends Equatable {
       bookingType: bookingType ?? this.bookingType,
       totalAmount: totalAmount ?? this.totalAmount,
       advanceAmount: advanceAmount ?? this.advanceAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
       invoiceId: invoiceId ?? this.invoiceId,
       notes: notes ?? this.notes,
       notificationScheduledAt: notificationScheduledAt ?? this.notificationScheduledAt,
@@ -181,6 +193,7 @@ class Booking extends Equatable {
       'booking_type': bookingType.dbValue,
       'total_amount': totalAmount,
       'advance_amount': advanceAmount,
+      'paid_amount': paidAmount,
       'invoice_id': invoiceId,
       'notes': notes,
       'notification_scheduled_at': notificationScheduledAt?.toIso8601String(),
@@ -209,6 +222,7 @@ class Booking extends Equatable {
       bookingType: BookingTypeExt.fromDb(map['booking_type'] as String?),
       totalAmount: (map['total_amount'] as num).toDouble(),
       advanceAmount: (map['advance_amount'] as num?)?.toDouble() ?? 0,
+      paidAmount: (map['paid_amount'] as num?)?.toDouble() ?? 0,
       invoiceId: map['invoice_id'] as int?,
       notes: map['notes'] as String?,
       notificationScheduledAt: map['notification_scheduled_at'] != null
@@ -275,6 +289,7 @@ class Booking extends Equatable {
         bookingType,
         totalAmount,
         advanceAmount,
+        paidAmount,
         invoiceId,
         notes,
         notificationScheduledAt,

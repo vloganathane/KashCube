@@ -1,4 +1,5 @@
 import '../../data/models/booking.dart';
+import '../../data/models/booking_item.dart';
 
 abstract class BookingRepository {
   /// Get all bookings
@@ -52,4 +53,22 @@ abstract class BookingRepository {
 
   /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [bookingId].
   Future<void> markReminderSent(int bookingId);
+
+  // ── Booking items (multi-service) ────────────────────────────────────────
+
+  /// Replace all line items for [bookingId] atomically.
+  /// Pass an empty list to clear items (e.g. Schedule bookings).
+  Future<void> saveItems(int bookingId, List<BookingItem> items);
+
+  /// Fetch ordered line items for [bookingId].
+  Future<List<BookingItem>> getItems(int bookingId);
+
+  // ── Payments ─────────────────────────────────────────────────────────────
+
+  /// Add [amount] to [booking.paid_amount].
+  /// Auto-marks the booking as [BookingStatus.completed] when fully paid.
+  Future<void> recordPayment({
+    required int bookingId,
+    required double amount,
+  });
 }

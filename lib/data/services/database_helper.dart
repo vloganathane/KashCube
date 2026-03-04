@@ -1843,6 +1843,47 @@ class DatabaseHelper {
         'description': 'Add document_templates table with built-in presets',
       });
     }
+
+    if (oldVersion < 42) {
+      // booking_items: multi-service line items for business bookings.
+      // Schema mirrors invoice_items (minus HSN) for seamless Booking→Invoice.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS booking_items (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          booking_id      INTEGER NOT NULL,
+          item_name       TEXT NOT NULL,
+          description     TEXT,
+          qty             REAL NOT NULL DEFAULT 1,
+          unit            TEXT DEFAULT 'session',
+          unit_price      REAL NOT NULL DEFAULT 0,
+          tax_pct         REAL NOT NULL DEFAULT 0,
+          discount_pct    REAL NOT NULL DEFAULT 0,
+          line_total      REAL NOT NULL DEFAULT 0,
+          sac_code        TEXT,
+          sort_order      INTEGER DEFAULT 0,
+          service_item_id INTEGER,
+          FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+          FOREIGN KEY (service_item_id) REFERENCES item_catalog(id)
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)',
+      );
+
+      // paid_amount: running total of all payments received (advance + later).
+      await db.execute(
+        'ALTER TABLE bookings ADD COLUMN paid_amount REAL DEFAULT 0',
+      );
+      // Seed existing advance amounts so legacy bookings stay correct.
+      await db.execute(
+        'UPDATE bookings SET paid_amount = advance_amount WHERE advance_amount > 0',
+      );
+
+      await db.insert('schema_version', {
+        'version': 42,
+        'description': 'Add booking_items table and paid_amount column for multi-service bookings',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

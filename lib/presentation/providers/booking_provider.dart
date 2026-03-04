@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/booking.dart';
+import '../../data/models/booking_item.dart';
 import '../../data/repositories/booking_repository_impl.dart';
 import '../../data/services/notification_service.dart';
 import '../../domain/repositories/booking_repository.dart';
@@ -91,11 +92,56 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
     await _repo.markReminderSent(bookingId);
     await load();
   }
+
+  // ── Items ──────────────────────────────────────────────────────────────────
+
+  /// Save (create or update) a booking together with its line items.
+  /// On create: inserts booking first, then saves items with the new id.
+  /// On edit: updates booking, then replaces all items atomically.
+  Future<int> saveWithItems(
+    Booking booking,
+    List<BookingItem> items,
+  ) async {
+    final int id;
+    if (booking.id == null) {
+      id = await _repo.insert(booking);
+    } else {
+      await _repo.update(booking);
+      id = booking.id!;
+    }
+    await _repo.saveItems(id, items);
+    await load();
+    return id;
+  }
+
+  // ── Payments ─────────────────────────────────────────────────────────────
+
+  /// Record a payment against the booking.
+  /// Increments [paid_amount]; auto-completes when fully paid.
+  Future<void> recordPayment({
+    required int bookingId,
+    required double amount,
+  }) async {
+    await _repo.recordPayment(bookingId: bookingId, amount: amount);
+    await load();
+  }
 }
 
 final bookingsProvider =
     StateNotifierProvider<BookingsNotifier, AsyncValue<List<Booking>>>(
   (ref) => BookingsNotifier(ref.read(bookingRepositoryProvider)),
+);
+
+// ── Per-booking items ──────────────────────────────────────────────────────────
+
+/// Loads the ordered line items for a single booking.
+/// Used by booking detail screen and "Create Invoice" conversion.
+final bookingItemsProvider =
+    FutureProvider.autoDispose.family<List<BookingItem>, int>(
+  (ref, bookingId) async {
+    final repo = ref.read(bookingRepositoryProvider);
+    return repo.getItems(bookingId);
+  },
 );
 
 // ── Single booking provider ──────────────────────────────────────────────────

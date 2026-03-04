@@ -1,4 +1,5 @@
 import '../../data/models/booking.dart';
+import '../../data/models/booking_item.dart';
 import '../../data/services/database_helper.dart';
 import '../../domain/repositories/booking_repository.dart';
 
@@ -189,6 +190,59 @@ class BookingRepositoryImpl implements BookingRepository {
     await db.update(
       _table,
       {'reminder_sent_at': DateTime.now().toIso8601String()},
+      where: 'id = ?',
+      whereArgs: [bookingId],
+    );
+  }
+
+  // ── Booking items ─────────────────────────────────────────────────────────
+
+  @override
+  Future<void> saveItems(int bookingId, List<BookingItem> items) async {
+    final db = await _db.database;
+    await db.transaction((txn) async {
+      await txn.delete('booking_items',
+          where: 'booking_id = ?', whereArgs: [bookingId]);
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i].copyWith(bookingId: bookingId, sortOrder: i);
+        await txn.insert('booking_items', item.toMap());
+      }
+    });
+  }
+
+  @override
+  Future<List<BookingItem>> getItems(int bookingId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'booking_items',
+      where: 'booking_id = ?',
+      whereArgs: [bookingId],
+      orderBy: 'sort_order ASC',
+    );
+    return rows.map(BookingItem.fromMap).toList();
+  }
+
+  // ── Payments ───────────────────────────────────────────────────────────────
+
+  @override
+  Future<void> recordPayment({
+    required int bookingId,
+    required double amount,
+  }) async {
+    final db = await _db.database;
+    final booking = await getById(bookingId);
+    if (booking == null) return;
+    final newPaid =
+        (booking.paidAmount + amount).clamp(0.0, booking.totalAmount);
+    final isFullyPaid = newPaid >= booking.totalAmount;
+    await db.update(
+      _table,
+      {
+        'paid_amount': newPaid,
+        'updated_at': DateTime.now().toIso8601String(),
+        if (isFullyPaid && booking.status != BookingStatus.completed)
+          'status': BookingStatus.completed.dbValue,
+      },
       where: 'id = ?',
       whereArgs: [bookingId],
     );

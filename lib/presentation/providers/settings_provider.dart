@@ -52,6 +52,29 @@ class SettingsKeys {
   static const bookingTerms = 'booking_terms';
   static const challanTerms = 'challan_terms';
 
+  // Built-in fallback T&C used when the user has not yet customised them
+  static const defaultInvoiceTerms =
+      '1. Payment is due on or before the due date mentioned on this invoice.\n'
+      '2. Goods once sold cannot be returned without prior written approval.\n'
+      '3. All disputes are subject to local jurisdiction only.\n'
+      '4. E. & O.E.';
+
+  static const defaultQuoteTerms =
+      '1. This quotation is valid for 30 days from the date of issue.\n'
+      '2. Prices are subject to revision without notice after the validity period.\n'
+      '3. Taxes applicable as per prevailing government norms.\n'
+      '4. E. & O.E.';
+
+  static const defaultBookingTerms =
+      '1. Advance paid is non-refundable if cancelled within 48 hours of the service date.\n'
+      '2. Rescheduling is subject to availability and must be requested at least 24 hours in advance.\n'
+      '3. Service will be provided as per the booking details mentioned above.';
+
+  static const defaultChallanTerms =
+      '1. This delivery challan is not a tax invoice.\n'
+      '2. Please verify goods on receipt. Any discrepancy must be reported within 24 hours.\n'
+      '3. Signed copy to be returned as acknowledgement of delivery.';
+
   // PDF document template
   static const documentTemplate = 'document_template';
 }

@@ -4,31 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../providers/settings_provider.dart';
 
-// ---------------------------------------------------------------------------
-// Default Terms & Conditions text (used when user has not set custom terms)
-// ---------------------------------------------------------------------------
-
-const _kDefaultInvoiceTerms =
-    '1. Payment is due on or before the due date mentioned on this invoice.\n'
-    '2. Goods once sold cannot be returned without prior written approval.\n'
-    '3. All disputes are subject to local jurisdiction only.\n'
-    '4. E. & O.E.';
-
-const _kDefaultQuoteTerms =
-    '1. This quotation is valid for 30 days from the date of issue.\n'
-    '2. Prices are subject to revision without notice after the validity period.\n'
-    '3. Taxes applicable as per prevailing government norms.\n'
-    '4. E. & O.E.';
-
-const _kDefaultBookingTerms =
-    '1. Advance paid is non-refundable if cancelled within 48 hours of the service date.\n'
-    '2. Rescheduling is subject to availability and must be requested at least 24 hours in advance.\n'
-    '3. Service will be provided as per the booking details mentioned above.';
-
-const _kDefaultChallanTerms =
-    '1. This delivery challan is not a tax invoice.\n'
-    '2. Please verify goods on receipt. Any discrepancy must be reported within 24 hours.\n'
-    '3. Signed copy to be returned as acknowledgement of delivery.';
+// Default T&C text is defined in SettingsKeys (single source of truth)
 
 /// Loads all four terms strings from settings in one shot.
 final _termsProvider =
@@ -79,14 +55,25 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
   void _populate(
       ({String invoice, String quote, String booking, String challan}) data) {
     if (_loaded) return;
-    _invoiceCtrl.text  = data.invoice.isEmpty  ? _kDefaultInvoiceTerms  : data.invoice;
-    _quoteCtrl.text    = data.quote.isEmpty    ? _kDefaultQuoteTerms    : data.quote;
-    _bookingCtrl.text  = data.booking.isEmpty  ? _kDefaultBookingTerms  : data.booking;
-    _challanCtrl.text  = data.challan.isEmpty  ? _kDefaultChallanTerms  : data.challan;
+    final isFirstTime = data.invoice.isEmpty &&
+        data.quote.isEmpty &&
+        data.booking.isEmpty &&
+        data.challan.isEmpty;
+
+    _invoiceCtrl.text = data.invoice.isEmpty ? SettingsKeys.defaultInvoiceTerms : data.invoice;
+    _quoteCtrl.text   = data.quote.isEmpty   ? SettingsKeys.defaultQuoteTerms   : data.quote;
+    _bookingCtrl.text = data.booking.isEmpty ? SettingsKeys.defaultBookingTerms : data.booking;
+    _challanCtrl.text = data.challan.isEmpty ? SettingsKeys.defaultChallanTerms : data.challan;
     _loaded = true;
+
+    // Persist defaults to DB immediately so PDF generation can read them
+    // without requiring the user to open this screen first.
+    if (isFirstTime) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _save(silent: true));
+    }
   }
 
-  Future<void> _save() async {
+  Future<void> _save({bool silent = false}) async {
     setState(() => _saving = true);
     try {
       final repo = ref.read(settingsRepositoryProvider);
@@ -96,7 +83,7 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
         repo.set(SettingsKeys.bookingTerms,  _bookingCtrl.text.trim()),
         repo.set(SettingsKeys.challanTerms,  _challanCtrl.text.trim()),
       ]);
-      if (mounted) {
+      if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Terms & conditions saved')),
         );

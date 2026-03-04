@@ -371,7 +371,7 @@ class _InvoiceDetailView extends ConsumerWidget {
         invoice,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: terms,
+        termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
       );
       
       if (!context.mounted) return;
@@ -424,7 +424,7 @@ class _InvoiceDetailView extends ConsumerWidget {
         invoice,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: terms,
+        termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
       );
       
       if (!context.mounted) return;

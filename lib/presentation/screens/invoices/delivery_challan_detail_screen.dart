@@ -285,7 +285,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
           : null;
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms);
       // Open with system viewer
       // ignore: use_build_context_synchronously
       final result = await _openFile(file.path);
@@ -310,7 +310,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
           : null;
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms);
       await _shareFile(file.path, 'Delivery Challan ${challan.challanNo}');
     } catch (e) {
       _showError('Share failed: $e');

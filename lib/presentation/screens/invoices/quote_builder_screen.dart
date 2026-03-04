@@ -563,7 +563,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             invoice,
             business: business,
             customerParty: customerParty,
-            termsAndConditions: invoiceTerms,
+            termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
           );
         },
       );
@@ -855,7 +855,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingQuote!,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: quoteTerms,
+        termsAndConditions: quoteTerms ?? SettingsKeys.defaultQuoteTerms,
       );
       
       if (!mounted) return;
@@ -908,7 +908,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingQuote!,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: quoteTerms,
+        termsAndConditions: quoteTerms ?? SettingsKeys.defaultQuoteTerms,
       );
       
       if (!mounted) return;
@@ -969,7 +969,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingInvoice!,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: invoiceTerms,
+        termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
       );
       
       if (!mounted) return;
@@ -1030,7 +1030,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingInvoice!,
         business: business,
         customerParty: customerParty,
-        termsAndConditions: invoiceTerms,
+        termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
       );
       
       if (!mounted) return;
@@ -1078,6 +1078,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingChallan!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -1121,6 +1122,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _existingChallan!,
         business: business,
         customerParty: customerParty,
+        termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
       );
       if (!mounted) return;
       Navigator.pop(context);

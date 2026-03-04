@@ -193,7 +193,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         quote,
         business: business,
         customerParty: party,
-        termsAndConditions: tc,
+        termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
       );
       if (!mounted) return;
       await OpenFile.open(pdfFile.path);
@@ -219,7 +219,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         quote,
         business: business,
         customerParty: party,
-        termsAndConditions: tc,
+        termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
       );
       if (!mounted) return;
       final due = quote.validUntil;

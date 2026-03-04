@@ -13,6 +13,62 @@ enum PdfHeaderStyle {
   minimal,
 }
 
+/// Output paper / roll size for PDF generation.
+enum PageSize {
+  a4,
+  a5,
+  letter,
+
+  /// 58 mm thermal receipt roll (common budget printers).
+  thermal58,
+
+  /// 80 mm thermal receipt roll (most common commercial printers).
+  thermal80;
+
+  /// The [PdfPageFormat] for this size.
+  ///
+  /// Thermal sizes use a 200 mm placeholder height; the layout engine
+  /// uses MultiPage so content automatically flows across roll segments.
+  PdfPageFormat get pageFormat {
+    switch (this) {
+      case PageSize.a4:
+        return PdfPageFormat.a4;
+      case PageSize.a5:
+        return PdfPageFormat.a5;
+      case PageSize.letter:
+        return PdfPageFormat.letter;
+      case PageSize.thermal58:
+        return PdfPageFormat(
+          58 * PdfPageFormat.mm,
+          200 * PdfPageFormat.mm,
+        );
+      case PageSize.thermal80:
+        return PdfPageFormat(
+          80 * PdfPageFormat.mm,
+          200 * PdfPageFormat.mm,
+        );
+    }
+  }
+
+  bool get isThermal =>
+      this == PageSize.thermal58 || this == PageSize.thermal80;
+
+  String get label {
+    switch (this) {
+      case PageSize.a4:
+        return 'A4';
+      case PageSize.a5:
+        return 'A5';
+      case PageSize.letter:
+        return 'Letter';
+      case PageSize.thermal58:
+        return '58 mm';
+      case PageSize.thermal80:
+        return '80 mm';
+    }
+  }
+}
+
 /// Immutable style configuration for PDF rendering.
 ///
 /// Phase 1: three built-in presets.
@@ -25,6 +81,7 @@ class DocumentTemplate {
     required this.headerStyle,
     this.showLogo = true,
     this.amountDecimalDigits = 2,
+    this.pageSize = PageSize.a4,
   });
 
   final String id;
@@ -38,6 +95,15 @@ class DocumentTemplate {
   /// Decimal places used when formatting currency amounts.
   /// 0 = whole rupees (typical for invoices), 2 = paise (typical for DCs).
   final int amountDecimalDigits;
+
+  /// Output paper / roll size.
+  final PageSize pageSize;
+
+  /// True when this template targets a 58 mm or 80 mm thermal roll.
+  bool get isThermal => pageSize.isThermal;
+
+  /// The [PdfPageFormat] for this template's [pageSize].
+  PdfPageFormat get pageFormat => pageSize.pageFormat;
 
   // ── Built-in presets ────────────────────────────────────────────────────────
 
@@ -69,7 +135,18 @@ class DocumentTemplate {
     amountDecimalDigits: 0,
   );
 
-  static const List<DocumentTemplate> presets = [classic, modern, plain];
+  /// Thermal Receipt: monochrome 80 mm roll, no logo, no colour.
+  static const receipt = DocumentTemplate(
+    id: 'receipt',
+    name: 'Thermal Receipt',
+    accentColor: PdfColors.black,
+    headerStyle: PdfHeaderStyle.minimal,
+    showLogo: false,
+    amountDecimalDigits: 0,
+    pageSize: PageSize.thermal80,
+  );
+
+  static const List<DocumentTemplate> presets = [classic, modern, plain, receipt];
 
   static DocumentTemplate fromId(String id) =>
       presets.firstWhere((t) => t.id == id, orElse: () => modern);

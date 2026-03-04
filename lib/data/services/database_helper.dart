@@ -817,6 +817,24 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)');
 
+    // -- document_templates table (DB v41)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS document_templates (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        name                  TEXT NOT NULL,
+        based_on              TEXT NOT NULL DEFAULT 'modern',
+        accent_color_hex      TEXT NOT NULL DEFAULT '#1B5E20',
+        header_style          TEXT NOT NULL DEFAULT 'minimal',
+        show_logo             INTEGER NOT NULL DEFAULT 1,
+        amount_decimal_digits INTEGER NOT NULL DEFAULT 0,
+        page_size             TEXT NOT NULL DEFAULT 'a4',
+        is_active             INTEGER NOT NULL DEFAULT 0,
+        is_preset             INTEGER NOT NULL DEFAULT 0,
+        created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await _seedDocumentTemplatePresets(db);
+
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);
@@ -1802,6 +1820,29 @@ class DatabaseHelper {
         'description': 'Add challan_id to invoices for DC → Invoice link-back',
       });
     }
+
+    if (oldVersion < 41) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS document_templates (
+          id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+          name                  TEXT NOT NULL,
+          based_on              TEXT NOT NULL DEFAULT 'modern',
+          accent_color_hex      TEXT NOT NULL DEFAULT '#1B5E20',
+          header_style          TEXT NOT NULL DEFAULT 'minimal',
+          show_logo             INTEGER NOT NULL DEFAULT 1,
+          amount_decimal_digits INTEGER NOT NULL DEFAULT 0,
+          page_size             TEXT NOT NULL DEFAULT 'a4',
+          is_active             INTEGER NOT NULL DEFAULT 0,
+          is_preset             INTEGER NOT NULL DEFAULT 0,
+          created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await _seedDocumentTemplatePresets(db);
+      await db.insert('schema_version', {
+        'version': 41,
+        'description': 'Add document_templates table with built-in presets',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -1925,6 +1966,69 @@ class DatabaseHelper {
     final now = DateTime.now();
     final fyStartYear = now.month >= 4 ? now.year : now.year - 1;
     return DateTime(fyStartYear, 4, 1).toIso8601String().substring(0, 10);
+  }
+
+  /// Seeds the four built-in [document_templates] presets.
+  /// Safe to call multiple times — uses INSERT OR IGNORE on the preset names.
+  Future<void> _seedDocumentTemplatePresets(Database db) async {
+    const now = '2026-01-01T00:00:00.000';
+    const presets = <Map<String, Object?>>[
+      {
+        'name': 'Classic',
+        'based_on': 'classic',
+        'accent_color_hex': '#1B5E20',
+        'header_style': 'banner',
+        'show_logo': 1,
+        'amount_decimal_digits': 2,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Modern',
+        'based_on': 'modern',
+        'accent_color_hex': '#1B5E20',
+        'header_style': 'minimal',
+        'show_logo': 1,
+        'amount_decimal_digits': 0,
+        'page_size': 'a4',
+        'is_active': 1, // default active
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Plain',
+        'based_on': 'plain',
+        'accent_color_hex': '#000000',
+        'header_style': 'minimal',
+        'show_logo': 0,
+        'amount_decimal_digits': 0,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Thermal Receipt',
+        'based_on': 'receipt',
+        'accent_color_hex': '#000000',
+        'header_style': 'minimal',
+        'show_logo': 0,
+        'amount_decimal_digits': 0,
+        'page_size': 'thermal80',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+    ];
+    for (final row in presets) {
+      await db.insert(
+        'document_templates',
+        row,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    }
   }
 
   Future<void> _seedAccounts(Database db) async {

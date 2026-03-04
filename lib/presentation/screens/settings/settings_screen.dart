@@ -4,7 +4,6 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
-import '../../../data/services/pdf_document_data.dart';
 import '../../providers/settings_provider.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
@@ -17,6 +16,7 @@ import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
+import 'template_list_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -270,10 +270,15 @@ class SettingsScreen extends ConsumerWidget {
                       final template = ref.watch(documentTemplateProvider);
                       return ListTile(
                         leading: const Icon(Icons.picture_as_pdf_outlined),
-                        title: const Text('PDF Template'),
+                        title: const Text('PDF Templates'),
                         subtitle: Text(template.name),
                         trailing: const Icon(Icons.chevron_right),
-                        onTap: () => _showTemplatePicker(context, ref, template),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TemplateListScreen(),
+                          ),
+                        ),
                       );
                     }),
                   ],
@@ -411,83 +416,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // PDF Template picker
-  // ---------------------------------------------------------------------------
-
-  void _showTemplatePicker(
-    BuildContext context,
-    WidgetRef ref,
-    DocumentTemplate current,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base,
-                AppSpacing.base,
-                AppSpacing.base,
-                AppSpacing.sm,
-              ),
-              child: Text(
-                'Choose PDF Template',
-                style: context.textTheme.titleMedium,
-              ),
-            ),
-            const Divider(height: 1),
-            RadioGroup<DocumentTemplate>(
-              groupValue: current,
-              onChanged: (v) {
-                if (v != null) {
-                  ref
-                      .read(documentTemplateProvider.notifier)
-                      .setTemplate(v);
-                  Navigator.pop(ctx);
-                }
-              },
-              child: Column(
-                children: [
-                  for (final template in DocumentTemplate.presets)
-                    RadioListTile<DocumentTemplate>(
-                      title: Text(template.name),
-                      secondary: Icon(
-                        template.headerStyle == PdfHeaderStyle.banner
-                            ? Icons.view_compact_outlined
-                            : template.showLogo
-                                ? Icons.article_outlined
-                                : Icons.description_outlined,
-                      ),
-                      subtitle: Text(_templateDescription(template)),
-                      value: template,
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _templateDescription(DocumentTemplate t) {
-    switch (t.id) {
-      case 'classic':
-        return 'Coloured banner header · suitable for all docs';
-      case 'modern':
-        return 'Clean header with accent line · logo shown';
-      case 'plain':
-        return 'Black & white · no logo · minimal';
-      default:
-        return t.name;
-    }
   }
 
   // ---------------------------------------------------------------------------

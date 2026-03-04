@@ -47,9 +47,13 @@ class PdfLayoutEngine {
     final pdf = pw.Document();
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (ctx) => _buildContent(data, template, fmt),
+        pageFormat: template.pageFormat,
+        margin: template.isThermal
+            ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
+            : const pw.EdgeInsets.all(32),
+        build: (ctx) => template.isThermal
+            ? _buildThermalContent(data, fmt)
+            : _buildContent(data, template, fmt),
       ),
     );
 
@@ -86,6 +90,153 @@ class PdfLayoutEngine {
       ],
       pw.SizedBox(height: 24),
       _buildFooter(data),
+    ];
+  }
+
+  // ── Header + document title ───────────────────────────────────────────────
+
+  // ── Thermal receipt layout ────────────────────────────────────────────────
+
+  /// Compact single-column layout for 58 mm and 80 mm thermal printers.
+  ///
+  /// Design principles:
+  /// • Monochrome only — no colour fills or accents.
+  /// • Compact 8–10 pt type; no logo.
+  /// • Dashed text dividers (fits any roll width).
+  /// • Items split into name row + amount row for readability on narrow paper.
+  List<pw.Widget> _buildThermalContent(
+    PdfDocumentData data,
+    NumberFormat fmt,
+  ) {
+    const ts8 = pw.TextStyle(fontSize: 8);
+    final ts8b = pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold);
+    final ts9b = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
+    final ts10b = pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold);
+    const dash = '- - - - - - - - - - - - - - - - - - - - - - -';
+    final seller = data.seller;
+    final totals = data.totals;
+
+    // helpers
+    pw.Widget divider() => pw.Center(
+          child: pw.Text(dash, style: ts8.copyWith(color: _muted)),
+        );
+
+    pw.Widget kv(
+      String label,
+      String value, {
+      bool bold = false,
+      double fontSize = 8,
+    }) =>
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(label,
+                style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
+            pw.Text(value,
+                style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
+          ],
+        );
+
+    final totalCgst =
+        totals.gstRows.fold<double>(0.0, (s, r) => s + r.cgst);
+    final totalSgst =
+        totals.gstRows.fold<double>(0.0, (s, r) => s + r.sgst);
+    final totalIgst =
+        totals.gstRows.fold<double>(0.0, (s, r) => s + r.igst);
+
+    final dateFmt = DateFormat('dd MMM yyyy');
+
+    return [
+      // business block
+      pw.Center(
+        child: pw.Text(
+          seller.name.toUpperCase(),
+          style: ts10b,
+          textAlign: pw.TextAlign.center,
+        ),
+      ),
+      if (seller.address != null && seller.address!.isNotEmpty)
+        pw.Center(
+          child: pw.Text(
+            seller.address!,
+            style: ts8,
+            textAlign: pw.TextAlign.center,
+          ),
+        ),
+      if (seller.phone != null && seller.phone!.isNotEmpty)
+        pw.Center(child: pw.Text('Ph: ${seller.phone}', style: ts8)),
+      if (seller.gstin != null && seller.gstin!.isNotEmpty)
+        pw.Center(child: pw.Text('GSTIN: ${seller.gstin}', style: ts8)),
+      pw.SizedBox(height: 4),
+      divider(),
+      pw.SizedBox(height: 2),
+
+      // document meta
+      pw.Center(
+        child: pw.Text(data.typeLabel, style: ts9b, textAlign: pw.TextAlign.center),
+      ),
+      kv('#:', data.docNumber),
+      kv('Date:', dateFmt.format(data.issueDate)),
+      if (data.buyer.name.isNotEmpty) kv('To:', data.buyer.name),
+      pw.SizedBox(height: 2),
+      divider(),
+      pw.SizedBox(height: 2),
+
+      // line items
+      for (final item in data.lineItems) ...<pw.Widget>[
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Expanded(child: pw.Text(item.name, style: ts8b)),
+            pw.Text(fmt.format(item.lineTotal), style: ts8b),
+          ],
+        ),
+        pw.Text(
+          '  ${item.qty} ${item.unit ?? 'pcs'} × ${fmt.format(item.unitPrice)}',
+          style: ts8,
+        ),
+        if (item.description != null && item.description!.isNotEmpty)
+          pw.Text('  ${item.description}', style: ts8),
+        pw.SizedBox(height: 2),
+      ],
+
+      divider(),
+      pw.SizedBox(height: 2),
+
+      // totals
+      kv('Subtotal:', fmt.format(totals.subtotal)),
+      if (totals.freight > 0) kv('Freight:', fmt.format(totals.freight)),
+      if (totals.packing > 0) kv('Packing:', fmt.format(totals.packing)),
+      if (totals.insurance > 0) kv('Insurance:', fmt.format(totals.insurance)),
+      if (totals.hasGst) ...<pw.Widget>[
+        if (totalCgst > 0) kv('CGST:', fmt.format(totalCgst)),
+        if (totalSgst > 0) kv('SGST:', fmt.format(totalSgst)),
+        if (totalIgst > 0) kv('IGST:', fmt.format(totalIgst)),
+      ],
+      divider(),
+      kv('TOTAL', fmt.format(totals.grandTotal), bold: true, fontSize: 9),
+      if (totals.hasPayment) ...<pw.Widget>[
+        kv('Paid:', fmt.format(totals.paidAmount)),
+        kv('Balance:', fmt.format(totals.balanceDue), bold: true),
+      ],
+      divider(),
+      pw.SizedBox(height: 4),
+
+      // footer
+      if (data.footerNote.isNotEmpty)
+        pw.Center(
+          child: pw.Text(
+            data.footerNote,
+            style: ts8,
+            textAlign: pw.TextAlign.center,
+          ),
+        ),
+      if (data.termsAndConditions != null &&
+          data.termsAndConditions!.isNotEmpty) ...<pw.Widget>[
+        pw.SizedBox(height: 2),
+        divider(),
+        pw.Text(data.termsAndConditions!, style: ts8),
+      ],
     ];
   }
 

@@ -11,7 +11,9 @@ import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/services/delivery_challan_pdf_service.dart';
 import '../../../data/services/fiscal_year_service.dart';
+import '../../providers/business_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
+import '../../providers/party_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -274,8 +276,14 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   Future<void> _printPdf() async {
     setState(() => _loading = true);
     try {
+      final business = challan.businessId != null
+          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
+          : null;
+      final customerParty = challan.customerPartyId != null
+          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
+          : null;
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty);
       // Open with system viewer
       // ignore: use_build_context_synchronously
       final result = await _openFile(file.path);
@@ -292,8 +300,14 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   Future<void> _sharePdf() async {
     setState(() => _loading = true);
     try {
+      final business = challan.businessId != null
+          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
+          : null;
+      final customerParty = challan.customerPartyId != null
+          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
+          : null;
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty);
       await _shareFile(file.path, 'Delivery Challan ${challan.challanNo}');
     } catch (e) {
       _showError('Share failed: $e');

@@ -86,6 +86,9 @@ class DocumentTemplatePreview extends StatelessWidget {
 
 // ─── Standard A4 / A5 / Letter mock ──────────────────────────────────────────
 
+/// Design dimensions: 210×297 (matches A4 aspect ratio 1:√2).
+/// All pixel values inside are chosen at this "canvas" size; FittedBox
+/// scales the whole thing to whatever container size the AspectRatio gives.
 class _StandardMock extends StatelessWidget {
   const _StandardMock({
     required this.accent,
@@ -97,131 +100,148 @@ class _StandardMock extends StatelessWidget {
   final bool isBanner;
   final bool showLogo;
 
+  static const _kW = 210.0;
+  static const _kH = 297.0;
+
   @override
   Widget build(BuildContext context) {
-    const stub = _Stub.short;
-    const stubMed = _Stub.medium;
-    const pad = EdgeInsets.symmetric(horizontal: 6);
+    const pad = EdgeInsets.symmetric(horizontal: 12);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // ── Header ──────────────────────────────────────────────────────────
-        if (isBanner)
-          _BannerHeader(accent: accent, showLogo: showLogo)
-        else
-          _MinimalHeader(accent: accent, showLogo: showLogo),
+    return FittedBox(
+      fit: BoxFit.fill,
+      child: SizedBox(
+        width: _kW,
+        height: _kH,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // ── Header ────────────────────────────────────────────────────
+            if (isBanner)
+              _BannerHeader(accent: accent, showLogo: showLogo)
+            else
+              _MinimalHeader(accent: accent, showLogo: showLogo),
 
-        const SizedBox(height: 4),
+            const SizedBox(height: 10),
 
-        // ── Party rows ───────────────────────────────────────────────────────
-        Padding(
-          padding: pad,
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Stub(width: 26, height: 3, color: const Color(0xFFBDBDBD)),
-                    const SizedBox(height: 2),
-                    _Stub(width: 40, height: 3, color: const Color(0xFFE0E0E0)),
-                    const SizedBox(height: 1),
-                    _Stub(width: 32, height: 3, color: const Color(0xFFE0E0E0)),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _Stub(width: 26, height: 3, color: const Color(0xFFBDBDBD)),
-                    const SizedBox(height: 2),
-                    _Stub(width: 44, height: 3, color: const Color(0xFFE0E0E0)),
-                    const SizedBox(height: 1),
-                    _Stub(width: 36, height: 3, color: const Color(0xFFE0E0E0)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 6),
-
-        // ── Items table header ───────────────────────────────────────────────
-        Container(
-          margin: pad,
-          height: 5,
-          color: accent.withAlpha(30),
-        ),
-
-        const SizedBox(height: 2),
-
-        // ── Item rows ────────────────────────────────────────────────────────
-        for (int i = 0; i < 4; i++) ...[
-          Padding(
-            padding: pad,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 5,
-                  child: _Stub(
-                    width: i.isEven ? 55 : 45,
-                    height: 3,
-                    color: const Color(0xFFE0E0E0),
-                  ),
-                ),
-                _Stub(
-                  width: 22,
-                  height: 3,
-                  color: const Color(0xFFE0E0E0),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 3),
-        ],
-
-        const Spacer(),
-
-        // ── Totals ───────────────────────────────────────────────────────────
-        Container(
-          margin: const EdgeInsets.fromLTRB(6, 0, 6, 2),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            // ── Party rows ────────────────────────────────────────────────
+            Padding(
+              padding: pad,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  stubMed,
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: accent.withAlpha(220),
-                      borderRadius: BorderRadius.circular(1),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Stub(width: 36, height: 5, color: const Color(0xFFBDBDBD)),
+                        const SizedBox(height: 4),
+                        _Stub(width: 60, height: 5, color: const Color(0xFFE0E0E0)),
+                        const SizedBox(height: 3),
+                        _Stub(width: 48, height: 5, color: const Color(0xFFE0E0E0)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _Stub(width: 36, height: 5, color: const Color(0xFFBDBDBD)),
+                        const SizedBox(height: 4),
+                        _Stub(width: 66, height: 5, color: const Color(0xFFE0E0E0)),
+                        const SizedBox(height: 3),
+                        _Stub(width: 54, height: 5, color: const Color(0xFFE0E0E0)),
+                      ],
                     ),
                   ),
                 ],
               ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Items table header ─────────────────────────────────────────
+            Container(
+              margin: pad,
+              height: 8,
+              color: accent.withAlpha(30),
+            ),
+
+            const SizedBox(height: 4),
+
+            // ── Item rows ─────────────────────────────────────────────────
+            for (int i = 0; i < 4; i++) ...[
+              Padding(
+                padding: pad,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: _Stub(
+                        height: 5,
+                        color: const Color(0xFFE0E0E0),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      flex: 2,
+                      child: _Stub(
+                        height: 5,
+                        color: const Color(0xFFE0E0E0),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
             ],
-          ),
-        ),
 
-        const SizedBox(height: 4),
+            const Spacer(),
 
-        // ── Footer strip ─────────────────────────────────────────────────────
-        Padding(
-          padding: pad,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [stub, const SizedBox(height: 2), stub],
-          ),
+            // ── Totals ────────────────────────────────────────────────────
+            Padding(
+              padding: pad,
+              child: Row(
+                children: [
+                  const Spacer(),
+                  SizedBox(
+                    width: 80,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Stub(height: 5, color: const Color(0xFFE0E0E0)),
+                        const SizedBox(height: 4),
+                        Container(
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: accent.withAlpha(220),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // ── Footer strip ──────────────────────────────────────────────
+            Padding(
+              padding: pad,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Stub(width: 100, height: 5, color: const Color(0xFFE0E0E0)),
+                  const SizedBox(height: 4),
+                  _Stub(width: 80, height: 5, color: const Color(0xFFE0E0E0)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
-        const SizedBox(height: 4),
-      ],
+      ),
     );
   }
 }
@@ -232,80 +252,97 @@ class _ThermalMock extends StatelessWidget {
   const _ThermalMock({required this.accent});
   final Color accent;
 
+  /// Design canvas: 160 wide × 400 tall (tall receipt proportions).
+  /// FittedBox scales this down to the AspectRatio container without overflow.
+  static const _kW = 160.0;
+  static const _kH = 400.0;
+
   @override
   Widget build(BuildContext context) {
-    const pad = EdgeInsets.symmetric(horizontal: 4);
-    const ts = _Stub.short;
-    return Padding(
-      padding: const EdgeInsets.all(4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Business name
-          Center(
-            child: _Stub(width: 40, height: 4, color: const Color(0xFF212121)),
-          ),
-          const SizedBox(height: 2),
-          Center(
-            child: _Stub(width: 30, height: 3, color: const Color(0xFFBDBDBD)),
-          ),
-          const SizedBox(height: 3),
-          _DashedLine(color: const Color(0xFFBDBDBD)),
-          const SizedBox(height: 3),
+    const pad = EdgeInsets.symmetric(horizontal: 12);
 
-          // Meta
-          Padding(
-            padding: pad,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ts,
-                const SizedBox(height: 2),
-                ts,
-              ],
-            ),
-          ),
-          const SizedBox(height: 3),
-          _DashedLine(color: const Color(0xFFBDBDBD)),
-          const SizedBox(height: 3),
-
-          // Items
-          for (int i = 0; i < 3; i++) ...[
-            Padding(
-              padding: pad,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _Stub(width: i.isEven ? 36 : 28, height: 3, color: const Color(0xFFE0E0E0)),
-                  _Stub(width: 16, height: 3, color: const Color(0xFFE0E0E0)),
-                ],
+    return FittedBox(
+      fit: BoxFit.fill,
+      child: SizedBox(
+        width: _kW,
+        height: _kH,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Business name
+              Center(
+                child: _Stub(width: 80, height: 8, color: const Color(0xFF212121)),
               ),
-            ),
-            const SizedBox(height: 2),
-          ],
-          _DashedLine(color: const Color(0xFFBDBDBD)),
-          const SizedBox(height: 2),
+              const SizedBox(height: 6),
+              Center(
+                child: _Stub(width: 60, height: 6, color: const Color(0xFFBDBDBD)),
+              ),
+              const SizedBox(height: 8),
+              _DashedLine(color: const Color(0xFFBDBDBD)),
+              const SizedBox(height: 8),
 
-          // Total
-          Padding(
-            padding: pad,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _Stub(width: 20, height: 4, color: const Color(0xFF212121)),
-                _Stub(width: 22, height: 4, color: accent),
+              // Meta
+              Padding(
+                padding: pad,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Stub(width: 90, height: 6, color: const Color(0xFFE0E0E0)),
+                    const SizedBox(height: 5),
+                    _Stub(width: 70, height: 6, color: const Color(0xFFE0E0E0)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              _DashedLine(color: const Color(0xFFBDBDBD)),
+              const SizedBox(height: 8),
+
+              // Items
+              for (int i = 0; i < 3; i++) ...[
+                Padding(
+                  padding: pad,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _Stub(
+                        width: i.isEven ? 80 : 60,
+                        height: 6,
+                        color: const Color(0xFFE0E0E0),
+                      ),
+                      _Stub(width: 36, height: 6, color: const Color(0xFFE0E0E0)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 6),
               ],
-            ),
-          ),
-          const SizedBox(height: 3),
-          _DashedLine(color: const Color(0xFFBDBDBD)),
-          const SizedBox(height: 4),
 
-          // Footer
-          Center(
-            child: _Stub(width: 32, height: 3, color: const Color(0xFFBDBDBD)),
+              _DashedLine(color: const Color(0xFFBDBDBD)),
+              const SizedBox(height: 6),
+
+              // Total
+              Padding(
+                padding: pad,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _Stub(width: 44, height: 8, color: const Color(0xFF212121)),
+                    _Stub(width: 48, height: 8, color: accent),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              _DashedLine(color: const Color(0xFFBDBDBD)),
+              const SizedBox(height: 12),
+
+              // Footer
+              Center(
+                child: _Stub(width: 70, height: 6, color: const Color(0xFFBDBDBD)),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -487,17 +524,6 @@ class _Stub extends StatelessWidget {
     required this.height,
     required this.color,
   });
-
-  static const short = _Stub(
-    width: 40,
-    height: 3,
-    color: Color(0xFFE0E0E0),
-  );
-  static const medium = _Stub(
-    width: 56,
-    height: 3,
-    color: Color(0xFFE0E0E0),
-  );
 
   final double? width;
   final double height;

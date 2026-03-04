@@ -31,6 +31,33 @@ class PdfLayoutEngine {
 
   // ── Public API ────────────────────────────────────────────────────────────
 
+  /// Generate PDF bytes without saving to disk. Used for thumbnail previews.
+  ///
+  /// Safe to call from a background isolate — pure Dart, no platform channels.
+  Future<Uint8List> generateBytes(
+    PdfDocumentData data,
+    DocumentTemplate template,
+  ) async {
+    final fmt = NumberFormat.currency(
+      locale: 'en_IN',
+      symbol: 'Rs.',
+      decimalDigits: template.amountDecimalDigits,
+    );
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: template.pageFormat,
+        margin: template.isThermal
+            ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
+            : const pw.EdgeInsets.all(32),
+        build: (ctx) => template.isThermal
+            ? _buildThermalContent(data, fmt)
+            : _buildContent(data, template, fmt),
+      ),
+    );
+    return pdf.save();
+  }
+
   /// Generate a PDF and save it to the temp cache, returning the [File].
   Future<File> generate(
     PdfDocumentData data,

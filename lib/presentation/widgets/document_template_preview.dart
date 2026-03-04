@@ -1,40 +1,74 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/document_template_record.dart';
+import '../providers/template_preview_provider.dart';
 
-/// A zero-async, pixel-level mock of a PDF document, used for instant preview
-/// in the template builder screen.
+/// A PDF template thumbnail that renders in two passes:
 ///
-/// Renders using plain Flutter widgets, no PDF generation required.
+/// 1. **Instant** — a Flutter-widget mock (pixel stubs, same aspect ratio and
+///    accent colour) shown immediately while the real render is in-flight.
+/// 2. **Async** — a genuine rasterised PDF page (produced via a background
+///    isolate + [Printing.raster]) shown once ready, replacing the mock.
+///
+/// The rasterised result is cached by Riverpod ([keepAlive]) so scrolling the
+/// template list never triggers a re-render.
 ///
 /// Usage:
 /// ```dart
-/// DocumentTemplatePreview(record: record, width: 260)
+/// // List thumbnail (44 px, low DPI)
+/// DocumentTemplatePreview(record: record, width: 44, dpi: 72)
+///
+/// // Builder live preview (180 px, higher DPI)
+/// DocumentTemplatePreview(record: _toRecord(), width: 180, dpi: 150)
 /// ```
-class DocumentTemplatePreview extends StatelessWidget {
+class DocumentTemplatePreview extends ConsumerWidget {
   const DocumentTemplatePreview({
     super.key,
     required this.record,
     this.width,
+    this.dpi = 96,
   });
 
   final DocumentTemplateRecord record;
 
-  /// Maximum width for the preview card. If null, the widget fills available
-  /// width respecting the aspect ratio.
+  /// Maximum width for the preview card. If null, fills available width.
   final double? width;
 
+  /// Resolution used when rasterising the PDF page.
+  ///
+  /// Use 72 for tiny list thumbnails, 150 for the builder live preview.
+  final int dpi;
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accentHex = record.accentColorHex.replaceFirst('#', '');
     final accentValue = int.tryParse(accentHex, radix: 16) ?? 0x1B5E20;
     final accent = Color(0xFF000000 | accentValue);
 
     final isThermal = record.isThermal;
     final isBanner = record.headerStyleName == 'banner';
-
-    // Aspect ratio: width / height
     final ratio = _aspectRatio(record.pageSizeName);
+
+    // Watch the async real render. Returns null while loading / on error.
+    final imageBytes =
+        ref.watch(templatePreviewProvider(templatePreviewKey(record, dpi))).valueOrNull;
+
+    // Phase 1: instant Flutter mock skeleton.
+    // Phase 2: replaced by the real PDF image once rasterised.
+    Widget content = imageBytes != null
+        ? Image.memory(
+            imageBytes,
+            fit: BoxFit.fill,
+            gaplessPlayback: true,
+          )
+        : (isThermal
+            ? _ThermalMock(accent: accent)
+            : _StandardMock(
+                accent: accent,
+                isBanner: isBanner,
+                showLogo: record.showLogo,
+              ));
 
     Widget preview = AspectRatio(
       aspectRatio: ratio,
@@ -51,13 +85,7 @@ class DocumentTemplatePreview extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: isThermal
-            ? _ThermalMock(accent: accent)
-            : _StandardMock(
-                accent: accent,
-                isBanner: isBanner,
-                showLogo: record.showLogo,
-              ),
+        child: content,
       ),
     );
 

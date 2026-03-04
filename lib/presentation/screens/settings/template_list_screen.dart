@@ -169,7 +169,7 @@ class _TemplateListTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Preview thumbnail
-            DocumentTemplatePreview(record: record, width: 44),
+            DocumentTemplatePreview(record: record, width: 44, dpi: 72),
             const SizedBox(width: AppSpacing.base),
 
             // Name + subtitle

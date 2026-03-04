@@ -166,6 +166,7 @@ class _TemplateBuilderScreenState
             child: DocumentTemplatePreview(
               record: _toRecord(),
               width: 180,
+              dpi: 150,
             ),
           ),
 

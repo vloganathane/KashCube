@@ -51,6 +51,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   final _advanceController = TextEditingController();
   final _customServiceController = TextEditingController();
 
+  int? _selectedBusinessId;
   int? _selectedPartyId;  // Track selected party ID
   ItemCatalog? _selectedService;
   bool _isCustomService = false;  // Track if using custom service
@@ -75,6 +76,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   void _loadBookingData() {
     final booking = widget.booking!;
     _customerController.text = booking.customerName;
+    _selectedBusinessId = booking.businessId;
     _selectedPartyId = booking.customerPartyId;
     _isCustomService = booking.serviceItemId == null;
     if (_isCustomService) {
@@ -269,7 +271,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       bookingRef: widget.booking?.bookingRef,  // Preserve booking reference
       bookingType: _bookingType,
       businessId: _bookingType == BookingType.business
-          ? (widget.booking?.businessId ?? ref.read(activeBusinessProvider)?.id)
+          ? (_selectedBusinessId ?? ref.read(activeBusinessProvider)?.id)
           : null,
       createdAt: widget.booking?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
@@ -371,6 +373,74 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
 
                 // ── Business-only fields ────────────────────────────────────
                 if (_bookingType == BookingType.business) ...[
+                  // Business selector (hidden when only 1 business)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final businessesAsync = ref.watch(businessesProvider);
+                      return businessesAsync.when(
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                        data: (businesses) {
+                          if (businesses.isEmpty) return const SizedBox.shrink();
+                          if (businesses.length == 1) {
+                            // Auto-select single business silently
+                            if (_selectedBusinessId == null) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) setState(() => _selectedBusinessId = businesses.first.id);
+                              });
+                            }
+                            return const SizedBox.shrink();
+                          }
+                          final activeBusiness = ref.watch(activeBusinessProvider);
+                          final selectedId = _selectedBusinessId ?? activeBusiness?.id;
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              DropdownButtonFormField<int>(
+                                value: selectedId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Business',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.business_outlined),
+                                ),
+                                items: businesses.map((biz) {
+                                  return DropdownMenuItem(
+                                    value: biz.id,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          biz.name,
+                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                        ),
+                                        if (biz.gstNo != null)
+                                          Text(
+                                            'GST: ${biz.gstNo}',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) => setState(() => _selectedBusinessId = value),
+                                validator: (value) =>
+                                    value == null ? 'Please select a business' : null,
+                              ),
+                              const SizedBox(height: AppSpacing.base),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+
                   // Customer Name (optional for walk-ins)
                   PartyPickerField(
                     controller: _customerController,

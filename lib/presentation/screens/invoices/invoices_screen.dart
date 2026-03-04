@@ -11,7 +11,6 @@ import '../../providers/settings_provider.dart';
 import '../search/search_screen.dart';
 import '../../widgets/speed_dial_fab.dart';
 import 'invoice_detail_screen.dart';
-import 'quote_builder_screen.dart';
 import 'quote_detail_screen.dart';
 
 class InvoicesScreen extends ConsumerStatefulWidget {

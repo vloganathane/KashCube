@@ -25,9 +25,14 @@ class DeliveryChallanPdfService {
     DeliveryChallan challan, {
     Business? business,
     Party? customerParty,
+    String? termsAndConditions,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
-    final data = _challanToData(challan, business: business, customerParty: customerParty, logo: logo);
+    final data = _challanToData(challan,
+        business: business,
+        customerParty: customerParty,
+        logo: logo,
+        termsAndConditions: termsAndConditions);
     return PdfLayoutEngine.instance.generate(
       data,
       DocumentTemplate.active,
@@ -42,6 +47,7 @@ class DeliveryChallanPdfService {
     Business? business,
     Party? customerParty,
     pw.MemoryImage? logo,
+    String? termsAndConditions,
   }) {
     final hasTransport = (challan.vehicleNo != null && challan.vehicleNo!.isNotEmpty) ||
         (challan.transporterName != null && challan.transporterName!.isNotEmpty) ||
@@ -91,7 +97,7 @@ class DeliveryChallanPdfService {
           : null,
       purpose: challan.purpose.label,
       ewbNo: challan.ewbNo,
-      footerNote: '',
+      footerNote: termsAndConditions ?? '',
     );
   }
 

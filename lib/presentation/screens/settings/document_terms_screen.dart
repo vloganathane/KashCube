@@ -4,19 +4,48 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../providers/settings_provider.dart';
 
-/// Loads all three terms strings from settings in one shot.
+// ---------------------------------------------------------------------------
+// Default Terms & Conditions text (used when user has not set custom terms)
+// ---------------------------------------------------------------------------
+
+const _kDefaultInvoiceTerms =
+    '1. Payment is due on or before the due date mentioned on this invoice.\n'
+    '2. Goods once sold cannot be returned without prior written approval.\n'
+    '3. All disputes are subject to local jurisdiction only.\n'
+    '4. E. & O.E.';
+
+const _kDefaultQuoteTerms =
+    '1. This quotation is valid for 30 days from the date of issue.\n'
+    '2. Prices are subject to revision without notice after the validity period.\n'
+    '3. Taxes applicable as per prevailing government norms.\n'
+    '4. E. & O.E.';
+
+const _kDefaultBookingTerms =
+    '1. Advance paid is non-refundable if cancelled within 48 hours of the service date.\n'
+    '2. Rescheduling is subject to availability and must be requested at least 24 hours in advance.\n'
+    '3. Service will be provided as per the booking details mentioned above.';
+
+const _kDefaultChallanTerms =
+    '1. This delivery challan is not a tax invoice.\n'
+    '2. Please verify goods on receipt. Any discrepancy must be reported within 24 hours.\n'
+    '3. Signed copy to be returned as acknowledgement of delivery.';
+
+/// Loads all four terms strings from settings in one shot.
 final _termsProvider =
-    FutureProvider<({String invoice, String quote, String booking})>((ref) async {
+    FutureProvider<({String invoice, String quote, String booking, String challan})>(
+        (ref) async {
   final repo = ref.read(settingsRepositoryProvider);
   final results = await Future.wait([
     repo.get(SettingsKeys.invoiceTerms),
     repo.get(SettingsKeys.quoteTerms),
     repo.get(SettingsKeys.bookingTerms),
+    repo.get(SettingsKeys.challanTerms),
   ]);
   return (
     invoice: results[0] ?? '',
     quote: results[1] ?? '',
     booking: results[2] ?? '',
+    challan: results[3] ?? '',
   );
 });
 
@@ -34,6 +63,7 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
   final _invoiceCtrl  = TextEditingController();
   final _quoteCtrl    = TextEditingController();
   final _bookingCtrl  = TextEditingController();
+  final _challanCtrl  = TextEditingController();
   bool _loaded = false;
   bool _saving = false;
 
@@ -42,14 +72,17 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
     _invoiceCtrl.dispose();
     _quoteCtrl.dispose();
     _bookingCtrl.dispose();
+    _challanCtrl.dispose();
     super.dispose();
   }
 
-  void _populate(({String invoice, String quote, String booking}) data) {
+  void _populate(
+      ({String invoice, String quote, String booking, String challan}) data) {
     if (_loaded) return;
-    _invoiceCtrl.text  = data.invoice;
-    _quoteCtrl.text    = data.quote;
-    _bookingCtrl.text  = data.booking;
+    _invoiceCtrl.text  = data.invoice.isEmpty  ? _kDefaultInvoiceTerms  : data.invoice;
+    _quoteCtrl.text    = data.quote.isEmpty    ? _kDefaultQuoteTerms    : data.quote;
+    _bookingCtrl.text  = data.booking.isEmpty  ? _kDefaultBookingTerms  : data.booking;
+    _challanCtrl.text  = data.challan.isEmpty  ? _kDefaultChallanTerms  : data.challan;
     _loaded = true;
   }
 
@@ -58,9 +91,10 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
     try {
       final repo = ref.read(settingsRepositoryProvider);
       await Future.wait([
-        repo.set(SettingsKeys.invoiceTerms, _invoiceCtrl.text.trim()),
-        repo.set(SettingsKeys.quoteTerms,   _quoteCtrl.text.trim()),
-        repo.set(SettingsKeys.bookingTerms, _bookingCtrl.text.trim()),
+        repo.set(SettingsKeys.invoiceTerms,  _invoiceCtrl.text.trim()),
+        repo.set(SettingsKeys.quoteTerms,    _quoteCtrl.text.trim()),
+        repo.set(SettingsKeys.bookingTerms,  _bookingCtrl.text.trim()),
+        repo.set(SettingsKeys.challanTerms,  _challanCtrl.text.trim()),
       ]);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -159,8 +193,15 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
               icon: Icons.event_note_outlined,
               controller: _bookingCtrl,
               hint: 'e.g. Cancellations require 48 hours notice…',
-            ),
+            ),            const SizedBox(height: AppSpacing.xl),
 
+            // ── Delivery Challan ─────────────────────────────────────────
+            _TermsField(
+              label: 'Delivery Challan Terms & Conditions',
+              icon: Icons.local_shipping_outlined,
+              controller: _challanCtrl,
+              hint: 'e.g. Please verify goods on receipt…',
+            ),
             const SizedBox(height: AppSpacing.xxl),
 
             // ── Save button (bottom) ─────────────────────────────────────

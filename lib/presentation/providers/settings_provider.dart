@@ -50,6 +50,7 @@ class SettingsKeys {
   static const invoiceTerms = 'invoice_terms';
   static const quoteTerms   = 'quote_terms';
   static const bookingTerms = 'booking_terms';
+  static const challanTerms = 'challan_terms';
 
   // PDF document template
   static const documentTemplate = 'document_template';

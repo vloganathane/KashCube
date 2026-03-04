@@ -14,6 +14,7 @@ import '../../../data/services/fiscal_year_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -282,8 +283,9 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
       final customerParty = challan.customerPartyId != null
           ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
           : null;
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms);
       // Open with system viewer
       // ignore: use_build_context_synchronously
       final result = await _openFile(file.path);
@@ -306,8 +308,9 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
       final customerParty = challan.customerPartyId != null
           ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
           : null;
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms);
       await _shareFile(file.path, 'Delivery Challan ${challan.challanNo}');
     } catch (e) {
       _showError('Share failed: $e');

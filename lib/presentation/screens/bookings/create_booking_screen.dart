@@ -123,13 +123,14 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   /// Applies a catalog selection to an existing [draft] row.
   void _applyServiceToItem(_ItemDraft draft, ItemCatalog service) {
     final isDayBased = (service.durationMinutes ?? 0) >= 1440;
+    // Update controllers OUTSIDE setState to avoid notifyListeners re-entrancy
+    draft.nameCtrl.text = service.name;
+    draft.priceCtrl.text = service.unitPrice.toStringAsFixed(0);
+    draft.sacCtrl.text = service.hsnCode ?? '';
     setState(() {
-      draft.nameCtrl.text = service.name;
-      draft.priceCtrl.text = service.unitPrice.toStringAsFixed(0);
       draft.serviceItemId = service.id;
       draft.isDayBased = isDayBased;
       draft.taxPct = service.taxPct;
-      draft.sacCtrl.text = service.hsnCode ?? '';
       draft.unit = isDayBased
           ? 'days'
           : ((service.durationMinutes ?? 0) >= 60 ? 'hrs' : 'session');
@@ -159,11 +160,11 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
     final days = end.difference(start).inDays;
     if (days <= 0) return;
-    setState(() {
-      for (final item in _items) {
-        if (item.isDayBased) item.qtyCtrl.text = days.toString();
-      }
-    });
+    // Update controllers OUTSIDE setState to avoid notifyListeners re-entrancy
+    for (final item in _items) {
+      if (item.isDayBased) item.qtyCtrl.text = days.toString();
+    }
+    setState(() {}); // trigger rebuild so lineTotal chips recalculate
   }
 
   /// Loads existing booking items from DB when editing.

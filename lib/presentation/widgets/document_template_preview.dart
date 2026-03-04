@@ -323,40 +323,55 @@ class _BannerHeader extends StatelessWidget {
     return Container(
       height: 28,
       color: accent,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Row(
         children: [
-          if (showLogo)
+          if (showLogo) ...[
             Container(
-              width: 18,
-              height: 18,
+              width: 14,
+              height: 14,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: Colors.white.withAlpha(60),
               ),
             ),
-          if (showLogo) const SizedBox(width: 6),
+            const SizedBox(width: 4),
+          ],
           Expanded(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _Stub(width: 50, height: 4, color: Colors.white.withAlpha(230)),
+                FractionallySizedBox(
+                  widthFactor: 0.85,
+                  child: _Stub(height: 4, color: Colors.white.withAlpha(230)),
+                ),
                 const SizedBox(height: 3),
-                _Stub(width: 36, height: 3, color: Colors.white.withAlpha(160)),
+                FractionallySizedBox(
+                  widthFactor: 0.60,
+                  child: _Stub(height: 3, color: Colors.white.withAlpha(160)),
+                ),
               ],
             ),
           ),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _Stub(
-                  width: 28, height: 4, color: Colors.white.withAlpha(230)),
-              const SizedBox(height: 2),
-              _Stub(
-                  width: 18, height: 3, color: Colors.white.withAlpha(160)),
-            ],
+          Expanded(
+            flex: 2,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FractionallySizedBox(
+                  widthFactor: 0.75,
+                  child: _Stub(height: 4, color: Colors.white.withAlpha(230)),
+                ),
+                const SizedBox(height: 2),
+                FractionallySizedBox(
+                  widthFactor: 0.55,
+                  child: _Stub(height: 3, color: Colors.white.withAlpha(160)),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -392,31 +407,38 @@ class _MinimalHeader extends StatelessWidget {
                   ),
                 ),
               Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Stub(
-                      width: 44,
-                      height: 4,
-                      color: const Color(0xFF212121),
+                    FractionallySizedBox(
+                      widthFactor: 0.85,
+                      child: _Stub(height: 4, color: const Color(0xFF212121)),
                     ),
                     const SizedBox(height: 2),
-                    _Stub(
-                      width: 32,
-                      height: 3,
-                      color: const Color(0xFFBDBDBD),
+                    FractionallySizedBox(
+                      widthFactor: 0.60,
+                      child: _Stub(height: 3, color: const Color(0xFFBDBDBD)),
                     ),
                   ],
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _Stub(width: 32, height: 4, color: accent),
-                  const SizedBox(height: 2),
-                  _Stub(
-                      width: 22, height: 3, color: const Color(0xFFBDBDBD)),
-                ],
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    FractionallySizedBox(
+                      widthFactor: 0.75,
+                      child: _Stub(height: 4, color: accent),
+                    ),
+                    const SizedBox(height: 2),
+                    FractionallySizedBox(
+                      widthFactor: 0.55,
+                      child: _Stub(height: 3, color: const Color(0xFFBDBDBD)),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -455,10 +477,13 @@ class _DashedLine extends StatelessWidget {
   }
 }
 
-/// A solid grey rectangle used as a text-stub placeholder.
+/// A solid rectangle used as a text-stub placeholder.
+///
+/// If [width] is null the stub fills its parent's available width
+/// (use inside [Expanded] or [FractionallySizedBox]).
 class _Stub extends StatelessWidget {
   const _Stub({
-    required this.width,
+    this.width,
     required this.height,
     required this.color,
   });
@@ -474,7 +499,7 @@ class _Stub extends StatelessWidget {
     color: Color(0xFFE0E0E0),
   );
 
-  final double width;
+  final double? width;
   final double height;
   final Color color;
 

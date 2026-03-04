@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/utils/gstin_validator.dart' show GstinValidator;
 import '../models/business.dart';
+import '../models/delivery_challan.dart';
 import '../models/ewb_transport_details.dart';
 import '../models/invoice.dart';
 import '../models/party.dart';
@@ -189,6 +190,57 @@ class EwayBillService {
   /// EWB is still allowed below threshold; this is just a UX warning signal.
   bool isBelowThreshold(Invoice invoice) => invoice.total < ewbThreshold;
 
+  // ─── DC Public API ───────────────────────────────────────────────────────
+
+  /// Builds and shares an e-Way Bill JSON for a [DeliveryChallan].
+  ///
+  /// GSTN spec: `subSupplyType = '4'` (delivery challan), `docType = 'CHL'`.
+  /// Items are treated as zero-rated (DCs are not tax documents).
+  Future<EwbExportResult> exportAndShareForChallan(
+    DeliveryChallan challan, {
+    Business? business,
+    Party? customerParty,
+    EwbTransportDetails transport = const EwbTransportDetails(),
+  }) async {
+    final result = await buildJsonFileForChallan(
+      challan,
+      business: business,
+      customerParty: customerParty,
+      transport: transport,
+    );
+    await shareResultForChallan(result, challan);
+    return result;
+  }
+
+  /// Shares an already-built [EwbExportResult] for a delivery challan.
+  Future<void> shareResultForChallan(
+          EwbExportResult result, DeliveryChallan challan) =>
+      Share.shareXFiles(
+        [XFile(result.file.path, mimeType: 'application/json')],
+        subject: 'e-Way Bill — ${challan.challanNo}',
+        text: 'e-Way Bill JSON for delivery challan ${challan.challanNo}',
+      );
+
+  /// Builds the e-Way Bill JSON for a challan and returns [EwbExportResult].
+  ///
+  /// Does not share — use this when you need the file path before sharing.
+  Future<EwbExportResult> buildJsonFileForChallan(
+    DeliveryChallan challan, {
+    Business? business,
+    Party? customerParty,
+    EwbTransportDetails transport = const EwbTransportDetails(),
+  }) =>
+      _buildResultForChallan(
+        challan,
+        business: business,
+        customerParty: customerParty,
+        transport: transport,
+      );
+
+  /// Returns `true` if the challan subtotal is below the EWB threshold.
+  bool isBelowThresholdForChallan(DeliveryChallan challan) =>
+      challan.subtotal < ewbThreshold;
+
   // ─── Internal ────────────────────────────────────────────────────────────
 
   Future<EwbExportResult> _buildResult(
@@ -226,6 +278,159 @@ class EwayBillService {
     final dir = Directory('${tmp.path}/eway');
     if (!await dir.exists()) await dir.create(recursive: true);
     return dir;
+  }
+
+  // ─── DC Internal ────────────────────────────────────────────────────────
+
+  Future<EwbExportResult> _buildResultForChallan(
+    DeliveryChallan challan, {
+    Business? business,
+    Party? customerParty,
+    required EwbTransportDetails transport,
+  }) async {
+    final now = DateTime.now();
+    final validUntil = transport.validUntil(now);
+    final payload = _buildPayloadForChallan(
+      challan,
+      business: business,
+      customerParty: customerParty,
+      transport: transport,
+    );
+    final jsonContent = const JsonEncoder.withIndent('  ').convert(payload);
+    final file = await _writeJsonForChallan(challan, jsonContent);
+    return EwbExportResult(
+      file: file,
+      jsonContent: jsonContent,
+      generatedAt: now,
+      validUntil: validUntil,
+      isBelowThreshold: isBelowThresholdForChallan(challan),
+    );
+  }
+
+  Future<File> _writeJsonForChallan(
+      DeliveryChallan challan, String json) async {
+    final dir = await _ewayDir();
+    final safe =
+        challan.challanNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
+    final file = File('${dir.path}/EWB_DC_$safe.json');
+    await file.writeAsString(json, flush: true);
+    return file;
+  }
+
+  Map<String, dynamic> _buildPayloadForChallan(
+    DeliveryChallan challan, {
+    Business? business,
+    Party? customerParty,
+    required EwbTransportDetails transport,
+  }) {
+    // GSTN spec: O = outward, subSupplyType 4 = delivery challan, CHL = doc type.
+    const supplyType = 'O';
+    const subSupplyType = '4';
+    const docType = 'CHL';
+
+    final docDate = _ewbDate(challan.challanDate);
+
+    // ── Seller (From) ────────────────────────────────────────────────────
+    final fromGstin = (business?.gstNo?.trim().isNotEmpty ?? false)
+        ? business!.gstNo!.trim().toUpperCase()
+        : 'URP';
+    final fromStateCode = _stateCodeInt(fromGstin, business?.state);
+    final fromPincode = _pincodeInt(business?.pincode);
+
+    // ── Buyer (To) ───────────────────────────────────────────────────────
+    final toGstin = (challan.customerGstin?.trim().isNotEmpty ?? false)
+        ? challan.customerGstin!.trim().toUpperCase()
+        : (customerParty?.gstin?.trim().isNotEmpty ?? false)
+            ? customerParty!.gstin!.trim().toUpperCase()
+            : 'URP';
+    final toStateCode = _stateCodeInt(
+      toGstin,
+      customerParty?.state ?? challan.placeOfSupply,
+    );
+    final toPincode = _pincodeInt(customerParty?.pincode);
+
+    // ── Items ────────────────────────────────────────────────────────────
+    // DCs are not tax documents; all GST rates are 0.
+    final itemList = <Map<String, dynamic>>[];
+    for (var i = 0; i < challan.items.length; i++) {
+      final item = challan.items[i];
+      itemList.add({
+        'itemNo': i + 1,
+        'productName': item.itemName,
+        'productDesc': item.description ?? '',
+        'hsnCode': item.hsnCode ?? '',
+        'quantity': item.qty,
+        'qtyUnit': _gstnUom(item.unit),
+        'cgstRate': 0.0,
+        'sgstRate': 0.0,
+        'igstRate': 0.0,
+        'cessRate': 0.0,
+        'cessNonAdvol': 0,
+        'taxableAmount': _round2(item.lineTotal),
+      });
+    }
+
+    final subtotal = _round2(challan.subtotal);
+
+    return {
+      // ── doc header ────────────────────────────────────────────────────
+      'supplyType': supplyType,
+      'subSupplyType': subSupplyType,
+      'subSupplyDesc': '',
+      'docType': docType,
+      'docNo': challan.challanNo,
+      'docDate': docDate,
+
+      // ── from (seller) ─────────────────────────────────────────────────
+      'fromGstin': fromGstin,
+      'fromTrdName': business?.name ?? '',
+      'fromAddr1': business?.address ?? '',
+      'fromAddr2': '',
+      'fromPlace': business?.city ?? business?.state ?? '',
+      'fromPincode': fromPincode,
+      'actFromStateCode': fromStateCode,
+      'fromStateCode': fromStateCode,
+
+      // ── to (buyer) ────────────────────────────────────────────────────
+      'toGstin': toGstin,
+      'toTrdName': challan.customerName,
+      'toAddr1': customerParty?.address ?? '',
+      'toAddr2': '',
+      'toPlace': customerParty?.city ?? customerParty?.state ?? '',
+      'toPincode': toPincode,
+      'actToStateCode': toStateCode,
+      'toStateCode': toStateCode,
+
+      // ── transaction ───────────────────────────────────────────────────
+      'transactionType': 1,
+      'dispatchFromGSTIN': '',
+      'dispatchFromTradeName': '',
+      'shipToGSTIN': '',
+      'shipToTradeName': '',
+
+      // ── amounts (DC carries no tax) ───────────────────────────────────
+      'totalValue': subtotal,
+      'cgstValue': 0.0,
+      'sgstValue': 0.0,
+      'igstValue': 0.0,
+      'cessValue': 0.0,
+      'cessNonAdvolValue': 0.0,
+      'otherValue': 0.0,
+      'totInvValue': subtotal,
+
+      // ── transport ────────────────────────────────────────────────────
+      'transMode': transport.mode,
+      'transDistance': transport.distanceKm?.toString() ?? '',
+      'transporterName': transport.transporterName ?? '',
+      'transporterId': transport.transporterGstin ?? '',
+      'transDocNo': transport.transDocNo ?? '',
+      'transDocDate': transport.transDocDate ?? '',
+      'vehicleNo': transport.vehicleNo ?? '',
+      'vehicleType': 'R',
+
+      // ── items ─────────────────────────────────────────────────────────
+      'itemList': itemList,
+    };
   }
 
   Map<String, dynamic> _buildPayload(

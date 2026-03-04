@@ -67,32 +67,28 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
         title: Text(challan.challanNo),
         centerTitle: false,
         actions: [
-          if (challan.status == ChallanStatus.draft) ...[
-            IconButton(
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit',
-              onPressed: _loading ? null : _edit,
-            ),
-          ],
+          IconButton(
+            icon: const Icon(Icons.visibility_outlined),
+            tooltip: 'Preview PDF',
+            onPressed: _loading ? null : _printPdf,
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Share PDF',
+            onPressed: _loading ? null : _sharePdf,
+          ),
           PopupMenuButton<_MenuAction>(
             onSelected: _handleMenu,
             itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: _MenuAction.print,
-                child: ListTile(
-                  leading: Icon(Icons.print_outlined),
-                  title: Text('Print'),
-                  contentPadding: EdgeInsets.zero,
+              if (challan.status == ChallanStatus.draft)
+                const PopupMenuItem(
+                  value: _MenuAction.edit,
+                  child: ListTile(
+                    leading: Icon(Icons.edit_outlined),
+                    title: Text('Edit'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
-              ),
-              const PopupMenuItem(
-                value: _MenuAction.share,
-                child: ListTile(
-                  leading: Icon(Icons.share_outlined),
-                  title: Text('Share PDF'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
               if (challan.status == ChallanStatus.draft)
                 const PopupMenuItem(
                   value: _MenuAction.delete,
@@ -266,15 +262,10 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
   void _handleMenu(_MenuAction action) {
     switch (action) {
-      case _MenuAction.print:
-        _printPdf();
-        break;
-      case _MenuAction.share:
-        _sharePdf();
-        break;
+      case _MenuAction.edit:
+        _edit();
       case _MenuAction.delete:
         _delete();
-        break;
     }
   }
 
@@ -367,7 +358,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   }
 }
 
-enum _MenuAction { print, share, delete }
+enum _MenuAction { edit, delete }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 

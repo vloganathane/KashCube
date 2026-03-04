@@ -148,7 +148,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     if (days <= 0) return;
 
     final total = service.unitPrice * days;
-    _amountController.text = total.toStringAsFixed(0);
+    setState(() {
+      _amountController.text = total.toStringAsFixed(0);
+    });
   }
 
   void _onCustomServiceMode() {

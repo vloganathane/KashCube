@@ -349,6 +349,8 @@ class DatabaseHelper {
         whatsapp TEXT,
         linkedin TEXT,
         instagram TEXT,
+        country TEXT,
+        dial_code TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT
@@ -532,6 +534,8 @@ class DatabaseHelper {
         whatsapp TEXT,
         linkedin TEXT,
         instagram TEXT,
+        country TEXT,
+        dial_code TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
@@ -586,6 +590,9 @@ class DatabaseHelper {
         place_of_supply TEXT,
         reverse_charge INTEGER NOT NULL DEFAULT 0,
         customer_gstin TEXT,
+        freight_amt REAL NOT NULL DEFAULT 0,
+        insurance_amt REAL NOT NULL DEFAULT 0,
+        packing_amt REAL NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -649,6 +656,10 @@ class DatabaseHelper {
         transporter_gstin TEXT,
         transport_mode TEXT DEFAULT '1',
         distance_km INTEGER,
+        freight_amt REAL NOT NULL DEFAULT 0,
+        insurance_amt REAL NOT NULL DEFAULT 0,
+        packing_amt REAL NOT NULL DEFAULT 0,
+        challan_id INTEGER REFERENCES delivery_challans(id) ON DELETE SET NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -694,6 +705,7 @@ class DatabaseHelper {
         booking_type TEXT NOT NULL DEFAULT 'business',
         total_amount REAL NOT NULL,
         advance_amount REAL DEFAULT 0,
+        paid_amount REAL DEFAULT 0,
         invoice_id INTEGER,
         notes TEXT,
         notification_scheduled_at TEXT,
@@ -716,6 +728,28 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_bookings_type ON bookings(booking_type)');
     await db.execute('CREATE INDEX idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)');
 
+    // -- booking_items table (DB v42)
+    await db.execute('''
+      CREATE TABLE booking_items (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        booking_id      INTEGER NOT NULL,
+        item_name       TEXT NOT NULL,
+        description     TEXT,
+        qty             REAL NOT NULL DEFAULT 1,
+        unit            TEXT DEFAULT 'session',
+        unit_price      REAL NOT NULL DEFAULT 0,
+        tax_pct         REAL NOT NULL DEFAULT 0,
+        discount_pct    REAL NOT NULL DEFAULT 0,
+        line_total      REAL NOT NULL DEFAULT 0,
+        sac_code        TEXT,
+        sort_order      INTEGER DEFAULT 0,
+        service_item_id INTEGER,
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        FOREIGN KEY (service_item_id) REFERENCES item_catalog(id)
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)');
+
     // -- schema_version table
     await db.execute('''
       CREATE TABLE schema_version (
@@ -726,8 +760,9 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 24,
-      'description': 'Full v22 schema (fresh install)',
+      'version': 42,
+      'description': 'Full v42 schema (fresh install)',
+
     });
 
     // -- unit_types table

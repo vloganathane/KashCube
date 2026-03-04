@@ -1026,6 +1026,45 @@ class PdfLayoutEngine {
           ),
         ],
 
+        // Signatory box for Invoice & Quote (DC already has one inline above)
+        if (!isDC) ...[
+          pw.SizedBox(height: 16),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Container(
+                width: 180,
+                padding: const pw.EdgeInsets.all(10),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: _divider),
+                  borderRadius: pw.BorderRadius.circular(4),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.center,
+                  children: [
+                    pw.Text(
+                      'For ${data.seller.name}',
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _dark,
+                      ),
+                      textAlign: pw.TextAlign.center,
+                    ),
+                    pw.SizedBox(height: 32),
+                    pw.Container(height: 1, color: _dark),
+                    pw.SizedBox(height: 4),
+                    pw.Text(
+                      'Authorised Signatory',
+                      style: const pw.TextStyle(fontSize: 7, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+
         pw.SizedBox(height: 8),
         pw.Text(
           'Generated on ${DateFormatter.formatFull(DateTime.now())}',

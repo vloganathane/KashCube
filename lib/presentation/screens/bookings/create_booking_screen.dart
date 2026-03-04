@@ -690,7 +690,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
                       horizontal: AppSpacing.base,
-                      vertical: AppSpacing.sm,
+                      vertical: 14,
                     ),
                   ),
                   textCapitalization: TextCapitalization.sentences,
@@ -719,7 +719,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.base,
-              vertical: AppSpacing.sm,
+              vertical: AppSpacing.md,
             ),
             child: Row(
               children: [
@@ -801,9 +801,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
             child: ExpansionTile(
               dense: true,
               title: Text(
-                draft.sacCtrl.text.isNotEmpty || draft.taxPct > 0
-                    ? 'SAC: ${draft.sacCtrl.text}  •  GST ${draft.taxPct.toStringAsFixed(0)}%'
-                    : 'SAC & GST (optional)',
+                _sacGstLabel(draft),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               tilePadding: const EdgeInsets.symmetric(
@@ -856,6 +854,19 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         ],
       ),
     );
+  }
+
+  String _sacGstLabel(_ItemDraft draft) {
+    final hasSac = draft.sacCtrl.text.isNotEmpty;
+    final hasGst = draft.taxPct > 0;
+    if (hasSac && hasGst) {
+      return 'SAC: ${draft.sacCtrl.text}  •  GST ${draft.taxPct.toStringAsFixed(0)}%';
+    } else if (hasSac) {
+      return 'SAC: ${draft.sacCtrl.text}';
+    } else if (hasGst) {
+      return 'GST ${draft.taxPct.toStringAsFixed(0)}%';
+    }
+    return 'SAC & GST (optional)';
   }
 
   Widget _buildPaymentSummary(BuildContext context) {

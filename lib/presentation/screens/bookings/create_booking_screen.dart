@@ -113,8 +113,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       _selectedService = service;
       _isCustomService = false;
       _customServiceController.clear();
-      _amountController.text = service.unitPrice.toStringAsFixed(0);
-      
+
       // Set duration and smart end time handling
       if (service.durationMinutes != null) {
         _customDuration = service.durationMinutes;
@@ -122,10 +121,34 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         if (service.durationMinutes! >= 1440) {
           _hasEndTime = true;
           final days = (service.durationMinutes! / 1440).ceil();
-          _endDate = _startDate.add(Duration(days: days));
+          _endDate ??= _startDate.add(Duration(days: days));
         }
       }
+
+      // Set amount — will be recalculated below if day-based + end date set
+      _amountController.text = service.unitPrice.toStringAsFixed(0);
     });
+    // Recalc after setState so _endDate is updated
+    _recalcAmount();
+  }
+
+  /// Recalculates [_amountController] based on date range when the active
+  /// catalog service is day-based (durationMinutes ≥ 1440).
+  ///
+  /// No-op for custom services, hourly services, or when end date is not set.
+  void _recalcAmount() {
+    final service = _selectedService;
+    if (service == null) return;
+    if (!_hasEndTime || _endDate == null) return;
+    if ((service.durationMinutes ?? 0) < 1440) return;
+
+    final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+    final end   = DateTime(_endDate!.year,  _endDate!.month,  _endDate!.day);
+    final days  = end.difference(start).inDays;
+    if (days <= 0) return;
+
+    final total = service.unitPrice * days;
+    _amountController.text = total.toStringAsFixed(0);
   }
 
   void _onCustomServiceMode() {
@@ -157,6 +180,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
     if (date != null) {
       setState(() => _startDate = date);
+      _recalcAmount();
     }
   }
 
@@ -179,6 +203,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
     if (date != null) {
       setState(() => _endDate = date);
+      _recalcAmount();
     }
   }
 
@@ -611,13 +636,21 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                   title: const Text('Has end time'),
                   subtitle: const Text('For multi-hour or multi-day services'),
                   value: _hasEndTime,
-                  onChanged: (v) => setState(() {
-                    _hasEndTime = v;
-                    if (!v) {
-                      _endDate = null;
-                      _endTime = null;
-                    }
-                  }),
+                  onChanged: (v) {
+                    setState(() {
+                      _hasEndTime = v;
+                      if (!v) {
+                        _endDate = null;
+                        _endTime = null;
+                        // Reset to single-unit price when end time is removed
+                        if (_selectedService != null) {
+                          _amountController.text =
+                              _selectedService!.unitPrice.toStringAsFixed(0);
+                        }
+                      }
+                    });
+                    if (v) _recalcAmount();
+                  },
                   contentPadding: EdgeInsets.zero,
                 ),
 
@@ -666,9 +699,22 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       labelText: 'Total Amount *',
                       prefixText: '₹',
                       border: const OutlineInputBorder(),
-                      helperText: _selectedService != null
-                          ? 'From catalog'
-                          : (_isCustomService ? 'Custom pricing' : null),
+                      helperText: () {
+                          if (_selectedService == null) {
+                            return _isCustomService ? 'Custom pricing' : null;
+                          }
+                          final svc = _selectedService!;
+                          final isDayBased = (svc.durationMinutes ?? 0) >= 1440;
+                          if (isDayBased && _hasEndTime && _endDate != null) {
+                            final start = DateTime(_startDate.year, _startDate.month, _startDate.day);
+                            final end   = DateTime(_endDate!.year,  _endDate!.month,  _endDate!.day);
+                            final days  = end.difference(start).inDays;
+                            if (days > 0) {
+                              return '₹${svc.unitPrice.toStringAsFixed(0)} × $days day${days == 1 ? '' : 's'}';
+                            }
+                          }
+                          return 'From catalog';
+                        }(),
                     ),
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],

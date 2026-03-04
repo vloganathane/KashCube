@@ -249,6 +249,53 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
               color: theme.colorScheme.outline,
             ),
           ),
+          const SizedBox(height: AppSpacing.xl),
+
+          // ── Upload how-to ─────────────────────────────────────────────────
+          Card(
+            child: ExpansionTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('How to upload JSON to GSTN portal'),
+              childrenPadding: const EdgeInsets.fromLTRB(
+                  AppSpacing.base, 0, AppSpacing.base, AppSpacing.base),
+              children: const [
+                _UploadStep(
+                  step: 1,
+                  text: 'Tap "Share JSON" above to save the file to your '
+                      'device or WhatsApp / email it to yourself.',
+                ),
+                _UploadStep(
+                  step: 2,
+                  text: 'Open the e-Way Bill portal '
+                      '(ewaybillgst.gov.in) and log in with your '
+                      'GSTIN and 2FA OTP.',
+                ),
+                _UploadStep(
+                  step: 3,
+                  text: 'In the left menu go to:\n'
+                      'e-Way Bill → Generate Bulk.',
+                ),
+                _UploadStep(
+                  step: 4,
+                  text: 'Click "Choose File", select the JSON file '
+                      '(e.g. EWB_INV-25-26-0001.json), then click '
+                      '"Generate".',
+                ),
+                _UploadStep(
+                  step: 5,
+                  text: 'Download the response sheet — it contains '
+                      'the EWB number(s). Note the number on your '
+                      'invoice / challan.',
+                ),
+                _UploadStep(
+                  step: 6,
+                  text: 'The EWB must accompany the goods during '
+                      'transit. Print or share the EWB PDF from the '
+                      'portal if needed.',
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -295,6 +342,48 @@ class _DetailRow extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.w500),
               textAlign: TextAlign.end,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Upload step ───────────────────────────────────────────────────────────────
+
+class _UploadStep extends StatelessWidget {
+  const _UploadStep({required this.step, required this.text});
+
+  final int step;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$step',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(text, style: theme.textTheme.bodySmall),
           ),
         ],
       ),

@@ -1011,7 +1011,7 @@ class _EwbStatusBadge extends StatelessWidget {
 
   Future<void> _openPortal(BuildContext context) async {
     final uri = Uri.parse(_portalUrl);
-    if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open browser')),

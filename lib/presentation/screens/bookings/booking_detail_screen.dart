@@ -319,7 +319,7 @@ class _BookingDetailView extends ConsumerWidget {
     try {
       final business = booking.businessId != null
           ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
-          : null;
+          : ref.read(activeBusinessProvider);
       final customerParty = booking.customerPartyId != null
           ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
           : null;
@@ -349,7 +349,7 @@ class _BookingDetailView extends ConsumerWidget {
     try {
       final business = booking.businessId != null
           ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
-          : null;
+          : ref.read(activeBusinessProvider);
       final customerParty = booking.customerPartyId != null
           ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
           : null;

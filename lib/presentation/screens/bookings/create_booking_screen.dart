@@ -8,6 +8,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
@@ -267,6 +268,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       invoiceId: widget.booking?.invoiceId,  // Preserve invoice link
       bookingRef: widget.booking?.bookingRef,  // Preserve booking reference
       bookingType: _bookingType,
+      businessId: _bookingType == BookingType.business
+          ? (widget.booking?.businessId ?? ref.read(activeBusinessProvider)?.id)
+          : null,
       createdAt: widget.booking?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
     );

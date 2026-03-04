@@ -257,17 +257,17 @@ class PdfLayoutEngine {
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
                   pw.Text(
-                    'Date: ${DateFormatter.format(data.issueDate)}',
+                    'Date: ${DateFormatter.formatFull(data.issueDate)}',
                     style: const pw.TextStyle(fontSize: 12),
                   ),
                   if (data.dueDate != null)
                     pw.Text(
-                      'Due: ${DateFormatter.format(data.dueDate!)}',
+                      'Due: ${DateFormatter.formatFull(data.dueDate!)}',
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   if (data.validUntil != null)
                     pw.Text(
-                      'Valid Until: ${DateFormatter.format(data.validUntil!)}',
+                      'Valid Until: ${DateFormatter.formatFull(data.validUntil!)}',
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   pw.SizedBox(height: 4),

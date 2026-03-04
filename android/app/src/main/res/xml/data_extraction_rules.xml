@@ -6,16 +6,22 @@
   Mirrors backup_rules.xml: include active DB, exclude images/PDFs/snapshots.
 -->
 <data-extraction-rules>
+    <!--
+      Exclude-only strategy: Android backs up EVERYTHING except the listed paths.
+      This covers kash_cube.db and all kash_cube_archive_FY*.db files automatically.
+      Do NOT add <include> elements — mixing include+exclude across domains triggers
+      the FullBackupContent lint check ("path is not in an included path").
+    -->
     <cloud-backup>
-        <include domain="database" path="kash_cube.db" />
         <exclude domain="file" path="images/" />
         <exclude domain="file" path="pdfs/" />
         <exclude domain="database" path="kash_cube_prev.db" />
+        <exclude domain="database" path="kash_cube_before_restore.db" />
     </cloud-backup>
     <device-transfer>
-        <include domain="database" path="kash_cube.db" />
         <exclude domain="file" path="images/" />
         <exclude domain="file" path="pdfs/" />
         <exclude domain="database" path="kash_cube_prev.db" />
+        <exclude domain="database" path="kash_cube_before_restore.db" />
     </device-transfer>
 </data-extraction-rules>

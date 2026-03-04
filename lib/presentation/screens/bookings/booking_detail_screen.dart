@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
@@ -10,12 +12,15 @@ import '../../../core/utils/phone_utils.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../../data/services/booking_confirmation_pdf_service.dart';
 import '../../../data/services/invoice_number_service.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/business_provider.dart';
 import '../../widgets/reminder_bottom_sheet.dart';
 import '../../../data/models/reminder_item.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../invoices/invoice_detail_screen.dart';
 import 'create_booking_screen.dart';
 
@@ -53,6 +58,19 @@ class _BookingDetailView extends ConsumerWidget {
       appBar: AppBar(
         title: Text(booking.serviceName),
         actions: [
+          // View / Share PDF — business bookings only
+          if (booking.bookingType == BookingType.business) ...[  
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined),
+              tooltip: 'Preview PDF',
+              onPressed: () => _viewBookingPdf(context, ref),
+            ),
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: 'Share PDF',
+              onPressed: () => _shareBookingPdf(context, ref),
+            ),
+          ],
           // Send Reminder — for active/upcoming bookings
           if (booking.status == BookingStatus.pending ||
               booking.status == BookingStatus.confirmed)
@@ -295,6 +313,64 @@ class _BookingDetailView extends ConsumerWidget {
       );
     }
     return null;
+  }
+
+  Future<void> _viewBookingPdf(BuildContext context, WidgetRef ref) async {
+    try {
+      final business = booking.businessId != null
+          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+          : null;
+      final customerParty = booking.customerPartyId != null
+          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+          : null;
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
+      final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
+        booking,
+        business: business,
+        customerParty: customerParty,
+        termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+      );
+      final result = await OpenFile.open(file.path);
+      if (result.type != ResultType.done && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open PDF: ${result.message}')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate PDF: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _shareBookingPdf(BuildContext context, WidgetRef ref) async {
+    try {
+      final business = booking.businessId != null
+          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+          : null;
+      final customerParty = booking.customerPartyId != null
+          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+          : null;
+      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
+      final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
+        booking,
+        business: business,
+        customerParty: customerParty,
+        termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+      );
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        subject: 'Booking Confirmation - ${booking.bookingRef ?? booking.serviceName}',
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to share PDF: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _sendWhatsAppConfirmation(WidgetRef ref) async {

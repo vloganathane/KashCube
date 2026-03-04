@@ -82,7 +82,7 @@ class DocumentTemplate {
 
 // ── Document type ─────────────────────────────────────────────────────────────
 
-enum PdfDocumentType { invoice, quote, deliveryChallan }
+enum PdfDocumentType { invoice, quote, deliveryChallan, booking }
 
 // ── Party info ────────────────────────────────────────────────────────────────
 

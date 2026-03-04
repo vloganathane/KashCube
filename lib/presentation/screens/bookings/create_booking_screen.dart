@@ -330,7 +330,10 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
       serviceName: serviceName,
       startDatetime: startDatetime,
       endDatetime: endDatetime,
-      durationMinutes: _customDuration,
+      // For date-range bookings use the actual span; for single-slot use catalog duration
+      durationMinutes: endDatetime != null
+          ? endDatetime.difference(startDatetime).inMinutes
+          : _customDuration,
       status: widget.booking?.status ?? BookingStatus.pending,
       totalAmount: totalAmount,
       advanceAmount: advanceAmount,

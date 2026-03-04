@@ -747,7 +747,8 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
           MaterialPageRoute<void>(
             builder: (_) => EwbPreviewScreen(
               result: result,
-              invoice: widget.invoice,
+              docNo: widget.invoice.invoiceNo,
+              transport: transport,
             ),
           ),
         );

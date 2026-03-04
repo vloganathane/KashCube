@@ -14,6 +14,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/services/database_helper.dart';
 import '../../../data/services/delivery_challan_pdf_service.dart';
 import '../../../data/services/eway_bill_service.dart';
+import 'ewb_preview_screen.dart';
 import '../../../data/services/fiscal_year_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
@@ -865,7 +866,7 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
     );
 
     try {
-      await EwayBillService.instance.exportAndShareForChallan(
+      final result = await EwayBillService.instance.buildJsonFileForChallan(
         widget.challan,
         business: widget.business,
         transport: transport,
@@ -892,13 +893,13 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'e-Way Bill JSON exported for ${widget.challan.challanNo}. '
-              'Upload to ewaybillgst.gov.in to generate EWB number.',
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => EwbPreviewScreen(
+              result: result,
+              docNo: widget.challan.challanNo,
+              transport: transport,
             ),
-            duration: const Duration(seconds: 5),
           ),
         );
       }

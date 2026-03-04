@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
-import '../../../data/models/invoice.dart';
+import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/services/eway_bill_service.dart';
 
 /// Full-screen e-Way Bill preview.
@@ -18,11 +19,16 @@ class EwbPreviewScreen extends StatefulWidget {
   const EwbPreviewScreen({
     super.key,
     required this.result,
-    required this.invoice,
+    required this.docNo,
+    required this.transport,
   });
 
   final EwbExportResult result;
-  final Invoice invoice;
+  /// Document number shown in the title bar and share subject
+  /// (e.g. invoice number or challan number).
+  final String docNo;
+  /// Transport details used to populate the transport card.
+  final EwbTransportDetails transport;
 
   @override
   State<EwbPreviewScreen> createState() => _EwbPreviewScreenState();
@@ -53,9 +59,10 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
   Future<void> _share() async {
     setState(() => _sharing = true);
     try {
-      await EwayBillService.instance.shareResult(
-        widget.result,
-        widget.invoice,
+      await Share.shareXFiles(
+        [XFile(widget.result.file.path, mimeType: 'application/json')],
+        subject: 'e-Way Bill — ${widget.docNo}',
+        text: 'e-Way Bill JSON for ${widget.docNo}',
       );
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -76,13 +83,13 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final invoice = widget.invoice;
+    final transport = widget.transport;
     final result = widget.result;
     final isExpired = !result.isValid;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('e-Way Bill · ${invoice.invoiceNo}'),
+        title: Text('e-Way Bill · ${widget.docNo}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.copy_outlined),
@@ -152,33 +159,31 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
                   _DetailRow(
                     icon: Icons.local_shipping_outlined,
                     label: 'Mode',
-                    value: invoice.transportMode != null
-                        ? _modeName(invoice.transportMode!)
-                        : '—',
+                    value: _modeName(transport.mode),
                   ),
-                  if (invoice.vehicleNo != null)
+                  if (transport.vehicleNo != null)
                     _DetailRow(
                       icon: Icons.directions_car_outlined,
                       label: 'Vehicle',
-                      value: invoice.vehicleNo!,
+                      value: transport.vehicleNo!,
                     ),
-                  if (invoice.transporterName != null)
+                  if (transport.transporterName != null)
                     _DetailRow(
                       icon: Icons.person_outline,
                       label: 'Transporter',
-                      value: invoice.transporterName!,
+                      value: transport.transporterName!,
                     ),
-                  if (invoice.transporterGstin != null)
+                  if (transport.transporterGstin != null)
                     _DetailRow(
                       icon: Icons.badge_outlined,
                       label: 'GSTIN',
-                      value: invoice.transporterGstin!,
+                      value: transport.transporterGstin!,
                     ),
-                  if (invoice.distanceKm != null)
+                  if (transport.distanceKm != null)
                     _DetailRow(
                       icon: Icons.straighten_outlined,
                       label: 'Distance',
-                      value: '${invoice.distanceKm} km',
+                      value: '${transport.distanceKm} km',
                     ),
                 ],
               ),

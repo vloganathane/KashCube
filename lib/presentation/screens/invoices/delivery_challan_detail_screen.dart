@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -338,22 +340,22 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Opens a file with the device's default viewer (open_file_plus / open_file).
+  /// Opens a file with the device's default viewer.
   Future<bool> _openFile(String path) async {
     try {
-      // Attempt dynamic import to avoid hard compile-time dependency
-      // if open_file_plus is not in pubspec yet. The PDF will still be saved.
-      return false; // surfaced in share flow
+      final result = await OpenFile.open(path);
+      return result.type == ResultType.done;
     } catch (_) {
       return false;
     }
   }
 
   Future<void> _shareFile(String path, String subject) async {
-    // share_plus is already a declared dependency in pubspec.yaml
     try {
-      // Dynamic call to avoid compile failure if API changes
-      // ignore: unused_local_variable
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: subject,
+      );
     } catch (_) {}
   }
 }

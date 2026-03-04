@@ -799,7 +799,6 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
-              dense: true,
               title: Text(
                 _sacGstLabel(draft),
                 style: Theme.of(context).textTheme.bodySmall,
@@ -817,6 +816,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                 Row(
                   children: [
                     Expanded(
+                      flex: 2,
                       child: TextFormField(
                         controller: draft.sacCtrl,
                         decoration: const InputDecoration(
@@ -828,8 +828,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
-                    SizedBox(
-                      width: 110,
+                    Expanded(
                       child: DropdownButtonFormField<double>(
                         decoration: const InputDecoration(
                           labelText: 'GST %',

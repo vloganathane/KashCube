@@ -5,21 +5,204 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/credit_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/loan_provider.dart';
 import '../../providers/report_provider.dart';
+import '../../providers/scheduled_payment_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
 import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
+import '../ledger/credits_screen.dart';
+import '../ledger/ledger_screen.dart';
+import '../loans/loans_screen.dart';
+import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
+import '../settings/businesses_screen.dart';
 import 'global_document_ledger_screen.dart';
 
 /// Business hub — top-level entry point for all business-related screens.
+/// When business mode is OFF, renders the Personal Finance hub instead.
 /// Accessible from the bottom nav "Business" tab.
 class BusinessHubScreen extends ConsumerWidget {
   const BusinessHubScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBusiness = ref.watch(businessModeProvider);
+    return isBusiness
+        ? const _BusinessHub()
+        : const _PersonalFinanceHub();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Personal Finance Hub (shown when business mode is OFF)
+// ---------------------------------------------------------------------------
+
+class _PersonalFinanceHub extends ConsumerWidget {
+  const _PersonalFinanceHub();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.kashColors;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Money'),
+        centerTitle: false,
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.storefront_outlined, size: 16),
+            label: const Text('Enable Business'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const BusinessesScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        children: [
+          _HubSection(
+            title: 'Credit & Loans',
+            tiles: [
+              _HubTile(
+                icon: Icons.currency_rupee_outlined,
+                label: 'Dues',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final given =
+                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ?? 0.0;
+                    final text = given > 0
+                        ? '${CurrencyFormatter.formatCompact(given)} to collect'
+                        : 'Track who owes whom';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: colors.credit,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreditsScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.handshake_outlined,
+                label: 'Loans',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final lent =
+                        r.watch(totalPendingLentProvider).valueOrNull ?? 0.0;
+                    final text = lent > 0
+                        ? '${CurrencyFormatter.formatCompact(lent)} lent out'
+                        : 'Formal loans with EMI';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF1B5E20),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoansScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.people_outline,
+                label: 'Ledger',
+                subtitle: const _StaticSubtitle('Party-wise transaction history'),
+                color: const Color(0xFF37474F),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LedgerScreen()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Bills & Payments',
+            tiles: [
+              _HubTile(
+                icon: Icons.event_repeat_outlined,
+                label: 'Bills & Subscriptions',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final monthly =
+                        r.watch(totalMonthlyScheduledExpenseProvider).valueOrNull ?? 0.0;
+                    final text = monthly > 0
+                        ? '${CurrencyFormatter.formatCompact(monthly)}/month'
+                        : 'Rent, EMIs, subscriptions';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFFE65100),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const BillsAndPaymentsScreen()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _HubSection(
+            title: 'Insights',
+            tiles: [
+              _HubTile(
+                icon: Icons.bar_chart_outlined,
+                label: 'Budget',
+                subtitle: const _StaticSubtitle('Monthly spending limits'),
+                color: const Color(0xFF6A1B9A),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.trending_up_outlined,
+                label: 'Reports',
+                subtitle: const _StaticSubtitle('Income, expenses & trends'),
+                color: const Color(0xFF1565C0),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReportsScreen()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          // ── Upgrade nudge ────────────────────────────────────────────────
+          Card(
+            color: context.colorScheme.primaryContainer.withValues(alpha: 0.5),
+            child: ListTile(
+              leading: Icon(Icons.storefront_outlined,
+                  color: context.colorScheme.primary),
+              title: const Text('Running a business?'),
+              subtitle: const Text(
+                'Enable business mode for invoices, GST, item catalog & more.',
+              ),
+              trailing: Icon(Icons.arrow_forward_ios,
+                  size: 14,
+                  color: context.colorScheme.primary),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BusinessesScreen()),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Business Hub (shown when business mode is ON)
+// ---------------------------------------------------------------------------
+
+class _BusinessHub extends ConsumerWidget {
+  const _BusinessHub();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

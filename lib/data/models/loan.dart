@@ -80,6 +80,10 @@ class Loan {
   final RepaymentFrequency? repaymentFrequency;
   final String? notes;
   final String? tags;
+
+  /// `null` = personal; non-null = belongs to this business.
+  final int? businessId;
+
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
@@ -109,6 +113,7 @@ class Loan {
     this.repaymentFrequency,
     this.notes,
     this.tags,
+    this.businessId,
     DateTime? createdAt,
     this.updatedAt,
     this.deletedAt,
@@ -154,6 +159,7 @@ class Loan {
       'repayment_frequency': repaymentFrequency?.dbValue,
       'notes': notes,
       'tags': tags,
+      'business_id': businessId,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
@@ -192,6 +198,7 @@ class Loan {
           RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
       notes: map['notes'] as String?,
       tags: map['tags'] as String?,
+      businessId: map['business_id'] as int?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'] as String)
@@ -227,6 +234,7 @@ class Loan {
     RepaymentFrequency? repaymentFrequency,
     String? notes,
     String? tags,
+    int? businessId,
   }) {
     return Loan(
       id: id ?? this.id,
@@ -253,6 +261,7 @@ class Loan {
       repaymentFrequency: repaymentFrequency ?? this.repaymentFrequency,
       notes: notes ?? this.notes,
       tags: tags ?? this.tags,
+      businessId: businessId ?? this.businessId,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

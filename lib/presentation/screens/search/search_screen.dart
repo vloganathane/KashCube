@@ -115,7 +115,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         SearchFilter.all => 'Search everything…',
         SearchFilter.transactions => 'Search transactions…',
         SearchFilter.invoices => 'Search invoices…',
-        SearchFilter.credits => 'Search credits & udhar…',
+        SearchFilter.credits => 'Search dues…',
         SearchFilter.bills => 'Search bills…',
         SearchFilter.bookings => 'Search bookings…',
         SearchFilter.parties => 'Search by name or phone…',

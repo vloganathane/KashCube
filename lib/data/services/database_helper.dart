@@ -232,10 +232,12 @@ class DatabaseHelper {
         interest_type TEXT,
         notes TEXT,
         tags TEXT,
+        business_id INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
-        FOREIGN KEY (customer_id) REFERENCES parties(id)
+        FOREIGN KEY (customer_id) REFERENCES parties(id),
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');
 
@@ -291,10 +293,12 @@ class DatabaseHelper {
         repayment_frequency TEXT,
         notes TEXT,
         tags TEXT,
+        business_id INTEGER,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
-        FOREIGN KEY (lender_id) REFERENCES parties(id)
+        FOREIGN KEY (lender_id) REFERENCES parties(id),
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');
 
@@ -869,6 +873,28 @@ class DatabaseHelper {
       )
     ''');
     await _seedDocumentTemplatePresets(db);
+
+    // -- party_reminders table (DB v43)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS party_reminders (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_name        TEXT NOT NULL,
+        channel           TEXT NOT NULL DEFAULT 'whatsapp',
+        message           TEXT NOT NULL,
+        invoice_refs      TEXT,
+        invoice_count     INTEGER NOT NULL DEFAULT 0,
+        total_outstanding REAL,
+        business_id       INTEGER,
+        sent_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)');
 
     // Seed default categories + default accounts
     await _seedCategories(db);
@@ -1917,6 +1943,53 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 42,
         'description': 'Add booking_items table and paid_amount column for multi-service bookings',
+      });
+    }
+
+    if (oldVersion < 43) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS party_reminders (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          party_name        TEXT NOT NULL,
+          channel           TEXT NOT NULL DEFAULT 'whatsapp',
+          message           TEXT NOT NULL,
+          invoice_refs      TEXT,
+          invoice_count     INTEGER NOT NULL DEFAULT 0,
+          total_outstanding REAL,
+          sent_at           TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)');
+
+      await db.insert('schema_version', {
+        'version': 43,
+        'description': 'Add party_reminders table for reminder history tracking',
+      });
+    }
+
+    if (oldVersion < 44) {
+      // Add business_id to credits, loans, party_reminders for personal/business separation
+      await db.execute(
+          'ALTER TABLE credits ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_credits_business ON credits(business_id)');
+
+      await db.execute(
+          'ALTER TABLE loans ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_loans_business ON loans(business_id)');
+
+      await db.execute(
+          'ALTER TABLE party_reminders ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)');
+
+      await db.insert('schema_version', {
+        'version': 44,
+        'description': 'Add business_id to credits, loans, party_reminders for personal/business separation',
       });
     }
   }

@@ -5,6 +5,7 @@ import '../providers/settings_provider.dart';
 import '../screens/bills/bills_and_payments_screen.dart';
 import '../screens/bookings/create_booking_screen.dart';
 import '../screens/invoices/quote_builder_screen.dart';
+import '../screens/ledger/credits_screen.dart';
 import '../screens/loans/loans_screen.dart';
 import '../screens/invoices/item_catalog_screen.dart';
 import '../screens/transactions/add_edit_transaction_screen.dart';
@@ -81,6 +82,13 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     _close();
     Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const AddLedgerEntryScreen()),
+    );
+  }
+
+  void _openUdhar() {
+    _close();
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const AddCreditScreen()),
     );
   }
 
@@ -169,6 +177,12 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
             icon: Icons.event_repeat,
             label: 'Bills Payable',
             onTap: _openBillsAndPayments,
+          )),
+          const SizedBox(height: 12),
+          _animated(SpeedDialOption(
+            icon: Icons.currency_rupee_outlined,
+            label: 'Dues',
+            onTap: _openUdhar,
           )),
           const SizedBox(height: 12),
           _animated(SpeedDialOption(

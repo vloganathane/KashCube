@@ -429,7 +429,7 @@ class _Step1Summary extends StatelessWidget {
 
           // ── Credits card ────────────────────────────────────────────
           _SummaryCard(
-            title: 'Credits (Udhar/Khata)',
+            title: 'Dues',
             children: [
               _SummaryRow(
                 label: 'Open credits',
@@ -520,7 +520,7 @@ class _Step2Review extends StatelessWidget {
             _AcknowledgeCard(
               icon: Icons.people_outline,
               iconColor: colors?.credit ?? scheme.tertiary,
-              title: 'Open Credits (Udhar)',
+              title: 'Open Dues',
               body:
                   '${s!.openCreditCount} credit${s.openCreditCount > 1 ? 's' : ''} '
                   'remain uncleared. They will carry forward to the new FY.',

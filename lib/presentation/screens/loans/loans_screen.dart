@@ -37,7 +37,7 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
     final overdueAsync = ref.watch(overdueLoansProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Loans & Credits')),
+      appBar: AppBar(title: const Text('Loans')),
       body: Column(
         children: [
           // Summary row

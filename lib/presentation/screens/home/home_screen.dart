@@ -23,6 +23,7 @@ import '../../../data/models/transaction.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../bookings/bookings_screen.dart';
+import '../ledger/credits_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../invoices/invoices_screen.dart';
@@ -31,6 +32,7 @@ import '../transactions/transaction_detail_screen.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/credit_provider.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../widgets/vcard_qr_dialog.dart';
@@ -2108,13 +2110,16 @@ class _AlertsSection extends ConsumerWidget {
     final businessMode = ref.watch(businessModeProvider);
     final overdueSummary = ref.watch(overdueInvoicesSummaryProvider);
     final lent = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+    final creditsPending =
+        ref.watch(totalCreditsPendingGivenProvider).valueOrNull ?? 0.0;
 
     final overdueCount = overdueSummary?.count ?? 0;
     final overdueTotal = overdueSummary?.totalDue ?? 0.0;
     final hasOverdue = businessMode && overdueCount > 0;
     final hasCredits = lent > 0;
+    final hasCreditsPending = creditsPending > 0;
 
-    if (!hasOverdue && !hasCredits) return const SizedBox.shrink();
+    if (!hasOverdue && !hasCredits && !hasCreditsPending) return const SizedBox.shrink();
 
     return Column(
       children: [
@@ -2136,6 +2141,16 @@ class _AlertsSection extends ConsumerWidget {
             color: context.kashColors.credit,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LedgerScreen()),
+            ),
+          ),
+        if (hasCreditsPending)
+          _AlertActionTile(
+            icon: Icons.currency_rupee_outlined,
+            label: 'Dues pending (to collect)',
+            value: CurrencyFormatter.format(creditsPending),
+            color: context.kashColors.credit,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CreditsScreen()),
             ),
           ),
         const SizedBox(height: AppSpacing.sm),

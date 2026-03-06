@@ -26,6 +26,10 @@ import '../invoices/invoice_detail_screen.dart';
 import '../invoices/quote_detail_screen.dart';
 import '../invoices/delivery_challan_detail_screen.dart';
 import '../bookings/booking_detail_screen.dart';
+import '../../../data/models/party_reminder.dart';
+import '../../providers/party_reminder_provider.dart';
+import '../../../data/models/credit.dart';
+import '../../providers/credit_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -105,6 +109,22 @@ class BookingHistoryItem extends PartyHistoryItem {
   DateTime get date => booking.startDatetime;
 }
 
+class ReminderHistoryItem extends PartyHistoryItem {
+  ReminderHistoryItem(this.reminder);
+  final PartyReminder reminder;
+
+  @override
+  DateTime get date => reminder.sentAt;
+}
+
+class CreditHistoryItem extends PartyHistoryItem {
+  CreditHistoryItem(this.credit);
+  final Credit credit;
+
+  @override
+  DateTime get date => credit.creditDate;
+}
+
 // ---------------------------------------------------------------------------
 // Activity filter enum (Option A)
 // ---------------------------------------------------------------------------
@@ -115,7 +135,9 @@ enum _ActivityFilter {
   invoices,
   quotes,
   dc,
-  bookings;
+  bookings,
+  reminders,
+  credits;
 
   String get label => switch (this) {
         all => 'All',
@@ -124,6 +146,8 @@ enum _ActivityFilter {
         quotes => 'Quotes',
         dc => 'DC',
         bookings => 'Bookings',
+        reminders => 'Reminders',
+        credits => 'Credits',
       };
 }
 
@@ -155,6 +179,8 @@ final _partyHistoryFutureProvider =
   final challanRepo = ref.read(deliveryChallanRepositoryProvider);
   final scheduledRepo = ref.read(scheduledPaymentRepositoryProvider);
   final bookingRepo = ref.read(bookingRepositoryProvider);
+  final reminderRepo = ref.read(partyReminderRepositoryProvider);
+  final creditRepo = ref.read(creditRepositoryProvider);
 
   // Get party by name to get ID for bookings
   final partiesAsync = ref.read(partiesProvider);
@@ -172,6 +198,8 @@ final _partyHistoryFutureProvider =
     challanRepo.getByCustomer(partyName),
     scheduledRepo.getByParty(partyName),
     party?.id != null ? bookingRepo.getByCustomer(party!.id!) : Future.value(<Booking>[]),
+    reminderRepo.getByParty(partyName),
+    creditRepo.getByPartyName(partyName),
   ]);
 
   final transactions = results[0] as List<Transaction>;
@@ -180,6 +208,8 @@ final _partyHistoryFutureProvider =
   final challans = results[3] as List<DeliveryChallan>;
   final scheduled = results[4] as List<ScheduledPayment>;
   final bookings = results[5] as List<Booking>;
+  final reminders = results[6] as List<PartyReminder>;
+  final credits = results[7] as List<Credit>;
 
   // Wrap in unified type
   final List<PartyHistoryItem> items = [
@@ -189,6 +219,8 @@ final _partyHistoryFutureProvider =
     ...challans.map((c) => DeliveryChallanHistoryItem(c)),
     ...scheduled.map((s) => ScheduledPaymentHistoryItem(s)),
     ...bookings.map((b) => BookingHistoryItem(b)),
+    ...reminders.map((r) => ReminderHistoryItem(r)),
+    ...credits.map((c) => CreditHistoryItem(c)),
   ];
 
   // Sort by date descending (newest first)
@@ -312,6 +344,10 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
         items.whereType<DeliveryChallanHistoryItem>().toList(),
       _ActivityFilter.bookings =>
         items.whereType<BookingHistoryItem>().toList(),
+      _ActivityFilter.reminders =>
+        items.whereType<ReminderHistoryItem>().toList(),
+      _ActivityFilter.credits =>
+        items.whereType<CreditHistoryItem>().toList(),
     };
 
     return ListView(
@@ -378,6 +414,33 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
     final challans =
         items.whereType<DeliveryChallanHistoryItem>().map((h) => h.challan).toList();
     final bookings = items.whereType<BookingHistoryItem>().map((h) => h.booking).toList();
+    final reminders =
+        items.whereType<ReminderHistoryItem>().map((h) => h.reminder).toList();
+    final credits =
+        items.whereType<CreditHistoryItem>().map((h) => h.credit).toList();
+
+    // Unpaid invoices (exclude draft + paid) for reminder nudge
+    final unpaidInvoices = invoices
+        .where((i) =>
+            i.status != InvoiceStatus.draft && i.status != InvoiceStatus.paid)
+        .toList();
+
+    // Outstanding credits (given direction, not cleared)
+    final outstandingCreditsGiven = credits
+        .where((c) => c.direction == CreditDirection.given && !c.isCleared)
+        .toList();
+    final creditsPendingTotal =
+        outstandingCreditsGiven.fold(0.0, (s, c) => s + c.pendingAmount);
+
+    final lastReminder = reminders.isEmpty ? null : reminders.first;
+    final daysSinceLast = lastReminder == null
+        ? null
+        : DateTime.now().difference(lastReminder.sentAt).inDays;
+    // Show nudge when unpaid invoices OR outstanding credits AND no reminder / reminder stale
+    final hasOutstanding =
+        unpaidInvoices.isNotEmpty || creditsPendingTotal > 0;
+    final showNudge =
+        hasOutstanding && (lastReminder == null || daysSinceLast! >= 7);
 
     // Filtered items for documents tab
     final filteredDocs = switch (_docsFilter) {
@@ -396,8 +459,23 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
       children: [
-        // ── Outstanding Balance card ───────────────────────────────────
-        _OutstandingBalanceCard(invoices: invoices, colors: colors),
+        // ── Outstanding Balance card (invoices) / Credit Balance card ─────
+        if (invoices.isNotEmpty)
+          _OutstandingBalanceCard(invoices: invoices, colors: colors)
+        else if (outstandingCreditsGiven.isNotEmpty || credits.isNotEmpty)
+          _CreditBalanceCard(credits: credits, colors: colors),
+
+        // ── Reminder nudge ────────────────────────────────────────────
+        if (showNudge)
+          _ReminderNudgeCard(
+            unpaidCount: unpaidInvoices.length,
+            creditsPendingTotal: creditsPendingTotal,
+            totalOutstanding:
+                unpaidInvoices.fold(0.0, (s, i) => s + i.balanceDue) +
+                    creditsPendingTotal,
+            daysSinceLast: daysSinceLast,
+            onSendTap: () => _showReminderSheet(context),
+          ),
 
         const Divider(height: 1),
 
@@ -447,6 +525,48 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
                 .map((item) => _buildHistoryTile(item, colors))
                 .toList(),
           ),
+
+        // ── Reminder History ──────────────────────────────────────────────
+        const Divider(
+          height: AppSpacing.xl,
+          indent: AppSpacing.base,
+          endIndent: AppSpacing.base,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xs),
+          child: Row(
+            children: [
+              Icon(Icons.notifications_outlined,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                reminders.isEmpty
+                    ? 'Reminders Sent'
+                    : 'Reminders Sent (${reminders.length})',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        if (reminders.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base, AppSpacing.xs, AppSpacing.base, AppSpacing.md),
+            child: Text(
+              'No reminders sent yet. Tap "Send Reminder" to send one.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+            ),
+          )
+        else
+          ...reminders.map((r) => _ReminderHistoryTile(reminder: r)),
       ],
     );
   }
@@ -514,6 +634,9 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
                   )
               : null,
         ),
+      ReminderHistoryItem() =>
+        _ReminderHistoryTile(reminder: item.reminder),
+      CreditHistoryItem() => _CreditHistoryTile(credit: item.credit, colors: colors),
     };
   }
 
@@ -531,12 +654,23 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
   }
 
   void _showReminderSheet(BuildContext context) {
+    // Extract unpaid invoices from the already-loaded history
+    final historyValue =
+        ref.read(_partyHistoryFutureProvider(widget.party.name));
+    final unpaid = historyValue.valueOrNull
+            ?.whereType<InvoiceHistoryItem>()
+            .map((h) => h.invoice)
+            .where((i) => i.status != InvoiceStatus.paid)
+            .toList() ??
+        [];
+
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
       builder: (_) => _SendReminderSheet(
         party: widget.party,
+        unpaidInvoices: unpaid,
         onReminderSent: (transactionId) {
           ref
               .read(partiesProvider.notifier)
@@ -667,6 +801,86 @@ class _BalanceStat extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Credit Balance card — shown when no invoices but credits exist
+// ---------------------------------------------------------------------------
+
+class _CreditBalanceCard extends StatelessWidget {
+  const _CreditBalanceCard({
+    required this.credits,
+    required this.colors,
+  });
+
+  final List<Credit> credits;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final given = credits.where((c) => c.direction == CreditDirection.given);
+    final received = credits.where((c) => c.direction == CreditDirection.received);
+    final totalGiven = given.fold(0.0, (s, c) => s + c.pendingAmount);
+    final totalReceived = received.fold(0.0, (s, c) => s + c.pendingAmount);
+    final net = totalGiven - totalReceived;
+
+    if (credits.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(AppSpacing.base),
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Credit Balance',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              if (totalGiven > 0)
+                _BalanceStat(
+                  label: 'You Lent',
+                  value: _fmt(totalGiven),
+                  color: colors.credit,
+                ),
+              if (totalReceived > 0)
+                _BalanceStat(
+                  label: 'You Owe',
+                  value: _fmt(totalReceived),
+                  color: colors.expense,
+                ),
+              _BalanceStat(
+                label: 'Net',
+                value: (net >= 0 ? '+' : '') + _fmt(net.abs()),
+                color: net > 0
+                    ? colors.credit
+                    : net < 0
+                        ? colors.expense
+                        : colors.income,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(double v) {
+    if (v >= 10000000) return '₹${(v / 10000000).toStringAsFixed(1)}Cr';
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      if (s.length > 3) {
+        return '₹${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}';
+      }
+      return '₹$s';
+    }
+    return '₹${v.toStringAsFixed(0)}';
   }
 }
 
@@ -1381,10 +1595,14 @@ class _ScheduledPaymentTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _SendReminderSheet extends ConsumerStatefulWidget {
-  const _SendReminderSheet(
-      {required this.party, required this.onReminderSent});
+  const _SendReminderSheet({
+    required this.party,
+    required this.unpaidInvoices,
+    required this.onReminderSent,
+  });
 
   final Party party;
+  final List<Invoice> unpaidInvoices;
   final void Function(int transactionId) onReminderSent;
 
   @override
@@ -1393,128 +1611,335 @@ class _SendReminderSheet extends ConsumerStatefulWidget {
 }
 
 class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
-  String _customMessage = '';
+  late TextEditingController _msgController;
 
   @override
   void initState() {
     super.initState();
-    final name = widget.party.name;
-    _customMessage = 'Hi $name, this is a friendly reminder regarding '
-        'the outstanding amount. Please let me know when you can settle. '
-        'Thank you!';
+    _msgController =
+        TextEditingController(text: _buildDefaultMessage());
   }
 
   @override
+  void dispose() {
+    _msgController.dispose();
+    super.dispose();
+  }
+
+  // ── Message builder ────────────────────────────────────────────────────────
+
+  String _buildDefaultMessage() {
+    final name = widget.party.name;
+    final invoices = widget.unpaidInvoices;
+    if (invoices.isEmpty) {
+      return 'Hi $name, this is a friendly reminder regarding '
+          'the outstanding amount. Please let me know when you can settle. '
+          'Thank you!';
+    }
+
+    final now = DateTime.now();
+    final buf = StringBuffer();
+    buf.writeln('Hi $name, here is a summary of your outstanding invoices:');
+    buf.writeln();
+
+    for (final inv in invoices) {
+      final isOverdue = inv.dueDate != null &&
+          inv.dueDate!.isBefore(now) &&
+          inv.status != InvoiceStatus.paid;
+      final balance = inv.balanceDue;
+      buf.write('• ${inv.invoiceNo} — ${_fmtAmt(balance)}');
+      if (inv.dueDate != null) {
+        buf.write(' (Due: ${_fmtDate(inv.dueDate!)})');
+      }
+      if (isOverdue) buf.write(' ⚠️ OVERDUE');
+      if (inv.status == InvoiceStatus.partiallyPaid) {
+        buf.write(
+            ' [${_fmtAmt(inv.paidAmount)} paid, ${_fmtAmt(balance)} due]');
+      }
+      buf.writeln();
+    }
+
+    final total = invoices.fold(0.0, (s, i) => s + i.balanceDue);
+    buf.writeln();
+    buf.writeln('Total Outstanding: ${_fmtAmt(total)}');
+    buf.writeln();
+    buf.write('Kindly settle at your earliest convenience. Thank you!');
+    return buf.toString();
+  }
+
+  static String _fmtDate(DateTime d) {
+    const months = [
+      '',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${d.day} ${months[d.month]} ${d.year}';
+  }
+
+  static String _fmtRaw(double v) {
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      return s.length > 3
+          ? '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}'
+          : s;
+    }
+    return v.toStringAsFixed(0);
+  }
+
+  static String _fmtAmt(double v) => '₹${_fmtRaw(v)}';
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
+  @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<KashCubeColors>()!;
     final phone = widget.party.phoneNumber;
+    final dialCode = widget.party.dialCode ?? '91';
     final email = widget.party.email;
-    final encodedMsg = Uri.encodeComponent(_customMessage);
+    final now = DateTime.now();
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: AppSpacing.base,
-        right: AppSpacing.base,
-        top: AppSpacing.base,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.base,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text('Send Reminder',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const Spacer(),
-              IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close)),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-
-          // ── Message editor ────────────────────────────────────────────
-          TextField(
-            maxLines: 4,
-            keyboardType: TextInputType.multiline,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Message',
-              border: OutlineInputBorder(),
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: widget.unpaidInvoices.isEmpty ? 0.55 : 0.80,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, scrollController) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.base,
+              AppSpacing.base, AppSpacing.xl),
+          children: [
+            // ── Header ────────────────────────────────────────────────
+            Row(
+              children: [
+                Text('Send Reminder',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const Spacer(),
+                IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close)),
+              ],
             ),
-            onChanged: (v) => setState(() => _customMessage = v),
-            controller: TextEditingController.fromValue(
-              TextEditingValue(
-                text: _customMessage,
-                selection: TextSelection.collapsed(
-                    offset: _customMessage.length),
+            const SizedBox(height: AppSpacing.sm),
+
+            // ── Invoice breakdown card ─────────────────────────────────
+            if (widget.unpaidInvoices.isNotEmpty) ...[
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.receipt_long_outlined,
+                            size: 16,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          '${widget.unpaidInvoices.length} unpaid '
+                          'invoice${widget.unpaidInvoices.length == 1 ? '' : 's'}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    ...widget.unpaidInvoices.map((inv) {
+                      final isOverdue = inv.dueDate != null &&
+                          inv.dueDate!.isBefore(now) &&
+                          inv.status != InvoiceStatus.paid;
+                      final statusColor = isOverdue
+                          ? colors.overdue
+                          : inv.status == InvoiceStatus.partiallyPaid
+                              ? Colors.orange
+                              : colors.expense;
+                      return Padding(
+                        padding: const EdgeInsets.only(
+                            bottom: AppSpacing.xs),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    inv.invoiceNo,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                  if (inv.dueDate != null)
+                                    Text(
+                                      'Due: ${_fmtDate(inv.dueDate!)}${isOverdue ? '  ⚠️ OVERDUE' : ''}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                              color: isOverdue
+                                                  ? colors.overdue
+                                                  : Theme.of(context)
+                                                      .colorScheme
+                                                      .outline),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  _fmtAmt(inv.balanceDue),
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: statusColor),
+                                ),
+                                if (inv.status ==
+                                    InvoiceStatus.partiallyPaid)
+                                  Text(
+                                    '${_fmtAmt(inv.paidAmount)} paid',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const Divider(height: AppSpacing.md),
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Total Outstanding',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13)),
+                        Text(
+                          _fmtAmt(widget.unpaidInvoices
+                              .fold(0.0, (s, i) => s + i.balanceDue)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: colors.expense),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+            ],
+
+            // ── Message editor ─────────────────────────────────────────
+            TextField(
+              controller: _msgController,
+              maxLines: null,
+              minLines: 5,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: 'Message',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.refresh_outlined, size: 18),
+                  tooltip: 'Reset to default',
+                  onPressed: () => setState(() {
+                    _msgController.text = _buildDefaultMessage();
+                  }),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.md),
 
-          Text('Send via:',
-              style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(height: AppSpacing.sm),
+            Text('Send via:',
+                style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: AppSpacing.sm),
 
-          // ── Channel buttons ───────────────────────────────────────────
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            children: [
-              if (phone != null) ...[
-                _ReminderChannelButton(
-                  icon: Icons.chat_outlined,
-                  label: 'WhatsApp',
-                  color: const Color(0xFF25D366),
-                  onTap: () => _send(
-                    'https://wa.me/91$phone?text=$encodedMsg',
-                    phone,
+            // ── Channel buttons ────────────────────────────────────────
+            Wrap(
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
+              children: [
+                if (phone != null) ...[
+                  _ReminderChannelButton(
+                    icon: Icons.chat_outlined,
+                    label: 'WhatsApp',
+                    color: const Color(0xFF25D366),
+                    onTap: () => _send(
+                      'https://wa.me/$dialCode$phone?text='
+                      '${Uri.encodeComponent(_msgController.text)}',
+                      phone,
+                      'whatsapp',
+                    ),
                   ),
-                ),
-                _ReminderChannelButton(
-                  icon: Icons.message_outlined,
-                  label: 'SMS',
-                  color: const Color(0xFF1976D2),
-                  onTap: () => _send(
-                    'sms:+91$phone?body=$encodedMsg',
-                    phone,
+                  _ReminderChannelButton(
+                    icon: Icons.message_outlined,
+                    label: 'SMS',
+                    color: const Color(0xFF1976D2),
+                    onTap: () => _send(
+                      'sms:+$dialCode$phone?body='
+                      '${Uri.encodeComponent(_msgController.text)}',
+                      phone,
+                      'sms',
+                    ),
                   ),
-                ),
+                ],
+                if (email != null)
+                  _ReminderChannelButton(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    color: const Color(0xFFD32F2F),
+                    onTap: () => _send(
+                      'mailto:$email?subject=Payment+Reminder&body='
+                      '${Uri.encodeComponent(_msgController.text)}',
+                      null,
+                      'email',
+                    ),
+                  ),
               ],
-              if (email != null)
-                _ReminderChannelButton(
-                  icon: Icons.email_outlined,
-                  label: 'Email',
-                  color: const Color(0xFFD32F2F),
-                  onTap: () => _send(
-                    'mailto:$email?subject=Payment+Reminder&body=$encodedMsg',
-                    null,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            'Opening your messaging app. The message is pre-filled.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(
-                    color: Theme.of(context).colorScheme.outline),
-          ),
-        ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Opening your messaging app. The message is pre-filled.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(
+                      color: Theme.of(context).colorScheme.outline),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _send(String url, String? phone) async {
+  Future<void> _send(String url, String? phone, String channel) async {
     final uri = Uri.parse(url);
     final canOpen = await canLaunchUrl(uri);
     if (!canOpen) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Cannot open app for this action.'),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1523,6 +1948,24 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
       return;
     }
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    // Save to reminder history
+    final invoiceRefs =
+        widget.unpaidInvoices.map((i) => i.invoiceNo).join(',');
+    final totalOutstanding =
+        widget.unpaidInvoices.fold(0.0, (s, i) => s + i.balanceDue);
+    final reminder = PartyReminder(
+      partyName: widget.party.name,
+      channel: ReminderChannel.fromString(channel),
+      message: _msgController.text,
+      invoiceRefs: invoiceRefs.isEmpty ? null : invoiceRefs,
+      invoiceCount: widget.unpaidInvoices.length,
+      totalOutstanding: totalOutstanding > 0 ? totalOutstanding : null,
+      sentAt: DateTime.now(),
+    );
+    await ref.read(partyReminderRepositoryProvider).insert(reminder);
+    // Invalidate so the party detail screen refreshes with the new reminder
+    ref.invalidate(_partyHistoryFutureProvider(widget.party.name));
 
     // Mark reminder sent on all lending transactions with this party
     final txns = await ref
@@ -1536,6 +1979,213 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
     if (mounted) Navigator.pop(context);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Reminder Nudge card — shown when unpaid invoices need a reminder
+// ---------------------------------------------------------------------------
+
+class _ReminderNudgeCard extends StatelessWidget {
+  const _ReminderNudgeCard({
+    required this.unpaidCount,
+    required this.creditsPendingTotal,
+    required this.totalOutstanding,
+    required this.daysSinceLast,
+    required this.onSendTap,
+  });
+
+  final int unpaidCount;
+  final double creditsPendingTotal;
+  final double totalOutstanding;
+  final int? daysSinceLast; // null = never sent
+  final VoidCallback onSendTap;
+
+  String _buildTitle() {
+    if (unpaidCount > 0 && creditsPendingTotal > 0) {
+      return '$unpaidCount invoice${unpaidCount == 1 ? '' : 's'} + dues pending · ${_fmt(totalOutstanding)}';
+    } else if (unpaidCount > 0) {
+      return '$unpaidCount unpaid invoice${unpaidCount == 1 ? '' : 's'} · ${_fmt(totalOutstanding)}';
+    } else {
+      return 'Credit balance · ${_fmt(creditsPendingTotal)}';
+    }
+  }
+
+  static String _fmt(double v) {
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      return '₹${s.length > 3 ? '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}' : s}';
+    }
+    return '₹${v.toStringAsFixed(0)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final lastLine = daysSinceLast == null
+        ? 'No reminder sent yet'
+        : 'Last reminder $daysSinceLast day${daysSinceLast == 1 ? '' : 's'} ago';
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+          AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: cs.errorContainer.withValues(alpha: 0.30),
+        border: Border.all(color: cs.error.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(Icons.notifications_active_outlined,
+              color: cs.error, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _buildTitle(),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: cs.onErrorContainer),
+                ),
+                Text(
+                  lastLine,
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: cs.onErrorContainer.withValues(alpha: 0.7)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          FilledButton.icon(
+            onPressed: onSendTap,
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              visualDensity: VisualDensity.compact,
+            ),
+            icon: const Icon(Icons.send_outlined, size: 14),
+            label: const Text('Remind', style: TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reminder History tile
+// ---------------------------------------------------------------------------
+
+class _ReminderHistoryTile extends StatelessWidget {
+  const _ReminderHistoryTile({required this.reminder});
+
+  final PartyReminder reminder;
+
+  @override
+  Widget build(BuildContext context) {
+    final channelIcon = switch (reminder.channel) {
+      ReminderChannel.whatsapp => Icons.chat_outlined,
+      ReminderChannel.sms => Icons.message_outlined,
+      ReminderChannel.email => Icons.email_outlined,
+    };
+    final channelColor = switch (reminder.channel) {
+      ReminderChannel.whatsapp => const Color(0xFF25D366),
+      ReminderChannel.sms => const Color(0xFF1976D2),
+      ReminderChannel.email => const Color(0xFFD32F2F),
+    };
+
+    return ListTile(
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: channelColor.withValues(alpha: 0.12),
+        child: Icon(channelIcon, size: 16, color: channelColor),
+      ),
+      title: Text(
+        '${reminder.channel.label} Reminder',
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (reminder.invoiceCount > 0)
+            Text(
+              '${reminder.invoiceCount} '
+              'invoice${reminder.invoiceCount == 1 ? '' : 's'}'
+              '${reminder.totalOutstanding != null ? ' · ₹${_fmt(reminder.totalOutstanding!)}' : ''}',
+              style: const TextStyle(fontSize: 12),
+            ),
+          Text(
+            reminder.message.split('\n').first,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.outline),
+          ),
+        ],
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            _fmtDate(reminder.sentAt),
+            style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.outline),
+          ),
+          Text(
+            reminder.channel.label,
+            style: TextStyle(fontSize: 10, color: channelColor),
+          ),
+        ],
+      ),
+      visualDensity: VisualDensity.compact,
+    );
+  }
+
+  static String _fmt(double v) {
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      return s.length > 3
+          ? '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}'
+          : s;
+    }
+    return v.toStringAsFixed(0);
+  }
+
+  static String _fmtDate(DateTime d) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final now = DateTime.now();
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      return 'Today';
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (d.year == yesterday.year &&
+        d.month == yesterday.month &&
+        d.day == yesterday.day) {
+      return 'Yesterday';
+    }
+    return d.year == now.year
+        ? '${d.day} ${months[d.month]}'
+        : '${d.day} ${months[d.month]} ${d.year}';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Channel button
+// ---------------------------------------------------------------------------
 
 class _ReminderChannelButton extends StatelessWidget {
   const _ReminderChannelButton({
@@ -1558,6 +2208,116 @@ class _ReminderChannelButton extends StatelessWidget {
       icon: Icon(icon, size: 18),
       label: Text(label),
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Credit History tile
+// ---------------------------------------------------------------------------
+
+class _CreditHistoryTile extends StatelessWidget {
+  const _CreditHistoryTile({required this.credit, required this.colors});
+
+  final Credit credit;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final isGiven = credit.direction == CreditDirection.given;
+    final directionColor = isGiven ? colors.credit : colors.expense;
+    final directionIcon =
+        isGiven ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded;
+    final displayAmount =
+        credit.pendingAmount > 0 ? credit.pendingAmount : credit.totalAmount;
+
+    final statusLabel = credit.isCleared
+        ? 'Cleared'
+        : credit.isOverdue
+            ? 'Overdue'
+            : 'Pending';
+    final statusColor = credit.isCleared
+        ? colors.income
+        : credit.isOverdue
+            ? colors.overdue
+            : colors.credit;
+
+    return ListTile(
+      dense: true,
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: directionColor.withValues(alpha: 0.12),
+        child: Icon(directionIcon, size: 16, color: directionColor),
+      ),
+      title: Text(
+        isGiven ? 'Lent to party' : 'Borrowed from party',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        _fmtDate(credit.creditDate),
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            '${isGiven ? '' : '-'}₹${_fmt(displayAmount)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: directionColor,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontSize: 10,
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(double v) {
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      if (s.length > 3) {
+        return '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}';
+      }
+      return s;
+    }
+    return v.toStringAsFixed(0);
+  }
+
+  static String _fmtDate(DateTime d) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final now = DateTime.now();
+    if (d.year == now.year && d.month == now.month && d.day == now.day) {
+      return 'Today';
+    }
+    final yesterday = now.subtract(const Duration(days: 1));
+    if (d.year == yesterday.year &&
+        d.month == yesterday.month &&
+        d.day == yesterday.day) {
+      return 'Yesterday';
+    }
+    return d.year == now.year
+        ? '${d.day} ${months[d.month]}'
+        : '${d.day} ${months[d.month]} ${d.year}';
   }
 }
 

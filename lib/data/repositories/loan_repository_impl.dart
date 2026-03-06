@@ -39,6 +39,29 @@ class LoanRepositoryImpl implements LoanRepository {
   }
 
   @override
+  Future<List<Loan>> getPersonal() async {
+    final db = await _db;
+    final rows = await db.query(
+      'loans',
+      where: 'business_id IS NULL AND is_cleared = 0 AND deleted_at IS NULL',
+      orderBy: 'due_date ASC, loan_date DESC',
+    );
+    return rows.map(Loan.fromMap).toList();
+  }
+
+  @override
+  Future<List<Loan>> getForBusiness(int businessId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'loans',
+      where: 'business_id = ? AND is_cleared = 0 AND deleted_at IS NULL',
+      whereArgs: [businessId],
+      orderBy: 'due_date ASC, loan_date DESC',
+    );
+    return rows.map(Loan.fromMap).toList();
+  }
+
+  @override
   Future<List<Loan>> getActiveByDirection(LoanDirection direction) async {
     final db = await _db;
     final rows = await db.query(

@@ -118,7 +118,7 @@ class TransactionsHubScreen extends ConsumerWidget {
                     final text = (lentAmt != null || borrAmt != null)
                         ? '${CurrencyFormatter.formatCompact(lentAmt ?? 0)} lent'
                             ' · ${CurrencyFormatter.formatCompact(borrAmt ?? 0)} owed'
-                        : 'Lent, borrowed & udhar';
+                        : 'Lent, borrowed & dues';
                     return Text(text,
                         style: ctx.textTheme.bodySmall
                             ?.copyWith(color: ctx.colorScheme.outline));

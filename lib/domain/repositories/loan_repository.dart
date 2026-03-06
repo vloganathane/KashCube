@@ -27,6 +27,12 @@ abstract class LoanRepository {
   /// Get active (not cleared, not deleted) loans.
   Future<List<Loan>> getActive();
 
+  /// Personal loans only (business_id IS NULL, not cleared, not deleted).
+  Future<List<Loan>> getPersonal();
+
+  /// Loans belonging to a specific business.
+  Future<List<Loan>> getForBusiness(int businessId);
+
   /// Get active loans filtered by direction.
   Future<List<Loan>> getActiveByDirection(LoanDirection direction);
 

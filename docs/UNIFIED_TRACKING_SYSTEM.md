@@ -2,8 +2,9 @@
 
 > **Authored:** 7 March 2026  
 > **Status:** Planning — not yet started  
-> **Scope:** Five complementary features that weave KashCube's siloed modules
-> into a single, coherent financial picture per party and across time.
+> **Scope:** Four complementary pillars that weave KashCube's siloed modules
+> into a single, coherent financial picture per party and across time, backed
+> by a shared Lifecycle Layer used across all pillars.
 
 ---
 
@@ -23,26 +24,36 @@ Bookings, Transactions) but they are **siloed by design**. As a result:
 
 ---
 
-## Five Pillars
+## Four Pillars + Shared Lifecycle Layer
 
 ```
-┌─────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┐
-│  Pillar A       │  Pillar B       │  Pillar C       │  Pillar D       │  Pillar E       │
-│  Party 360°     │  Cash Flow      │  Bulk Actions   │  Lifecycle Tags │  Business Flow  │
-│  (who owes      │  Timeline       │  (work at       │  (how long &    │  Tracker        │
-│   what)         │  (when does it  │   scale)        │   why)          │  (deal chain    │
-│                 │   land)         │                 │                 │   Q→I→T)        │
-│  Effort: Medium │  Effort: Small  │  Effort: Small  │  Effort: Medium │  Effort: Small* │
-│  Value:  ★★★★★  │  Value:  ★★★★   │  Value:  ★★★★   │  Value:  ★★★    │  Value:  ★★★★★  │
-└─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┘
+┌────────────────────┬────────────────────┬────────────────────┬────────────────────┐
+│  Pillar A          │  Pillar B          │  Pillar C          │  Pillar D          │
+│  Party 360°        │  Cash Flow         │  Bulk Actions      │  Business Flow     │
+│  (who owes what)   │  Timeline          │  (work at scale)   │  Tracker           │
+│                    │  (when does it     │                    │  (deal chain       │
+│                    │   land)            │                    │   Q→I→T)           │
+│  Effort: Medium    │  Effort: Small     │  Effort: Small     │  Effort: Small*    │
+│  Value:  ★★★★★     │  Value:  ★★★★      │  Value:  ★★★★      │  Value:  ★★★★★     │
+└────────────────────┴────────────────────┴────────────────────┴────────────────────┘
 * FK links already exist in DB — no migration needed for MVP
+
+         ╔══════════════════════════════════════════════════════════╗
+         ║  Shared Lifecycle Layer  (used by ALL four pillars)     ║
+         ║  LifecycleClassifier · LifecycleInfo · LifecycleTag     ║
+         ║  Covers: Invoice · Due · Loan · Bill · Booking · Chain  ║
+         ╚══════════════════════════════════════════════════════════╝
 ```
 
-These are **independent** — each can ship without the others, but they share the
-`PartyFinancialSummary` data model (Pillar A) which Pillar C also uses. Pillar D
-augments Pillars A and C with richer stage/age data visible in both. Pillar E
-reads `quoteId`, `challanId`, `invoiceId`, and `linkedInvoiceId` FK columns that
-already exist — it adds a new **read-only chain view** with zero schema changes.
+The four pillars are **independent** — each can ship without the others. They share
+the `PartyFinancialSummary` model (Pillar A used by Pillar C). The **Shared Lifecycle
+Layer** is not a pillar but a set of utilities (`LifecycleClassifier`, `LifecycleInfo`,
+`LifecycleTag`) consumed by all four pillars:
+- **Pillar A** (Party 360°): `LifecycleTag` on each item in the unified timeline
+- **Pillar B** (Cash Flow): stage subtitle on each event tile
+- **Pillar C** (Bulk Actions): stale-item filter and context-aware button labels
+- **Pillar D** (Business Flow): `LifecycleTag` on Invoice nodes inside `FlowChainTile`;
+  standalone Dues/Loans/Bills (which have no chain) also use it in Action Center tiles
 
 ---
 
@@ -307,160 +318,109 @@ Future<File> generatePartyStatement(PartyFinancialSummary summary);
 
 ---
 
-## Pillar D — Lifecycle Tags
+## Shared Lifecycle Layer
 
-### Goal
-Every financial item (Invoice, Due, Loan, Bill) moves through a defined sequence
-of stages. Lifecycle Tags make that journey **visible and actionable** — so the
-user knows not just *what* is overdue, but *how long it has been stuck* and
-*what happened last*.
+> Not a pillar — a set of **shared utilities** consumed by all four pillars.
+> Handles the single question: *"How long has this item been in its current stage,
+> and what should happen next?"*
+>
+> For **Invoice nodes inside a chain** (Pillar D): `FlowChainTile` calls
+> `LifecycleClassifier.forInvoice()` to annotate each chain step.
+> For **standalone items with no chain** — Dues, Loans, Bills — `_ActionItemTile`
+> in Action Center calls the same classifier directly.
 
-```
-Invoice lifecycle:
-  draft → sent → reminded → partially paid → paid
-                              ↓ if past due date
-                            overdue (any stage)
-
-Credit / Due lifecycle:
-  active → reminded → partial → cleared
-           ↓ if past due date
-         overdue
-
-Loan lifecycle:
-  active → paying (paidEmis > 0) → overdue → cleared
-
-Bill lifecycle:
-  active → upcoming (≤7 days) → overdue → paid
-```
-
-The **age in current stage** is the key metric. An invoice that has been `sent`
-for 21 days with no reminder is a higher priority than one sent yesterday,
-even if both have the same due date.
-
-### Lifecycle stage display (example in Action Center)
+### Stage machines
 
 ```
-┌─ Rajesh Traders   Invoice #0041   ₹50,000 ─────────────────────┐
-│  📄  Sent 21 days ago · Reminded once · Overdue 7 days          │
-│  Stage: REMINDED ──●───────── → PARTIAL → PAID                  │
-└────────────────────────────────────────────────────────────────┘
+Invoice:  draft → sent → reminded → partiallyPaid → paid
+                                      ↓ if past due date at any stage
+                                    overdue
+
+Due/Credit: active → reminded → partial → cleared
+                     ↓ if past due date
+                   overdue
+
+Loan:     active → paying (paidEmis > 0) → overdue → cleared
+
+Bill:     active → upcoming (≤7 days) → overdue → paid
+
+Booking:  pending → confirmed → [service date] → completed / noShow
 ```
 
-### Design decision: computed vs stored
-
-| Approach | Pro | Con |
-|----------|-----|-----|
-| **Computed** (MVP) — derive stage at runtime from existing fields | Zero DB migration, ship in days | Cannot store custom stage overrides | 
-| **Stored** — add `lifecycle_stage` + `last_action_at` columns | Persistent, queryable, allows override | Requires DB migration (v45+) |
-
-**Recommendation:** Ship computed MVP first; add stored columns in a follow-up
-migration only if user feedback requests manual stage override.
+The **age in current stage** (`daysInStage`) is the key metric for prioritisation.
 
 ### Existing fields that drive computed stages
 
-| Source | Existing fields used |
-|--------|---------------------|
-| `Invoice` | `status` (draft/sent/paid/overdue/partiallyPaid), `reminderSentAt`, `paidAmount`, `dueDate`, `updatedAt` |
+| Source | Fields used |
+|--------|-------------|
+| `Invoice` | `status`, `reminderSentAt`, `paidAmount`, `dueDate`, `updatedAt` |
 | `Credit` | `isCleared`, `isOverdue`, `dueDate`, `pendingAmount`, `createdAt` |
 | `Loan` | `isCleared`, `isOverdue`, `paidEmis`, `nextEmiDate`, `dueDate`, `updatedAt` |
 | `ScheduledPayment` | `lastPaidDate`, `nextDate`, `isActive` |
 | `party_reminders` | `sent_at` per party (closest proxy for "last reminded") |
 
+### Design decision: computed vs stored
+
+| Approach | Pro | Con |
+|----------|-----|-----|
+| **Computed** (MVP) | Zero DB migration, ship in days | Cannot store custom stage overrides |
+| **Stored** — add `lifecycle_stage` + `last_action_at` columns | Persistent, queryable, allows override | Requires DB migration (v45+) |
+
+**Ship computed MVP.** Add stored columns only if users request manual override.
+
 ### What needs building
 
-#### D1 — `LifecycleStage` enum + `LifecycleInfo` value class
+#### LC1 — `LifecycleStage` enum + `LifecycleInfo` value class
 
 ```dart
 // lib/data/models/lifecycle_info.dart
 enum LifecycleStage {
-  draft,
-  active,
-  sent,
-  reminded,
-  partiallyPaid,
-  overdue,
-  paying,
-  cleared,
-  paid,
+  draft, active, sent, reminded, partiallyPaid, overdue, paying, cleared, paid,
 }
 
 class LifecycleInfo {
   final LifecycleStage stage;
-  final int daysInStage;      // days since last stage transition
-  final DateTime? lastActionAt; // last reminder or payment event
+  final int daysInStage;         // days since last stage transition
+  final DateTime? lastActionAt;  // last reminder or payment event
   final String? lastActionLabel; // "Reminded via WhatsApp", "₹5,000 received"
-  final LifecycleStage? nextStage; // suggested next step
-  final String? nextActionHint;   // "Send a reminder" / "Record payment"
+  final String? nextActionHint;  // "Send a reminder" / "Record payment"
 }
 ```
 
-#### D2 — `LifecycleClassifier` (pure Dart, no DB access)
+#### LC2 — `LifecycleClassifier` (pure Dart, no DB access)
 
 ```dart
 // lib/core/utils/lifecycle_classifier.dart
+// Pure functions — no async, no DB — safe to call inside build().
 class LifecycleClassifier {
   static LifecycleInfo forInvoice(Invoice inv, {DateTime? lastReminderAt});
   static LifecycleInfo forCredit(Credit c, {DateTime? lastReminderAt});
   static LifecycleInfo forLoan(Loan l);
   static LifecycleInfo forBill(ScheduledPayment p);
-  static LifecycleInfo forBooking(Booking b); // pending → confirmed → checked_in → completed
+  static LifecycleInfo forBooking(Booking b);
 }
 ```
 
-All methods are pure functions — no async, no DB calls — so they work inside
-`build()` methods directly. Example:
-
-```dart
-static LifecycleInfo forInvoice(Invoice inv, {DateTime? lastReminderAt}) {
-  final now = DateTime.now();
-  final stage = switch (inv.status) {
-    InvoiceStatus.draft         => LifecycleStage.draft,
-    InvoiceStatus.paid          => LifecycleStage.paid,
-    InvoiceStatus.partiallyPaid => LifecycleStage.partiallyPaid,
-    InvoiceStatus.overdue       => LifecycleStage.overdue,
-    InvoiceStatus.sent => lastReminderAt != null
-        ? LifecycleStage.reminded
-        : LifecycleStage.sent,
-  };
-  final lastAction = lastReminderAt ?? inv.updatedAt;
-  final daysInStage = lastAction != null
-      ? now.difference(lastAction).inDays
-      : now.difference(inv.createdAt).inDays;
-  return LifecycleInfo(
-    stage: stage,
-    daysInStage: daysInStage,
-    lastActionAt: lastAction,
-    ...
-  );
-}
-```
-
-#### D3 — `LifecycleTag` widget
-
-A small reusable widget used wherever an item appears:
+#### LC3 — `LifecycleTag` widget
 
 ```dart
 // lib/presentation/widgets/lifecycle_tag.dart
-// Usage: LifecycleTag(info: lifecycleInfo)
-//
-// Renders a compact pill:  [ SENT · 14d ]  or  [ OVERDUE · 7d ]  or  [ REMINDED · 2d ]
-// Colour-coded by stage urgency.
-// Optional: expandedMode = true → shows progress bar (stage dots)
+// LifecycleTag(info: lifecycleInfo)
+// Renders: [ SENT · 14d ]  [ OVERDUE · 7d ]  [ REMINDED · 2d ]
+// Colour-coded. Optional expandedMode = true → stage progress dots.
 ```
 
-#### D4 — `LifecycleTag` integration points
+#### LC4 — Integration points
 
-| Screen | Where added | Info source |
-|--------|-------------|-------------|
-| `_ActionItemTile` (Action Center) | Below party name | `LifecycleClassifier.forX(item)` |
+| Consumer | Where | Context |
+|----------|-------|---------|
+| `_ActionItemTile` (Action Center) | Below party name — for standalone Dues/Loans/Bills AND chain-invoice items | `LifecycleClassifier.forX(item)` |
+| `FlowChainTile` (Pillar D) | Invoice step node inside deal chain | `LifecycleClassifier.forInvoice(inv)` |
 | `InvoiceDetailScreen` | Header section | `LifecycleClassifier.forInvoice(inv, lastReminderAt: ...)` |
 | `Party360Screen` (Pillar A) | Each item in unified timeline | `LifecycleClassifier.forX(item)` |
 | `CashFlowScreen` (Pillar B) | Event tile subtitle | `LifecycleClassifier.forX(item)` |
 
-#### D5 — "Next action hint" in Action Center
-
-Action Center `_ActionItemTile` currently shows a generic "View" button.
-With lifecycle info, the button label becomes context-aware:
+#### LC5 — Context-aware action button labels in Action Center
 
 | Stage | Button label |
 |-------|--------------|
@@ -470,53 +430,25 @@ With lifecycle info, the button label becomes context-aware:
 | `partiallyPaid` | **Record Balance** (primary) |
 | `active` + due in 3d | **View** (neutral) |
 
-No new data needed — `daysInStage` from `LifecycleInfo` drives the label.
+#### LC6 — "Stale Items" filter chip in Action Center
 
-#### D6 — "Stale Items" filter chip in Action Center
-
-Items with **no activity for N days** (default N = 7) are stale. A dedicated
-filter chip surfaces them so the user can prioritise and act in bulk.
+Applies to **all** `ActionItem` types including chain-linked and standalone:
 
 ```dart
-// Action Center filter chip row:
 // [All]  [To Collect]  [To Pay]  [Stale ●]
-//
-// "Stale" = lifecycle.daysInStage > kDefaultStallThreshold
-const int kDefaultStallThreshold = 7; // named constant — no DB write, no settings screen in MVP
+// "Stale" = lifecycle.daysInStage > kDefaultStallThreshold (default 7)
+const int kDefaultStallThreshold = 7;
 ```
 
-Stale items also receive a subtle **amber left-border** in Party 360°'s unified
-timeline, reinforcing that they need attention without being noisy.
-
-> Future: expose `kDefaultStallThreshold` as a user-configurable setting
-> (Settings screen → "Alert me if no activity for X days").
-
-### Schema extension (stored lifecycle — Phase 2 only)
-
-If computed MVP proves insufficient, a single DB migration adds:
-
-```sql
--- DB v45 — Lifecycle Tag columns
-ALTER TABLE invoices ADD COLUMN lifecycle_stage TEXT;
-ALTER TABLE invoices ADD COLUMN last_action_at  TEXT;
-
-ALTER TABLE credits  ADD COLUMN lifecycle_stage TEXT;
-ALTER TABLE credits  ADD COLUMN last_action_at  TEXT;
-
-ALTER TABLE loans    ADD COLUMN lifecycle_stage TEXT;
-ALTER TABLE loans    ADD COLUMN last_action_at  TEXT;
-```
-
-These are nullable — existing rows default to `NULL`, computed classifier
-fills in until user explicitly sets a stage override.
+Stale items also receive an amber left-border in Party 360°'s unified timeline.
 
 ---
 
-## Pillar E — Business Flow Tracker
+## Pillar D — Business Flow Tracker
 
 ### Goal
 Every sale has a **chain**: it starts somewhere (Quote / Challan / Booking /
-direct Invoice) and ends with cash received (Transaction). Pillar E makes that
+direct Invoice) and ends with cash received (Transaction). Pillar D makes that
 chain visible, surfacing deals that are **stuck mid-chain** — accepted quotes
 never invoiced, dispatched challans never converted, services delivered but
 never billed.
@@ -582,6 +514,11 @@ never billed.
 
 ### What needs building
 
+> Invoice nodes inside a `FlowChainTile` use `LifecycleClassifier.forInvoice()`
+> from the Shared Lifecycle Layer to render their stage pill and `daysInStage`.
+> Standalone Dues/Loans/Bills that have **no chain** are handled by the same
+> classifier directly in `_ActionItemTile` — no duplication.
+
 #### E1 — `BusinessFlowChain` model
 
 ```dart
@@ -623,6 +560,8 @@ class BusinessFlowChain {
 ```
 
 #### E2 — `businessFlowChainsProvider(int partyId)`
+
+> Renamed task IDs E1–E6 retained below for traceability to implementation sequence.
 
 ```dart
 // lib/presentation/providers/business_flow_provider.dart
@@ -673,21 +612,22 @@ class BusinessFlowChainBuilder {
 
 A collapsible card showing the full chain vertically:
 ```
-[origin icon + doc no + date]  →  [invoice status]  →  [payment status]
+[origin icon + doc no + date]  →  [invoice status + LifecycleTag]  →  [payment status]
 ```
-Used in Party 360°'s new "Deals" tab alongside the existing unified timeline.
+Used in Party 360°'s new "Deals" tab. The Invoice step node renders a `LifecycleTag`
+pill (e.g. `[ OVERDUE · 7d ]`) sourced from LC2/LC3 in the Shared Lifecycle Layer.
 
 #### E5 — Revenue Leakage Alert in Action Center
 
 New `ActionItemType.leakingChain` in the existing `ActionItem` enum:
-- Surfaces accepted quotes with no invoice > 3 days
-- Surfaces dispatched challans with no invoice > 2 days
-- Surfaces completed bookings with no invoice > 1 day
-- Surfaces in Action Center under a new **"Leaking"** urgency section
-- Tap → `FlowChainDetailScreen` with a "Raise Invoice" CTA
+- Accepted quotes with no invoice > 3 days
+- Dispatched challans with no invoice > 2 days
+- Completed bookings with no invoice > 1 day
+- Surfaces in Action Center under a new **"Leaking"** urgency section (distinct
+  from Overdue — CTA is "Raise Invoice", not "Remind")
+- Leaking items are **also** shown by the LC6 Stale filter if `daysInStage > 7`
 
 ```dart
-// Extends existing ActionItemType enum:
 enum ActionItemType {
   invoice,
   dues,
@@ -740,10 +680,10 @@ Direct:                                 │
 
 | # | Question | Recommendation |
 |---|----------|----------------|
-| E-Q1 | Should `QuoteRepository.getByPartyId()` be added (new method on existing repo)? | Yes — same pattern as P1.2 for Invoice/Credit/Loan |
-| E-Q2 | Threshold for "dispatched challan with no invoice" = how many days? | 2 days (configurable later) |
-| E-Q3 | Should `leakingChainsProvider` appear as a dedicated "Leaking" section in Action Center, or fold into the existing Overdue section? | Dedicated section — visually distinct, different CTA ("Raise Invoice" not "Remind") |
-| E-Q4 | One `FlowChainDetailScreen` or chain shown inline in Party 360°? | Inline in Party 360° Deals tab; `FlowChainDetailScreen` only for Action Center tap-through |
+| D-Q1 | Should `QuoteRepository.getByPartyId()` be added (new method on existing repo)? | Yes — same pattern as P1.2 for Invoice/Credit/Loan |
+| D-Q2 | Threshold for "dispatched challan with no invoice" = how many days? | 2 days (configurable later) |
+| D-Q3 | Should `leakingChainsProvider` appear as a dedicated "Leaking" section in Action Center, or fold into the existing Overdue section? | Dedicated section — visually distinct, different CTA ("Raise Invoice" not "Remind") |
+| D-Q4 | One `FlowChainDetailScreen` or chain shown inline in Party 360°? | Inline in Party 360° Deals tab; `FlowChainDetailScreen` only for Action Center tap-through |
 
 ---
 
@@ -777,7 +717,7 @@ Direct:                                 │
 | P2.9 | `businessFlowChainsProvider` + `leakingChainsProvider` (E2) | P2.8, P1.2, P1.7 | 3h |
 | P2.10 | `FlowChainTile` widget + "Deals" tab in Party360Screen (E4) | P2.1, P2.9 | 3h |
 
-### Phase 3 — Polish, wiring & Lifecycle (Week 3) `~3 days`
+### Phase 3 — Polish, wiring & Lifecycle Layer (Week 3) `~3 days`
 
 | ID | Task | Depends on | Effort |
 |----|------|-----------|--------|
@@ -785,20 +725,20 @@ Direct:                                 │
 | P3.2 | Party search shows net outstanding in autocomplete | P1.3 | 2h |
 | P3.3 | Consolidated Party Statement PDF | P2.1, P2.2 | 3h |
 | P3.4 | Cash Flow → Reports tab integration | P2.3 | 1h |
-| P3.5 | `LifecycleStage` enum + `LifecycleInfo` value class (D1) | — | 2h |
-| P3.6 | `LifecycleClassifier` pure utility (D2) | P3.5 | 3h |
-| P3.7 | `LifecycleTag` widget (D3) | P3.5 | 2h |
-| P3.8 | Wire `LifecycleTag` into Action Center + InvoiceDetailScreen (D4) | P3.6, P3.7 | 2h |
-| P3.9 | Context-aware action button labels in `_ActionItemTile` (D5) | P3.6 | 1h |
-| P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (D6) | P3.6 | 2h |
+| P3.5 | `LifecycleStage` enum + `LifecycleInfo` value class (LC1) | — | 2h |
+| P3.6 | `LifecycleClassifier` pure utility (LC2) | P3.5 | 3h |
+| P3.7 | `LifecycleTag` widget (LC3) | P3.5 | 2h |
+| P3.8 | Wire `LifecycleTag` into Action Center tiles, InvoiceDetailScreen, FlowChainTile invoice node (LC4) | P3.6, P3.7, P2.10 | 3h |
+| P3.9 | Context-aware action button labels in `_ActionItemTile` (LC5) | P3.6 | 1h |
+| P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (LC6) | P3.6 | 2h |
 | P3.11 | Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain` (E5) | P2.9 | 3h |
 | P3.12 | Reminder event nodes woven into chain display (E6) | P2.10 | 2h |
 | P3.13 | `flutter analyze` + widget tests for all new code | all | 3h |
 
 **Total estimated:** ~71 hours across 3 weeks.
 
-> Lifecycle Tags (D1–D6) are the last items in Phase 3 so they can layer on top
-> of the Party 360° and Action Center screens that ship in Phase 2.
+> The Shared Lifecycle Layer (LC1–LC6) is built last so it can integrate into
+> the Party 360°, Action Center, and Business Flow screens shipped in Phase 2.
 
 ---
 
@@ -808,61 +748,48 @@ Direct:                                 │
 lib/
 ├── core/
 │   └── utils/
-│       └── lifecycle_classifier.dart      ← NEW (D2)
+│       ├── lifecycle_classifier.dart          ← NEW (LC2)  — Shared Lifecycle Layer
+│       └── business_flow_chain_builder.dart   ← NEW (E3)   — Pillar D
 ├── data/
 │   ├── models/
-│   │   ├── party_financial_summary.dart   ← NEW (P1.1)
-│   │   ├── cash_flow_event.dart           ← NEW (P1.4)
-│   │   └── lifecycle_info.dart            ← NEW (D1)
+│   │   ├── party_financial_summary.dart       ← NEW (P1.1) — Pillar A
+│   │   ├── cash_flow_event.dart               ← NEW (P1.4) — Pillar B
+│   │   ├── lifecycle_info.dart                ← NEW (LC1)  — Shared Lifecycle Layer
+│   │   └── business_flow_chain.dart           ← NEW (E1)   — Pillar D
 │   ├── repositories/
-│   │   └── (extensions to existing repos) ← MODIFY (P1.2)
+│   │   └── (extensions to existing repos)     ← MODIFY (P1.2, P1.7, P1.8)
 │   └── services/
-│       ├── bulk_reminder_service.dart     ← NEW (C2)
-│       └── party_statement_service.dart   ← NEW (C3)
+│       ├── bulk_reminder_service.dart         ← NEW (C2)   — Pillar C
+│       └── party_statement_service.dart       ← NEW (C3)   — Pillar C
 ├── presentation/
 │   ├── providers/
-│   │   ├── party_financial_provider.dart  ← NEW (P1.3)
-│   │   └── cash_flow_provider.dart        ← NEW (P1.5)
+│   │   ├── party_financial_provider.dart      ← NEW (P1.3) — Pillar A
+│   │   ├── cash_flow_provider.dart            ← NEW (P1.5) — Pillar B
+│   │   └── business_flow_provider.dart        ← NEW (E2)   — Pillar D
 │   ├── widgets/
-│   │   └── lifecycle_tag.dart             ← NEW (D3)
+│   │   ├── lifecycle_tag.dart                 ← NEW (LC3)  — Shared Lifecycle Layer
+│   │   └── flow_chain_tile.dart               ← NEW (E4)   — Pillar D
 │   └── screens/
 │       ├── parties/
-│       │   ├── party_360_screen.dart      ← NEW (P2.1, P2.2)
-│       │   └── flow_chain_detail_screen.dart ← NEW (E4)
+│       │   ├── party_360_screen.dart           ← NEW (P2.1, P2.2)
+│       │   └── flow_chain_detail_screen.dart   ← NEW (E4)
 │       ├── reports/
-│       │   └── cash_flow_screen.dart      ← NEW (P2.3)
+│       │   └── cash_flow_screen.dart           ← NEW (P2.3)
 │       └── home/
-│           └── action_center_screen.dart  ← MODIFY (P2.4, D4, E5)
-```
-
-**Additional files for Pillar E:**
-```
-lib/
-├── core/
-│   └── utils/
-│       └── business_flow_chain_builder.dart  ← NEW (E3)
-├── data/
-│   └── models/
-│       └── business_flow_chain.dart          ← NEW (E1)
-├── presentation/
-│   ├── providers/
-│   │   └── business_flow_provider.dart       ← NEW (E2)
-│   └── widgets/
-│       └── flow_chain_tile.dart              ← NEW (E4)
+│           └── action_center_screen.dart       ← MODIFY (P2.4, LC4, LC5, LC6, E5)
 ```
 
 ---
 
 ## Privacy Compliance Checklist
 
-All five pillars are **100% on-device**:
+All four pillars + the Shared Lifecycle Layer are **100% on-device**:
 
 - [x] `PartyFinancialSummary` — in-memory aggregation of local SQLite tables
 - [x] `CashFlowEvent` — in-memory merge using existing local providers
 - [x] `BulkReminderService` — OS WhatsApp deep-link (no READ_CONTACTS, no network)
 - [x] Party Statement PDF — generated locally using `pdf` package, shared via OS share sheet
-- [x] `LifecycleClassifier` — pure in-memory computation from local model fields; no DB writes in MVP
-- [x] `LifecycleTag` widget — display only; reads no new data sources
+- [x] `LifecycleClassifier` / `LifecycleTag` (Shared Lifecycle Layer) — pure in-memory computation; display only; no DB writes in MVP
 - [x] `BusinessFlowChainBuilder` — pure in-memory join of local model lists; no network, no new permissions
 - [x] `leakingChainsProvider` — SQL queries on existing tables with no new columns required
 - [ ] No new permissions required beyond what is already granted
@@ -887,8 +814,9 @@ All five pillars are **100% on-device**:
    → Recommendation: auto-link silently (matching by normalised name), show
    a one-time toast "Linked to existing party Rajesh Traders".
 
-5. **Lifecycle stage override:** Should users be able to manually set a stage
-   (e.g. mark an invoice as "sent" even though `status = draft`)?
+5. **Lifecycle stage override** (Shared Lifecycle Layer): Should users be able
+   to manually set a stage (e.g. mark an invoice as "sent" even though
+   `status = draft`)?
    → MVP: no override — computed only. Phase 2: add stored columns (DB v45)
    and an "Update stage" option in `InvoiceDetailScreen` overflow menu.
 
@@ -921,8 +849,9 @@ These can be verified manually during QA:
 - Party 360°: opening any party with >0 open invoices shows correct `netOutstanding`
 - Cash Flow: today's divider lands correctly; tapping an upcoming event navigates to its source screen
 - Bulk Remind: selecting 3 items → "Remind All" opens 3 WhatsApp pre-fills in sequence
-- Lifecycle Tags: an invoice in `sent` status with `updatedAt` 14 days ago shows `LifecycleStage.sent` and `daysInStage = 14`; `_ActionItemTile` button shows "Send Reminder" not "View"
-- Lifecycle Tags: a fully paid invoice shows `LifecycleStage.paid` — no tag rendered in Action Center (paid items are filtered out)
+- Shared Lifecycle Layer: an invoice in `sent` status with `updatedAt` 14 days ago shows `LifecycleStage.sent` and `daysInStage = 14`; `_ActionItemTile` button shows "Send Reminder" not "View"
+- Shared Lifecycle Layer: `LifecycleTag` renders correctly on a chain Invoice node inside `FlowChainTile` (Pillar D) AND on a standalone Due in `_ActionItemTile` — same widget, same classifier, different call site
+- Shared Lifecycle Layer: a fully paid invoice shows `LifecycleStage.paid` — no tag rendered in Action Center (paid items are filtered out)
 - Bookings: party with 1 confirmed booking shows `activeBookings = 1` and advance in `bookingsPending`; `netOutstanding` reflects the subtracted advance
 - Stale filter: Action Center "Stale" chip shows only items where `daysInStage > 7`; chip badge is hidden when 0 items match
 - Business Flow: a Quote with `status = accepted` and no matching invoice shows in Action Center "Leaking" section with CTA "Raise Invoice"

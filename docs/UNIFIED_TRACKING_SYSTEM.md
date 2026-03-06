@@ -2,7 +2,7 @@
 
 > **Authored:** 7 March 2026  
 > **Status:** Planning — not yet started  
-> **Scope:** Four complementary features that weave KashCube's siloed modules
+> **Scope:** Five complementary features that weave KashCube's siloed modules
 > into a single, coherent financial picture per party and across time.
 
 ---
@@ -19,25 +19,30 @@ Bookings, Transactions) but they are **siloed by design**. As a result:
 | No multi-select / batch remind | User must open each overdue invoice one by one to send WhatsApp reminder |
 | No visibility into *how long* an item has been in a stage | Cannot prioritise "Invoice sent 14 days ago, never reminded" over one sent yesterday |
 | Bookings (advance deposits, check-in dates) are invisible in Party summary | Net outstanding for a party is wrong if they have an unpaid advance |
+| Quote accepted → Invoice never raised; Challan dispatched → Invoice never converted | Revenue leakage — money earned but never billed |
 
 ---
 
-## Four Pillars
+## Five Pillars
 
 ```
-┌──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┐
-│  Pillar A            │  Pillar B            │  Pillar C            │  Pillar D            │
-│  Party 360°          │  Cash Flow Timeline  │  Bulk Actions        │  Lifecycle Tags      │
-│  (who owes what)     │  (when does it land) │  (work at scale)     │  (how long & why)    │
-│                      │                      │                      │                      │
-│  Effort: Medium      │  Effort: Small       │  Effort: Small       │  Effort: Medium      │
-│  Value:  ★★★★★       │  Value:  ★★★★        │  Value:  ★★★★        │  Value:  ★★★         │
-└──────────────────────┴──────────────────────┴──────────────────────┴──────────────────────┘
+┌─────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┐
+│  Pillar A       │  Pillar B       │  Pillar C       │  Pillar D       │  Pillar E       │
+│  Party 360°     │  Cash Flow      │  Bulk Actions   │  Lifecycle Tags │  Business Flow  │
+│  (who owes      │  Timeline       │  (work at       │  (how long &    │  Tracker        │
+│   what)         │  (when does it  │   scale)        │   why)          │  (deal chain    │
+│                 │   land)         │                 │                 │   Q→I→T)        │
+│  Effort: Medium │  Effort: Small  │  Effort: Small  │  Effort: Medium │  Effort: Small* │
+│  Value:  ★★★★★  │  Value:  ★★★★   │  Value:  ★★★★   │  Value:  ★★★    │  Value:  ★★★★★  │
+└─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┘
+* FK links already exist in DB — no migration needed for MVP
 ```
 
 These are **independent** — each can ship without the others, but they share the
 `PartyFinancialSummary` data model (Pillar A) which Pillar C also uses. Pillar D
-augments Pillars A and C with richer stage/age data visible in both.
+augments Pillars A and C with richer stage/age data visible in both. Pillar E
+reads `quoteId`, `challanId`, `invoiceId`, and `linkedInvoiceId` FK columns that
+already exist — it adds a new **read-only chain view** with zero schema changes.
 
 ---
 
@@ -507,6 +512,241 @@ fills in until user explicitly sets a stage override.
 
 ---
 
+## Pillar E — Business Flow Tracker
+
+### Goal
+Every sale has a **chain**: it starts somewhere (Quote / Challan / Booking /
+direct Invoice) and ends with cash received (Transaction). Pillar E makes that
+chain visible, surfacing deals that are **stuck mid-chain** — accepted quotes
+never invoiced, dispatched challans never converted, services delivered but
+never billed.
+
+```
+── Chain types ─────────────────────────────────────────────────────
+
+  TYPE 1 — Quote chain
+  Quote (draft) → sent → accepted → Invoice (sent) → reminded → Transaction
+                                 ↓ if accepted but no Invoice
+                               ⚠ REVENUE LEAKAGE (E5 orphan)
+
+  TYPE 2 — Delivery Challan chain
+  Challan (draft) → dispatched → converted → Invoice → reminded → Transaction
+                              ↓ if dispatched but no Invoice after N days
+                            ⚠ REVENUE LEAKAGE
+
+  TYPE 3 — Booking chain
+  Booking (pending) → confirmed → [service date] → Invoice → Transaction
+                                                 ↓ if service date past, no Invoice
+                                               ⚠ REVENUE LEAKAGE
+
+  TYPE 4 — Direct Invoice chain
+  Invoice (draft) → sent → reminded → partially paid → Transaction(s)
+
+────────────────────────────────────────────────────────────────────
+```
+
+### FK audit — what already exists
+
+| Link | Field | Status |
+|------|-------|--------|
+| Invoice knows its Quote origin | `Invoice.quoteId` (int?) | ✅ exists |
+| Invoice knows its Challan origin | `Invoice.challanId` (int?) | ✅ exists |
+| Challan knows if it was invoiced | `DeliveryChallan.convertedInvoiceId` (int?) + `isConverted` getter | ✅ bidirectional |
+| Booking knows its Invoice | `Booking.invoiceId` (int?) | ✅ exists |
+| Transaction knows its Invoice | `Transaction.linkedInvoiceId` (int?) | ✅ exists |
+| Transaction knows its Booking | `Transaction.linkedBookingId` (int?) | ✅ exists |
+| Quote knows its Invoice | via query `SELECT * FROM invoices WHERE quote_id = ?` | ✅ queryable |
+
+> **No DB migration needed for MVP.** All FK columns are already in production.
+
+### What a chain looks like in the UI
+
+```
+┌─ Deal Chain — Rajesh Traders ─────────────────────────── ⚠ Action needed ─┐
+│                                                                              │
+│  Quote #Q-042       ✅ Accepted   28 Feb       ₹85,000                       │
+│       │                                                                      │
+│       ▼                                                                      │
+│  Invoice #INV-0051  🔴 Overdue    5 Mar        ₹85,000   [Send Reminder]    │
+│       │                                                                      │
+│       ▼                                                                      │
+│  Payment            ⏳ Awaited    —            ₹85,000                       │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────── │
+│  Challan #DC-017    ✅ Dispatched  4 Mar        ₹12,000                       │
+│       │                                                                      │
+│       ▼                                                                      │
+│  Invoice            ⚠️  NOT RAISED yet          ₹12,000   [Convert Now →]   │
+└──────────────────────────────────────────────────────────────────────────── ┘
+```
+
+### What needs building
+
+#### E1 — `BusinessFlowChain` model
+
+```dart
+// lib/data/models/business_flow_chain.dart
+enum ChainOrigin { quote, challan, booking, directInvoice }
+enum ChainStatus {
+  complete,           // Invoice paid + Transaction linked
+  awaitingPayment,    // Invoice sent/overdue, no transaction yet
+  awaitingInvoice,    // Origin doc exists, no invoice raised — REVENUE LEAKAGE
+  invoicedPartially,  // partiallyPaid
+  cancelled,          // Quote rejected / Booking cancelled / Challan returned
+}
+
+class BusinessFlowChain {
+  final ChainOrigin origin;
+  final ChainStatus status;
+  final int partyId;
+  final String partyName;
+
+  // Source document (exactly one is non-null)
+  final Quote? quote;
+  final DeliveryChallan? challan;
+  final Booking? booking;
+
+  // Downstream (may be null if not yet raised)
+  final Invoice? invoice;
+  final List<Transaction> transactions;
+
+  // Derived
+  final double totalValue;
+  final double receivedAmount;   // sum of linked transaction amounts
+  final double outstandingAmount; // totalValue - receivedAmount
+  final int daysSinceOrigin;     // days since source doc was created/accepted
+  final bool isLeaking;          // awaitingInvoice — origin done, nothing billed
+
+  // Reminder/notification history (from party_reminders filtered by date range)
+  final List<ReminderRecord> reminders;
+}
+```
+
+#### E2 — `businessFlowChainsProvider(int partyId)`
+
+```dart
+// lib/presentation/providers/business_flow_provider.dart
+final businessFlowChainsProvider =
+    FutureProvider.family<List<BusinessFlowChain>, int>((ref, partyId) async {
+  // All queries are parallel — all local SQLite
+  final [quotes, challans, bookings, invoices, transactions] = await Future.wait([
+    ref.read(quoteRepositoryProvider).getByPartyId(partyId),
+    ref.read(challanRepositoryProvider).getByPartyId(partyId),
+    ref.read(bookingRepositoryProvider).getByPartyId(partyId),
+    ref.read(invoiceRepositoryProvider).getByPartyId(partyId),   // P1.2 — already planned
+    ref.read(transactionRepositoryProvider).getByPartyId(partyId),
+  ]);
+  return BusinessFlowChainBuilder.build(
+    quotes: quotes, challans: challans, bookings: bookings,
+    invoices: invoices, transactions: transactions,
+  );
+});
+
+// Global orphan provider — all parties, all leaking chains
+final leakingChainsProvider = FutureProvider<List<BusinessFlowChain>>((ref) async {
+  // Queries:
+  // 1. Quotes: status = accepted, no matching invoice (quote_id not in invoices)
+  // 2. Challans: status = dispatched, convertedInvoiceId IS NULL, dispatched > N days ago
+  // 3. Bookings: status = confirmed/completed, invoiceId IS NULL, serviceDate < today
+  ...
+});
+```
+
+#### E3 — `BusinessFlowChainBuilder` (pure Dart, no DB)
+
+```dart
+// lib/core/utils/business_flow_chain_builder.dart
+// Pure function: given raw lists, assembles chains by matching FK links.
+// Quote → find Invoice where invoice.quoteId == quote.id
+//       → find Transactions where transaction.linkedInvoiceId == invoice.id
+// Challan → find Invoice where challan.convertedInvoiceId == invoice.id (or invoice.challanId)
+// Booking → invoice.id == booking.invoiceId
+//         → also transaction.linkedBookingId == booking.id
+// Unmatched Invoices (quoteId == null && challanId == null &&
+//   no booking.invoiceId points to it) → TYPE 4 direct
+class BusinessFlowChainBuilder {
+  static List<BusinessFlowChain> build({...});
+}
+```
+
+#### E4 — `FlowChainTile` widget
+
+A collapsible card showing the full chain vertically:
+```
+[origin icon + doc no + date]  →  [invoice status]  →  [payment status]
+```
+Used in Party 360°'s new "Deals" tab alongside the existing unified timeline.
+
+#### E5 — Revenue Leakage Alert in Action Center
+
+New `ActionItemType.leakingChain` in the existing `ActionItem` enum:
+- Surfaces accepted quotes with no invoice > 3 days
+- Surfaces dispatched challans with no invoice > 2 days
+- Surfaces completed bookings with no invoice > 1 day
+- Surfaces in Action Center under a new **"Leaking"** urgency section
+- Tap → `FlowChainDetailScreen` with a "Raise Invoice" CTA
+
+```dart
+// Extends existing ActionItemType enum:
+enum ActionItemType {
+  invoice,
+  dues,
+  bill,
+  loanEmi,
+  leakingChain,   // ← NEW (E5)
+}
+```
+
+#### E6 — Reminder / notification event nodes in chain
+
+Each reminder from `party_reminders` that falls within the chain's date window
+is inserted as an event node between Invoice and Transaction:
+
+```
+Invoice #INV-0051  sent 5 Mar
+    │
+    ├── 📱 Reminder sent via WhatsApp  6 Mar
+    ├── 📱 Follow-up sent              8 Mar
+    │
+    ▼
+Payment  ⏳ Awaited
+```
+
+No new data — filtered from existing `party_reminders` rows by `sent_at` timestamp.
+
+### Chain completion state machine summary
+
+```
+Quote:    draft → sent → accepted ─────────────────────────────────────────────────────────►─┐
+                           │                                                                   │
+                        [raise invoice]                                                        │
+                           │                                                                  ⚠️
+                           ▼                                                             ORPHAN if
+Challan:  draft → dispatched ──────[convert to invoice]──────────────────────────────►  no invoice
+                                        │                                              within N days
+                                        ▼
+Booking:  pending → confirmed ─────[raise invoice] ──────────────────────────────────►────────┤
+                                        │
+Direct:                                 │
+                                        ▼
+                             Invoice: draft → sent → [remind×N] → partiallyPaid → paid
+                                                                                      │
+                                                                                      ▼
+                                                                           Transaction(s) linked
+                                                                           ══ CHAIN COMPLETE ══
+```
+
+### Decisions required
+
+| # | Question | Recommendation |
+|---|----------|----------------|
+| E-Q1 | Should `QuoteRepository.getByPartyId()` be added (new method on existing repo)? | Yes — same pattern as P1.2 for Invoice/Credit/Loan |
+| E-Q2 | Threshold for "dispatched challan with no invoice" = how many days? | 2 days (configurable later) |
+| E-Q3 | Should `leakingChainsProvider` appear as a dedicated "Leaking" section in Action Center, or fold into the existing Overdue section? | Dedicated section — visually distinct, different CTA ("Raise Invoice" not "Remind") |
+| E-Q4 | One `FlowChainDetailScreen` or chain shown inline in Party 360°? | Inline in Party 360° Deals tab; `FlowChainDetailScreen` only for Action Center tap-through |
+
+---
+
 ## Implementation Sequence
 
 ### Phase 1 — Foundation (Week 1) `~3 days`
@@ -520,6 +760,7 @@ fills in until user explicitly sets a stage override.
 | P1.5 | `cashFlowTimelineProvider` | P1.4 | 3h |
 | P1.6 | DB migration v45: add `party_id` column to `scheduled_payments` | — | 1h |
 | P1.7 | `BookingRepository.getByPartyId(int id)` + wire into `partyFinancialSummaryProvider` | P1.1 | 1h |
+| P1.8 | `QuoteRepository.getByPartyId(int id)` + `ChallanRepository.getByPartyId(int id)` | — | 1h |
 
 ### Phase 2 — Core screens (Week 2) `~4 days`
 
@@ -532,6 +773,9 @@ fills in until user explicitly sets a stage override.
 | P2.5 | `BulkReminderService` | P2.4 | 2h |
 | P2.6 | Navigation hooks: Party detail → Party360Screen; tap party name in `_ActionItemTile` → Party360Screen | P2.1 | 2h |
 | P2.7 | Add Cash Flow entry to Reports screen (prominent card → `CashFlowScreen`) | P2.3 | 1h |
+| P2.8 | `BusinessFlowChainBuilder` pure utility (E3) | P1.8 | 2h |
+| P2.9 | `businessFlowChainsProvider` + `leakingChainsProvider` (E2) | P2.8, P1.2, P1.7 | 3h |
+| P2.10 | `FlowChainTile` widget + "Deals" tab in Party360Screen (E4) | P2.1, P2.9 | 3h |
 
 ### Phase 3 — Polish, wiring & Lifecycle (Week 3) `~3 days`
 
@@ -547,9 +791,11 @@ fills in until user explicitly sets a stage override.
 | P3.8 | Wire `LifecycleTag` into Action Center + InvoiceDetailScreen (D4) | P3.6, P3.7 | 2h |
 | P3.9 | Context-aware action button labels in `_ActionItemTile` (D5) | P3.6 | 1h |
 | P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (D6) | P3.6 | 2h |
-| P3.11 | `flutter analyze` + widget tests for all new code | all | 3h |
+| P3.11 | Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain` (E5) | P2.9 | 3h |
+| P3.12 | Reminder event nodes woven into chain display (E6) | P2.10 | 2h |
+| P3.13 | `flutter analyze` + widget tests for all new code | all | 3h |
 
-**Total estimated:** ~56 hours across 3 weeks.
+**Total estimated:** ~71 hours across 3 weeks.
 
 > Lifecycle Tags (D1–D6) are the last items in Phase 3 so they can layer on top
 > of the Party 360° and Action Center screens that ship in Phase 2.
@@ -581,18 +827,35 @@ lib/
 │   │   └── lifecycle_tag.dart             ← NEW (D3)
 │   └── screens/
 │       ├── parties/
-│       │   └── party_360_screen.dart      ← NEW (P2.1, P2.2)
+│       │   ├── party_360_screen.dart      ← NEW (P2.1, P2.2)
+│       │   └── flow_chain_detail_screen.dart ← NEW (E4)
 │       ├── reports/
 │       │   └── cash_flow_screen.dart      ← NEW (P2.3)
 │       └── home/
-│           └── action_center_screen.dart  ← MODIFY (P2.4, D4)
+│           └── action_center_screen.dart  ← MODIFY (P2.4, D4, E5)
+```
+
+**Additional files for Pillar E:**
+```
+lib/
+├── core/
+│   └── utils/
+│       └── business_flow_chain_builder.dart  ← NEW (E3)
+├── data/
+│   └── models/
+│       └── business_flow_chain.dart          ← NEW (E1)
+├── presentation/
+│   ├── providers/
+│   │   └── business_flow_provider.dart       ← NEW (E2)
+│   └── widgets/
+│       └── flow_chain_tile.dart              ← NEW (E4)
 ```
 
 ---
 
 ## Privacy Compliance Checklist
 
-All four pillars are **100% on-device**:
+All five pillars are **100% on-device**:
 
 - [x] `PartyFinancialSummary` — in-memory aggregation of local SQLite tables
 - [x] `CashFlowEvent` — in-memory merge using existing local providers
@@ -600,6 +863,8 @@ All four pillars are **100% on-device**:
 - [x] Party Statement PDF — generated locally using `pdf` package, shared via OS share sheet
 - [x] `LifecycleClassifier` — pure in-memory computation from local model fields; no DB writes in MVP
 - [x] `LifecycleTag` widget — display only; reads no new data sources
+- [x] `BusinessFlowChainBuilder` — pure in-memory join of local model lists; no network, no new permissions
+- [x] `leakingChainsProvider` — SQL queries on existing tables with no new columns required
 - [ ] No new permissions required beyond what is already granted
 
 ---
@@ -660,4 +925,7 @@ These can be verified manually during QA:
 - Lifecycle Tags: a fully paid invoice shows `LifecycleStage.paid` — no tag rendered in Action Center (paid items are filtered out)
 - Bookings: party with 1 confirmed booking shows `activeBookings = 1` and advance in `bookingsPending`; `netOutstanding` reflects the subtracted advance
 - Stale filter: Action Center "Stale" chip shows only items where `daysInStage > 7`; chip badge is hidden when 0 items match
+- Business Flow: a Quote with `status = accepted` and no matching invoice shows in Action Center "Leaking" section with CTA "Raise Invoice"
+- Business Flow: `BusinessFlowChainBuilder.build()` correctly assembles Quote→Invoice→Transaction chain using FK links without any DB migration
+- Business Flow: Party 360° "Deals" tab shows all chain types; `FlowChainTile` renders reminder event nodes between Invoice and Transaction steps
 - `flutter analyze`: 0 new errors after all phases complete

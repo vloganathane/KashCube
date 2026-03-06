@@ -18,6 +18,7 @@ Bookings, Transactions) but they are **siloed by design**. As a result:
 | Upcoming EMIs, bill due dates, and invoice dues live on separate screens | Cash flow blind spots — missed payments |
 | No multi-select / batch remind | User must open each overdue invoice one by one to send WhatsApp reminder |
 | No visibility into *how long* an item has been in a stage | Cannot prioritise "Invoice sent 14 days ago, never reminded" over one sent yesterday |
+| Bookings (advance deposits, check-in dates) are invisible in Party summary | Net outstanding for a party is wrong if they have an unpaid advance |
 
 ---
 
@@ -74,6 +75,7 @@ One screen that answers the question: **"Everything about this person or busines
 | `loansByPartyProvider` | `lib/presentation/providers/loan_provider.dart` | ✅ exists |
 | `partiesProvider` | `lib/presentation/providers/party_provider.dart` | ✅ exists |
 | `party_reminders` table / `ReminderService` | DB v43 | ✅ exists |
+| `Booking.partyId` | `lib/data/models/booking.dart` | ⚠️ verify FK column exists |
 | `PartyDetailScreen` (partial) | `lib/presentation/screens/parties/` | ⚠️ no financial summary |
 
 ### What needs building
@@ -92,11 +94,13 @@ class PartyFinancialSummary {
   final double invoicesPending;    // sum of balanceDue where status != paid
   final double duesPending;        // sum of pendingAmount where !isCleared
   final double loansPending;       // sum of pendingAmount where !isCleared
+  final double bookingsPending;    // sum of advanceAmount where !isCompleted && !isCancelled
 
   // Counts
   final int openInvoices;
   final int openDues;
   final int activeLoans;
+  final int activeBookings;
   final int transactionCount;
   final int reminderCount;
 
@@ -139,8 +143,10 @@ final partyFinancialSummaryProvider =
 | `CreditRepository` | `getByCustomerId(int id)` | `WHERE customer_id = ? AND deleted_at IS NULL` |
 | `LoanRepository` | `getByLenderId(int id)` | `WHERE lender_id = ? AND deleted_at IS NULL` |
 | `TransactionRepository` | `countByPartyId(int id)` | `SELECT COUNT(*) WHERE party_id = ?` |
+| `BookingRepository` | `getByPartyId(int id)` | `WHERE party_id = ? AND status NOT IN ('completed','cancelled')` |
 
-> **No DB migration required** — all FK columns already exist.
+> **No DB migration required** for Invoice/Credit/Loan/Transaction repos — all FK columns already
+> exist. `ScheduledPayment.partyId` does **not** yet have a FK column — see P1.6 (DB v45 migration).
 
 #### A4 — `PartyDetailScreen` enhancement
 
@@ -158,7 +164,7 @@ Everywhere a party name is typed (AddCreditScreen, QuoteBuilderScreen, etc.), if
 **Touch points:**
 - `AddCreditScreen` → set `customerId`
 - Loan add form → set `lenderId`
-- `ScheduledPayment` → set `partyId` (new column if needed)
+- `ScheduledPayment` → set `partyId` — **requires DB v45 migration** (task P1.6)
 
 ---
 
@@ -198,6 +204,8 @@ All data sources already have providers:
 | Overdue invoices | `invoicesProvider` + filter | `Invoice` |
 | Upcoming invoices | `invoicesProvider` + filter | `Invoice` |
 | Overdue dues | `activeCreditsProvider` + filter | `Credit` |
+| Upcoming bookings (check-in/service date) | `bookingsProvider` + filter | `Booking` |
+| Booking advances due (not yet received) | `bookingsProvider` + filter | `Booking` |
 
 ### What needs building
 
@@ -390,6 +398,7 @@ class LifecycleClassifier {
   static LifecycleInfo forCredit(Credit c, {DateTime? lastReminderAt});
   static LifecycleInfo forLoan(Loan l);
   static LifecycleInfo forBill(ScheduledPayment p);
+  static LifecycleInfo forBooking(Booking b); // pending → confirmed → checked_in → completed
 }
 ```
 
@@ -458,6 +467,25 @@ With lifecycle info, the button label becomes context-aware:
 
 No new data needed — `daysInStage` from `LifecycleInfo` drives the label.
 
+#### D6 — "Stale Items" filter chip in Action Center
+
+Items with **no activity for N days** (default N = 7) are stale. A dedicated
+filter chip surfaces them so the user can prioritise and act in bulk.
+
+```dart
+// Action Center filter chip row:
+// [All]  [To Collect]  [To Pay]  [Stale ●]
+//
+// "Stale" = lifecycle.daysInStage > kDefaultStallThreshold
+const int kDefaultStallThreshold = 7; // named constant — no DB write, no settings screen in MVP
+```
+
+Stale items also receive a subtle **amber left-border** in Party 360°'s unified
+timeline, reinforcing that they need attention without being noisy.
+
+> Future: expose `kDefaultStallThreshold` as a user-configurable setting
+> (Settings screen → "Alert me if no activity for X days").
+
 ### Schema extension (stored lifecycle — Phase 2 only)
 
 If computed MVP proves insufficient, a single DB migration adds:
@@ -490,6 +518,8 @@ fills in until user explicitly sets a stage override.
 | P1.3 | `partyFinancialSummaryProvider(int partyId)` | P1.1, P1.2 | 2h |
 | P1.4 | `CashFlowEvent` sealed class | — | 1h |
 | P1.5 | `cashFlowTimelineProvider` | P1.4 | 3h |
+| P1.6 | DB migration v45: add `party_id` column to `scheduled_payments` | — | 1h |
+| P1.7 | `BookingRepository.getByPartyId(int id)` + wire into `partyFinancialSummaryProvider` | P1.1 | 1h |
 
 ### Phase 2 — Core screens (Week 2) `~4 days`
 
@@ -500,6 +530,8 @@ fills in until user explicitly sets a stage override.
 | P2.3 | `CashFlowScreen` – full screen with month nav | P1.5 | 5h |
 | P2.4 | Action Center multi-select mode | `actionCenterProvider` | 3h |
 | P2.5 | `BulkReminderService` | P2.4 | 2h |
+| P2.6 | Navigation hooks: Party detail → Party360Screen; tap party name in `_ActionItemTile` → Party360Screen | P2.1 | 2h |
+| P2.7 | Add Cash Flow entry to Reports screen (prominent card → `CashFlowScreen`) | P2.3 | 1h |
 
 ### Phase 3 — Polish, wiring & Lifecycle (Week 3) `~3 days`
 
@@ -514,11 +546,12 @@ fills in until user explicitly sets a stage override.
 | P3.7 | `LifecycleTag` widget (D3) | P3.5 | 2h |
 | P3.8 | Wire `LifecycleTag` into Action Center + InvoiceDetailScreen (D4) | P3.6, P3.7 | 2h |
 | P3.9 | Context-aware action button labels in `_ActionItemTile` (D5) | P3.6 | 1h |
-| P3.10 | `flutter analyze` + widget tests for all new code | all | 3h |
+| P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (D6) | P3.6 | 2h |
+| P3.11 | `flutter analyze` + widget tests for all new code | all | 3h |
 
-**Total estimated:** ~49 hours across 3 weeks.
+**Total estimated:** ~56 hours across 3 weeks.
 
-> Lifecycle Tags (D1–D5) are the last items in Phase 3 so they can layer on top
+> Lifecycle Tags (D1–D6) are the last items in Phase 3 so they can layer on top
 > of the Party 360° and Action Center screens that ship in Phase 2.
 
 ---
@@ -599,6 +632,21 @@ All four pillars are **100% on-device**:
    → Recommendation: use `max(updatedAt, lastReminderAt)` as the reference —
    whichever was more recent.
 
+7. **Cash Flow Screen entry point:** Should `CashFlowScreen` get its own bottom
+   nav tab or live under Reports?
+   → Recommendation: add as a prominent card in the existing Reports screen
+   (preserves bottom nav space). Tap the card → full `CashFlowScreen`. Task P2.7.
+
+8. **Bookings advance direction in net outstanding:** Should a received advance
+   reduce `netOutstanding` (party owes us less) or be tracked separately?
+   → Recommendation: subtract received advance from `netOutstanding` to reflect
+   true remaining receivable. Show `bookingsPending` as a separate line in
+   Party 360° for transparency.
+
+9. **Stale threshold (N days):** What value triggers the "Stale" filter?
+   → Recommendation: N = 7 days (`kDefaultStallThreshold`). Expose as a
+   user setting in a future Settings release.
+
 ---
 
 ## Success Metrics (in-app, no analytics)
@@ -610,4 +658,6 @@ These can be verified manually during QA:
 - Bulk Remind: selecting 3 items → "Remind All" opens 3 WhatsApp pre-fills in sequence
 - Lifecycle Tags: an invoice in `sent` status with `updatedAt` 14 days ago shows `LifecycleStage.sent` and `daysInStage = 14`; `_ActionItemTile` button shows "Send Reminder" not "View"
 - Lifecycle Tags: a fully paid invoice shows `LifecycleStage.paid` — no tag rendered in Action Center (paid items are filtered out)
+- Bookings: party with 1 confirmed booking shows `activeBookings = 1` and advance in `bookingsPending`; `netOutstanding` reflects the subtracted advance
+- Stale filter: Action Center "Stale" chip shows only items where `daysInStage > 7`; chip badge is hidden when 0 items match
 - `flutter analyze`: 0 new errors after all phases complete

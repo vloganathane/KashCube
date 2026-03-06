@@ -29,6 +29,7 @@ import '../loans/loans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
+import 'action_center_screen.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/business_provider.dart';
@@ -2123,6 +2124,30 @@ class _AlertsSection extends ConsumerWidget {
 
     return Column(
       children: [
+        // Section header with Action Center shortcut
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Alerts',
+              style: context.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const ActionCenterScreen()),
+              ),
+              icon: const Icon(Icons.chevron_right_rounded, size: 16),
+              iconAlignment: IconAlignment.end,
+              label: const Text('See All'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
         if (hasOverdue)
           _AlertActionTile(
             icon: Icons.receipt_long_outlined,

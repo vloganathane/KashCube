@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
+import 'data/services/action_center_background_service.dart';
 import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/pdf_cache_manager.dart';
@@ -30,6 +31,10 @@ void main() async {
 
   // Backup reminder if no encrypted backup in 30 days (or ever).
   await NotificationService.instance.checkAndShowBackupReminder();
+
+  // Register daily Action Center background task (fires ~9 AM via WorkManager).
+  // Non-fatal if WorkManager is unavailable on this device.
+  await registerActionCenterDailyTask();
 
   runApp(const ProviderScope(child: KashCubeApp()));
 }

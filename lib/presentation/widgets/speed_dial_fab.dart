@@ -116,6 +116,17 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     );
   }
 
+  void _openNewDeliveryChallan() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const QuoteBuilderScreen(
+          docType: DocumentType.deliveryChallan,
+        ),
+      ),
+    );
+  }
+
   void _openNewBooking() {
     _close();
     Navigator.of(context).push(
@@ -161,6 +172,12 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
             icon: Icons.request_quote_outlined,
             label: 'Quote',
             onTap: _openNewQuote,
+          )),
+          const SizedBox(height: 12),
+          _animated(SpeedDialOption(
+            icon: Icons.local_shipping_outlined,
+            label: 'Delivery Challan',
+            onTap: _openNewDeliveryChallan,
           )),
           const SizedBox(height: 12),
           _animated(SpeedDialOption(

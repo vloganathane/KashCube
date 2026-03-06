@@ -8,6 +8,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/vcard_builder.dart' show parseVCard;
+import '../../core/utils/deep_link_vcard.dart' show decodeVCardUrl;
 
 /// Opens the QR scanner as a modal bottom sheet.
 ///
@@ -58,13 +59,22 @@ class _QrScannerSheetState extends State<_QrScannerSheet> {
   }
 
   /// Try parsing the raw string as a vCard.
-  /// Always returns a map (may be empty for non-vCard QRs).
+  /// Handles three formats:
+  ///   1. Raw vCard text (BEGIN:VCARD ...)
+  ///   2. Kash Cube App Link URL (https://kashcube.com/c?v=base64vcard)
+  ///   3. Anything else — returned as {name: raw} so callers can still use it.
   Map<String, String?> _tryParseVCard(String raw) {
     final upper = raw.trimLeft().toUpperCase();
+    // Format 1: raw vCard
     if (upper.startsWith('BEGIN:VCARD')) {
       return parseVCard(raw);
     }
-    // Non-vCard QR — return name=raw so it can be used as a note
+    // Format 2: Kash Cube URL-encoded vCard
+    final decoded = decodeVCardUrl(raw);
+    if (decoded != null) {
+      return parseVCard(decoded);
+    }
+    // Format 3: unrecognised — pass raw value through
     return {'name': raw};
   }
 

@@ -27,9 +27,36 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Launcher intent -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!--
+              App Link for Kash Cube contact cards.
+              When kashcube.com is live, serve:
+                https://kashcube.com/.well-known/assetlinks.json
+              with the SHA-256 cert fingerprint to enable autoVerify.
+              Until then, Android shows an app-chooser dialog instead.
+
+              To update the domain: change AppConfig.baseUrl in
+              lib/core/constants/app_config.dart  ← one place only.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <!-- kashcube.com -->
+                <data
+                    android:scheme="https"
+                    android:host="kashcube.com"
+                    android:pathPrefix="/c"/>
+                <!-- www.kashcube.com (belt-and-suspenders) -->
+                <data
+                    android:scheme="https"
+                    android:host="www.kashcube.com"
+                    android:pathPrefix="/c"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

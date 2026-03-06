@@ -73,6 +73,10 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.4
 
+  # Deep link / App Link handling — routes kashcube.com/c URLs into the app.
+  # No network calls made by this package; it only listens to OS intent delivery.
+  app_links: ^6.3.2
+
   # Country / phone-code picker — all data is bundled, zero network calls
   world_countries: ^4.1.0
 

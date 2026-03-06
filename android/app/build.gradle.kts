@@ -60,6 +60,14 @@ flutter {
 }
 
 dependencies {
+    // Google Play Install Referrer API — lets the app read the referrer param
+    // set by the landing page so the contact vCard survives through install.
+    // This library only communicates with the Play Store (same trust boundary
+    // as the Play Store itself); no third-party servers are involved.
+    implementation("com.android.installreferrer:installreferrer:2.2")
+}
+
+dependencies {
     // Required by flutter_local_notifications for Java 8+ time APIs on older Android
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

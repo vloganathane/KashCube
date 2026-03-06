@@ -13,6 +13,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../core/constants/app_spacing.dart';
+import '../../core/utils/deep_link_vcard.dart';
 
 /// Opens a dialog displaying [vcard] as a scannable QR code.
 ///
@@ -189,7 +190,12 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
                       : null,
                 ),
                 child: QrImageView(
-                  data: widget.vcard,
+                  // Encode as a Kash Cube App Link URL so:
+                  //   • Any installed Kash Cube opens the Add Party screen
+                  //   • Non-users see the landing page with "Get Kash Cube"
+                  //   • "Copy vCard" (below) still copies raw vCard for
+                  //     contacts apps
+                  data: encodeVCardUrl(widget.vcard),
                   version: QrVersions.auto,
                   size: 220,
                   errorCorrectionLevel: QrErrorCorrectLevel.M,
@@ -208,7 +214,7 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
             const SizedBox(height: AppSpacing.sm),
 
             Text(
-              'Scan to add contact',
+              'Scan with Kash Cube or any QR reader',
               style: TextStyle(
                 fontSize: 12,
                 color: cs.onSurfaceVariant,

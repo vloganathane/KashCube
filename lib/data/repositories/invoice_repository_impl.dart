@@ -75,6 +75,24 @@ class QuoteRepositoryImpl implements QuoteRepository {
   }
 
   @override
+  Future<List<Quote>> getByCustomer(String customerName) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'quotes',
+      where: 'customer_name = ?',
+      whereArgs: [customerName],
+      orderBy: 'created_at DESC',
+    );
+    final List<Quote> result = [];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final items = await _itemsForQuote(db, id);
+      result.add(Quote.fromMap(row, items: items));
+    }
+    return result;
+  }
+
+  @override
   Future<void> markSent(int id) async {
     final db = await _db.database;
     await db.update(

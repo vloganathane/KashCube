@@ -84,6 +84,24 @@ class DeliveryChallanRepositoryImpl implements DeliveryChallanRepository {
   }
 
   @override
+  Future<List<DeliveryChallan>> getByCustomer(String customerName) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'delivery_challans',
+      where: 'customer_name = ?',
+      whereArgs: [customerName],
+      orderBy: 'created_at DESC',
+    );
+    final result = <DeliveryChallan>[];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final items = await _itemsFor(db, id);
+      result.add(DeliveryChallan.fromMap(row, items: items));
+    }
+    return result;
+  }
+
+  @override
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete('delivery_challans', where: 'id = ?', whereArgs: [id]);

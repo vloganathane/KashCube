@@ -4,6 +4,7 @@ import '../../data/models/invoice.dart';
 abstract class DeliveryChallanRepository {
   Future<List<DeliveryChallan>> getAll();
   Future<DeliveryChallan?> getById(int id);
+  Future<List<DeliveryChallan>> getByCustomer(String customerName);
   Future<int> insert(DeliveryChallan challan, List<ChallanItem> items);
   Future<void> update(DeliveryChallan challan, List<ChallanItem> items);
   Future<void> delete(int id);

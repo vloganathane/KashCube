@@ -5,6 +5,7 @@ import '../../data/models/transaction.dart';
 abstract class QuoteRepository {
   Future<List<Quote>> getAll();
   Future<Quote?> getById(int id);
+  Future<List<Quote>> getByCustomer(String customerName);
   Future<int> insert(Quote quote, List<QuoteItem> items);
   Future<void> update(Quote quote, List<QuoteItem> items);
   Future<void> delete(int id);

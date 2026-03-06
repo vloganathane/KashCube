@@ -328,3 +328,9 @@ final overdueInvoicesSummaryProvider =
     return (count: unpaid.length, totalDue: totalDue);
   });
 });
+
+/// All quotes for a given party name (used by Party Document Ledger).
+final quotesByCustomerProvider =
+    FutureProvider.family<List<Quote>, String>((ref, customerName) async {
+  return ref.read(quoteRepositoryProvider).getByCustomer(customerName);
+});

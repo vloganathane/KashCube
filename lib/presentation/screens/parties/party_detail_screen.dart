@@ -5,20 +5,27 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
+import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/party.dart';
+import '../../../data/models/quote.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/scheduled_payment.dart';
 import '../../../data/models/booking.dart';
+import '../../providers/delivery_challan_provider.dart';
+import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/transaction_provider.dart';
-import '../../providers/invoice_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../core/utils/phone_utils.dart';
+import '../invoices/invoice_detail_screen.dart';
+import '../invoices/quote_detail_screen.dart';
+import '../invoices/delivery_challan_detail_screen.dart';
+import '../bookings/booking_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -53,7 +60,7 @@ sealed class PartyHistoryItem {
 class TransactionHistoryItem extends PartyHistoryItem {
   TransactionHistoryItem(this.transaction);
   final Transaction transaction;
-  
+
   @override
   DateTime get date => transaction.date;
 }
@@ -61,15 +68,31 @@ class TransactionHistoryItem extends PartyHistoryItem {
 class InvoiceHistoryItem extends PartyHistoryItem {
   InvoiceHistoryItem(this.invoice);
   final Invoice invoice;
-  
+
   @override
   DateTime get date => invoice.issueDate;
+}
+
+class QuoteHistoryItem extends PartyHistoryItem {
+  QuoteHistoryItem(this.quote);
+  final Quote quote;
+
+  @override
+  DateTime get date => quote.createdAt;
+}
+
+class DeliveryChallanHistoryItem extends PartyHistoryItem {
+  DeliveryChallanHistoryItem(this.challan);
+  final DeliveryChallan challan;
+
+  @override
+  DateTime get date => challan.challanDate;
 }
 
 class ScheduledPaymentHistoryItem extends PartyHistoryItem {
   ScheduledPaymentHistoryItem(this.payment);
   final ScheduledPayment payment;
-  
+
   @override
   DateTime get date => payment.nextDate;
 }
@@ -77,9 +100,47 @@ class ScheduledPaymentHistoryItem extends PartyHistoryItem {
 class BookingHistoryItem extends PartyHistoryItem {
   BookingHistoryItem(this.booking);
   final Booking booking;
-  
+
   @override
   DateTime get date => booking.startDatetime;
+}
+
+// ---------------------------------------------------------------------------
+// Activity filter enum (Option A)
+// ---------------------------------------------------------------------------
+
+enum _ActivityFilter {
+  all,
+  transactions,
+  invoices,
+  quotes,
+  dc,
+  bookings;
+
+  String get label => switch (this) {
+        all => 'All',
+        transactions => 'Transactions',
+        invoices => 'Invoices',
+        quotes => 'Quotes',
+        dc => 'DC',
+        bookings => 'Bookings',
+      };
+}
+
+enum _DocsFilter {
+  all,
+  invoices,
+  quotes,
+  dc,
+  bookings;
+
+  String get label => switch (this) {
+        all => 'All',
+        invoices => 'Invoices',
+        quotes => 'Quotes',
+        dc => 'DC',
+        bookings => 'Bookings',
+      };
 }
 
 // ---------------------------------------------------------------------------
@@ -90,9 +151,11 @@ final _partyHistoryFutureProvider =
     FutureProvider.family<List<PartyHistoryItem>, String>((ref, partyName) async {
   final txnRepo = ref.read(transactionRepositoryProvider);
   final invoiceRepo = ref.read(invoiceRepositoryProvider);
+  final quoteRepo = ref.read(quoteRepositoryProvider);
+  final challanRepo = ref.read(deliveryChallanRepositoryProvider);
   final scheduledRepo = ref.read(scheduledPaymentRepositoryProvider);
   final bookingRepo = ref.read(bookingRepositoryProvider);
-  
+
   // Get party by name to get ID for bookings
   final partiesAsync = ref.read(partiesProvider);
   final parties = partiesAsync.valueOrNull ?? [];
@@ -105,19 +168,25 @@ final _partyHistoryFutureProvider =
   final results = await Future.wait([
     txnRepo.getTransactionsByParty(partyName),
     invoiceRepo.getByCustomer(partyName),
+    quoteRepo.getByCustomer(partyName),
+    challanRepo.getByCustomer(partyName),
     scheduledRepo.getByParty(partyName),
     party?.id != null ? bookingRepo.getByCustomer(party!.id!) : Future.value(<Booking>[]),
   ]);
 
   final transactions = results[0] as List<Transaction>;
   final invoices = results[1] as List<Invoice>;
-  final scheduled = results[2] as List<ScheduledPayment>;
-  final bookings = results[3] as List<Booking>;
+  final quotes = results[2] as List<Quote>;
+  final challans = results[3] as List<DeliveryChallan>;
+  final scheduled = results[4] as List<ScheduledPayment>;
+  final bookings = results[5] as List<Booking>;
 
   // Wrap in unified type
   final List<PartyHistoryItem> items = [
     ...transactions.map((t) => TransactionHistoryItem(t)),
     ...invoices.map((i) => InvoiceHistoryItem(i)),
+    ...quotes.map((q) => QuoteHistoryItem(q)),
+    ...challans.map((c) => DeliveryChallanHistoryItem(c)),
     ...scheduled.map((s) => ScheduledPaymentHistoryItem(s)),
     ...bookings.map((b) => BookingHistoryItem(b)),
   ];
@@ -132,35 +201,69 @@ final _partyHistoryFutureProvider =
 // Screen
 // ---------------------------------------------------------------------------
 
-class PartyDetailScreen extends ConsumerWidget {
-  const PartyDetailScreen({super.key, required this.party});
+class PartyDetailScreen extends ConsumerStatefulWidget {
+  const PartyDetailScreen({super.key, required this.party, this.initialTab = 0});
 
   final Party party;
+  /// 0 = Activity (default), 1 = Documents
+  final int initialTab;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PartyDetailScreen> createState() => _PartyDetailScreenState();
+}
+
+class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  _ActivityFilter _activityFilter = _ActivityFilter.all;
+  _DocsFilter _docsFilter = _DocsFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(
+        length: 2, vsync: this, initialIndex: widget.initialTab);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
     final historyAsync =
-        ref.watch(_partyHistoryFutureProvider(party.name));
+        ref.watch(_partyHistoryFutureProvider(widget.party.name));
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(party.name),
+        title: Text(widget.party.name),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Activity'),
+            Tab(text: 'Documents'),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.qr_code_2_outlined),
             tooltip: 'Share QR',
             onPressed: () => showVCardQrDialog(
               context,
-              vcard: vCardFromParty(party),
-              displayName: party.name,
-              subtitle: PhoneUtils.formatDisplay(party.phoneNumber, dialCode: party.dialCode ?? '91') ?? party.email,
+              vcard: vCardFromParty(widget.party),
+              displayName: widget.party.name,
+              subtitle: PhoneUtils.formatDisplay(widget.party.phoneNumber,
+                      dialCode: widget.party.dialCode ?? '91') ??
+                  widget.party.email,
             ),
           ),
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: 'Edit',
-            onPressed: () => _showEditSheet(context, ref),
+            onPressed: () => _showEditSheet(context),
           ),
         ],
       ),
@@ -168,116 +271,400 @@ class PartyDetailScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (items) {
-          // Calculate stats from loaded transactions
-          final transactions = items.whereType<TransactionHistoryItem>()
-              .map((h) => h.transaction)
-              .toList();
-          final txnCount = transactions.length;
-          final txnTotal = transactions.fold<double>(
-            0, 
-            (sum, t) => sum + t.amount,
-          );
-
-          return ListView(
-            padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+          return TabBarView(
+            controller: _tabController,
             children: [
-              // ── Header card ────────────────────────────────────────────
-              _HeaderCard(party: party, colors: colors),
-
-              // ── Summary row ────────────────────────────────────────────
-              _SummaryRow(
-                party: party,
-                colors: colors,
-                transactionCount: txnCount,
-                transactionTotal: txnTotal,
-              ),
-
-              // ── Contact actions ────────────────────────────────────────
-              if (party.phoneNumber != null || party.email != null)
-                _ContactActions(party: party),
-
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.sm),
-                child: Text('Activity History',
-                    style: Theme.of(context).textTheme.titleMedium),
-              ),
-
-              // ── Unified history list ───────────────────────────────────
-              if (items.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.xxl),
-                  child: Center(
-                    child: Text('No activity with ${party.name} yet.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ),
-                )
-              else
-                Column(
-                  children: items.map((item) {
-                    return switch (item) {
-                      TransactionHistoryItem() => _TransactionTile(
-                          txn: item.transaction,
-                          colors: colors,
-                        ),
-                      InvoiceHistoryItem() => _InvoiceTile(
-                          invoice: item.invoice,
-                          colors: colors,
-                        ),
-                      ScheduledPaymentHistoryItem() => _ScheduledPaymentTile(
-                          payment: item.payment,
-                          colors: colors,
-                        ),
-                      BookingHistoryItem() => _BookingTile(
-                          booking: item.booking,
-                          colors: colors,
-                        ),
-                    };
-                  }).toList(),
-                ),
+              _buildActivityTab(context, items, colors),
+              _buildDocumentsTab(context, items, colors),
             ],
           );
         },
       ),
-
-      // ── Send Reminder FAB (only if phone + has lending) ─────────────
-      floatingActionButton: party.phoneNumber != null
+      floatingActionButton: widget.party.phoneNumber != null
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.send_outlined),
               label: const Text('Send Reminder'),
-              onPressed: () => _showReminderSheet(context, ref),
+              onPressed: () => _showReminderSheet(context),
             )
           : null,
     );
   }
 
-  void _showEditSheet(BuildContext context, WidgetRef ref) {
+  // ── Activity tab (Option A) ────────────────────────────────────────────────
+  Widget _buildActivityTab(
+      BuildContext context, List<PartyHistoryItem> items, KashCubeColors colors) {
+    final transactions = items.whereType<TransactionHistoryItem>()
+        .map((h) => h.transaction)
+        .toList();
+    final txnCount = transactions.length;
+    final txnTotal = transactions.fold<double>(0, (s, t) => s + t.amount);
+
+    // Apply filter
+    final filtered = switch (_activityFilter) {
+      _ActivityFilter.all => items,
+      _ActivityFilter.transactions =>
+        items.whereType<TransactionHistoryItem>().toList(),
+      _ActivityFilter.invoices =>
+        items.whereType<InvoiceHistoryItem>().toList(),
+      _ActivityFilter.quotes =>
+        items.whereType<QuoteHistoryItem>().toList(),
+      _ActivityFilter.dc =>
+        items.whereType<DeliveryChallanHistoryItem>().toList(),
+      _ActivityFilter.bookings =>
+        items.whereType<BookingHistoryItem>().toList(),
+    };
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+      children: [
+        _HeaderCard(party: widget.party, colors: colors),
+        _SummaryRow(
+          party: widget.party,
+          colors: colors,
+          transactionCount: txnCount,
+          transactionTotal: txnTotal,
+        ),
+        if (widget.party.phoneNumber != null || widget.party.email != null)
+          _ContactActions(party: widget.party),
+        const Divider(height: 1),
+
+        // ── Filter chips row (Option A) ───────────────────────────────
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+          child: Row(
+            children: _ActivityFilter.values.map((f) {
+              return Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: FilterChip(
+                  label: Text(f.label),
+                  selected: _activityFilter == f,
+                  onSelected: (_) => setState(() => _activityFilter = f),
+                  visualDensity: VisualDensity.compact,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // ── Item list ─────────────────────────────────────────────────
+        if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Center(
+              child: Text(
+                _activityFilter == _ActivityFilter.all
+                    ? 'No activity with ${widget.party.name} yet.'
+                    : 'No ${_activityFilter.label.toLowerCase()} with ${widget.party.name} yet.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: filtered.map((item) => _buildHistoryTile(item, colors)).toList(),
+          ),
+      ],
+    );
+  }
+
+  // ── Documents tab (Option B) ───────────────────────────────────────────────
+  Widget _buildDocumentsTab(
+      BuildContext context, List<PartyHistoryItem> items, KashCubeColors colors) {
+    final invoices = items.whereType<InvoiceHistoryItem>().map((h) => h.invoice).toList();
+    final quotes = items.whereType<QuoteHistoryItem>().map((h) => h.quote).toList();
+    final challans =
+        items.whereType<DeliveryChallanHistoryItem>().map((h) => h.challan).toList();
+    final bookings = items.whereType<BookingHistoryItem>().map((h) => h.booking).toList();
+
+    // Filtered items for documents tab
+    final filteredDocs = switch (_docsFilter) {
+      _DocsFilter.all => [
+          ...invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new),
+          ...quotes.map<PartyHistoryItem>(QuoteHistoryItem.new),
+          ...challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new),
+          ...bookings.map<PartyHistoryItem>(BookingHistoryItem.new),
+        ]..sort((a, b) => b.date.compareTo(a.date)),
+      _DocsFilter.invoices => invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new).toList(),
+      _DocsFilter.quotes => quotes.map<PartyHistoryItem>(QuoteHistoryItem.new).toList(),
+      _DocsFilter.dc => challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new).toList(),
+      _DocsFilter.bookings => bookings.map<PartyHistoryItem>(BookingHistoryItem.new).toList(),
+    };
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
+      children: [
+        // ── Outstanding Balance card ───────────────────────────────────
+        _OutstandingBalanceCard(invoices: invoices, colors: colors),
+
+        const Divider(height: 1),
+
+        // ── Filter chips ──────────────────────────────────────────────
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+          child: Row(
+            children: _DocsFilter.values.map((f) {
+              final count = switch (f) {
+                _DocsFilter.all =>
+                  invoices.length + quotes.length + challans.length + bookings.length,
+                _DocsFilter.invoices => invoices.length,
+                _DocsFilter.quotes => quotes.length,
+                _DocsFilter.dc => challans.length,
+                _DocsFilter.bookings => bookings.length,
+              };
+              return Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.sm),
+                child: FilterChip(
+                  label: Text('${f.label}${count > 0 ? ' ($count)' : ''}'),
+                  selected: _docsFilter == f,
+                  onSelected: (_) => setState(() => _docsFilter = f),
+                  visualDensity: VisualDensity.compact,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // ── Document list ─────────────────────────────────────────────
+        if (filteredDocs.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.xxl),
+            child: Center(
+              child: Text(
+                'No ${_docsFilter == _DocsFilter.all ? 'documents' : _docsFilter.label.toLowerCase()} for ${widget.party.name} yet.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          )
+        else
+          Column(
+            children: filteredDocs
+                .map((item) => _buildHistoryTile(item, colors))
+                .toList(),
+          ),
+      ],
+    );
+  }
+
+  // ── Build a single tile based on type ─────────────────────────────────────
+  Widget _buildHistoryTile(PartyHistoryItem item, KashCubeColors colors) {
+    return switch (item) {
+      TransactionHistoryItem() => _TransactionTile(
+          txn: item.transaction,
+          colors: colors,
+        ),
+      InvoiceHistoryItem() => _InvoiceTile(
+          invoice: item.invoice,
+          colors: colors,
+          onTap: item.invoice.id != null
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          InvoiceDetailScreen(invoiceId: item.invoice.id!),
+                    ),
+                  )
+              : null,
+        ),
+      QuoteHistoryItem() => _QuoteTile(
+          quote: item.quote,
+          colors: colors,
+          onTap: item.quote.id != null
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          QuoteDetailScreen(quoteId: item.quote.id!),
+                    ),
+                  )
+              : null,
+        ),
+      DeliveryChallanHistoryItem() => _ChallanTile(
+          challan: item.challan,
+          colors: colors,
+          onTap: item.challan.id != null
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          DeliveryChallanDetailScreen(challanId: item.challan.id!),
+                    ),
+                  )
+              : null,
+        ),
+      ScheduledPaymentHistoryItem() => _ScheduledPaymentTile(
+          payment: item.payment,
+          colors: colors,
+        ),
+      BookingHistoryItem() => _BookingTile(
+          booking: item.booking,
+          colors: colors,
+          onTap: item.booking.id != null
+              ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          BookingDetailScreen(bookingId: item.booking.id!),
+                    ),
+                  )
+              : null,
+        ),
+    };
+  }
+
+  void _showEditSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       builder: (_) => PartyFormSheet(
-        existing: party,
+        existing: widget.party,
         onSave: (updated) =>
             ref.read(partiesProvider.notifier).update(updated),
       ),
     );
   }
 
-  void _showReminderSheet(BuildContext context, WidgetRef ref) {
+  void _showReminderSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
       builder: (_) => _SendReminderSheet(
-        party: party,
+        party: widget.party,
         onReminderSent: (transactionId) {
           ref
               .read(partiesProvider.notifier)
               .markReminderSent(transactionId);
         },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Outstanding Balance Card (Option B)
+// ---------------------------------------------------------------------------
+
+class _OutstandingBalanceCard extends StatelessWidget {
+  const _OutstandingBalanceCard({
+    required this.invoices,
+    required this.colors,
+  });
+
+  final List<Invoice> invoices;
+  final KashCubeColors colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final totalInvoiced = invoices.fold(0.0, (s, i) => s + i.total);
+    final totalPaid = invoices.fold(0.0, (s, i) => s + i.paidAmount);
+    final outstanding = invoices
+        .where((i) => i.status != InvoiceStatus.paid)
+        .fold(0.0, (s, i) => s + i.balanceDue);
+    final overdue = invoices
+        .where((i) =>
+            i.status != InvoiceStatus.paid &&
+            i.dueDate != null &&
+            i.dueDate!.isBefore(now))
+        .fold(0.0, (s, i) => s + i.balanceDue);
+
+    if (invoices.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(AppSpacing.base),
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Outstanding Balance',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              _BalanceStat(
+                label: 'Invoiced',
+                value: _fmt(totalInvoiced),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              _BalanceStat(
+                label: 'Paid',
+                value: _fmt(totalPaid),
+                color: colors.income,
+              ),
+              _BalanceStat(
+                label: 'Balance',
+                value: _fmt(outstanding),
+                color: outstanding > 0 ? colors.expense : colors.income,
+              ),
+              if (overdue > 0)
+                _BalanceStat(
+                  label: 'Overdue',
+                  value: _fmt(overdue),
+                  color: colors.overdue,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(double v) {
+    if (v >= 10000000) return '₹${(v / 10000000).toStringAsFixed(1)}Cr';
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      if (s.length > 3) {
+        return '₹${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}';
+      }
+      return '₹$s';
+    }
+    return '₹${v.toStringAsFixed(0)}';
+  }
+}
+
+class _BalanceStat extends StatelessWidget {
+  const _BalanceStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: color)),
+          Text(label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(
+                      color: Theme.of(context).colorScheme.outline)),
+        ],
       ),
     );
   }
@@ -719,10 +1106,11 @@ class _TransactionTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _InvoiceTile extends StatelessWidget {
-  const _InvoiceTile({required this.invoice, required this.colors});
+  const _InvoiceTile({required this.invoice, required this.colors, this.onTap});
 
   final Invoice invoice;
   final KashCubeColors colors;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -737,6 +1125,7 @@ class _InvoiceTile extends StatelessWidget {
 
     return ListTile(
       dense: true,
+      onTap: onTap,
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: statusColor.withValues(alpha: 0.12),
@@ -793,6 +1182,128 @@ class _InvoiceTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
+// Quote tile (compact)
+// ---------------------------------------------------------------------------
+
+class _QuoteTile extends StatelessWidget {
+  const _QuoteTile({required this.quote, required this.colors, this.onTap});
+
+  final Quote quote;
+  final KashCubeColors colors;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (quote.status) {
+      QuoteStatus.accepted => colors.income,
+      QuoteStatus.rejected => colors.expense,
+      _ => const Color(0xFF00838F),
+    };
+    final dateStr =
+        '${quote.createdAt.day} ${_monthAbbr(quote.createdAt.month)} ${quote.createdAt.year}';
+
+    return ListTile(
+      dense: true,
+      onTap: onTap,
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: statusColor.withValues(alpha: 0.12),
+        child: Icon(
+          Icons.request_quote_outlined,
+          size: 16,
+          color: statusColor,
+        ),
+      ),
+      title: Text(quote.quoteNo,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      subtitle: Text('$dateStr • ${quote.status.label}',
+          style: Theme.of(context).textTheme.labelSmall),
+      trailing: Text(
+        '₹${_fmt(quote.total)}',
+        style: TextStyle(
+            fontWeight: FontWeight.w600, fontSize: 13, color: statusColor),
+      ),
+    );
+  }
+
+  String _fmt(double v) {
+    if (v >= 100000) return '${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000) {
+      final s = v.toStringAsFixed(0);
+      if (s.length > 3) {
+        return '${s.substring(0, s.length - 3)},${s.substring(s.length - 3)}';
+      }
+      return s;
+    }
+    return v.toStringAsFixed(0);
+  }
+
+  String _monthAbbr(int m) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[m];
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delivery Challan tile (compact)
+// ---------------------------------------------------------------------------
+
+class _ChallanTile extends StatelessWidget {
+  const _ChallanTile({required this.challan, required this.colors, this.onTap});
+
+  final DeliveryChallan challan;
+  final KashCubeColors colors;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (challan.status) {
+      ChallanStatus.dispatched => const Color(0xFF0D47A1),
+      ChallanStatus.returned => colors.credit,
+      ChallanStatus.converted => colors.income,
+      ChallanStatus.draft => Theme.of(context).colorScheme.outline,
+    };
+    final dateStr =
+        '${challan.challanDate.day} ${_monthAbbr(challan.challanDate.month)} ${challan.challanDate.year}';
+    final itemCount = challan.items.length;
+
+    return ListTile(
+      dense: true,
+      onTap: onTap,
+      leading: CircleAvatar(
+        radius: 18,
+        backgroundColor: statusColor.withValues(alpha: 0.12),
+        child: Icon(
+          Icons.local_shipping_outlined,
+          size: 16,
+          color: statusColor,
+        ),
+      ),
+      title: Text(challan.challanNo,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      subtitle: Text('$dateStr • ${challan.status.label}',
+          style: Theme.of(context).textTheme.labelSmall),
+      trailing: Text(
+        '$itemCount item${itemCount == 1 ? '' : 's'}',
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: statusColor),
+      ),
+    );
+  }
+
+  String _monthAbbr(int m) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[m];
+  }
+}
 // Scheduled Payment tile (compact)
 // ---------------------------------------------------------------------------
 
@@ -1053,10 +1564,11 @@ class _ReminderChannelButton extends StatelessWidget {
 // ── Booking Tile ──────────────────────────────────────────────────────────────
 
 class _BookingTile extends StatelessWidget {
-  const _BookingTile({required this.booking, required this.colors});
+  const _BookingTile({required this.booking, required this.colors, this.onTap});
 
   final Booking booking;
   final KashCubeColors colors;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1066,6 +1578,7 @@ class _BookingTile extends StatelessWidget {
 
     return ListTile(
       dense: true,
+      onTap: onTap,
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: statusColor.withValues(alpha: 0.12),

@@ -14,6 +14,7 @@ import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
 import '../reports/reports_screen.dart';
+import 'global_document_ledger_screen.dart';
 
 /// Business hub — top-level entry point for all business-related screens.
 /// Accessible from the bottom nav "Business" tab.
@@ -135,6 +136,26 @@ class BusinessHubScreen extends ConsumerWidget {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const BookingsScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Party Doc Ledger',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final summary = r.watch(overdueInvoicesSummaryProvider);
+                    final text = (summary != null && summary.totalDue > 0)
+                        ? '${CurrencyFormatter.formatCompact(summary.totalDue)} outstanding'
+                        : 'Docs grouped by party';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: const Color(0xFF37474F),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const GlobalDocumentLedgerScreen()),
                 ),
               ),
             ],

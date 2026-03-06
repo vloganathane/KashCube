@@ -125,3 +125,9 @@ final challanSummaryProvider = Provider<ChallanSummary>((ref) {
     draft: all.where((c) => c.status == ChallanStatus.draft).length,
   );
 });
+
+/// All delivery challans for a given party name (used by Party Document Ledger).
+final challansByCustomerProvider =
+    FutureProvider.family<List<DeliveryChallan>, String>((ref, customerName) async {
+  return ref.read(deliveryChallanRepositoryProvider).getByCustomer(customerName);
+});

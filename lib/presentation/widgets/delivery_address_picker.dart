@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:world_countries/world_countries.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../data/models/party_address.dart';
+import '../../data/services/pincode_lookup_service.dart';
 import '../providers/party_address_provider.dart';
+import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
 
 /// Reusable bottom sheet that lets the user pick a delivery address for a
@@ -181,7 +184,7 @@ class _DeliveryAddressPickerState
                     stateCtrl: _stateCtrl,
                     pincodeCtrl: _pincodeCtrl,
                     gstinCtrl: _gstinCtrl,
-                    onConfirm: () {
+                    onConfirm: (country) {
                       final addr = PartyAddress(
                         partyId: widget.partyId ?? 0,
                         label: _labelCtrl.text.trim().isEmpty
@@ -199,6 +202,7 @@ class _DeliveryAddressPickerState
                         pincode: _pincodeCtrl.text.trim().isEmpty
                             ? null
                             : _pincodeCtrl.text.trim(),
+                        country: country,
                         gstin: _gstinCtrl.text.trim().isEmpty
                             ? null
                             : _gstinCtrl.text.trim(),
@@ -340,7 +344,7 @@ class _AddressTile extends StatelessWidget {
 
 // ── Custom address form ───────────────────────────────────────────────────────
 
-class _CustomAddressForm extends StatelessWidget {
+class _CustomAddressForm extends StatefulWidget {
   const _CustomAddressForm({
     required this.labelCtrl,
     required this.addressCtrl,
@@ -357,7 +361,55 @@ class _CustomAddressForm extends StatelessWidget {
   final TextEditingController stateCtrl;
   final TextEditingController pincodeCtrl;
   final TextEditingController gstinCtrl;
-  final VoidCallback onConfirm;
+  /// Called with the selected country name (e.g. 'India') when the user
+  /// confirms. May be `null` if the user cleared the country picker.
+  final void Function(String? country) onConfirm;
+
+  @override
+  State<_CustomAddressForm> createState() => _CustomAddressFormState();
+}
+
+class _CustomAddressFormState extends State<_CustomAddressForm> {
+  late WorldCountry? _selectedCountry;
+  bool _pincodeAutoFilled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to India
+    _selectedCountry = WorldCountry.list.cast<WorldCountry?>().firstWhere(
+      (c) => c?.name.common == 'India',
+      orElse: () => null,
+    );
+    PincodeLookupService.ensureLoaded();
+    widget.pincodeCtrl.addListener(_onPincodeChanged);
+  }
+
+  void _onPincodeChanged() {
+    final pin = widget.pincodeCtrl.text.trim();
+    final isIndia =
+        _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    final result = PincodeLookupService.lookup(pin);
+    if (result == null) {
+      if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
+      return;
+    }
+    setState(() {
+      if (widget.cityCtrl.text.isEmpty) widget.cityCtrl.text = result.city;
+      widget.stateCtrl.text = result.state;
+      _pincodeAutoFilled = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.pincodeCtrl.removeListener(_onPincodeChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +425,7 @@ class _CustomAddressForm extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           TextFormField(
-            controller: labelCtrl,
+            controller: widget.labelCtrl,
             decoration: const InputDecoration(
               labelText: 'Label (optional)',
               hintText: 'e.g. Site Office, Warehouse',
@@ -382,7 +434,7 @@ class _CustomAddressForm extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.md),
           TextFormField(
-            controller: addressCtrl,
+            controller: widget.addressCtrl,
             decoration:
                 const InputDecoration(labelText: 'Street / Area'),
             textCapitalization: TextCapitalization.sentences,
@@ -393,7 +445,7 @@ class _CustomAddressForm extends StatelessWidget {
             children: [
               Expanded(
                 child: TextFormField(
-                  controller: cityCtrl,
+                  controller: widget.cityCtrl,
                   decoration: const InputDecoration(labelText: 'City'),
                   textCapitalization: TextCapitalization.words,
                 ),
@@ -401,29 +453,63 @@ class _CustomAddressForm extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: TextFormField(
-                  controller: pincodeCtrl,
-                  decoration: const InputDecoration(labelText: 'PIN Code'),
+                  controller: widget.pincodeCtrl,
                   keyboardType: TextInputType.number,
-                  maxLength: 6,
+                  maxLength: 10,
+                  decoration: InputDecoration(
+                    labelText: 'Postcode',
+                    counterText: '',
+                    suffixIcon: _pincodeAutoFilled
+                        ? const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.green,
+                            size: 18,
+                          )
+                        : null,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          IndianStateDropdown(controller: stateCtrl),
+          // State: Indian dropdown when India is selected, plain text otherwise
+          (_selectedCountry == null ||
+                  _selectedCountry!.name.common == 'India')
+              ? IndianStateDropdown(controller: widget.stateCtrl)
+              : TextFormField(
+                  controller: widget.stateCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'State / Province',
+                  ),
+                ),
+          const SizedBox(height: AppSpacing.md),
+          CountryPickerField(
+            selectedCountry: _selectedCountry,
+            onChanged: (country) {
+              setState(() {
+                _selectedCountry = country;
+                if (country.name.common != 'India') {
+                  widget.stateCtrl.clear();
+                  _pincodeAutoFilled = false;
+                }
+              });
+            },
+          ),
           const SizedBox(height: AppSpacing.md),
           TextFormField(
-            controller: gstinCtrl,
+            controller: widget.gstinCtrl,
             decoration: const InputDecoration(
               labelText: 'GSTIN (optional)',
               hintText: 'Location-specific GSTIN',
+              counterText: '',
             ),
             textCapitalization: TextCapitalization.characters,
             maxLength: 15,
           ),
           const SizedBox(height: AppSpacing.md),
           FilledButton.icon(
-            onPressed: onConfirm,
+            onPressed: () => widget.onConfirm(_selectedCountry?.name.common),
             icon: const Icon(Icons.check),
             label: const Text('Use This Address'),
           ),

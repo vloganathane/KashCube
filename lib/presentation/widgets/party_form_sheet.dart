@@ -17,6 +17,7 @@ import '../../data/models/party.dart';
 import '../../data/models/party_address.dart';
 import '../../data/services/pincode_lookup_service.dart';
 import '../providers/party_address_provider.dart';
+import '../providers/party_provider.dart';
 import '../providers/settings_provider.dart';
 import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
@@ -64,6 +65,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   WorldCountry? _selectedCountry; // null = India (default)
   String _dialCode = '91';
   bool _pincodeAutoFilled = false;
+  /// Addresses staged while adding a new contact (flushed to DB after insert).
+  final List<PartyAddress> _pendingAddresses = [];
 
   @override
   void initState() {
@@ -97,6 +100,15 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     // Warm up pincode lookup (India only) in the background
     PincodeLookupService.ensureLoaded();
     _pincode.addListener(_onPincodeChanged);
+    // Show ✓ for a valid 6-digit Indian PIN that was pre-filled in edit mode
+    final prePin = _pincode.text.trim();
+    final preIsIndia =
+        _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    if (preIsIndia &&
+        prePin.length == 6 &&
+        RegExp(r'^\d{6}$').hasMatch(prePin)) {
+      _pincodeAutoFilled = true;
+    }
   }
 
   @override
@@ -430,9 +442,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               if (widget.existing?.id != null)
                 _PartyAddressesSection(
                   partyId: widget.existing!.id!,
-                ),
-              if (widget.existing?.id != null)
-                const SizedBox(height: AppSpacing.sm),
+                )
+              else
+                _buildPendingAddressesSection(),
+              const SizedBox(height: AppSpacing.sm),
 
               // ── Online Presence ───────────────────────────────────────
               Theme(
@@ -619,10 +632,88 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     }
   }
 
-  void _save() {
+  // ── Pending addresses (add-mode only) ───────────────────────────────────
+
+  Future<void> _showPendingAddressDialog({int? editIndex}) async {
+    final editing = editIndex != null ? _pendingAddresses[editIndex] : null;
+    final addr = await showAddressDialog(context, editing: editing);
+    if (addr == null || !mounted) return;
+    setState(() {
+      if (editIndex == null) {
+        _pendingAddresses.add(addr);
+      } else {
+        _pendingAddresses[editIndex] = addr;
+      }
+    });
+  }
+
+  Widget _buildPendingAddressesSection() {
+    final cs = Theme.of(context).colorScheme;
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: const Icon(Icons.location_on_outlined),
+        title: const Text('Saved Addresses'),
+        subtitle: Text(
+          _pendingAddresses.isEmpty
+              ? 'Add delivery / branch addresses'
+              : '${_pendingAddresses.length} '
+                  'address${_pendingAddresses.length == 1 ? '' : 'es'}',
+          style: const TextStyle(fontSize: 11),
+        ),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        children: [
+          ...List.generate(_pendingAddresses.length, (i) {
+            final addr = _pendingAddresses[i];
+            return ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              leading: Icon(Icons.location_on_outlined,
+                  color: cs.onSurfaceVariant),
+              title: Text(addr.label),
+              subtitle: Text(
+                addr.displayLine,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    onPressed: () => _showPendingAddressDialog(editIndex: i),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    onPressed: () =>
+                        setState(() => _pendingAddresses.removeAt(i)),
+                  ),
+                ],
+              ),
+            );
+          }),
+          ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            leading: Icon(Icons.add_location_alt_outlined,
+                color: cs.primary),
+            title: Text('Add Address',
+                style: TextStyle(color: cs.primary)),
+            onTap: _showPendingAddressDialog,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+        ],
+      ),
+    );
+  }
+
+  // ── Save ─────────────────────────────────────────────────────────────────
+
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final existing = widget.existing;
-    final party = Party(
+    var party = Party(
       id: existing?.id,
       name: _name.text.trim(),
       phoneNumber: PhoneUtils.normalize(_phone.text),
@@ -640,7 +731,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       website: _website.text.trim().isEmpty ? null : _website.text.trim(),
       whatsapp: _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
       linkedin: _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
-      instagram: _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
+      instagram:
+          _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
       businessCardImagePath: _businessCardImagePath,
       totalTransactions: existing?.totalTransactions ?? 0,
       totalTransactionAmount: existing?.totalTransactionAmount ?? 0,
@@ -649,42 +741,74 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       createdAt: existing?.createdAt,
       updatedAt: DateTime.now(),
     );
-    widget.onSave(party);
-    Navigator.pop(context);
+
+    if (existing == null) {
+      // Add mode: insert the party now so we get an ID to attach addresses to.
+      final id = await ref.read(partyRepositoryProvider).insert(party);
+      party = party.copyWith(id: id, createdAt: DateTime.now());
+      if (_pendingAddresses.isNotEmpty) {
+        final addrRepo = ref.read(partyAddressRepositoryProvider);
+        for (final addr in _pendingAddresses) {
+          await addrRepo.insert(addr.copyWith(partyId: id));
+        }
+      }
+      // Sync notifier state so the parties list updates immediately.
+      ref.read(partiesProvider.notifier).addToState(party);
+    }
+
+    if (mounted) {
+      widget.onSave(party);
+      Navigator.pop(context);
+    }
   }
 }
 
-// ── Party Addresses Section ───────────────────────────────────────────────────
+// ── Shared address dialog ────────────────────────────────────────────────────
 
-class _PartyAddressesSection extends ConsumerStatefulWidget {
-  const _PartyAddressesSection({required this.partyId});
+/// Shows an add/edit address dialog and returns the entered [PartyAddress] on
+/// confirm, or `null` if the user cancelled. Callers decide how to persist it.
+Future<PartyAddress?> showAddressDialog(
+  BuildContext context, {
+  PartyAddress? editing,
+  int partyId = 0,
+}) async {
+  final labelCtrl = TextEditingController(text: editing?.label ?? '');
+  final addrCtrl = TextEditingController(text: editing?.address ?? '');
+  final cityCtrl = TextEditingController(text: editing?.city ?? '');
+  final stateCtrl = TextEditingController(text: editing?.state ?? '');
+  final pincodeCtrl = TextEditingController(text: editing?.pincode ?? '');
+  final gstinCtrl = TextEditingController(text: editing?.gstin ?? '');
 
-  final int partyId;
+  WorldCountry? selectedCountry = WorldCountry.list.cast<WorldCountry?>().firstWhere(
+    (c) => c?.name.common == (editing?.country ?? 'India'),
+    orElse: () => null,
+  );
 
-  @override
-  ConsumerState<_PartyAddressesSection> createState() =>
-      _PartyAddressesSectionState();
-}
+  final pincodeAutoFilled = ValueNotifier<bool>(false);
+  void onPincodeChanged() {
+    final pin = pincodeCtrl.text.trim();
+    final isIndia =
+        selectedCountry == null || selectedCountry!.name.common == 'India';
+    if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      if (pincodeAutoFilled.value) pincodeAutoFilled.value = false;
+      return;
+    }
+    final result = PincodeLookupService.lookup(pin);
+    if (result == null) {
+      if (pincodeAutoFilled.value) pincodeAutoFilled.value = false;
+      return;
+    }
+    if (cityCtrl.text.isEmpty) cityCtrl.text = result.city;
+    stateCtrl.text = result.state;
+    pincodeAutoFilled.value = true;
+  }
+  pincodeCtrl.addListener(onPincodeChanged);
 
-class _PartyAddressesSectionState
-    extends ConsumerState<_PartyAddressesSection> {
-  Future<void> _showAddressDialog({PartyAddress? editing}) async {
-    final labelCtrl =
-        TextEditingController(text: editing?.label ?? '');
-    final addrCtrl =
-        TextEditingController(text: editing?.address ?? '');
-    final cityCtrl =
-        TextEditingController(text: editing?.city ?? '');
-    final stateCtrl =
-        TextEditingController(text: editing?.state ?? '');
-    final pincodeCtrl =
-        TextEditingController(text: editing?.pincode ?? '');
-    final gstinCtrl =
-        TextEditingController(text: editing?.gstin ?? '');
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
+  PartyAddress? result;
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDialogState) => AlertDialog(
         title: Text(editing == null ? 'Add Address' : 'Edit Address'),
         contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
         content: SingleChildScrollView(
@@ -726,21 +850,54 @@ class _PartyAddressesSectionState
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: TextFormField(
-                      controller: pincodeCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'PIN Code',
-                        border: OutlineInputBorder(),
-                        counterText: '',
+                    child: ValueListenableBuilder<bool>(
+                      valueListenable: pincodeAutoFilled,
+                      builder: (_, autoFilled, _) => TextFormField(
+                        controller: pincodeCtrl,
+                        keyboardType: TextInputType.number,
+                        maxLength: 10,
+                        decoration: InputDecoration(
+                          labelText: 'Postcode',
+                          border: const OutlineInputBorder(),
+                          counterText: '',
+                          suffixIcon: autoFilled
+                              ? const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.green,
+                                  size: 18,
+                                )
+                              : null,
+                        ),
                       ),
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.md),
-              IndianStateDropdown(controller: stateCtrl),
+              (selectedCountry == null ||
+                      selectedCountry!.name.common == 'India')
+                  ? IndianStateDropdown(controller: stateCtrl)
+                  : TextFormField(
+                      controller: stateCtrl,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'State / Province',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+              const SizedBox(height: AppSpacing.md),
+              CountryPickerField(
+                selectedCountry: selectedCountry,
+                onChanged: (country) {
+                  setDialogState(() {
+                    selectedCountry = country;
+                    if (country.name.common != 'India') {
+                      stateCtrl.clear();
+                      pincodeAutoFilled.value = false;
+                    }
+                  });
+                },
+              ),
               const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: gstinCtrl,
@@ -763,65 +920,85 @@ class _PartyAddressesSectionState
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () async {
+            onPressed: () {
               final label = labelCtrl.text.trim();
               if (label.isEmpty) return;
-              final repo = ref.read(partyAddressRepositoryProvider);
-              if (editing == null) {
-                await repo.insert(PartyAddress(
-                  partyId: widget.partyId,
-                  label: label,
-                  address: addrCtrl.text.trim().isEmpty
-                      ? null
-                      : addrCtrl.text.trim(),
-                  city: cityCtrl.text.trim().isEmpty
-                      ? null
-                      : cityCtrl.text.trim(),
-                  state: stateCtrl.text.trim().isEmpty
-                      ? null
-                      : stateCtrl.text.trim(),
-                  pincode: pincodeCtrl.text.trim().isEmpty
-                      ? null
-                      : pincodeCtrl.text.trim(),
-                  gstin: gstinCtrl.text.trim().isEmpty
-                      ? null
-                      : gstinCtrl.text.trim(),
-                  createdAt: DateTime.now(),
-                ));
-              } else {
-                await repo.update(editing.copyWith(
-                  label: label,
-                  address: addrCtrl.text.trim().isEmpty
-                      ? null
-                      : addrCtrl.text.trim(),
-                  city: cityCtrl.text.trim().isEmpty
-                      ? null
-                      : cityCtrl.text.trim(),
-                  state: stateCtrl.text.trim().isEmpty
-                      ? null
-                      : stateCtrl.text.trim(),
-                  pincode: pincodeCtrl.text.trim().isEmpty
-                      ? null
-                      : pincodeCtrl.text.trim(),
-                  gstin: gstinCtrl.text.trim().isEmpty
-                      ? null
-                      : gstinCtrl.text.trim(),
-                ));
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-              ref.invalidate(partyAddressesProvider(widget.partyId));
+              result = PartyAddress(
+                partyId: editing?.partyId ?? partyId,
+                label: label,
+                address: addrCtrl.text.trim().isEmpty
+                    ? null
+                    : addrCtrl.text.trim(),
+                city: cityCtrl.text.trim().isEmpty
+                    ? null
+                    : cityCtrl.text.trim(),
+                state: stateCtrl.text.trim().isEmpty
+                    ? null
+                    : stateCtrl.text.trim(),
+                pincode: pincodeCtrl.text.trim().isEmpty
+                    ? null
+                    : pincodeCtrl.text.trim(),
+                country: selectedCountry?.name.common,
+                gstin: gstinCtrl.text.trim().isEmpty
+                    ? null
+                    : gstinCtrl.text.trim(),
+                createdAt: editing?.createdAt ?? DateTime.now(),
+              );
+              Navigator.pop(ctx);
             },
             child: Text(editing == null ? 'Add' : 'Save'),
           ),
         ],
       ),
+    ),
+  );
+  pincodeCtrl.removeListener(onPincodeChanged);
+  pincodeAutoFilled.dispose();
+  labelCtrl.dispose();
+  addrCtrl.dispose();
+  cityCtrl.dispose();
+  stateCtrl.dispose();
+  pincodeCtrl.dispose();
+  gstinCtrl.dispose();
+  return result;
+}
+
+// ── Party Addresses Section ───────────────────────────────────────────────────
+
+class _PartyAddressesSection extends ConsumerStatefulWidget {
+  const _PartyAddressesSection({required this.partyId});
+
+  final int partyId;
+
+  @override
+  ConsumerState<_PartyAddressesSection> createState() =>
+      _PartyAddressesSectionState();
+}
+
+class _PartyAddressesSectionState
+    extends ConsumerState<_PartyAddressesSection> {
+  Future<void> _showAddressDialog({PartyAddress? editing}) async {
+    final addr = await showAddressDialog(
+      context,
+      editing: editing,
+      partyId: widget.partyId,
     );
-    labelCtrl.dispose();
-    addrCtrl.dispose();
-    cityCtrl.dispose();
-    stateCtrl.dispose();
-    pincodeCtrl.dispose();
-    gstinCtrl.dispose();
+    if (addr == null) return;
+    final repo = ref.read(partyAddressRepositoryProvider);
+    if (editing == null) {
+      await repo.insert(addr);
+    } else {
+      await repo.update(editing.copyWith(
+        label: addr.label,
+        address: addr.address,
+        city: addr.city,
+        state: addr.state,
+        pincode: addr.pincode,
+        country: addr.country,
+        gstin: addr.gstin,
+      ));
+    }
+    ref.invalidate(partyAddressesProvider(widget.partyId));
   }
 
   Future<void> _deleteAddress(PartyAddress addr) async {

@@ -7,8 +7,9 @@ import '../../core/constants/indian_states.dart';
 /// GST calculator to mis-classify intra-state transactions as inter-state.
 ///
 /// Works with a [TextEditingController]: reads the current text to pre-select
-/// and writes the chosen value back on change.
-class IndianStateDropdown extends StatelessWidget {
+/// and writes the chosen value back on change. Listens to the controller so
+/// that programmatic writes (e.g. from pincode auto-fill) also update the UI.
+class IndianStateDropdown extends StatefulWidget {
   const IndianStateDropdown({
     super.key,
     required this.controller,
@@ -21,19 +22,48 @@ class IndianStateDropdown extends StatelessWidget {
   final String? Function(String?)? validator;
 
   @override
+  State<IndianStateDropdown> createState() => _IndianStateDropdownState();
+}
+
+class _IndianStateDropdownState extends State<IndianStateDropdown> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  void _onControllerChanged() => setState(() {});
+
+  @override
+  void didUpdateWidget(IndianStateDropdown oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onControllerChanged);
+      widget.controller.addListener(_onControllerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     // Find the canonical entry that matches the stored value (case-insensitive)
-    final current = controller.text.trim();
+    final current = widget.controller.text.trim();
     final String? selected = kIndianStates.cast<String?>().firstWhere(
       (s) => s!.toLowerCase() == current.toLowerCase(),
       orElse: () => null,
     );
 
     return DropdownButtonFormField<String>(
-      value: selected,
+      key: ValueKey(selected),
+      initialValue: selected,
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: label,
+        labelText: widget.label,
         border: const OutlineInputBorder(),
       ),
       hint: const Text('Select state'),
@@ -41,9 +71,9 @@ class IndianStateDropdown extends StatelessWidget {
           .map((s) => DropdownMenuItem(value: s, child: Text(s)))
           .toList(),
       onChanged: (v) {
-        if (v != null) controller.text = v;
+        if (v != null) widget.controller.text = v;
       },
-      validator: validator,
+      validator: widget.validator,
     );
   }
 }

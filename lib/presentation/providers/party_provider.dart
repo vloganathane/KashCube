@@ -48,6 +48,13 @@ class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {
     }
   }
 
+  /// Adds a [party] that was already inserted to the DB to the in-memory list.
+  /// Used when the form handles the insert itself (add mode with pending addresses).
+  void addToState(Party party) {
+    state = state.whenData((list) => [...list, party]
+      ..sort((a, b) => a.name.compareTo(b.name)));
+  }
+
   Future<void> update(Party party) async {
     try {
       await _repo.update(party);

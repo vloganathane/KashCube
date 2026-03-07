@@ -154,7 +154,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
       builder: (_) => PartyFormSheet(
         existing: existing,
         onSave: (party) {
-          if (existing == null) {
+          if (party.id == null) {
             ref.read(partiesProvider.notifier).add(party);
           } else {
             ref.read(partiesProvider.notifier).update(party);

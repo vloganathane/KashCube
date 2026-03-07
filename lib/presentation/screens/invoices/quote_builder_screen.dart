@@ -1309,6 +1309,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               onSelected: (name) async {
                 setState(() {
                   _customerName = name;
+                  // Clear stale delivery address from previous customer
+                  _selectedDeliveryAddress = null;
                 });
                 // Look up party by name to get party ID
                 final parties = await ref.read(partyRepositoryProvider).getAll();

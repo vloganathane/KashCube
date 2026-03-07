@@ -79,6 +79,12 @@ abstract class TransactionRepository {
   /// Get all ledger transactions for a specific party.
   Future<List<Transaction>> getTransactionsByParty(String partyName);
 
+  /// Count transactions linked to a party by ID ([party_id]). P1.2
+  Future<int> countByPartyId(int partyId);
+
+  /// All transactions linked to a party by ID. P1.2
+  Future<List<Transaction>> getByPartyId(int partyId);
+
   /// Get total outstanding lent amount (lent - received_back).
   Future<double> getTotalOutstandingLent();
 

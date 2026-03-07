@@ -150,6 +150,24 @@ class QuoteRepositoryImpl implements QuoteRepository {
 
     return invoice.copyWith(id: invoiceId);
   }
+
+  @override
+  Future<List<Quote>> getByPartyId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'quotes',
+      where: 'customer_party_id = ?',
+      whereArgs: [partyId],
+      orderBy: 'created_at DESC',
+    );
+    final result = <Quote>[];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final items = await _itemsForQuote(db, id);
+      result.add(Quote.fromMap(row, items: items));
+    }
+    return result;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -342,5 +360,25 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       where: 'id = ? AND status = ?',
       whereArgs: [id, InvoiceStatus.draft.dbValue],
     );
+  }
+
+  @override
+  Future<List<Invoice>> getByPartyId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'invoices',
+      where: 'customer_party_id = ?',
+      whereArgs: [partyId],
+      orderBy: 'issue_date DESC',
+    );
+    final result = <Invoice>[];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final itemRows = await db.query('invoice_items',
+          where: 'invoice_id = ?', whereArgs: [id]);
+      final items = itemRows.map(InvoiceItem.fromMap).toList();
+      result.add(Invoice.fromMap(row, items: items));
+    }
+    return result;
   }
 }

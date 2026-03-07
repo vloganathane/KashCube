@@ -797,6 +797,9 @@ class _AddLedgerEntryScreenState
   InterestType _interestType = InterestType.none;
   RepaymentFrequency? _repaymentFrequency;
 
+  /// Party FK — set when user selects from autocomplete.
+  int? _selectedLenderId;
+
   bool get _isEditing => widget.loan != null;
 
   @override
@@ -825,6 +828,7 @@ class _AddLedgerEntryScreenState
       if (loan.notes != null) {
         _notesController.text = loan.notes!;
       }
+      _selectedLenderId = loan.lenderId;
     }
   }
 
@@ -973,6 +977,8 @@ class _AddLedgerEntryScreenState
                   : 'Lender Name *',
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Required' : null,
+              onPartySelected: (party) =>
+                  setState(() => _selectedLenderId = party.id),
             ),
             const SizedBox(height: AppSpacing.base),
 
@@ -1213,6 +1219,7 @@ class _AddLedgerEntryScreenState
         emiAmount: emiAmount,
         totalEmis: totalEmis,
         notes: notes,
+        lenderId: _selectedLenderId ?? existing.lenderId,
       );
       await ref.read(activeLoansProvider.notifier).updateLoan(updated);
     } else {
@@ -1230,6 +1237,7 @@ class _AddLedgerEntryScreenState
         emiAmount: emiAmount,
         totalEmis: totalEmis,
         notes: notes,
+        lenderId: _selectedLenderId,
       );
       await ref.read(activeLoansProvider.notifier).addLoan(loan);
     }

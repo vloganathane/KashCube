@@ -60,6 +60,9 @@ abstract class CreditRepository {
   /// Distinct party names for autocomplete.
   Future<List<String>> getPartyNames();
 
+  /// All non-deleted credits linked to a party by ID ([customerId]). P1.2
+  Future<List<Credit>> getByCustomerId(int partyId);
+
   /// Insert a new credit entry. Returns the row ID.
   Future<int> insert(Credit credit);
 

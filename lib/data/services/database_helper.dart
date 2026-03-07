@@ -1992,6 +1992,19 @@ class DatabaseHelper {
         'description': 'Add business_id to credits, loans, party_reminders for personal/business separation',
       });
     }
+
+    if (oldVersion < 45) {
+      // Add party_id FK to scheduled_payments for Party 360° aggregation
+      await db.execute(
+          'ALTER TABLE scheduled_payments ADD COLUMN party_id INTEGER REFERENCES parties(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)');
+
+      await db.insert('schema_version', {
+        'version': 45,
+        'description': 'Add party_id FK to scheduled_payments for Party 360° aggregation',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

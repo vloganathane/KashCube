@@ -30,6 +30,7 @@ import '../../../data/models/party_reminder.dart';
 import '../../providers/party_reminder_provider.dart';
 import '../../../data/models/credit.dart';
 import '../../providers/credit_provider.dart';
+import 'party_360_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Helper Functions
@@ -280,6 +281,17 @@ class _PartyDetailScreenState extends ConsumerState<PartyDetailScreen>
           ],
         ),
         actions: [
+          if (widget.party.id != null)
+            IconButton(
+              icon: const Icon(Icons.analytics_outlined),
+              tooltip: '360° View',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => Party360Screen(party: widget.party),
+                ),
+              ),
+            ),
           IconButton(
             icon: const Icon(Icons.qr_code_2_outlined),
             tooltip: 'Share QR',

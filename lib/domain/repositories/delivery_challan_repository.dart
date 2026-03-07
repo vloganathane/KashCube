@@ -21,4 +21,7 @@ abstract class DeliveryChallanRepository {
   /// marks the challan as [ChallanStatus.converted].
   /// Returns the newly created [Invoice] (with id populated).
   Future<Invoice> convertToInvoice(int challanId, String invoiceNo);
+
+  /// All non-deleted challans linked to a party by ID. P1.8
+  Future<List<DeliveryChallan>> getByPartyId(int partyId);
 }

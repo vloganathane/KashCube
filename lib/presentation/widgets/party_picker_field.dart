@@ -5,7 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/kash_cube_colors.dart';
 import '../../core/utils/contacts_helper.dart';
+import '../../core/utils/currency_formatter.dart';
+import '../../data/models/credit.dart';
 import '../../data/models/party.dart';
+import '../providers/credit_provider.dart';
+import '../providers/loan_provider.dart';
 import '../providers/party_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -77,6 +81,27 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
     final partiesAsync = ref.watch(partiesProvider);
     final allParties = partiesAsync.valueOrNull ?? [];
 
+    // Build outstanding map from active credits and loans for subtitle hints.
+    final credits = ref.watch(activeCreditsProvider).valueOrNull ?? [];
+    final loans   = ref.watch(activeLoansProvider).valueOrNull ?? [];
+    final outstandingMap = <String, double>{};
+    for (final c in credits) {
+      if (!c.isCleared) {
+        final key = c.customerName.toLowerCase().trim();
+        outstandingMap[key] = (outstandingMap[key] ?? 0) +
+            (c.direction == CreditDirection.given
+                ? c.pendingAmount
+                : -c.pendingAmount);
+      }
+    }
+    for (final l in loans) {
+      if (!l.isCleared) {
+        final key = l.lenderName.toLowerCase().trim();
+        outstandingMap[key] = (outstandingMap[key] ?? 0) +
+            (l.isLent ? l.pendingAmount : -l.pendingAmount);
+      }
+    }
+
     return Autocomplete<Party>(
       optionsBuilder: (TextEditingValue textEditingValue) {
         if (textEditingValue.text.isEmpty) {
@@ -139,6 +164,19 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
                 itemCount: options.length,
                 itemBuilder: (context, index) {
                   final party = options.elementAt(index);
+                  final key = party.name.toLowerCase().trim();
+                  final outstanding = outstandingMap[key];
+                  final hasBalance =
+                      outstanding != null && outstanding.abs() > 0.01;
+                  final balanceLabel = hasBalance
+                      ? (outstanding >= 0
+                          ? 'Owes ${CurrencyFormatter.format(outstanding)}'
+                          : 'You owe ${CurrencyFormatter.format(-outstanding)}')
+                      : null;
+                  final kColors = Theme.of(context).extension<KashCubeColors>();
+                  final balanceColor = hasBalance
+                      ? (outstanding >= 0 ? kColors?.income : kColors?.expense)
+                      : null;
                   return ListTile(
                     dense: true,
                     leading: CircleAvatar(
@@ -149,12 +187,27 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
                       ),
                     ),
                     title: Text(party.name),
-                    subtitle: party.phoneNumber != null
-                        ? Text(
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (party.phoneNumber != null)
+                          Text(
                             '+91 ${party.phoneNumber}',
                             style: Theme.of(context).textTheme.labelSmall,
-                          )
-                        : null,
+                          ),
+                        if (balanceLabel != null)
+                          Text(
+                            balanceLabel,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                    color: balanceColor,
+                                    fontWeight: FontWeight.w600),
+                          ),
+                      ],
+                    ),
                     onTap: () => onSelected(party),
                   );
                 },

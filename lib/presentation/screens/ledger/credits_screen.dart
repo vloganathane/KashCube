@@ -523,6 +523,9 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
   DateTime? _dueDate;
   bool _saving = false;
 
+  /// Party FK — set when user selects from autocomplete.
+  int? _selectedCustomerId;
+
   bool get _isEditing => widget.credit != null;
 
   @override
@@ -537,6 +540,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
       _creditDate = c.creditDate;
       _dueDate = c.dueDate;
       _notesCtrl.text = c.notes ?? '';
+      _selectedCustomerId = c.customerId;
     }
   }
 
@@ -696,8 +700,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
                   ? 'Borrower Name *'
                   : 'Lender Name *',
               validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,
-            ),
+                  v == null || v.trim().isEmpty ? 'Required' : null,              onPartySelected: (party) =>
+                  setState(() => _selectedCustomerId = party.id),            ),
             const SizedBox(height: AppSpacing.base),
 
             // ── Phone ─────────────────────────────────────────────────────
@@ -816,6 +820,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           dueDate: _dueDate,
           notes: notes,
           updatedAt: DateTime.now(),
+          customerId: _selectedCustomerId ?? widget.credit!.customerId,
         );
         await ref.read(activeCreditsProvider.notifier).updateCredit(updated);
       } else {
@@ -828,6 +833,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           creditDate: _creditDate,
           dueDate: _dueDate,
           notes: notes,
+          customerId: _selectedCustomerId,
           businessId: null, // personal by default; business context set elsewhere
         );
         await ref.read(activeCreditsProvider.notifier).addCredit(credit);

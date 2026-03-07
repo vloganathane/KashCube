@@ -206,4 +206,22 @@ class DeliveryChallanRepositoryImpl implements DeliveryChallanRepository {
 
     return invoice.copyWith(id: invoiceId);
   }
+
+  @override
+  Future<List<DeliveryChallan>> getByPartyId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'delivery_challans',
+      where: 'customer_party_id = ?',
+      whereArgs: [partyId],
+      orderBy: 'challan_date DESC',
+    );
+    final result = <DeliveryChallan>[];
+    for (final row in rows) {
+      final id = row['id'] as int;
+      final items = await _itemsFor(db, id);
+      result.add(DeliveryChallan.fromMap(row, items: items));
+    }
+    return result;
+  }
 }

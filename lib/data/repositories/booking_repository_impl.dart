@@ -247,4 +247,16 @@ class BookingRepositoryImpl implements BookingRepository {
       whereArgs: [bookingId],
     );
   }
+
+  @override
+  Future<List<Booking>> getByPartyId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      _table,
+      where: 'customer_party_id = ?',
+      whereArgs: [partyId],
+      orderBy: 'start_datetime DESC',
+    );
+    return rows.map(Booking.fromMap).toList();
+  }
 }

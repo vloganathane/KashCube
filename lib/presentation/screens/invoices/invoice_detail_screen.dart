@@ -8,11 +8,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/lifecycle_classifier.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../widgets/lifecycle_tag.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/database_helper.dart';
@@ -1146,6 +1148,14 @@ class _HeaderCard extends StatelessWidget {
               _InfoRow(
                   label: 'Due',
                   value: DateFormatter.format(invoice.dueDate!)),
+            const SizedBox(height: AppSpacing.xs),
+            // Lifecycle stage tag — LC4
+            LifecycleTag(
+              info: LifecycleClassifier.forInvoice(
+                invoice,
+                lastReminderAt: invoice.reminderSentAt,
+              ),
+            ),
           ],
         ),
       ),

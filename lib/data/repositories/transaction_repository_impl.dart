@@ -523,4 +523,27 @@ class TransactionRepositoryImpl implements TransactionRepository {
         ),
     };
   }
+
+  @override
+  Future<int> countByPartyId(int partyId) async {
+    final db = await _db;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS cnt FROM transactions '
+      'WHERE party_id = ? AND deleted_at IS NULL',
+      [partyId],
+    );
+    return (result.first['cnt'] as int? ?? 0);
+  }
+
+  @override
+  Future<List<Transaction>> getByPartyId(int partyId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'transactions',
+      where: 'party_id = ? AND deleted_at IS NULL',
+      whereArgs: [partyId],
+      orderBy: 'date DESC',
+    );
+    return rows.map(Transaction.fromMap).toList();
+  }
 }

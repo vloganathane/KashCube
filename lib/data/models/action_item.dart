@@ -8,12 +8,15 @@
 
 import 'dart:math' as math;
 
+import 'lifecycle_info.dart';
+
 /// Source type of the action item.
 enum ActionItemType {
   invoice,
-  dues,   // credit (udhar)
-  bill,   // scheduled payment
+  dues,        // credit (udhar)
+  bill,        // scheduled payment
   loanEmi,
+  leakingChain, // accepted quote / dispatched challan / completed booking with no invoice (E5)
 }
 
 /// Whether this is money the user should collect or pay.
@@ -44,6 +47,7 @@ class ActionItem {
     required this.amount,
     this.dueDate,
     required this.sourceId,
+    this.lifecycleInfo,
   });
 
   final ActionItemType type;
@@ -64,6 +68,9 @@ class ActionItem {
 
   /// Row id in source table.
   final int sourceId;
+
+  /// Computed lifecycle stage and age — attached by [actionCenterProvider].
+  final LifecycleInfo? lifecycleInfo;
 
   // ── Sort score — higher = shown first ──────────────────────────────────────
   //

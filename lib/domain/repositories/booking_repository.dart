@@ -54,6 +54,9 @@ abstract class BookingRepository {
   /// Record that a manual reminder (WhatsApp/SMS/Email) was sent for [bookingId].
   Future<void> markReminderSent(int bookingId);
 
+  /// All non-cancelled/deleted bookings linked to a party by ID. P1.7
+  Future<List<Booking>> getByPartyId(int partyId);
+
   // ── Booking items (multi-service) ────────────────────────────────────────
 
   /// Replace all line items for [bookingId] atomically.

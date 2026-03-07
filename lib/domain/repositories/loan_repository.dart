@@ -77,6 +77,9 @@ abstract class LoanRepository {
   /// Get party-wise summaries for the customer grouping view.
   Future<List<PartyLedgerSummary>> getPartySummaries();
 
+  /// All non-deleted loans linked to a party by ID ([lenderId]). P1.2
+  Future<List<Loan>> getByLenderId(int partyId);
+
   /// Get all loans for a specific party name.
   Future<List<Loan>> getByPartyName(String partyName);
 

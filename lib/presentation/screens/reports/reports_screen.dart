@@ -19,6 +19,7 @@ import '../../providers/report_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bookings/bookings_screen.dart';
 import 'budget_screen.dart';
+import 'cash_flow_screen.dart';
 
 /// Reports screen with monthly P&L, category breakdowns, trends, and top parties.
 class ReportsScreen extends ConsumerStatefulWidget {
@@ -413,6 +414,8 @@ class _ReportsBody extends ConsumerWidget {
           _BookingsOverviewCard(stats: bookingStats),
           const SizedBox(height: AppSpacing.base),
         ],
+        const _CashFlowTimelineCard(),
+        const SizedBox(height: AppSpacing.base),
 if (reportMode == 'business') ...[  
           _GstSummaryCard(pnl: pnl),
           const SizedBox(height: AppSpacing.base),
@@ -3384,6 +3387,66 @@ class _BudgetLegend extends StatelessWidget {
             style: context.textTheme.labelSmall
                 ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Cash Flow Timeline entry card (P2.7)
+// ---------------------------------------------------------------------------
+
+class _CashFlowTimelineCard extends StatelessWidget {
+  const _CashFlowTimelineCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const CashFlowScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(
+                  Icons.timeline_outlined,
+                  color: context.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Cash Flow Timeline',
+                      style: context.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Overdue, upcoming & projected money movement',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: context.colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

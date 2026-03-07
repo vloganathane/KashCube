@@ -229,4 +229,16 @@ class CreditRepositoryImpl implements CreditRepository {
       );
     });
   }
+
+  @override
+  Future<List<Credit>> getByCustomerId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      _table,
+      where: 'customer_id = ? AND deleted_at IS NULL',
+      whereArgs: [partyId],
+      orderBy: 'is_cleared ASC, credit_date DESC',
+    );
+    return rows.map(Credit.fromMap).toList();
+  }
 }

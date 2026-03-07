@@ -507,4 +507,16 @@ class LoanRepositoryImpl implements LoanRepository {
     );
     return rows.map((r) => r['lender_name'] as String).toList();
   }
+
+  @override
+  Future<List<Loan>> getByLenderId(int partyId) async {
+    final db = await _db;
+    final rows = await db.query(
+      'loans',
+      where: 'lender_id = ? AND deleted_at IS NULL',
+      whereArgs: [partyId],
+      orderBy: 'is_cleared ASC, loan_date DESC',
+    );
+    return rows.map(Loan.fromMap).toList();
+  }
 }

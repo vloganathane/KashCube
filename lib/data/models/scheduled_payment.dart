@@ -85,6 +85,7 @@ class ScheduledPayment extends Equatable {
     this.lastPaidDate,
     this.lastGenerated,
     this.partyName,
+    this.partyId,
     this.paymentMethod,
     this.notes,
     this.createdAt,
@@ -134,6 +135,10 @@ class ScheduledPayment extends Equatable {
   final DateTime? lastGenerated;
 
   final String? partyName;
+
+  /// Party FK — links this payment to a Party record for Party 360° aggregation.
+  final int? partyId;
+
   final String? paymentMethod;
   final String? notes;
   final DateTime? createdAt;
@@ -201,6 +206,7 @@ class ScheduledPayment extends Equatable {
         'last_paid_date': lastPaidDate?.toIso8601String(),
         'last_generated': lastGenerated?.toIso8601String(),
         'party_name': partyName,
+        if (partyId != null) 'party_id': partyId,
         'payment_method': paymentMethod,
         'notes': notes,
         'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
@@ -232,6 +238,7 @@ class ScheduledPayment extends Equatable {
             ? DateTime.parse(map['last_generated'] as String)
             : null,
         partyName: map['party_name'] as String?,
+        partyId: map['party_id'] as int?,
         paymentMethod: map['payment_method'] as String?,
         notes: map['notes'] as String?,
         createdAt: map['created_at'] != null
@@ -262,6 +269,7 @@ class ScheduledPayment extends Equatable {
     DateTime? lastPaidDate,
     DateTime? lastGenerated,
     String? partyName,
+    int? partyId,
     String? paymentMethod,
     String? notes,
     DateTime? createdAt,
@@ -285,6 +293,7 @@ class ScheduledPayment extends Equatable {
         lastPaidDate: lastPaidDate ?? this.lastPaidDate,
         lastGenerated: lastGenerated ?? this.lastGenerated,
         partyName: partyName ?? this.partyName,
+        partyId: partyId ?? this.partyId,
         paymentMethod: paymentMethod ?? this.paymentMethod,
         notes: notes ?? this.notes,
         createdAt: createdAt ?? this.createdAt,

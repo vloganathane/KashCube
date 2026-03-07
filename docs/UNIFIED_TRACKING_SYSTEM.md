@@ -1,7 +1,8 @@
 # Unified Tracking & Management System
 
 > **Authored:** 7 March 2026  
-> **Status:** Planning — not yet started  
+> **Updated:** 7 March 2026  
+> **Status:** Phase 1 ✅ · Phase 2 ✅ · Phase 3 ⚠️ (2 partial tasks remaining)  
 > **Scope:** Four complementary pillars that weave KashCube's siloed modules
 > into a single, coherent financial picture per party and across time, backed
 > by a shared Lifecycle Layer used across all pillars.
@@ -689,51 +690,51 @@ Direct:                                 │
 
 ## Implementation Sequence
 
-### Phase 1 — Foundation (Week 1) `~3 days`
+### Phase 1 — Foundation (Week 1) `~3 days` ✅ COMPLETE
 
-| ID | Task | Depends on | Effort |
-|----|------|-----------|--------|
-| P1.1 | `PartyFinancialSummary` model + `compute()` factory | — | 2h |
-| P1.2 | Repository methods: `getByPartyId` on Invoice/Credit/Loan/Txn | — | 3h |
-| P1.3 | `partyFinancialSummaryProvider(int partyId)` | P1.1, P1.2 | 2h |
-| P1.4 | `CashFlowEvent` sealed class | — | 1h |
-| P1.5 | `cashFlowTimelineProvider` | P1.4 | 3h |
-| P1.6 | DB migration v45: add `party_id` column to `scheduled_payments` | — | 1h |
-| P1.7 | `BookingRepository.getByPartyId(int id)` + wire into `partyFinancialSummaryProvider` | P1.1 | 1h |
-| P1.8 | `QuoteRepository.getByPartyId(int id)` + `ChallanRepository.getByPartyId(int id)` | — | 1h |
+| ID | Task | Depends on | Effort | Status |
+|----|------|-----------|--------|--------|
+| P1.1 | `PartyFinancialSummary` model + `compute()` factory | — | 2h | ✅ |
+| P1.2 | Repository methods: `getByPartyId` on Invoice/Credit/Loan/Txn | — | 3h | ✅ |
+| P1.3 | `partyFinancialSummaryProvider(int partyId)` | P1.1, P1.2 | 2h | ✅ |
+| P1.4 | `CashFlowEvent` sealed class | — | 1h | ✅ |
+| P1.5 | `cashFlowTimelineProvider` | P1.4 | 3h | ✅ |
+| P1.6 | DB migration v45: add `party_id` column to `scheduled_payments` | — | 1h | ✅ |
+| P1.7 | `BookingRepository.getByPartyId(int id)` + wire into `partyFinancialSummaryProvider` | P1.1 | 1h | ✅ |
+| P1.8 | `QuoteRepository.getByPartyId(int id)` + `ChallanRepository.getByPartyId(int id)` | — | 1h | ✅ |
 
-### Phase 2 — Core screens (Week 2) `~4 days`
+### Phase 2 — Core screens (Week 2) `~4 days` ✅ COMPLETE
 
-| ID | Task | Depends on | Effort |
-|----|------|-----------|--------|
-| P2.1 | `Party360Screen` – header + summary chips | P1.3 | 4h |
-| P2.2 | `Party360Screen` – unified timeline list | P1.2, P1.3 | 4h |
-| P2.3 | `CashFlowScreen` – full screen with month nav | P1.5 | 5h |
-| P2.4 | Action Center multi-select mode | `actionCenterProvider` | 3h |
-| P2.5 | `BulkReminderService` | P2.4 | 2h |
-| P2.6 | Navigation hooks: Party detail → Party360Screen; tap party name in `_ActionItemTile` → Party360Screen | P2.1 | 2h |
-| P2.7 | Add Cash Flow entry to Reports screen (prominent card → `CashFlowScreen`) | P2.3 | 1h |
-| P2.8 | `BusinessFlowChainBuilder` pure utility (E3) | P1.8 | 2h |
-| P2.9 | `businessFlowChainsProvider` + `leakingChainsProvider` (E2) | P2.8, P1.2, P1.7 | 3h |
-| P2.10 | `FlowChainTile` widget + "Deals" tab in Party360Screen (E4) | P2.1, P2.9 | 3h |
+| ID | Task | Depends on | Effort | Status |
+|----|------|-----------|--------|--------|
+| P2.1 | `Party360Screen` – header + summary chips | P1.3 | 4h | ✅ |
+| P2.2 | `Party360Screen` – unified timeline list | P1.2, P1.3 | 4h | ✅ |
+| P2.3 | `CashFlowScreen` – full screen with month nav | P1.5 | 5h | ✅ |
+| P2.4 | Action Center multi-select mode | `actionCenterProvider` | 3h | ✅ |
+| P2.5 | `BulkReminderService` | P2.4 | 2h | ✅ |
+| P2.6 | Navigation hooks: Party detail → Party360Screen; tap party name in `_ActionItemTile` → Party360Screen | P2.1 | 2h | ✅ |
+| P2.7 | Add Cash Flow entry to Reports screen (prominent card → `CashFlowScreen`) | P2.3 | 1h | ✅ |
+| P2.8 | `BusinessFlowChainBuilder` pure utility (E3) | P1.8 | 2h | ✅ |
+| P2.9 | `businessFlowChainsProvider` + `leakingChainsProvider` (E2) | P2.8, P1.2, P1.7 | 3h | ✅ |
+| P2.10 | `FlowChainTile` widget + "Deals" tab in Party360Screen (E4) | P2.1, P2.9 | 3h | ✅ |
 
-### Phase 3 — Polish, wiring & Lifecycle Layer (Week 3) `~3 days`
+### Phase 3 — Polish, wiring & Lifecycle Layer (Week 3) `~3 days` ⚠️ 1 task partial
 
-| ID | Task | Depends on | Effort |
-|----|------|-----------|--------|
-| P3.1 | Party FK backfill in AddCreditScreen + Loan form | P1.2 | 2h |
-| P3.2 | Party search shows net outstanding in autocomplete | P1.3 | 2h |
-| P3.3 | Consolidated Party Statement PDF | P2.1, P2.2 | 3h |
-| P3.4 | Cash Flow → Reports tab integration | P2.3 | 1h |
-| P3.5 | `LifecycleStage` enum + `LifecycleInfo` value class (LC1) | — | 2h |
-| P3.6 | `LifecycleClassifier` pure utility (LC2) | P3.5 | 3h |
-| P3.7 | `LifecycleTag` widget (LC3) | P3.5 | 2h |
-| P3.8 | Wire `LifecycleTag` into Action Center tiles, InvoiceDetailScreen, FlowChainTile invoice node (LC4) | P3.6, P3.7, P2.10 | 3h |
-| P3.9 | Context-aware action button labels in `_ActionItemTile` (LC5) | P3.6 | 1h |
-| P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (LC6) | P3.6 | 2h |
-| P3.11 | Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain` (E5) | P2.9 | 3h |
-| P3.12 | Reminder event nodes woven into chain display (E6) | P2.10 | 2h |
-| P3.13 | `flutter analyze` + widget tests for all new code | all | 3h |
+| ID | Task | Depends on | Effort | Status |
+|----|------|-----------|--------|--------|
+| P3.1 | Party FK backfill in AddCreditScreen + Loan form | P1.2 | 2h | ✅ |
+| P3.2 | Party search shows net outstanding in autocomplete | P1.3 | 2h | ✅ |
+| P3.3 | Consolidated Party Statement PDF | P2.1, P2.2 | 3h | ✅ |
+| P3.4 | Cash Flow → Reports tab integration | P2.3 | 1h | ✅ |
+| P3.5 | `LifecycleStage` enum + `LifecycleInfo` value class (LC1) | — | 2h | ✅ |
+| P3.6 | `LifecycleClassifier` pure utility (LC2) | P3.5 | 3h | ✅ |
+| P3.7 | `LifecycleTag` widget (LC3) | P3.5 | 2h | ✅ |
+| P3.8 | Wire `LifecycleTag` into Action Center tiles, InvoiceDetailScreen, FlowChainTile invoice node (LC4) | P3.6, P3.7, P2.10 | 3h | ✅ ActionCenter ✅ InvoiceDetail ✅ FlowChainTile ✅ Party360Screen timeline ✅ CashFlowScreen tiles ✅ |
+| P3.9 | Context-aware action button labels in `_ActionItemTile` (LC5) | P3.6 | 1h | ✅ |
+| P3.10 | "Stale Items" filter chip in Action Center + amber border in Party360 timeline (LC6) | P3.6 | 2h | ✅ filter chip ✅ amber left-border in Party360 timeline ✅ |
+| P3.11 | Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain` (E5) | P2.9 | 3h | ✅ |
+| P3.12 | Reminder event nodes woven into chain display (E6) | P2.10 | 2h | ✅ |
+| P3.13 | `flutter analyze` + widget tests for all new code | all | 3h | ⚠️ flutter analyze 0 errors ✅ · widget tests ❌ (not written) |
 
 **Total estimated:** ~71 hours across 3 weeks.
 

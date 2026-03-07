@@ -17,6 +17,8 @@ import '../../data/models/credit.dart';
 import '../../data/models/invoice.dart';
 import '../../data/models/loan.dart';
 import '../../data/models/scheduled_payment.dart';
+import '../../core/utils/lifecycle_classifier.dart';
+import 'business_flow_provider.dart';
 import 'credit_provider.dart';
 import 'invoice_provider.dart';
 import 'loan_provider.dart';
@@ -51,12 +53,13 @@ int _daysOverdue(DateTime? dueDate) {
 /// Items are sorted from most urgent (highest sortScore) first.
 /// Only items due within the next 30 days (or already overdue) are included.
 final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
-  final creditsAsync  = ref.watch(activeCreditsProvider);
-  final loansAsync    = ref.watch(activeLoansProvider);
-  final overdueLoans  = ref.watch(overdueLoansProvider);
-  final billsAsync    = ref.watch(upcomingScheduledProvider);
-  final overdueBills  = ref.watch(overdueScheduledProvider);
-  final invoicesAsync = ref.watch(invoicesProvider);
+  final creditsAsync   = ref.watch(activeCreditsProvider);
+  final loansAsync     = ref.watch(activeLoansProvider);
+  final overdueLoans   = ref.watch(overdueLoansProvider);
+  final billsAsync     = ref.watch(upcomingScheduledProvider);
+  final overdueBills   = ref.watch(overdueScheduledProvider);
+  final invoicesAsync  = ref.watch(invoicesProvider);
+  final leakingAsync   = ref.watch(leakingChainsProvider);
 
   // Wait for all sources
   if (creditsAsync.isLoading ||
@@ -64,7 +67,8 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
       overdueLoans.isLoading ||
       billsAsync.isLoading ||
       overdueBills.isLoading ||
-      invoicesAsync.isLoading) {
+      invoicesAsync.isLoading ||
+      leakingAsync.isLoading) {
     return const AsyncLoading();
   }
 
@@ -96,6 +100,7 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
       amount: c.pendingAmount,
       dueDate: c.dueDate,
       sourceId: c.id ?? 0,
+      lifecycleInfo: LifecycleClassifier.forCredit(c),
     ));
   }
 
@@ -125,6 +130,7 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
       amount: l.pendingAmount,
       dueDate: due,
       sourceId: l.id ?? 0,
+      lifecycleInfo: LifecycleClassifier.forLoan(l),
     ));
   }
 
@@ -151,6 +157,7 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
       amount: b.amount,
       dueDate: due,
       sourceId: b.id ?? 0,
+      lifecycleInfo: LifecycleClassifier.forBill(b),
     ));
   }
 
@@ -174,6 +181,34 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
       amount: inv.balanceDue,
       dueDate: inv.dueDate,
       sourceId: inv.id ?? 0,
+      lifecycleInfo: LifecycleClassifier.forInvoice(
+        inv,
+        lastReminderAt: inv.reminderSentAt,
+      ),
+    ));
+  }
+
+  // ── Leaking Chains (E5) ────────────────────────────────────────────────────
+  // Accepted quotes / dispatched challans / confirmed bookings with no invoice.
+  final leaking = leakingAsync.valueOrNull ?? [];
+  for (final chain in leaking) {
+    final days = chain.daysSinceOrigin;
+    final urgency = days >= 4
+        ? ActionUrgency.overdue
+        : days == 0
+            ? ActionUrgency.dueToday
+            : ActionUrgency.dueThisWeek;
+    items.add(ActionItem(
+      type: ActionItemType.leakingChain,
+      direction: ActionItemDirection.toCollect,
+      urgency: urgency,
+      daysOverdue: days,
+      title: chain.partyName,
+      subtitle: chain.chainTitle,
+      amount: chain.totalValue,
+      dueDate: null,
+      sourceId: chain.partyId, // used to navigate to Party360Screen
+      lifecycleInfo: null,
     ));
   }
 

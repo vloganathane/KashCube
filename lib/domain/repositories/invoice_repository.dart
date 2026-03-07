@@ -13,6 +13,9 @@ abstract class QuoteRepository {
 
   /// Promote a draft quote to [QuoteStatus.sent]. No-op if already past draft.
   Future<void> markSent(int id);
+
+  /// All non-deleted quotes for a specific party (by [customerPartyId]). P1.8
+  Future<List<Quote>> getByPartyId(int partyId);
 }
 
 abstract class InvoiceRepository {
@@ -43,4 +46,7 @@ abstract class InvoiceRepository {
 
   /// Promote a draft invoice to [InvoiceStatus.sent]. No-op if paid/overdue.
   Future<void> markSent(int id);
+
+  /// All non-deleted invoices linked to a party (by [customerPartyId]). P1.2
+  Future<List<Invoice>> getByPartyId(int partyId);
 }

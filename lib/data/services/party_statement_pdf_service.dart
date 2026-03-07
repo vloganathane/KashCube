@@ -158,11 +158,11 @@ class PartyStatementPdfService {
     final doc = pw.Document();
 
     // ── Fonts (use Helvetica built-in — no asset needed) ──────────────────
-    const base   = pw.TextStyle(fontSize: 9);
-    const bold   = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
-    const small  = pw.TextStyle(fontSize: 8, color: PdfColors.grey700);
-    const title  = pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold);
-    const sub    = pw.TextStyle(fontSize: 10, color: PdfColors.grey600);
+    final base   = const pw.TextStyle(fontSize: 9);
+    final bold   = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
+    final small  = const pw.TextStyle(fontSize: 8, color: PdfColors.grey700);
+    final title  = pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold);
+    final sub    = const pw.TextStyle(fontSize: 10, color: PdfColors.grey600);
 
     // ── Colours ────────────────────────────────────────────────────────────
     const primary    = PdfColor.fromInt(0xFF1B5E20); // dark green
@@ -218,7 +218,7 @@ class PartyStatementPdfService {
                       net >= 0
                           ? 'Net Receivable: ₹${_amtFmt.format(net)}'
                           : 'Net Payable: ₹${_amtFmt.format(-net)}',
-                      style: const pw.TextStyle(
+                      style: pw.TextStyle(
                         fontSize: 9,
                         color: PdfColors.white,
                         fontWeight: pw.FontWeight.bold,

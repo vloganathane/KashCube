@@ -14,7 +14,9 @@ import 'package:world_countries/world_countries.dart';
 import '../../core/utils/phone_utils.dart';
 import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
+import '../../data/models/party_address.dart';
 import '../../data/services/pincode_lookup_service.dart';
+import '../providers/party_address_provider.dart';
 import '../providers/settings_provider.dart';
 import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
@@ -424,6 +426,14 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
 
+              // ── Saved Addresses ───────────────────────────────────────
+              if (widget.existing?.id != null)
+                _PartyAddressesSection(
+                  partyId: widget.existing!.id!,
+                ),
+              if (widget.existing?.id != null)
+                const SizedBox(height: AppSpacing.sm),
+
               // ── Online Presence ───────────────────────────────────────
               Theme(
                 data: Theme.of(context).copyWith(
@@ -641,6 +651,306 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     );
     widget.onSave(party);
     Navigator.pop(context);
+  }
+}
+
+// ── Party Addresses Section ───────────────────────────────────────────────────
+
+class _PartyAddressesSection extends ConsumerStatefulWidget {
+  const _PartyAddressesSection({required this.partyId});
+
+  final int partyId;
+
+  @override
+  ConsumerState<_PartyAddressesSection> createState() =>
+      _PartyAddressesSectionState();
+}
+
+class _PartyAddressesSectionState
+    extends ConsumerState<_PartyAddressesSection> {
+  Future<void> _showAddressDialog({PartyAddress? editing}) async {
+    final labelCtrl =
+        TextEditingController(text: editing?.label ?? '');
+    final addrCtrl =
+        TextEditingController(text: editing?.address ?? '');
+    final cityCtrl =
+        TextEditingController(text: editing?.city ?? '');
+    final stateCtrl =
+        TextEditingController(text: editing?.state ?? '');
+    final pincodeCtrl =
+        TextEditingController(text: editing?.pincode ?? '');
+    final gstinCtrl =
+        TextEditingController(text: editing?.gstin ?? '');
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(editing == null ? 'Add Address' : 'Edit Address'),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: labelCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Label *',
+                  hintText: 'e.g. Head Office, Warehouse',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: addrCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Street / Area',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 2,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: cityCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        border: OutlineInputBorder(),
+                      ),
+                      textCapitalization: TextCapitalization.words,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: pincodeCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'PIN Code',
+                        border: OutlineInputBorder(),
+                        counterText: '',
+                      ),
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              IndianStateDropdown(controller: stateCtrl),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: gstinCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'GSTIN (optional)',
+                  hintText: 'Location-specific GSTIN',
+                  border: OutlineInputBorder(),
+                  counterText: '',
+                ),
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 15,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final label = labelCtrl.text.trim();
+              if (label.isEmpty) return;
+              final repo = ref.read(partyAddressRepositoryProvider);
+              if (editing == null) {
+                await repo.insert(PartyAddress(
+                  partyId: widget.partyId,
+                  label: label,
+                  address: addrCtrl.text.trim().isEmpty
+                      ? null
+                      : addrCtrl.text.trim(),
+                  city: cityCtrl.text.trim().isEmpty
+                      ? null
+                      : cityCtrl.text.trim(),
+                  state: stateCtrl.text.trim().isEmpty
+                      ? null
+                      : stateCtrl.text.trim(),
+                  pincode: pincodeCtrl.text.trim().isEmpty
+                      ? null
+                      : pincodeCtrl.text.trim(),
+                  gstin: gstinCtrl.text.trim().isEmpty
+                      ? null
+                      : gstinCtrl.text.trim(),
+                  createdAt: DateTime.now(),
+                ));
+              } else {
+                await repo.update(editing.copyWith(
+                  label: label,
+                  address: addrCtrl.text.trim().isEmpty
+                      ? null
+                      : addrCtrl.text.trim(),
+                  city: cityCtrl.text.trim().isEmpty
+                      ? null
+                      : cityCtrl.text.trim(),
+                  state: stateCtrl.text.trim().isEmpty
+                      ? null
+                      : stateCtrl.text.trim(),
+                  pincode: pincodeCtrl.text.trim().isEmpty
+                      ? null
+                      : pincodeCtrl.text.trim(),
+                  gstin: gstinCtrl.text.trim().isEmpty
+                      ? null
+                      : gstinCtrl.text.trim(),
+                ));
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+              ref.invalidate(partyAddressesProvider(widget.partyId));
+            },
+            child: Text(editing == null ? 'Add' : 'Save'),
+          ),
+        ],
+      ),
+    );
+    labelCtrl.dispose();
+    addrCtrl.dispose();
+    cityCtrl.dispose();
+    stateCtrl.dispose();
+    pincodeCtrl.dispose();
+    gstinCtrl.dispose();
+  }
+
+  Future<void> _deleteAddress(PartyAddress addr) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Address'),
+        content: Text('Delete "${addr.label}"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(partyAddressRepositoryProvider).delete(addr.id!);
+    ref.invalidate(partyAddressesProvider(widget.partyId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncAddrs = ref.watch(partyAddressesProvider(widget.partyId));
+    final cs = Theme.of(context).colorScheme;
+
+    final addresses = asyncAddrs.valueOrNull ?? [];
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: const Icon(Icons.location_on_outlined),
+        title: const Text('Saved Addresses'),
+        subtitle: Text(
+          addresses.isEmpty
+              ? 'Add delivery / branch addresses'
+              : '${addresses.length} address${addresses.length == 1 ? '' : 'es'}',
+          style: const TextStyle(fontSize: 11),
+        ),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        children: [
+          ...addresses.map(
+            (addr) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+              ),
+              leading: Icon(
+                addr.isDefault
+                    ? Icons.home_outlined
+                    : Icons.location_on_outlined,
+                color: addr.isDefault ? cs.primary : cs.onSurfaceVariant,
+              ),
+              title: Row(
+                children: [
+                  Expanded(child: Text(addr.label)),
+                  if (addr.isDefault)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Default',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: cs.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              subtitle: Text(
+                addr.displayLine,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!addr.isDefault)
+                    IconButton(
+                      icon: const Icon(Icons.star_outline, size: 20),
+                      tooltip: 'Set as default',
+                      onPressed: () async {
+                        await ref
+                            .read(partyAddressRepositoryProvider)
+                            .setDefault(widget.partyId, addr.id!);
+                        ref.invalidate(
+                            partyAddressesProvider(widget.partyId));
+                      },
+                    ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: 'Edit',
+                    onPressed: () => _showAddressDialog(editing: addr),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline,
+                        size: 20, color: cs.error),
+                    tooltip: 'Delete',
+                    onPressed: () => _deleteAddress(addr),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // ── Add Address button ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: TextButton.icon(
+              onPressed: () => _showAddressDialog(),
+              icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+              label: const Text('Add Address'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+        ],
+      ),
+    );
   }
 }
 

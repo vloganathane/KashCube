@@ -12,7 +12,7 @@ import '../../providers/booking_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
-import '../parties/party_detail_screen.dart';
+import '../parties/party_360_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Sort and filter enums
@@ -479,7 +479,7 @@ class _PartySummaryTile extends StatelessWidget {
         context,
         MaterialPageRoute(
           builder: (_) =>
-              PartyDetailScreen(party: party, initialTab: 1),
+              Party360Screen(party: party, initialTab: 2),
         ),
       ),
     );

@@ -9,7 +9,7 @@ import '../../providers/party_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 import '../search/search_screen.dart';
-import 'party_detail_screen.dart';
+import 'party_360_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -105,7 +105,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) =>
-                            PartyDetailScreen(party: filtered[i]),
+                            Party360Screen(party: filtered[i]),
                       ),
                     ).then((_) => ref.read(partiesProvider.notifier).load()),
                     onEdit: () => _showAddEditSheet(context,

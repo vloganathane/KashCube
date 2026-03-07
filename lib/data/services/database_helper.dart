@@ -2005,6 +2005,71 @@ class DatabaseHelper {
         'description': 'Add party_id FK to scheduled_payments for Party 360° aggregation',
       });
     }
+
+    if (oldVersion < 46) {
+      // ── party_addresses — multiple named addresses per party ──────────────
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS party_addresses (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          party_id    INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+          label       TEXT    NOT NULL DEFAULT 'Address',
+          address     TEXT,
+          city        TEXT,
+          state       TEXT,
+          pincode     TEXT,
+          country     TEXT DEFAULT 'India',
+          gstin       TEXT,
+          is_default  INTEGER NOT NULL DEFAULT 0,
+          created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_party_addresses_party ON party_addresses(party_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_party_addresses_default ON party_addresses(party_id, is_default)',
+      );
+
+      // ── Delivery address snapshot columns on delivery_challans ────────────
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN delivery_address TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN delivery_city TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN delivery_state TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN delivery_pincode TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN delivery_gstin TEXT',
+      );
+
+      // ── Delivery address snapshot columns on invoices ─────────────────────
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN delivery_address TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN delivery_city TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN delivery_state TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN delivery_pincode TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN delivery_gstin TEXT',
+      );
+
+      await db.insert('schema_version', {
+        'version': 46,
+        'description':
+            'Add party_addresses table; delivery address snapshot columns on delivery_challans and invoices',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

@@ -14,6 +14,7 @@ import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/models/party.dart';
+import '../../../data/models/party_address.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/delivery_challan_pdf_service.dart';
 import '../../../data/services/fiscal_year_service.dart';
@@ -22,9 +23,11 @@ import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/party_address_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
 import 'item_catalog_screen.dart';
 
@@ -85,6 +88,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   late final TextEditingController _custGstinCtrl;
   late final TextEditingController _placeOfSupplyCtrl;
   bool _isSaving = false;
+  // Delivery address snapshot (null = no delivery address)
+  PartyAddress? _selectedDeliveryAddress;
 
   @override
   void initState() {
@@ -220,6 +225,21 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _freightCtrl.text = invoice.freightAmt > 0 ? invoice.freightAmt.toStringAsFixed(2) : '';
       _insuranceCtrl.text = invoice.insuranceAmt > 0 ? invoice.insuranceAmt.toStringAsFixed(2) : '';
       _packingCtrl.text = invoice.packingAmt > 0 ? invoice.packingAmt.toStringAsFixed(2) : '';
+      // Restore delivery address snapshot from existing invoice
+      if (invoice.deliveryAddress != null ||
+          invoice.deliveryCity != null ||
+          invoice.deliveryState != null) {
+        _selectedDeliveryAddress = PartyAddress(
+          partyId: invoice.customerPartyId ?? 0,
+          label: 'Delivery Address',
+          address: invoice.deliveryAddress,
+          city: invoice.deliveryCity,
+          state: invoice.deliveryState,
+          pincode: invoice.deliveryPincode,
+          gstin: invoice.deliveryGstin,
+          createdAt: DateTime.now(),
+        );
+      }
       _items.clear();
       _items.addAll(invoice.items.map(
         (ii) => _LineItem(
@@ -261,6 +281,21 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _custGstinCtrl.text = challan.customerGstin ?? '';
       _placeOfSupplyCtrl.text = challan.placeOfSupply ?? '';
       _notesController.text = challan.notes ?? '';
+      // Restore delivery address snapshot from existing challan
+      if (challan.deliveryAddress != null ||
+          challan.deliveryCity != null ||
+          challan.deliveryState != null) {
+        _selectedDeliveryAddress = PartyAddress(
+          partyId: challan.customerPartyId ?? 0,
+          label: 'Delivery Address',
+          address: challan.deliveryAddress,
+          city: challan.deliveryCity,
+          state: challan.deliveryState,
+          pincode: challan.deliveryPincode,
+          gstin: challan.deliveryGstin,
+          createdAt: DateTime.now(),
+        );
+      }
       _items.clear();
       _items.addAll(challan.items.map(
         (ci) => _LineItem(
@@ -521,6 +556,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
+      deliveryAddress: _selectedDeliveryAddress?.address,
+      deliveryCity: _selectedDeliveryAddress?.city,
+      deliveryState: _selectedDeliveryAddress?.state,
+      deliveryPincode: _selectedDeliveryAddress?.pincode,
+      deliveryGstin: _selectedDeliveryAddress?.gstin,
       items: _invoiceItems,
       createdAt: _existingInvoice?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
@@ -604,6 +644,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       placeOfSupply: _placeOfSupplyCtrl.text.trim().isEmpty
           ? null
           : _placeOfSupplyCtrl.text.trim(),
+      deliveryAddress: _selectedDeliveryAddress?.address,
+      deliveryCity: _selectedDeliveryAddress?.city,
+      deliveryState: _selectedDeliveryAddress?.state,
+      deliveryPincode: _selectedDeliveryAddress?.pincode,
+      deliveryGstin: _selectedDeliveryAddress?.gstin,
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
@@ -1275,10 +1320,44 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   setState(() {
                     _customerPartyId = party.id;
                   });
+                  // Auto-populate delivery address from party's default address
+                  if (party.id != null && widget.docType != DocumentType.quote) {
+                    final addresses = await ref
+                        .read(partyAddressRepositoryProvider)
+                        .getByPartyId(party.id!);
+                    final defaultAddr = addresses.where((a) => a.isDefault).firstOrNull ??
+                        (addresses.isNotEmpty ? addresses.first : null);
+                    if (mounted && defaultAddr != null) {
+                      setState(() => _selectedDeliveryAddress = defaultAddr);
+                    }
+                  }
                 }
               },
             ),
             const SizedBox(height: AppSpacing.base),
+
+            // Delivery Address (Invoice + DC only)
+            if (widget.docType != DocumentType.quote) ...[
+              _DeliveryAddressTile(
+                selectedAddress: _selectedDeliveryAddress,
+                partyId: _customerPartyId,
+                onTap: () async {
+                  await showDeliveryAddressPicker(
+                    context: context,
+                    partyId: _customerPartyId,
+                    current: _selectedDeliveryAddress,
+                    onSelected: (addr) {
+                      if (mounted) {
+                        setState(() => _selectedDeliveryAddress = addr);
+                      }
+                    },
+                  );
+                },
+                onClear: () =>
+                    setState(() => _selectedDeliveryAddress = null),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
 
             // Business selector
             Consumer(
@@ -2149,6 +2228,96 @@ class _SectionHeader extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
             fontWeight: FontWeight.w600,
           ),
+    );
+  }
+}
+
+// ── Delivery Address Tile ─────────────────────────────────────────────────────
+
+class _DeliveryAddressTile extends StatelessWidget {
+  const _DeliveryAddressTile({
+    required this.selectedAddress,
+    required this.partyId,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final PartyAddress? selectedAddress;
+  final int? partyId;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasAddress = selectedAddress != null;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: hasAddress ? cs.primary.withValues(alpha: 0.6) : cs.outline,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          color: hasAddress
+              ? cs.primaryContainer.withValues(alpha: 0.12)
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              hasAddress
+                  ? Icons.local_shipping_outlined
+                  : Icons.add_location_alt_outlined,
+              color: hasAddress ? cs.primary : cs.onSurfaceVariant,
+              size: 20,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: hasAddress
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Delivery: ${selectedAddress!.label}',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                        if (selectedAddress!.displayLine.isNotEmpty)
+                          Text(
+                            selectedAddress!.displayLine,
+                            style: Theme.of(context).textTheme.bodySmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    )
+                  : Text(
+                      'Add delivery address (optional)',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+            ),
+            if (hasAddress)
+              IconButton(
+                icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
+                onPressed: onClear,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              )
+            else
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+          ],
+        ),
+      ),
     );
   }
 }

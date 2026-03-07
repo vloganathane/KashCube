@@ -1,232 +1,193 @@
 # Kash Cube - Progress Report
-**Date:** 27 February 2026  
-**Current Phase:** Week 21-22 (Billing & Invoicing) — ✅ **COMPLETE**
+**Date:** 7 March 2026  
+**Current Phase:** Unified Tracking System — All 3 Phases ✅ COMPLETE
 
 ---
 
 ## Executive Summary
 
-**Week 21-22 (Business Mode — Billing & Invoicing) is COMPLETE!** All major features implemented and tested:
-- ✅ Item catalog with 6 categories
-- ✅ Quote builder and invoice generation
-- ✅ Automatic transaction creation on invoice payment
-- ✅ GST breakdown in PDFs
-- ✅ Search & filtering for invoices/quotes
-- ✅ WhatsApp/SMS/Email sharing
+The app has grown dramatically since the last report (27 Feb). Since then, two
+full implementation plans have landed:
 
-**Database:** v18 (stable)  
-**Flutter Analyze:** 0 errors, 0 warnings  
-**App Status:** Production-ready for billing features
+1. **March/April 2026 Plan (Tracks A + B + Phase 2)** — Fiscal Year
+   Management and Storage/Disaster Recovery — **100% complete** (commits
+   `d0a3eb6` → `5f4d00e`).
+2. **Unified Tracking System (Pillars A–D + Shared Lifecycle Layer)** — Party
+   360° View, Cash Flow Timeline, Bulk Actions, Business Flow Tracker,
+   LifecycleTag — **Phases 1 & 2 complete, Phase 3 complete except widget
+   tests** (commit `2182d68`).
 
----
-
-## Completed This Session (27 Feb 2026)
-
-### 1. Partial Payment Enhancements
-- [x] Editable amount field in payment method picker
-- [x] Material Design TextField with prefixText (₹ symbol)
-- [x] Provider invalidation for real-time invoice status updates
-- [x] Payment history card showing all linked transactions
-- [x] "View Transactions" snackbar button navigation
-
-### 2. Search & Date Filter ing
-- [x] Search by customer name or invoice/quote number
-- [x] Date range filters: Today, This Week, This Month, Custom
-- [x] Applied to BOTH Invoices and Quotes tabs
-- [x] Real-time filtering with filteredInvoicesProvider and filteredQuotesProvider
-
-### 3. UI Polish
-- [x] Fixed payment picker overflow (SingleChildScrollView)
-- [x] Consistent Material Design styling across all text fields
-- [x] Standardized filter icon (Icons.tune) across all screens
-- [x] Rupee symbol baseline alignment fixed
+**Database:** v45 (stable)  
+**Flutter Analyze:** 21 issues — **3 actual errors** in `party_statement_pdf_service.dart` (const-eval type), 2 warnings, 16 info-level hints. Needs a fix pass.  
+**App Status:** Feature-rich, approaching beta readiness. Core UX is solid.
 
 ---
 
-## Week 21-22 Achievement Summary
+## What Shipped Since 27 Feb 2026
 
-### ✅ Completed Features (79 hours estimated, 79 hours delivered)
+### March/April 2026 Plan — ALL COMPLETE
 
-**Item Catalog:**
-- 6 category types (Product, Service, Material, Labor, Equipment, Other)
-- Auto-SKU generation (PROD-001 format)
-- Smart sorting: favorites → recently used → most used → alphabetical
-- Usage tracking, favorites toggle
+#### Track A — Fiscal Year Management
+- [x] DB schema: 7 FY settings keys added (`fiscal_year_start_month`, `invoice_no_format`, `auto_reset_invoice_no`, etc.)
+- [x] `FiscalYearService` — `currentFiscalYear`, `getFYLabel()`, `isApproachingYearEnd()`, `isResetDue()`, `nextInvoiceNo()`
+- [x] `InvoiceNumberService` fully refactored — FY-aware format (`INV-25-26-042`), auto-resets on 1 April
+- [x] FY quick filter in Reports screen — `[This FY ●]  [Last FY]  [Custom]` chip row
+- [x] Year-end warning notifications (7d, last day, next day triggers)
+- [x] Home screen dismissible `MaterialBanner` — shown from 25 March until FY closed
 
-**Quote & Invoice Builder:**
-- Customer picker with party autocomplete
-- Business selector for multi-business support
-- Line items with catalog integration
-- Real-time calculations (subtotal, tax, discount, total)
-- Auto-numbering (INV-YYYY-NNN, QUO-YYYY-NNN)
-- Quote → Invoice conversion (one tap)
+#### Track B — Storage & Disaster Recovery
+- [x] WAL mode + daily integrity check + rolling snapshot (`kash_cube_prev.db`)
+- [x] `android/app/src/main/res/xml/data_extraction_rules.xml` — exclude-only Android backup strategy
+- [x] `PdfCacheManager` — ephemeral PDFs with FY-prefixed filenames, auto-purge >24h
+- [x] `StorageHealthScreen` — per-FY usage bar, image bar, "Back Up Now", "Clear cache"
+- [x] Image compression on import — 800×600, quality 70, hard cap 150 KB
+- [x] DB `VACUUM` on 30-day schedule via background Isolate
+- [x] Encrypted `.kashcube` export/import — AES-256-GCM + PBKDF2 (generation + restore, 5-attempt lockout)
+- [x] Onboarding backup nudge (after 5 transactions, monthly reminder)
 
-**Automatic Transaction Creation:**
-- DB v18: linked_invoice_id, linked_booking_id, business_id columns
-- InvoiceRepositoryImpl.markAsPaid() creates transaction atomically
-- Quick payment method picker (remembers last method per customer)
-- Partial payment support with paid_amount tracking
-- Payment history tracking (_PaymentHistoryCard)
-- Bidirectional links (transaction ↔ invoice)
-- Lock paid invoices from editing
-- Transaction deletion warnings
+#### Phase 2 — Year-End Closing Wizard
+- [x] 3-step wizard UI
+- [x] FY archiving to `archive_FY{YYYY}.db`
+- [x] Backup prompt in wizard Step 3
+- [x] `backup_rules.xml` updated to include archive DBs
 
-**PDF Generation & Sharing:**
-- Invoice PDF with GST breakdown (CGST + SGST)
-- Quote PDF generation
-- Share via WhatsApp/SMS/Email (OS share sheet)
-- PDF preview before sharing
+---
 
-**List Management:**
-- Status filters (All, Draft, Sent, Paid, Overdue, Partial)
-- Search by customer name or invoice/quote number
-- Date range filtering (Today/Week/Month/Custom)
-- Applies to both Invoices and Quotes tabs
+### Unified Tracking System — COMPLETE (Phase 3 tests pending)
+
+#### Pillar A — Party 360° View
+- [x] `PartyFinancialSummary` model with `compute()` factory
+- [x] `partyFinancialSummaryProvider(partyId)` — parallel SQLite queries
+- [x] `Party360Screen` — net outstanding chip, per-module summary rows  
+- [x] `Party360Screen` unified timeline — all invoices, dues, loans, transactions, bookings in one list
+- [x] "Deals" tab — `FlowChainTile` per business chain
+- [x] Navigation: party name tap in Action Center → `Party360Screen`
+- [x] Party search autocomplete shows net outstanding balance
+
+#### Pillar B — Cash Flow Timeline
+- [x] `CashFlowEvent` sealed class (`RecordedEvent`, `OverdueEvent`, `UpcomingEvent`)
+- [x] `cashFlowTimelineProvider` — merges 9 sources, 90-day window
+- [x] `CashFlowScreen` — month navigator, PAST/TODAY/UPCOMING dividers, filter chips, tap-to-detail
+- [x] Reports screen prominent card → `CashFlowScreen`
+
+#### Pillar C — Bulk Actions
+- [x] Multi-select mode in `ActionCenterScreen` (long-press or AppBar toggle)
+- [x] `BulkReminderService` — sequential WhatsApp deep-link per item, SMS fallback
+- [x] Consolidated Party Statement PDF — `PartyStatementPdfService`
+
+#### Pillar D — Business Flow Tracker
+- [x] `BusinessFlowChain` model (4 chain types: Quote, Challan, Booking, Direct Invoice)
+- [x] `BusinessFlowChainBuilder` — pure Dart, FK-based assembly (no DB migration needed)
+- [x] `businessFlowChainsProvider(partyId)` + `leakingChainsProvider`
+- [x] `FlowChainTile` widget with reminder event nodes woven in
+- [x] Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain`, dedicated "Leaking" section
+
+#### Shared Lifecycle Layer
+- [x] `LifecycleStage` enum + `LifecycleInfo` value class
+- [x] `LifecycleClassifier` — pure Dart, 5 type-specific classifiers
+- [x] `LifecycleTag` widget — colour-coded `[ SENT · 14d ]` pill
+- [x] Wired into: Action Center tiles, `InvoiceDetailScreen`, `FlowChainTile`, `Party360Screen` timeline, `CashFlowScreen` tiles
+- [x] Context-aware action button labels (Send Reminder / Follow Up / Collect Now / Record Balance)
+- [x] "Stale Items" filter chip (items with `daysInStage > 7`) + amber left-border in Party360
+
+#### Other work shipped in same period
+- [x] Party Document Ledger — Options A, B, C + outstanding balance
+- [x] Contact QR deep link + Play Store install referrer
+- [x] Delivery Challan e-Way Bill support + upload how-to card
+- [x] Multi-item Bookings (3D-1 → 3D-3: data layer, form UI, detail/payment/invoice seam)
+- [x] Action Center + WorkManager daily overdue notification (F4)
+- [x] Dues/informal credit improvements (G1-G4 gap closure)
+- [x] `getByPartyId` on Quote, Challan, Booking, Invoice, Credit, Loan repos
 
 ---
 
 ## Database Status
 
-**Current Version:** 18
+**Current Version:** 45
 
-**Schema Highlights:**
-- `transactions.linked_invoice_id` — Links transactions to invoices
-- `transactions.linked_booking_id` — Links transactions to bookings
-- `transactions.business_id` — Multi-business accounting
-- `invoices.paid_at` — Payment timestamp
-- `invoices.payment_method` — Payment method tracking
-- `invoices.paid_amount` — Partial payment tracking
-
-**Indexes:**
-- `idx_transactions_invoice` on linked_invoice_id
-- `idx_transactions_booking` on linked_booking_id
-- `idx_transactions_business` on business_id
+**Notable schema additions since v18:**
+- `scheduled_payments.party_id` (v45) — wires bills into Party 360°
+- FY settings keys (fiscal_year_start_month, invoice_no_format, etc.)
+- `transactions.linked_booking_id`, `transactions.business_id` (earlier versions)
+- WAL mode, daily snapshot, 30-day VACUUM
 
 ---
 
-## Code Quality Metrics
+## Code Quality
 
-**Flutter Analyze:** ✅ No issues found  
-**Unit Tests:** Core models and repositories covered  
-**Widget Tests:** Key screens tested  
-**Integration Tests:** Invoice payment flow validated  
+**Flutter Analyze:** 21 issues total
+- **3 errors** — `lib/data/services/party_statement_pdf_service.dart` lines 162, 164, 221: `const_eval_type_bool_num_string` — const expression contains non-bool/num/String operand. **Needs fix before next release.**
+- **2 warnings** — `country_picker_field.dart`: unnecessary null comparison + dead code
+- **1 info** — `indian_state_dropdown.dart`: deprecated `value` → use `initialValue`
+- **15 info** — miscellaneous (unused imports, etc.)
 
-**Technical Debt:**
-- None critical
-- BusinessModeEnabled setting UI not yet implemented (Settings screen needs toggle)
+**Tests:**
+- Unit tests: core models, repositories, SMS parser, formatters — covered
+- Widget tests: most screens tested
+- Unified Tracking System (P3.13): **widget tests not yet written** — only outstanding task from the full Unified Tracking plan
 
 ---
 
-## What's NOT Done (Out of Scope)
+## What's NOT Done (Explicitly Deferred)
 
-As per roadmap, the following are explicitly deferred:
+- ❌ Widget tests for Unified Tracking System screens (P3.13 partial)
+- ❌ Beta preparation / onboarding flow (3-screen setup, permissions gate)
 - ❌ POS quick mode / counter billing → Year 2
-- ❌ Delivery flow / order tracking → Year 2
 - ❌ Stock / inventory management → Year 2
-- ❌ GSTIN validation (regex check only)
-- ❌ e-Invoicing / IRN (requires network calls)
-- ❌ Recurring invoices (ScheduledPayment integration deferred)
+- ❌ e-Invoicing / IRN (requires network calls — will never be built)
+- ❌ Recurring invoice generation (ScheduledPayment integration deferred)
+- ❌ `LifecycleStage` stored in DB — MVP is computed-only; DB-stored variant deferred to Phase 2 (v45+)
+- ❌ Lifecycle stage manual override in InvoiceDetailScreen — deferred
 
 ---
 
-## Next Steps — Roadmap Sequence
+## Next Steps — Priority Order
 
-### Option A: Continue Sequential Roadmap (Recommended)
-**Week 23-24: Party Management Complete**
-- Add phone, email, GSTIN, notes to parties table
-- Rebuild parties screen with full contact details
-- "Pick from Contacts" button (one-shot OS picker)
-- Party detail: unified history (transactions + invoices + bookings)
-- WhatsApp/SMS/Email reminders for credits/loans
-- **Effort:** 40 hours
-- **Why:** Bookings feature (Week 25-27) needs party phone/email for confirmations
+### 1. Fix 3 flutter analyze errors (1–2 hours)
+`party_statement_pdf_service.dart` lines 162, 164, 221 — remove `const` from expressions containing non-primitive operands. Low risk, quick win.
 
-### Option B: Jump to Bookings (Higher Value)
-**Week 25-27: Bookings Feature**
-- Service scheduling for doctors, homestays, cabs, travel agencies
-- List-based UI (no calendar complexity)
-- [Complete & Invoice] one-tap flow
-- Automatic transaction creation (already built!)
-- WhatsApp confirmations and reminders
-- **Effort:** 75 hours (Phase 1-3)
-- **Why:** Higher business value, builds on existing invoice infrastructure
-- **Dependency:** Needs party phone/email from Week 23-24
+### 2. Write widget tests for Unified Tracking screens (~3 hours)
+Covers `Party360Screen`, `CashFlowScreen`, `ActionCenterScreen` multi-select, `FlowChainTile`. Completes P3.13 and closes the Unified Tracking plan.
 
-### Option C: Beta Preparation (User-Facing)
-**Week 11: Beta Preparation**
-- 3-screen setup flow (Welcome → Permissions → Profile)
-- Wire SMS + notification permission dialogs
-- Setup completion logic (first-launch gate)
-- Crash logging and feedback system
-- Play Store Beta track preparation
-- **Effort:** 45 hours
-- **Why:** Start getting real users testing billing features
+### 3. Beta Preparation (Week 11 from roadmap, ~45 hours)
+- 3-screen first-launch flow (Welcome → SMS Permission → Profile)
+- Permission gates wired properly
+- Feedback button (email intent, no network)
+- Play Store Internal Test track
+- **Why now:** All major features are in. Real users will catch edge cases faster than manual testing.
+
+### 4. Party Management Polish (Week 23-24, ~20 hours remaining)
+`Party360Screen` exists and is powerful. Remaining polish:
+- Party FK backfill for existing credits/loans entered as free text (P3.1 partially done)
+- One-shot OS contact picker for phone/email on party form
+- WhatsApp/SMS reminder templates per party
+
+### 5. Bookings polish & calendar view (optional)
+Core bookings are complete (multi-item, PDF, payment). A calendar view (month grid or week strip) would appeal to doctors/homestays. Low priority — list view is functional.
 
 ---
 
-## Recommendation: Week 23-24 → Party Management
+## Thoughts on the Current State
 
-**Rationale:**
-1. **Quick win:** 40 hours to complete (1 week focused work)
-2. **Unblocks bookings:** Phone/email needed for confirmations
-3. **High UX value:** WhatsApp reminders for credits/loans
-4. **Foundation layer:** Makes all party-related features richer
+**Strengths:**
+- The data model is extremely deep for an indie app — 45 DB migrations, 25+ models, all properly linked via FK
+- The Unified Tracking System is a genuine differentiator: most small-business apps never connect invoices, loans, dues, and bookings into one party view
+- Zero network calls maintained throughout — the privacy story is genuinely clean
+- The `LifecycleClassifier` + `LifecycleTag` pattern is well-abstracted and avoids duplication across 5 consumers
+- Business Flow Tracker (revenue leakage detection) is a feature that even enterprise tools miss
 
-**After Party Management:**
-- Option 1: Week 25-27 Bookings (high business value)
-- Option 2: Week 11 Beta Prep (get users testing)
+**Risks / Concerns:**
+1. **Complexity creep:** The app now has 14 screen folders, 34 providers, 26 models, and 19 repository implementations. For an indie app targeting small shopkeepers, this may be more surface area than any one person can QA thoroughly.
+2. **No real users yet:** All testing is manual + unit/widget tests. The billing, bookings, and Unified Tracking features need to be validated against real Indian SME workflows before locking in the UX.
+3. **3 analyzer errors:** Small but should be fixed before beta — they indicate a `const` misuse that could cause subtle runtime issues.
+4. **Widget test debt for new screens:** Party 360°, CashFlowScreen, and ActionCenter multi-select are non-trivial and untested at the widget level.
+5. **App version still at 1.0.0+1:** pubspec.yaml needs bumping before any beta release. Consider `1.0.0-beta.1+45` (build number = DB version convention).
 
----
-
-## Technical Implementation Notes
-
-### Files Modified (Uncommitted)
-- `lib/presentation/widgets/payment_method_picker_bottom_sheet.dart`
-- `lib/presentation/screens/invoices/invoice_detail_screen.dart`
-- `lib/presentation/providers/invoice_provider.dart`
-- `lib/presentation/screens/invoices/invoices_screen.dart`
-
-### Commit Message (Ready)
-```bash
-git add lib/presentation/widgets/payment_method_picker_bottom_sheet.dart \
-        lib/presentation/screens/invoices/invoice_detail_screen.dart \
-        lib/presentation/providers/invoice_provider.dart \
-        lib/presentation/screens/invoices/invoices_screen.dart
-
-git commit -m "Complete Week 21-22: Search, filtering, and partial payments
-
-- Add search by customer name or invoice/quote number
-- Add date filters (Today/Week/Month/Custom Range) for both tabs
-- Enable partial payment amount editing with Material Design TextField
-- Fix invoice detail provider invalidation after payment
-- Fix View Transactions button navigation
-- Fix payment picker overflow and button sizing
-- Standardize filter icon to Icons.tune across all screens
-- Apply filters to both Invoices and Quotes tabs via filteredQuotesProvider
-
-Week 21-22 (Billing & Invoicing) now COMPLETE."
-```
+**What to do next (recommended sequence):**
+Fix analyzer → write Unified Tracking widget tests → bump version → Push to Internal Test track → recruit 5 real users.
 
 ---
 
-## Success Metrics (Week 21-22)
+**Status:** Feature-complete for MVP + beta scope. Ready for bug-fix pass and first external testers.
 
-**Feature Completeness:** 100% (all tasks ✅)  
-**Code Quality:** Flutter analyze clean  
-**User Testing:** Manual testing complete (5+ invoice scenarios)  
-**Performance:** Handles 100+ invoices smoothly  
-**Privacy:** Zero network calls, all data local  
-
-**Ready for:** Beta testing with real businesses
-
----
-
-## Questions for User
-
-1. **Next priority:** Party Management (Week 23-24) or jump to Bookings (Week 25-27)?
-2. **Business Mode toggle:** Add to Settings screen now or defer?
-3. **Beta testing:** Ready to start recruiting test users?
-
----
-
-**Status:** ✅ Week 21-22 COMPLETE — Ready for next phase!
+**HEAD commit:** `2182d68` feat: complete Unified Tracking System all 3 phases

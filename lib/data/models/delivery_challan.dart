@@ -173,6 +173,11 @@ class DeliveryChallan extends Equatable {
     this.distanceKm,
     this.convertedInvoiceId,
     this.ewbNo,
+    this.deliveryAddress,
+    this.deliveryCity,
+    this.deliveryState,
+    this.deliveryPincode,
+    this.deliveryGstin,
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
@@ -199,6 +204,13 @@ class DeliveryChallan extends Equatable {
   final int? distanceKm;
   final int? convertedInvoiceId;
   final String? ewbNo;
+  /// Delivery address snapshot — recorded at time of dispatch.
+  final String? deliveryAddress;
+  final String? deliveryCity;
+  final String? deliveryState;
+  final String? deliveryPincode;
+  /// Delivery location GSTIN (may differ from customer billing GSTIN).
+  final String? deliveryGstin;
   final List<ChallanItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -227,6 +239,11 @@ class DeliveryChallan extends Equatable {
     int? distanceKm,
     int? convertedInvoiceId,
     String? ewbNo,
+    String? deliveryAddress,
+    String? deliveryCity,
+    String? deliveryState,
+    String? deliveryPincode,
+    String? deliveryGstin,
     List<ChallanItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -252,6 +269,11 @@ class DeliveryChallan extends Equatable {
         distanceKm: distanceKm ?? this.distanceKm,
         convertedInvoiceId: convertedInvoiceId ?? this.convertedInvoiceId,
         ewbNo: ewbNo ?? this.ewbNo,
+        deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+        deliveryCity: deliveryCity ?? this.deliveryCity,
+        deliveryState: deliveryState ?? this.deliveryState,
+        deliveryPincode: deliveryPincode ?? this.deliveryPincode,
+        deliveryGstin: deliveryGstin ?? this.deliveryGstin,
         items: items ?? this.items,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -278,6 +300,11 @@ class DeliveryChallan extends Equatable {
         'distance_km': distanceKm,
         'converted_invoice_id': convertedInvoiceId,
         'ewb_no': ewbNo,
+        'delivery_address': deliveryAddress,
+        'delivery_city': deliveryCity,
+        'delivery_state': deliveryState,
+        'delivery_pincode': deliveryPincode,
+        'delivery_gstin': deliveryGstin,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -311,6 +338,11 @@ class DeliveryChallan extends Equatable {
         distanceKm: map['distance_km'] as int?,
         convertedInvoiceId: map['converted_invoice_id'] as int?,
         ewbNo: map['ewb_no'] as String?,
+        deliveryAddress: map['delivery_address'] as String?,
+        deliveryCity: map['delivery_city'] as String?,
+        deliveryState: map['delivery_state'] as String?,
+        deliveryPincode: map['delivery_pincode'] as String?,
+        deliveryGstin: map['delivery_gstin'] as String?,
         items: items,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),

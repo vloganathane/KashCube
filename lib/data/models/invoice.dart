@@ -227,6 +227,12 @@ class Invoice extends Equatable {
     this.freightAmt = 0,
     this.insuranceAmt = 0,
     this.packingAmt = 0,
+    // ── Delivery address snapshot (v46) ──────────────────────────────────────
+    this.deliveryAddress,
+    this.deliveryCity,
+    this.deliveryState,
+    this.deliveryPincode,
+    this.deliveryGstin,
   });
 
   final int? id;
@@ -301,6 +307,15 @@ class Invoice extends Equatable {
   /// Packing & forwarding charges (post-tax, shown separately on invoice).
   final double packingAmt;
 
+  // ── Delivery address snapshot (v46) ──────────────────────────────────────
+  /// Street/area part of the delivery address — snapshot at invoice creation.
+  final String? deliveryAddress;
+  final String? deliveryCity;
+  final String? deliveryState;
+  final String? deliveryPincode;
+  /// Delivery location GSTIN (may differ from the customer's billing GSTIN).
+  final String? deliveryGstin;
+
   /// `true` when an e-Way Bill has been generated for this invoice.
   bool get hasEwb => ewbNo != null && ewbNo!.isNotEmpty;
 
@@ -358,6 +373,11 @@ class Invoice extends Equatable {
     double? freightAmt,
     double? insuranceAmt,
     double? packingAmt,
+    String? deliveryAddress,
+    String? deliveryCity,
+    String? deliveryState,
+    String? deliveryPincode,
+    String? deliveryGstin,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -401,6 +421,11 @@ class Invoice extends Equatable {
       freightAmt: freightAmt ?? this.freightAmt,
       insuranceAmt: insuranceAmt ?? this.insuranceAmt,
       packingAmt: packingAmt ?? this.packingAmt,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+      deliveryCity: deliveryCity ?? this.deliveryCity,
+      deliveryState: deliveryState ?? this.deliveryState,
+      deliveryPincode: deliveryPincode ?? this.deliveryPincode,
+      deliveryGstin: deliveryGstin ?? this.deliveryGstin,
     );
   }
 
@@ -445,6 +470,11 @@ class Invoice extends Equatable {
         'freight_amt': freightAmt,
         'insurance_amt': insuranceAmt,
         'packing_amt': packingAmt,
+        'delivery_address': deliveryAddress,
+        'delivery_city': deliveryCity,
+        'delivery_state': deliveryState,
+        'delivery_pincode': deliveryPincode,
+        'delivery_gstin': deliveryGstin,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -501,6 +531,11 @@ class Invoice extends Equatable {
         freightAmt: (map['freight_amt'] as num?)?.toDouble() ?? 0,
         insuranceAmt: (map['insurance_amt'] as num?)?.toDouble() ?? 0,
         packingAmt: (map['packing_amt'] as num?)?.toDouble() ?? 0,
+        deliveryAddress: map['delivery_address'] as String?,
+        deliveryCity: map['delivery_city'] as String?,
+        deliveryState: map['delivery_state'] as String?,
+        deliveryPincode: map['delivery_pincode'] as String?,
+        deliveryGstin: map['delivery_gstin'] as String?,
       );
 
   @override

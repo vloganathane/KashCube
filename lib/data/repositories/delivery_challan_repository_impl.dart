@@ -170,6 +170,11 @@ class DeliveryChallanRepositoryImpl implements DeliveryChallanRepository {
       customerGstin: challan.customerGstin,
       placeOfSupply: challan.placeOfSupply,
       ewbNo: challan.ewbNo,
+      deliveryAddress: challan.deliveryAddress,
+      deliveryCity: challan.deliveryCity,
+      deliveryState: challan.deliveryState,
+      deliveryPincode: challan.deliveryPincode,
+      deliveryGstin: challan.deliveryGstin,
       createdAt: now,
       updatedAt: now,
     );

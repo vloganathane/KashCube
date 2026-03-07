@@ -20,7 +20,7 @@ import '../../providers/transaction_provider.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../invoices/invoice_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
-import '../parties/party_detail_screen.dart';
+import '../parties/party_360_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -754,7 +754,7 @@ class _PartyTile extends StatelessWidget {
               style: context.textTheme.labelSmall?.copyWith(color: context.colorScheme.outline))
           : null,
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => PartyDetailScreen(party: party)),
+        MaterialPageRoute(builder: (_) => Party360Screen(party: party)),
       ),
     );
   }

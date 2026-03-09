@@ -102,8 +102,12 @@ class _AddPurchaseBillScreenState
   // ── Line items ───────────────────────────────────────────────────────────────
   final List<_LineItem> _items = [];
 
-  // ── Save state ───────────────────────────────────────────────────────────────
+  // ── Save / load state ────────────────────────────────────────────────────────
   bool _isSaving = false;
+  bool _isLoading = false;
+
+  /// Preserved when editing — keep paidAmount, status, itcAvailed, createdAt
+  PurchaseBill? _existingBill;
 
   // ── GST rate presets ─────────────────────────────────────────────────────────
   static const _gstRates = [0.0, 5.0, 12.0, 18.0, 28.0];
@@ -115,11 +119,15 @@ class _AddPurchaseBillScreenState
     _vendorCtrl = TextEditingController();
     _vendorGstinCtrl = TextEditingController();
     _notesCtrl = TextEditingController();
-    _items.add(_LineItem()); // start with one empty line
-    // Auto-fill place of supply from business registration state.
-    // User can still override it for inter-state purchases.
     _selectedBusinessId = ref.read(activeBusinessProvider)?.id;
-    _placeOfSupply ??= ref.read(activeBusinessProvider)?.state;
+    _placeOfSupply = ref.read(activeBusinessProvider)?.state;
+
+    if (widget.billId != null) {
+      // Edit mode — load after first frame so ref is available
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadBill());
+    } else {
+      _items.add(_LineItem()); // Add mode — start with one empty item
+    }
   }
 
   @override
@@ -261,9 +269,23 @@ class _AddPurchaseBillScreenState
         ));
       }
 
-      await ref
-          .read(purchaseBillsProvider.notifier)
-          .add(bill, billItems);
+      if (widget.billId != null && _existingBill != null) {
+        // Edit: preserve payment/status/audit fields
+        final updated = bill.copyWith(
+          id: widget.billId,
+          paidAmount: _existingBill!.paidAmount,
+          status: _existingBill!.status,
+          itcAvailed: _existingBill!.itcAvailed,
+          createdAt: _existingBill!.createdAt,
+        );
+        await ref
+            .read(purchaseBillsProvider.notifier)
+            .edit(updated, billItems);
+      } else {
+        await ref
+            .read(purchaseBillsProvider.notifier)
+            .add(bill, billItems);
+      }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -274,6 +296,59 @@ class _AddPurchaseBillScreenState
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  // ── Load existing bill (edit mode) ─────────────────────────────────────────
+
+  Future<void> _loadBill() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+    try {
+      final bill = await ref
+          .read(purchaseBillRepositoryProvider)
+          .fetchById(widget.billId!);
+      if (bill == null || !mounted) return;
+
+      _existingBill = bill;
+
+      // Populate header fields
+      _billNoCtrl.text = bill.billNo;
+      _vendorCtrl.text = bill.vendorName;
+      _vendorGstinCtrl.text = bill.vendorGstin ?? '';
+      _notesCtrl.text = bill.notes ?? '';
+      _vendorPartyId = bill.vendorPartyId;
+      _selectedBusinessId = bill.businessId;
+      _billDate = bill.billDate;
+      _dueDate = bill.dueDate;
+      _placeOfSupply = bill.placeOfSupply;
+      _reverseCharge = bill.reverseCharge;
+      _itcEligibility = bill.itcEligibility;
+      _itcBlockReason = bill.itcBlockReason;
+
+      // Populate line items
+      for (final item in _items) { item.dispose(); }
+      _items
+        ..clear()
+        ..addAll(bill.items.map((i) => _LineItem(
+              itemName: i.itemName,
+              qty: i.qty,
+              unitPrice: i.unitPrice,
+              taxPct: i.taxPct,
+              discountPct: i.discountPct,
+              hsnCode: i.hsnCode ?? '',
+              unit: i.unit,
+              hsnOrSac: i.hsnOrSac,
+            )));
+      if (_items.isEmpty) _items.add(_LineItem());
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load bill: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -377,7 +452,9 @@ class _AddPurchaseBillScreenState
                 ),
         ),
       ),
-      body: Form(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.base),

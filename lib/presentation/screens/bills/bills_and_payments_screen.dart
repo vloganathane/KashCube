@@ -657,6 +657,17 @@ class _AddEditScheduledPaymentScreenState
       appBar: AppBar(
         title: Text(_isEdit ? 'Edit Payment' : 'Add Bill / Payment'),
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton.icon(
+            onPressed: _save,
+            icon: const Icon(Icons.check),
+            label: Text(_isEdit ? 'Update' : 'Save'),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -899,13 +910,7 @@ class _AddEditScheduledPaymentScreenState
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // ── Save ───────────────────────────────────────────────────────
-            FilledButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.check),
-              label: Text(_isEdit ? 'Update' : 'Save'),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.base),
           ],
         ),
       ),

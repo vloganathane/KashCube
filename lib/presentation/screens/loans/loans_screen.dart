@@ -852,6 +852,17 @@ class _AddLedgerEntryScreenState
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Entry' : 'New Loan Entry'),
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton.icon(
+            onPressed: _submit,
+            icon: Icon(_isEditing ? Icons.check : Icons.add),
+            label: Text(_isEditing ? 'Save Changes' : 'Add Entry'),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -1169,12 +1180,6 @@ class _AddLedgerEntryScreenState
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Submit
-            FilledButton.icon(
-              onPressed: _submit,
-              icon: Icon(_isEditing ? Icons.check : Icons.add),
-              label: Text(_isEditing ? 'Save Changes' : 'Add Entry'),
-            ),
           ],
         ),
       ),

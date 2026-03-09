@@ -345,6 +345,24 @@ class _AddEditTransactionScreenState
             ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton.icon(
+            onPressed: _isSaving ? null : _save,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Icon(widget.isEditing ? Icons.check : Icons.add),
+            label: Text(
+                widget.isEditing ? 'Update Transaction' : 'Add Transaction'),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -543,21 +561,6 @@ class _AddEditTransactionScreenState
             ] else
               const SizedBox(height: AppSpacing.xxl),
 
-            // Save Button
-            FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Icon(widget.isEditing ? Icons.check : Icons.add),
-              label: Text(widget.isEditing ? 'Update Transaction' : 'Add Transaction'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 52),
-              ),
-            ),
             const SizedBox(height: AppSpacing.xl),
           ],
         ),

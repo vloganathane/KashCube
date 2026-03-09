@@ -40,6 +40,7 @@ dependencies:
   pdf: ^3.11.0
   printing: ^5.13.0
   archive: ^3.6.1   # ZIP for GSTR-1 CSV workbook — pure Dart, zero network calls
+  excel: ^4.0.6     # XLSX export for GSTR workbooks — pure Dart, zero network calls
 
   # Local Notifications (no network — 100% on-device)
   flutter_local_notifications: ^18.0.1

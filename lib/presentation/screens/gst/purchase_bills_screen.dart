@@ -6,7 +6,9 @@ import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/purchase_bill.dart';
+import '../../../data/models/transaction.dart';
 import '../../providers/purchase_bill_provider.dart';
+import '../../providers/transaction_provider.dart';
 import '../search/search_screen.dart';
 import 'add_purchase_bill_screen.dart';
 
@@ -119,12 +121,24 @@ class _PurchaseBillsScreenState
   }
 
   void _openDetail(PurchaseBill bill) {
-    // G4+: navigate to PurchaseBillDetailScreen — placeholder for now
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _BillDetailSheet(bill: bill),
+      builder: (_) => _BillDetailSheet(
+        bill: bill,
+        onEdited: () async {
+          Navigator.of(context).pop(); // close sheet
+          final result = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (_) => AddPurchaseBillScreen(billId: bill.id),
+            ),
+          );
+          if (result == true && mounted) {
+            ref.invalidate(purchaseBillsProvider);
+          }
+        },
+      ),
     );
   }
 
@@ -675,12 +689,144 @@ class _FilterSheet extends ConsumerWidget {
 
 // ── Bill detail sheet (placeholder) ─────────────────────────────────────────
 
-class _BillDetailSheet extends StatelessWidget {
-  const _BillDetailSheet({required this.bill});
+class _BillDetailSheet extends ConsumerStatefulWidget {
+  const _BillDetailSheet({required this.bill, required this.onEdited});
   final PurchaseBill bill;
+  final VoidCallback onEdited;
+
+  @override
+  ConsumerState<_BillDetailSheet> createState() => _BillDetailSheetState();
+}
+
+class _BillDetailSheetState extends ConsumerState<_BillDetailSheet> {
+  bool _paying = false;
+
+  Future<void> _showPaymentDialog() async {
+    final bill = widget.bill;
+    final balanceDue = bill.balanceDue;
+    if (balanceDue <= 0) return;
+
+    final amountCtrl =
+        TextEditingController(text: balanceDue.toStringAsFixed(2));
+    PaymentMethod selectedMethod = PaymentMethod.upi;
+    bool createTxn = true;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Record Payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'Amount paid',
+                  prefixText: '₹ ',
+                  helperText:
+                      'Balance due: ${CurrencyFormatter.format(balanceDue)}',
+                ),
+                autofocus: true,
+              ),
+              const SizedBox(height: AppSpacing.base),
+              DropdownButtonFormField<PaymentMethod>(
+                value: selectedMethod,
+                decoration:
+                    const InputDecoration(labelText: 'Payment method'),
+                items: [
+                  PaymentMethod.upi,
+                  PaymentMethod.cash,
+                  PaymentMethod.netBanking,
+                  PaymentMethod.cheque,
+                  PaymentMethod.debitCard,
+                  PaymentMethod.creditCard,
+                ]
+                    .map((m) => DropdownMenuItem(
+                        value: m, child: Text(m.label)))
+                    .toList(),
+                onChanged: (v) =>
+                    setDlg(() => selectedMethod = v ?? selectedMethod),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Create expense transaction'),
+                subtitle: const Text('Record this as an outgoing payment'),
+                value: createTxn,
+                onChanged: (v) => setDlg(() => createTxn = v ?? true),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Record'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    if (amount <= 0) return;
+
+    setState(() => _paying = true);
+    try {
+      // 1. Update the bill payment record
+      await ref.read(purchaseBillsProvider.notifier).recordPayment(
+            billId: bill.id!,
+            amount: amount,
+            paidAt: DateTime.now(),
+          );
+
+      // 2. Optionally create an expense transaction
+      if (createTxn && mounted) {
+        final now = DateTime.now();
+        final txn = Transaction(
+          amount: amount,
+          date: now,
+          type: TransactionType.expense,
+          category: 'Purchase',
+          paymentMethod: selectedMethod,
+          partyName: bill.vendorName,
+          partyId: bill.vendorPartyId,
+          notes: 'Payment for bill ${bill.billNo}',
+          referenceId: bill.billNo,
+          businessId: bill.businessId,
+          verified: true,
+          createdAt: now,
+          updatedAt: now,
+        );
+        await ref
+            .read(transactionsProvider.notifier)
+            .addTransaction(txn);
+      }
+
+      if (mounted) Navigator.of(context).pop(); // close sheet
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Payment failed: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _paying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bill = widget.bill;
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
@@ -692,11 +838,19 @@ class _BillDetailSheet extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(bill.billNo,
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              const Spacer(),
+              Expanded(
+                child: Text(bill.billNo,
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ),
               _StatusBadge(status: bill.status),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit',
+                visualDensity: VisualDensity.compact,
+                onPressed: widget.onEdited,
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -716,14 +870,40 @@ class _BillDetailSheet extends StatelessWidget {
           if (bill.igstAmount > 0) _DetailRow('IGST', bill.igstAmount),
           const Divider(),
           _DetailRow('Total', bill.total, bold: true),
+          if (bill.paidAmount > 0)
+            _DetailRow('Paid', bill.paidAmount,
+                color: Colors.green),
+          if (bill.balanceDue > 0)
+            _DetailRow('Balance Due', bill.balanceDue,
+                bold: true, color: cs.error),
           if (bill.itcTotal > 0)
-            _DetailRow('Eligible ITC', bill.itcTotal, color: Colors.green),
+            _DetailRow('Eligible ITC', bill.itcTotal,
+                color: Colors.green),
           const SizedBox(height: AppSpacing.sm),
           if (bill.reverseCharge)
-            Chip(
-              label: const Text('Reverse Charge'),
-              avatar: const Icon(Icons.swap_horiz, size: 14),
+            const Chip(
+              label: Text('Reverse Charge'),
+              avatar: Icon(Icons.swap_horiz, size: 14),
             ),
+          if (bill.status != PurchaseBillStatus.paid) ...[  
+            const SizedBox(height: AppSpacing.base),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: _paying
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.payments_outlined),
+                label: Text(bill.paidAmount > 0
+                    ? 'Record Partial Payment'
+                    : 'Mark as Paid'),
+                onPressed: _paying ? null : _showPaymentDialog,
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpacing.base),
         ],
       ),

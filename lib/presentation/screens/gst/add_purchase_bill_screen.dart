@@ -14,6 +14,7 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/purchase_bill_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import '../../../data/models/item_catalog.dart';
+import '../invoices/item_catalog_screen.dart';
 
 // ── Local line-item state ─────────────────────────────────────────────────────
 
@@ -298,6 +299,52 @@ class _AddPurchaseBillScreenState
     if (picked != null) setState(() => _dueDate = picked);
   }
 
+  // ── Catalog picker ──────────────────────────────────────────────────────────
+
+  Future<void> _pickFromCatalog() async {
+    if (!mounted) return;
+    final picked = await Navigator.push<ItemCatalog>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => const ItemCatalogScreen(pickMode: true)),
+    );
+    if (picked == null || !mounted) return;
+    // Replace first empty item or add new one — matches invoice behaviour
+    final first = _items.firstOrNull;
+    if (first != null &&
+        first.itemNameCtrl.text.isEmpty &&
+        first.unitPriceCtrl.text.isEmpty) {
+      first.itemNameCtrl.text = picked.name;
+      if (picked.unitPrice > 0) {
+        first.unitPriceCtrl.text = picked.unitPrice.toStringAsFixed(
+            picked.unitPrice == picked.unitPrice.truncateToDouble() ? 0 : 2);
+      }
+      first.taxPctCtrl.text = picked.taxPct == picked.taxPct.truncateToDouble()
+          ? picked.taxPct.toInt().toString()
+          : picked.taxPct.toString();
+      first.hsnCodeCtrl.text = picked.hsnCode ?? '';
+      first.unitCtrl.text = picked.unit.toUpperCase();
+    } else {
+      final newItem = _LineItem();
+      newItem.itemNameCtrl.text = picked.name;
+      if (picked.unitPrice > 0) {
+        newItem.unitPriceCtrl.text = picked.unitPrice.toStringAsFixed(
+            picked.unitPrice == picked.unitPrice.truncateToDouble() ? 0 : 2);
+      }
+      newItem.taxPctCtrl.text =
+          picked.taxPct == picked.taxPct.truncateToDouble()
+              ? picked.taxPct.toInt().toString()
+              : picked.taxPct.toString();
+      newItem.hsnCodeCtrl.text = picked.hsnCode ?? '';
+      newItem.unitCtrl.text = picked.unit.toUpperCase();
+      _items.add(newItem);
+    }
+    if (picked.id != null) {
+      ref.read(catalogProvider.notifier).trackUsage(picked.id!);
+    }
+    setState(() {});
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────────
 
   @override
@@ -305,7 +352,6 @@ class _AddPurchaseBillScreenState
     final theme = Theme.of(context);
     final colors = theme.extension<KashCubeColors>()!;
     final allBusinesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final catalog = ref.watch(catalogProvider).valueOrNull ?? [];
 
     return Scaffold(
       appBar: AppBar(
@@ -491,8 +537,13 @@ class _AddPurchaseBillScreenState
                 _SectionHeader(label: 'Line Items'),
                 const Spacer(),
                 TextButton.icon(
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Item'),
+                  icon: const Icon(Icons.inventory_2_outlined, size: 16),
+                  label: const Text('Catalog'),
+                  onPressed: () => _pickFromCatalog(),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  tooltip: 'Add Item',
                   onPressed: () => setState(() => _items.add(_LineItem())),
                 ),
               ],
@@ -509,21 +560,7 @@ class _AddPurchaseBillScreenState
                 gstRates: _gstRates,
                 businessState: _businessState,
                 placeOfSupply: _placeOfSupply,
-                catalog: catalog,
                 onChanged: () => setState(() {}),
-                onCatalogApply: (ci) {
-                  item.itemNameCtrl.text = ci.name;
-                  if (ci.unitPrice > 0) {
-                    item.unitPriceCtrl.text = ci.unitPrice
-                        .toStringAsFixed(ci.unitPrice == ci.unitPrice.truncateToDouble() ? 0 : 2);
-                  }
-                  item.taxPctCtrl.text = ci.taxPct == ci.taxPct.truncateToDouble()
-                      ? ci.taxPct.toInt().toString()
-                      : ci.taxPct.toString();
-                  item.hsnCodeCtrl.text = ci.hsnCode ?? '';
-                  item.unitCtrl.text = ci.unit.toUpperCase();
-                  setState(() {});
-                },
                 onRemove: _items.length > 1
                     ? () => setState(() {
                           item.dispose();
@@ -726,9 +763,7 @@ class _LineItemCard extends StatelessWidget {
     required this.gstRates,
     required this.businessState,
     required this.placeOfSupply,
-    required this.catalog,
     required this.onChanged,
-    required this.onCatalogApply,
     this.onRemove,
   });
 
@@ -737,9 +772,7 @@ class _LineItemCard extends StatelessWidget {
   final List<double> gstRates;
   final String? businessState;
   final String? placeOfSupply;
-  final List<ItemCatalog> catalog;
   final VoidCallback onChanged;
-  final ValueChanged<ItemCatalog> onCatalogApply;
   final VoidCallback? onRemove;
 
   @override
@@ -760,7 +793,7 @@ class _LineItemCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header row: item # + catalog picker + remove button
+            // Header row: item # + remove button
             Row(
               children: [
                 Text('Item ${index + 1}',
@@ -768,25 +801,6 @@ class _LineItemCard extends StatelessWidget {
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.w600)),
                 const Spacer(),
-                if (catalog.isNotEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.library_books_outlined, size: 20),
-                    tooltip: 'Pick from Item Catalog',
-                    visualDensity: VisualDensity.compact,
-                    color: theme.colorScheme.secondary,
-                    onPressed: () async {
-                      final picked = await showModalBottomSheet<ItemCatalog>(
-                        context: context,
-                        isScrollControlled: true,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(AppSpacing.radiusLg)),
-                        ),
-                        builder: (_) => _CatalogPickerSheet(catalog: catalog),
-                      );
-                      if (picked != null) onCatalogApply(picked);
-                    },
-                  ),
                 if (onRemove != null)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
@@ -1070,146 +1084,3 @@ class _TotalRow extends StatelessWidget {
   }
 }
 
-// ── Catalog picker bottom sheet ───────────────────────────────────────────────
-
-class _CatalogPickerSheet extends StatefulWidget {
-  const _CatalogPickerSheet({required this.catalog});
-  final List<ItemCatalog> catalog;
-
-  @override
-  State<_CatalogPickerSheet> createState() => _CatalogPickerSheetState();
-}
-
-class _CatalogPickerSheetState extends State<_CatalogPickerSheet> {
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final filtered = widget.catalog
-        .where((c) => c.isActive)
-        .where((c) =>
-            _query.isEmpty ||
-            c.name.toLowerCase().contains(_query.toLowerCase()) ||
-            (c.hsnCode?.contains(_query) ?? false))
-        .toList()
-      ..sort((a, b) => b.usageCount.compareTo(a.usageCount));
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (_, scrollCtrl) => Column(
-        children: [
-          // Handle
-          const SizedBox(height: AppSpacing.sm),
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-            child: Text('Pick from Item Catalog',
-                style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          // Search
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-            child: TextField(
-              controller: _searchCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: 'Search items…',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                      )
-                    : null,
-                isDense: true,
-              ),
-              onChanged: (v) => setState(() => _query = v),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          const Divider(height: 1),
-          // List
-          Expanded(
-            child: filtered.isEmpty
-                ? Center(
-                    child: Text('No items found',
-                        style: TextStyle(color: theme.colorScheme.outline)),
-                  )
-                : ListView.builder(
-                    controller: scrollCtrl,
-                    itemCount: filtered.length,
-                    itemBuilder: (_, i) {
-                      final item = filtered[i];
-                      return ListTile(
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondaryContainer,
-                            borderRadius:
-                                BorderRadius.circular(AppSpacing.radiusSm),
-                          ),
-                          child: Icon(
-                            item.category == ItemCategory.service ||
-                                    item.category == ItemCategory.labor
-                                ? Icons.design_services_outlined
-                                : Icons.inventory_2_outlined,
-                            size: 18,
-                            color: theme.colorScheme.secondary,
-                          ),
-                        ),
-                        title: Text(item.name,
-                            style: const TextStyle(fontWeight: FontWeight.w500)),
-                        subtitle: Text(
-                          [
-                            if (item.hsnCode != null && item.hsnCode!.isNotEmpty)
-                              '${item.hsnOrSac}: ${item.hsnCode}',
-                            '${item.taxPct.toInt()}% GST',
-                            item.unit.toUpperCase(),
-                          ].join(' · '),
-                          style: TextStyle(
-                              color: theme.colorScheme.outline, fontSize: 12),
-                        ),
-                        trailing: Text(
-                          CurrencyFormatter.format(item.unitPrice),
-                          style: TextStyle(
-                              fontFamily: 'RobotoMono',
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.primary),
-                        ),
-                        onTap: () => Navigator.pop(context, item),
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}

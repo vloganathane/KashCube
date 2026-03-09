@@ -10,14 +10,17 @@ import '../../../data/models/bill.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../../data/models/purchase_bill.dart';
 import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/bill_schedule_provider.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../providers/purchase_bill_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../bookings/booking_detail_screen.dart';
+import '../gst/add_purchase_bill_screen.dart';
 import '../invoices/invoice_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../parties/party_360_screen.dart';
@@ -43,6 +46,7 @@ enum SearchFilter {
   invoices,
   credits,
   bills,
+  purchaseBills,
   bookings,
   parties,
 }
@@ -54,6 +58,7 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.invoices => 'Invoices',
         SearchFilter.credits => 'Credits',
         SearchFilter.bills => 'Bills',
+        SearchFilter.purchaseBills => 'Purchase Bills',
         SearchFilter.bookings => 'Bookings',
         SearchFilter.parties => 'Parties',
       };
@@ -64,6 +69,7 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.invoices => Icons.description_outlined,
         SearchFilter.credits => Icons.book_outlined,
         SearchFilter.bills => Icons.calendar_today_outlined,
+        SearchFilter.purchaseBills => Icons.inventory_2_outlined,
         SearchFilter.bookings => Icons.calendar_month_outlined,
         SearchFilter.parties => Icons.people_outline,
       };
@@ -117,6 +123,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         SearchFilter.invoices => 'Search invoices…',
         SearchFilter.credits => 'Search dues…',
         SearchFilter.bills => 'Search bills…',
+        SearchFilter.purchaseBills => 'Search purchase bills…',
         SearchFilter.bookings => 'Search bookings…',
         SearchFilter.parties => 'Search by name or phone…',
       };
@@ -307,6 +314,13 @@ class _SearchResults extends ConsumerWidget {
       (inv.notes?.toLowerCase().contains(q) ?? false) ||
       CurrencyFormatter.format(inv.total).contains(q);
 
+  bool _matchPurchaseBill(PurchaseBill b, String q) =>
+      b.vendorName.toLowerCase().contains(q) ||
+      b.billNo.toLowerCase().contains(q) ||
+      (b.vendorGstin?.toLowerCase().contains(q) ?? false) ||
+      (b.notes?.toLowerCase().contains(q) ?? false) ||
+      CurrencyFormatter.format(b.total).contains(q);
+
   bool _matchBill(Bill b, String q) =>
       b.name.toLowerCase().contains(q) ||
       b.category.toLowerCase().contains(q) ||
@@ -353,6 +367,12 @@ class _SearchResults extends ConsumerWidget {
             .toList()
         : <Bill>[];
 
+    final purchaseBills = _show(SearchFilter.purchaseBills)
+        ? (ref.watch(purchaseBillsProvider).valueOrNull ?? <PurchaseBill>[])
+            .where((b) => _matchPurchaseBill(b, q))
+            .toList()
+        : <PurchaseBill>[];
+
     final bookings = _show(SearchFilter.bookings)
         ? (ref.watch(bookingsProvider).valueOrNull ?? <Booking>[])
             .where((b) => _matchBooking(b, q))
@@ -366,7 +386,7 @@ class _SearchResults extends ConsumerWidget {
         : <Party>[];
 
     final total = txns.length + invoices.length + credits.length +
-        bills.length + bookings.length + parties.length;
+        bills.length + purchaseBills.length + bookings.length + parties.length;
 
     if (total == 0) {
       return Center(
@@ -407,6 +427,11 @@ class _SearchResults extends ConsumerWidget {
           _SectionHeader(title: 'Bills', count: bills.length, icon: Icons.calendar_today_outlined),
           ...bills.take(10).map((b) => _BillTile(bill: b, query: query)),
           if (bills.length > 10) _MoreRow(count: bills.length - 10, label: 'bills'),
+        ],
+        if (purchaseBills.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
+          _SectionHeader(title: 'Purchase Bills', count: purchaseBills.length, icon: Icons.inventory_2_outlined),
+          ...purchaseBills.take(10).map((b) => _PurchaseBillTile(bill: b, query: query)),
+          if (purchaseBills.length > 10) _MoreRow(count: purchaseBills.length - 10, label: 'purchase bills'),
         ],
         if (bookings.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
           _SectionHeader(title: 'Bookings', count: bookings.length, icon: Icons.calendar_month_outlined),
@@ -722,6 +747,69 @@ class _BookingTile extends StatelessWidget {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: booking.id!)),
           );
+        }
+      },
+    );
+  }
+}
+
+class _PurchaseBillTile extends StatelessWidget {
+  const _PurchaseBillTile({required this.bill, required this.query});
+  final PurchaseBill bill;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (bill.status) {
+      PurchaseBillStatus.paid => Colors.green,
+      PurchaseBillStatus.partiallyPaid => Colors.orange,
+      PurchaseBillStatus.unpaid => context.colorScheme.error,
+    };
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.secondaryContainer,
+        child: Icon(Icons.inventory_2_outlined,
+            color: context.colorScheme.onSecondaryContainer,
+            size: AppSpacing.iconMd),
+      ),
+      title: _Highlight(text: bill.vendorName, query: query),
+      subtitle: Text(
+        '${bill.billNo} · ${DateFormatter.format(bill.billDate)}'
+        '${bill.vendorGstin != null ? ' · ${bill.vendorGstin}' : ''}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            CurrencyFormatter.format(bill.total),
+            style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Text(
+              bill.status.label,
+              style: context.textTheme.labelSmall?.copyWith(
+                  color: statusColor, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      onTap: () {
+        if (bill.id != null) {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => AddPurchaseBillScreen(billId: bill.id),
+          ));
         }
       },
     );

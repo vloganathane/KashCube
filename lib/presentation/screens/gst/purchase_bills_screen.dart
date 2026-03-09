@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/purchase_bill.dart';
 import '../../providers/purchase_bill_provider.dart';
+import '../search/search_screen.dart';
 import 'add_purchase_bill_screen.dart';
 
 class PurchaseBillsScreen extends ConsumerStatefulWidget {
@@ -32,6 +33,14 @@ class _PurchaseBillsScreenState
       appBar: AppBar(
         title: const Text('Purchase Bills'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const SearchScreen(
+                  initialFilter: SearchFilter.purchaseBills),
+            )),
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             tooltip: 'Filters',

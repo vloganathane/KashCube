@@ -1377,6 +1377,25 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton(
+            onPressed: _isSaving ? null : () => _save(),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Text(isInvoice
+                    ? 'Save Invoice'
+                    : isDC
+                        ? 'Save Challan'
+                        : 'Save as Draft'),
+          ),
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -1781,18 +1800,6 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               ),
               minLines: 2,
               maxLines: 4,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Save button — inside scroll so keyboard never hides it
-            FilledButton(
-              onPressed: _isSaving ? null : () => _save(),
-              child: _isSaving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(isInvoice ? 'Save Invoice' : isDC ? 'Save Challan' : 'Save as Draft'),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],

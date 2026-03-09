@@ -560,18 +560,21 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Due' : 'New Due'),
-        actions: [
-          if (_saving)
-            const Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else
-            TextButton(onPressed: _save, child: const Text('Save')),
-        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : Text(_isEditing ? 'Update Due' : 'Save Due'),
+          ),
+        ),
       ),
       body: Form(
         key: _formKey,
@@ -785,13 +788,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
               ),
               maxLines: 2,
             ),
-            const SizedBox(height: AppSpacing.xxl),
-
-            // ── Save button ───────────────────────────────────────────────
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_isEditing ? 'Update' : 'Save'),
-            ),
+            const SizedBox(height: AppSpacing.base),
           ],
         ),
       ),

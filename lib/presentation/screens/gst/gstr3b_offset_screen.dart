@@ -14,6 +14,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/gstr3b_pdf_service.dart';
 import '../../../data/services/gstr3b_service.dart';
+import '../../../data/services/gstr3b_xls_service.dart';
 import '../../providers/business_provider.dart';
 import 'gstr_period_picker.dart';
 
@@ -132,6 +133,24 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
     }
   }
 
+  Future<void> _exportXls(Gstr3bWorkbook wb) async {
+    try {
+      final file = await Gstr3bXlsService.instance.generate(wb);
+      await Share.shareXFiles(
+        [
+          XFile(
+            file.path,
+            mimeType:
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          )
+        ],
+        text: 'GSTR-3B Offset Summary — ${wb.period}',
+      );
+    } catch (e) {
+      _showError('XLS export failed: $e');
+    }
+  }
+
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -163,12 +182,19 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
       appBar: AppBar(
         title: const Text('GSTR-3B Offset Summary'),
         actions: [
-          if (workbookAsync?.hasValue == true)
-            IconButton(
-              icon: const Icon(Icons.picture_as_pdf_outlined),
-              tooltip: 'Export PDF',
-              onPressed: () => _exportPdf(workbookAsync!.value!),
-            ),
+          if (workbookAsync?.hasValue == true) ...
+            [
+              IconButton(
+                icon: const Icon(Icons.table_chart_outlined),
+                tooltip: 'Export XLS',
+                onPressed: () => _exportXls(workbookAsync!.value!),
+              ),
+              IconButton(
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                tooltip: 'Export PDF',
+                onPressed: () => _exportPdf(workbookAsync!.value!),
+              ),
+            ],
         ],
       ),
       body: ListView(
@@ -274,6 +300,7 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
                 workbook: wb,
                 amtFmt: _amtFmt,
                 onExportPdf: () => _exportPdf(wb),
+                onExportXls: () => _exportXls(wb),
               ),
             ),
           const SizedBox(height: AppSpacing.xxxl),
@@ -389,11 +416,13 @@ class _WorkbookView extends StatelessWidget {
     required this.workbook,
     required this.amtFmt,
     required this.onExportPdf,
+    required this.onExportXls,
   });
 
   final Gstr3bWorkbook workbook;
   final NumberFormat amtFmt;
   final VoidCallback onExportPdf;
+  final VoidCallback onExportXls;
 
   String _a(double v) => amtFmt.format(v);
 
@@ -460,11 +489,25 @@ class _WorkbookView extends StatelessWidget {
         _OffsetCard(offset: offset, amtFmt: amtFmt),
         const SizedBox(height: AppSpacing.base),
 
-        // ── Export button ────────────────────────────────────────────────
-        OutlinedButton.icon(
-          onPressed: onExportPdf,
-          icon: const Icon(Icons.picture_as_pdf_outlined),
-          label: const Text('Export PDF Summary'),
+        // ── Export buttons ───────────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onExportXls,
+                icon: const Icon(Icons.table_chart_outlined),
+                label: const Text('Export XLS'),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onExportPdf,
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('Export PDF'),
+              ),
+            ),
+          ],
         ),
       ],
     );

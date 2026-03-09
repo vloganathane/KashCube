@@ -310,18 +310,26 @@ class _AddPurchaseBillScreenState
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.billId == null ? 'Add Purchase Bill' : 'Edit Purchase Bill'),
-        actions: [
-          if (_isSaving)
-            const Padding(
-              padding: EdgeInsets.only(right: AppSpacing.base),
-              child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-            )
-          else
-            TextButton(
-              onPressed: _save,
-              child: const Text('SAVE'),
-            ),
-        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: _isSaving
+              ? const FilledButton(
+                  onPressed: null,
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white)),
+                )
+              : FilledButton(
+                  onPressed: _save,
+                  child: Text(
+                      widget.billId == null ? 'Save Purchase Bill' : 'Update Purchase Bill'),
+                ),
+        ),
       ),
       body: Form(
         key: _formKey,

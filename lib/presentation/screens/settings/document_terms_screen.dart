@@ -101,22 +101,6 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Default Terms & Conditions'),
-        actions: [
-          if (_saving)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.base),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: _save,
-              child: const Text('Save'),
-            ),
-        ],
       ),
       body: termsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

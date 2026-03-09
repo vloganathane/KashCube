@@ -66,6 +66,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   int? _customDuration;
   bool _hasEndTime = false;
   BookingType _bookingType = BookingType.business;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -268,7 +269,10 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
   }
 
   Future<void> _saveBooking() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+    try {
 
     if (_bookingType == BookingType.business) {
       final named = _items.where((d) => d.nameCtrl.text.trim().isNotEmpty).toList();
@@ -387,6 +391,9 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
         ),
       );
     }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -403,12 +410,22 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
               ? (_bookingType == BookingType.personal ? 'Edit Schedule' : 'Edit Booking')
               : (_bookingType == BookingType.personal ? 'New Schedule' : 'New Booking'),
         ),
-        actions: [
-          TextButton(
-            onPressed: _saveBooking,
-            child: const Text('SAVE'),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          child: FilledButton(
+            onPressed: _isSaving ? null : _saveBooking,
+            child: _isSaving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white))
+                : Text(widget.booking != null ? 'Update' : 'Save Booking'),
           ),
-        ],
+        ),
       ),
       body: Form(
         key: _formKey,

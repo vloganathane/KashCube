@@ -2524,9 +2524,8 @@ class _UpcomingItemTile extends StatelessWidget {
 // Monthly budgets section — home screen card view
 // ---------------------------------------------------------------------------
 
-/// Shows all current-month budgets as a tappable card, matching the
-/// Reports screen layout. Always visible (shows empty-state prompt if no
-/// budgets are set).
+/// Shows all current-month budgets as a tappable card with a "Budget vs Actual"
+/// header, a legend, and colour-coded progress bars (green = ok, red = over).
 class _BudgetSection extends ConsumerWidget {
   const _BudgetSection();
 
@@ -2548,20 +2547,20 @@ class _BudgetSection extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header row
+                  // ── Header row ─────────────────────────────────────────
                   Row(
                     children: [
-                      const Icon(Icons.savings_outlined,
+                      const Icon(Icons.stacked_bar_chart_rounded,
                           size: AppSpacing.iconMd),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
-                        'Monthly Budgets',
+                        'Budget vs Actual',
                         style: context.textTheme.titleSmall
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
                       const Spacer(),
                       Text(
-                        'Manage →',
+                        'Manage',
                         style: context.textTheme.labelSmall?.copyWith(
                           color: context.colorScheme.primary,
                           fontWeight: FontWeight.w600,
@@ -2585,6 +2584,9 @@ class _BudgetSection extends ConsumerWidget {
                       ],
                     ),
                   ] else ...[
+                    // ── Legend ────────────────────────────────────────────
+                    const SizedBox(height: AppSpacing.sm),
+                    _BudgetLegend(),
                     const SizedBox(height: AppSpacing.md),
                     ...budgets
                         .take(3)
@@ -2614,16 +2616,25 @@ class _HomeBudgetRow extends StatelessWidget {
   const _HomeBudgetRow({required this.budget});
   final Budget budget;
 
+  /// Compact Indian currency: ₹5K, ₹1.5L, ₹1Cr
+  static String _compact(double v) {
+    if (v >= 1e7)       return '\u20b9${(v / 1e7).toStringAsFixed(v % 1e7 == 0 ? 0 : 1)}Cr';
+    if (v >= 1e5)       return '\u20b9${(v / 1e5).toStringAsFixed(v % 1e5 == 0 ? 0 : 1)}L';
+    if (v >= 1000)      return '\u20b9${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}K';
+    return CurrencyFormatter.format(v);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = context.kashColors;
-    final isOver = budget.isOverBudget;
-    final pct = budget.spentPercentage.clamp(0.0, 1.0);
+    final colors  = context.kashColors;
+    final isOver  = budget.isOverBudget;
+    final pct     = budget.spentPercentage.clamp(0.0, 1.0);
     final barColor = isOver
         ? colors.expense
         : budget.isNearLimit
             ? Colors.orange
             : colors.income;
+    final iconColor = CategoryHelper.getColor(budget.category);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -2634,7 +2645,7 @@ class _HomeBudgetRow extends StatelessWidget {
             children: [
               Icon(CategoryHelper.getIcon(budget.category),
                   size: AppSpacing.iconSm,
-                  color: context.colorScheme.onSurfaceVariant),
+                  color: iconColor),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
@@ -2645,8 +2656,7 @@ class _HomeBudgetRow extends StatelessWidget {
                 ),
               ),
               Text(
-                '${CurrencyFormatter.format(budget.spentAmount)}'
-                ' / ${CurrencyFormatter.format(budget.budgetAmount)}',
+                '${_compact(budget.spentAmount)} / ${_compact(budget.budgetAmount)}',
                 style: context.textTheme.labelSmall?.copyWith(
                   color:
                       isOver ? colors.expense : context.colorScheme.outline,
@@ -2659,13 +2669,59 @@ class _HomeBudgetRow extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
             child: LinearProgressIndicator(
               value: pct,
-              minHeight: 4,
+              minHeight: 6,
               backgroundColor: context.colorScheme.surfaceContainerHighest,
               color: barColor,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── Budget legend ─────────────────────────────────────────────────────────────
+
+class _BudgetLegend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    return Row(
+      children: [
+        _LegendDot(
+          color: context.colorScheme.surfaceContainerHighest,
+          label: 'Budget',
+        ),
+        const SizedBox(width: AppSpacing.base),
+        _LegendDot(color: colors.income,  label: 'Spent (ok)'),
+        const SizedBox(width: AppSpacing.base),
+        _LegendDot(color: colors.expense, label: 'Over budget'),
+      ],
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  const _LegendDot({required this.color, required this.label});
+  final Color  color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: context.textTheme.labelSmall),
+      ],
     );
   }
 }

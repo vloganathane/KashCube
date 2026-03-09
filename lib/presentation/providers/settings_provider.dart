@@ -77,6 +77,9 @@ class SettingsKeys {
 
   // PDF document template
   static const documentTemplate = 'document_template';
+
+  // Home screen widget layout (JSON-encoded list of HomeWidgetConfig)
+  static const homeWidgetsConfig = 'home_widgets_config';
 }
 
 // ---------------------------------------------------------------------------

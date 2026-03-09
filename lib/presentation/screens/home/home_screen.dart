@@ -39,8 +39,11 @@ import '../../../data/models/business.dart';
 import '../../widgets/vcard_qr_dialog.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
+import '../../../data/models/home_widget_config.dart';
+import '../../providers/home_widget_provider.dart';
 import '../settings/encrypted_backup_screen.dart';
 import '../settings/fy_close_wizard_screen.dart';
+import 'customize_home_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
 class HomeScreen extends ConsumerWidget {
@@ -48,8 +51,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dashboardAsync = ref.watch(dashboardSummaryProvider);
-    final recentAsync = ref.watch(recentTransactionsProvider);
+    final dashboardAsync   = ref.watch(dashboardSummaryProvider);
+    final homeWidgetConfig = ref.watch(homeWidgetProvider);
 
     return Scaffold(
       body: RefreshIndicator(
@@ -85,6 +88,15 @@ class HomeScreen extends ConsumerWidget {
               ),
               actions: [
                 IconButton(
+                  icon: const Icon(Icons.tune_outlined),
+                  tooltip: 'Customise Home',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CustomizeHomeScreen(),
+                    ),
+                  ),
+                ),
+                IconButton(
                   icon: const Icon(Icons.qr_code_2_outlined),
                   tooltip: 'My QR Cards',
                   onPressed: () => _showQuickShareSheet(context, ref),
@@ -109,104 +121,61 @@ class HomeScreen extends ConsumerWidget {
             SliverPadding(
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Dashboard Card Deck
-                  dashboardAsync.when(
-                    data: (summary) => _DashboardDeck(summary: summary),
-                    loading: () => const _DashboardCardsLoading(),
-                    error: (e, _) => Center(
-                      child: Text('Error: $e', style: TextStyle(color: context.colorScheme.error)),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-
-                  // Today's cashflow bar
-                  const _TodayCashflowBar(),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Upcoming payments — loan EMIs / due dates + bills
-                  const _UpcomingSection(),
-
-                  // Upcoming bookings — next 3 pending/confirmed
-                  const _UpcomingBookingsSection(),
-
-                  // Alerts — overdue invoices + pending credits
-                  const _AlertsSection(),
-
-                  // Monthly Budgets card
-                  const _BudgetSection(),
-
-                  // Reports shortcut
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => const ReportsScreen()),
-                        ),
-                        icon: const Icon(Icons.bar_chart_outlined, size: 16),
-                        label: const Text('See Reports'),
-                      ),
-                    ],
-                  ),
-
-                  // Recent Transactions Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Recent Transactions',
-                        style: context.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          // Switch to Transactions tab (index 1)
-                          ref.read(currentTabIndexProvider.notifier).state = 1;
-                        },
-                        child: const Text('See All'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-
-                  // Recent Transactions List
-                  recentAsync.when(
-                    data: (transactions) {
-                      if (transactions.isEmpty) {
-                        return const _EmptyState();
-                      }
-                      return Column(
-                        children: transactions.take(5).map((txn) => _TransactionTile(
-                          transactionId: txn.id,
-                          category: txn.category,
-                          partyName: txn.partyName,
-                          amount: txn.amount,
-                          isIncome: txn.isIncome,
-                          date: txn.date,
-                          paymentMethod: txn.paymentMethod.label,
-                        )).toList(),
-                      );
-                    },
-                    loading: () => const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(AppSpacing.xxl),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    error: (e, _) => Center(
-                      child: Text('Error loading transactions: $e'),
-                    ),
-                  ),
-                ]),
+                delegate: SliverChildListDelegate(
+                  _buildSectionWidgets(context, ref, dashboardAsync, homeWidgetConfig),
+                ),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  // ── Section builder ─────────────────────────────────────────────────────
+
+  List<Widget> _buildSectionWidgets(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<DashboardSummary> dashboardAsync,
+    List<HomeWidgetConfig> config,
+  ) {
+    final children = <Widget>[
+      // Balance card — always pinned at top, non-removable
+      dashboardAsync.when(
+        data:    (s) => _DashboardDeck(summary: s),
+        loading: ()  => const _DashboardCardsLoading(),
+        error:   (e, _) => Center(
+          child: Text('Error: $e',
+              style: TextStyle(color: context.colorScheme.error))),
+      ),
+      const SizedBox(height: AppSpacing.sm),
+    ];
+
+    for (final cfg in config) {
+      if (!cfg.enabled) continue;
+      switch (cfg.id) {
+        case HomeWidgetId.todayCashflow:
+          children
+            ..add(const _TodayCashflowBar())
+            ..add(const SizedBox(height: AppSpacing.lg));
+        case HomeWidgetId.upcoming:
+          children.add(const _UpcomingSection());
+        case HomeWidgetId.upcomingBookings:
+          children.add(const _UpcomingBookingsSection());
+        case HomeWidgetId.alerts:
+          children.add(const _AlertsSection());
+        case HomeWidgetId.budgets:
+          children.add(const _BudgetSection());
+        case HomeWidgetId.reportsShortcut:
+          children.add(const _ReportsShortcutSection());
+        case HomeWidgetId.recentTransactions:
+          children.add(const _RecentTransactionsSection());
+      }
+    }
+
+    children.add(const SizedBox(height: AppSpacing.xxxl));
+    return children;
   }
 
   void _showQuickShareSheet(BuildContext context, WidgetRef ref) {
@@ -2697,6 +2666,94 @@ class _HomeBudgetRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _ReportsShortcutSection
+// ---------------------------------------------------------------------------
+
+class _ReportsShortcutSection extends StatelessWidget {
+  const _ReportsShortcutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        TextButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const ReportsScreen()),
+          ),
+          icon: const Icon(Icons.bar_chart_outlined, size: 16),
+          label: const Text('See Reports'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _RecentTransactionsSection
+// ---------------------------------------------------------------------------
+
+class _RecentTransactionsSection extends ConsumerWidget {
+  const _RecentTransactionsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recentAsync = ref.watch(recentTransactionsProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent Transactions',
+              style: context.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            TextButton(
+              onPressed: () =>
+                  ref.read(currentTabIndexProvider.notifier).state = 1,
+              child: const Text('See All'),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        // List
+        recentAsync.when(
+          data: (transactions) {
+            if (transactions.isEmpty) return const _EmptyState();
+            return Column(
+              children: transactions
+                  .take(5)
+                  .map((txn) => _TransactionTile(
+                        transactionId: txn.id,
+                        category: txn.category,
+                        partyName: txn.partyName,
+                        amount: txn.amount,
+                        isIncome: txn.isIncome,
+                        date: txn.date,
+                        paymentMethod: txn.paymentMethod.label,
+                      ))
+                  .toList(),
+            );
+          },
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.xxl),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (e, _) =>
+              Center(child: Text('Error loading transactions: $e')),
+        ),
+      ],
     );
   }
 }

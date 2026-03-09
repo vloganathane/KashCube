@@ -108,6 +108,10 @@ class _InvoiceDetailView extends ConsumerWidget {
                   _duplicateInvoice(context, ref);
                 case 'eway_bill':
                   _showEwayBillSheet(context, invoice, ref);
+                case 'credit_note':
+                  _createCreditNote(context);
+                case 'debit_note':
+                  _createDebitNote(context);
               }
             },
             itemBuilder: (context) => [
@@ -154,6 +158,31 @@ class _InvoiceDetailView extends ConsumerWidget {
                   ],
                 ),
               ),
+              // Credit / Debit Note — only for invoices that have been sent / paid
+              if (invoice.status != InvoiceStatus.draft &&
+                  invoice.status != InvoiceStatus.cancelled &&
+                  invoice.invoiceType == InvoiceType.taxInvoice) ...[
+                const PopupMenuItem(
+                  value: 'credit_note',
+                  child: Row(
+                    children: [
+                      Icon(Icons.remove_circle_outline),
+                      SizedBox(width: 12),
+                      Text('Create Credit Note'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'debit_note',
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_circle_outline),
+                      SizedBox(width: 12),
+                      Text('Create Debit Note'),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ],
@@ -227,6 +256,10 @@ class _InvoiceDetailView extends ConsumerWidget {
           if (invoice.id != null) ...[
             const SizedBox(height: AppSpacing.base),
             _LinkedChallanCard(invoiceId: invoice.id!),
+          ],
+          if (invoice.id != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            _LinkedCreditNotesCard(invoiceId: invoice.id!),
           ],
           const SizedBox(height: AppSpacing.xxxl),
         ],
@@ -591,6 +624,30 @@ class _InvoiceDetailView extends ConsumerWidget {
         invoice: invoice,
         business: business,
         onExported: (_) => ref.read(invoicesProvider.notifier).load(),
+      ),
+    );
+  }
+
+  void _createCreditNote(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuoteBuilderScreen(
+          docType: DocumentType.creditNote,
+          sourceInvoice: invoice,
+        ),
+      ),
+    );
+  }
+
+  void _createDebitNote(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuoteBuilderScreen(
+          docType: DocumentType.debitNote,
+          sourceInvoice: invoice,
+        ),
       ),
     );
   }
@@ -1105,6 +1162,7 @@ class _HeaderCard extends StatelessWidget {
       InvoiceStatus.overdue => const Color(0xFFC62828),
       InvoiceStatus.sent => Theme.of(context).colorScheme.primary,
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
+      InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
     };
     return Card(
@@ -1653,6 +1711,96 @@ class _LinkedChallanCard extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Linked Credit/Debit Notes Card ─────────────────────────────────────────────
+
+class _LinkedCreditNotesCard extends ConsumerWidget {
+  const _LinkedCreditNotesCard({required this.invoiceId});
+  final int invoiceId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allInvoices = ref.watch(invoicesProvider).value ?? [];
+    final notes = allInvoices
+        .where((inv) =>
+            inv.originalInvoiceId == invoiceId &&
+            (inv.invoiceType == InvoiceType.creditNote ||
+                inv.invoiceType == InvoiceType.debitNote))
+        .toList();
+    if (notes.isEmpty) return const SizedBox.shrink();
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.base),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Credit / Debit Notes',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            ...notes.map((note) {
+              final isCN = note.invoiceType == InvoiceType.creditNote;
+              final color = isCN
+                  ? Theme.of(context).colorScheme.error
+                  : Colors.orange;
+              return InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        InvoiceDetailScreen(invoiceId: note.id!),
+                  ),
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isCN
+                            ? Icons.remove_circle_outline
+                            : Icons.add_circle_outline,
+                        size: 18,
+                        color: color,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          '${note.invoiceType.label} · ${note.invoiceNo}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        CurrencyFormatter.format(note.total),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: color),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.chevron_right,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
         ),
       ),
     );

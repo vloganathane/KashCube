@@ -14,6 +14,7 @@ import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
+import '../gst/purchase_bills_screen.dart';
 import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
@@ -298,6 +299,16 @@ class _BusinessHub extends ConsumerWidget {
                       builder: (_) => const BillsAndPaymentsScreen(
                             billContext: 'business',
                           )),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.receipt_long_outlined,
+                label: 'Purchase Bills',
+                subtitle: const _StaticSubtitle('Vendor invoices, RCM & ITC'),
+                color: const Color(0xFF1565C0),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const PurchaseBillsScreen()),
                 ),
               ),
               _HubTile(

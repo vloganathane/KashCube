@@ -77,11 +77,11 @@ Future<void> _runActionCenterCheck() async {
     );
     overdueCount += (creditRows.first['c'] as int? ?? 0);
 
-    // Overdue invoices (status = 'overdue' or 'partiallyPaid' with past due)
+    // Overdue invoices (status = 'overdue')
+    // Note: invoices table has no deleted_at column — no soft-delete filter needed.
     final invoiceRows = await db.rawQuery(
       "SELECT COUNT(*) AS c FROM invoices "
-      "WHERE status IN ('overdue') "
-      "AND deleted_at IS NULL",
+      "WHERE status IN ('overdue')",
     );
     overdueCount += (invoiceRows.first['c'] as int? ?? 0);
 

@@ -200,6 +200,50 @@ class FiscalYearService {
     return _applyTokens(format, fy, seq);
   }
 
+  /// Generates the next credit note number for today's FY.
+  ///
+  /// Default format: 'CN-{YY}-{YY+1}-{SEQ}' → "CN-25-26-0001"
+  Future<String> nextCreditNoteNo() async {
+    final now = DateTime.now();
+    final fy = await getFiscalYearFor(now);
+    const format = 'CN-{YY}-{YY+1}-{SEQ}';
+    final prefix = _fyPrefixFromRange(format, fy);
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      "SELECT invoice_no FROM invoices WHERE invoice_no LIKE ? AND invoice_type = 'credit_note' ORDER BY id DESC LIMIT 1",
+      ['$prefix%'],
+    );
+    int seq = 1;
+    if (result.isNotEmpty) {
+      final last = result.first['invoice_no'] as String;
+      final seqStr = last.substring(prefix.length);
+      seq = (int.tryParse(seqStr) ?? 0) + 1;
+    }
+    return _applyTokens(format, fy, seq);
+  }
+
+  /// Generates the next debit note number for today's FY.
+  ///
+  /// Default format: 'DN-{YY}-{YY+1}-{SEQ}' → "DN-25-26-0001"
+  Future<String> nextDebitNoteNo() async {
+    final now = DateTime.now();
+    final fy = await getFiscalYearFor(now);
+    const format = 'DN-{YY}-{YY+1}-{SEQ}';
+    final prefix = _fyPrefixFromRange(format, fy);
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      "SELECT invoice_no FROM invoices WHERE invoice_no LIKE ? AND invoice_type = 'debit_note' ORDER BY id DESC LIMIT 1",
+      ['$prefix%'],
+    );
+    int seq = 1;
+    if (result.isNotEmpty) {
+      final last = result.first['invoice_no'] as String;
+      final seqStr = last.substring(prefix.length);
+      seq = (int.tryParse(seqStr) ?? 0) + 1;
+    }
+    return _applyTokens(format, fy, seq);
+  }
+
   // ── Startup Hook ────────────────────────────────────────────────────────
 
   /// Call once at app startup (after DB open) to keep `current_fy_start` in

@@ -637,6 +637,7 @@ class _LinkedInvoiceCard extends ConsumerWidget {
       InvoiceStatus.overdue => const Color(0xFFC62828),
       InvoiceStatus.sent => Theme.of(context).colorScheme.primary,
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
+      InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
     };
 

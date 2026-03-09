@@ -123,6 +123,15 @@ class LifecycleClassifier {
           lastActionLabel: 'Draft created',
           nextActionHint: 'Send invoice to customer',
         );
+
+      case InvoiceStatus.cancelled:
+        return LifecycleInfo(
+          stage: LifecycleStage.draft,
+          daysInStage: today.difference(_date(inv.updatedAt)).inDays.abs(),
+          lastActionAt: inv.updatedAt,
+          lastActionLabel: 'Cancelled',
+          nextActionHint: null,
+        );
     }
   }
 

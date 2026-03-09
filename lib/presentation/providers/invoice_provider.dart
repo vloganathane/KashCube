@@ -27,8 +27,12 @@ final invoiceRepositoryProvider = Provider<InvoiceRepository>(
 
 // ── Filter ───────────────────────────────────────────────────────────────────
 
-/// null = show all
+/// null = show all statuses
 final invoiceFilterProvider = StateProvider<InvoiceStatus?>((_) => null);
+
+/// null = show all types (Tax Invoice, Bill of Supply, Credit Note, Debit Note).
+/// Set to [InvoiceType.creditNote] or [InvoiceType.debitNote] to narrow the list.
+final invoiceTypeFilterProvider = StateProvider<InvoiceType?>((_) => null);
 
 /// Search query for filtering invoices by customer name or invoice number
 final invoiceSearchQueryProvider = StateProvider<String>((_) => '');
@@ -206,8 +210,9 @@ final invoicesProvider =
 final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
   final all = ref.watch(invoicesProvider);
   final statusFilter = ref.watch(invoiceFilterProvider);
+  final typeFilter  = ref.watch(invoiceTypeFilterProvider);
   final searchQuery = ref.watch(invoiceSearchQueryProvider);
-  final dateRange = ref.watch(invoiceDateRangeProvider);
+  final dateRange   = ref.watch(invoiceDateRangeProvider);
 
   return all.whenData((list) {
     var filtered = list;
@@ -215,6 +220,11 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
     // Apply status filter
     if (statusFilter != null) {
       filtered = filtered.where((inv) => inv.status == statusFilter).toList();
+    }
+
+    // Apply invoice-type filter (Credit Note / Debit Note)
+    if (typeFilter != null) {
+      filtered = filtered.where((inv) => inv.invoiceType == typeFilter).toList();
     }
 
     // Apply search filter (customer name or invoice number)

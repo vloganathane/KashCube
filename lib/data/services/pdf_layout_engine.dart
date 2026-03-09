@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../core/constants/app_config.dart';
 import '../../core/utils/date_formatter.dart';
 import 'pdf_cache_manager.dart';
 import 'pdf_document_data.dart';
@@ -518,39 +519,56 @@ class PdfLayoutEngine {
     final billToLabel =
         data.type == PdfDocumentType.invoice ? 'BILL TO' : 'QUOTE FOR';
 
+    // Build the buyer/billTo column (plain text style)
+    pw.Widget buyerBlock = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          billToLabel,
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: _muted,
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        ..._partyLines(data.buyer, includeEmail: true)
+            .asMap()
+            .entries
+            .map((e) => pw.Text(
+                  e.value,
+                  style: pw.TextStyle(
+                    fontSize: e.key == 0 ? 14 : 10,
+                    fontWeight: e.key == 0
+                        ? pw.FontWeight.bold
+                        : pw.FontWeight.normal,
+                    color: e.key == 0 ? _dark : _muted,
+                  ),
+                )),
+      ],
+    );
+
+    // When a ship-to address exists, render BILL TO and SHIP TO side by side
+    // inside bordered boxes, matching the GST standard invoice layout.
+    pw.Widget leftSection;
+    if (data.shipTo != null) {
+      leftSection = pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Expanded(child: _partyBox(billToLabel, _partyLines(data.buyer, includeEmail: false))),
+          pw.SizedBox(width: 10),
+          pw.Expanded(child: _partyBox('SHIP TO', _partyLines(data.shipTo!, includeEmail: false))),
+        ],
+      );
+    } else {
+      leftSection = buyerBlock;
+    }
+
     return pw.Row(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                billToLabel,
-                style: pw.TextStyle(
-                  fontSize: 10,
-                  fontWeight: pw.FontWeight.bold,
-                  color: _muted,
-                ),
-              ),
-              pw.SizedBox(height: 8),
-              ..._partyLines(data.buyer, includeEmail: true)
-                  .asMap()
-                  .entries
-                  .map((e) => pw.Text(
-                        e.value,
-                        style: pw.TextStyle(
-                          fontSize: e.key == 0 ? 14 : 10,
-                          fontWeight: e.key == 0
-                              ? pw.FontWeight.bold
-                              : pw.FontWeight.normal,
-                          color: e.key == 0 ? _dark : _muted,
-                        ),
-                      )),
-            ],
-          ),
-        ),
+        pw.Expanded(child: leftSection),
         pw.SizedBox(width: 16),
         _metaBox(data),
       ],
@@ -1245,9 +1263,24 @@ class PdfLayoutEngine {
         ],
 
         pw.SizedBox(height: 8),
-        pw.Text(
-          'Generated on ${DateFormatter.formatFull(DateTime.now())}',
-          style: const pw.TextStyle(fontSize: 8, color: _muted),
+        pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Text(
+              'Generated on ${DateFormatter.formatFull(DateTime.now())}',
+              style: const pw.TextStyle(fontSize: 8, color: _muted),
+            ),
+            pw.UrlLink(
+              destination: AppConfig.baseUrl,
+              child: pw.Text(
+                'Powered by Kash Cube · ${Uri.parse(AppConfig.baseUrl).host}',
+                style: pw.TextStyle(
+                  fontSize: 8,
+                  color: PdfColor.fromHex('#2E7D32'),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -17,8 +17,12 @@ class DatabaseHelper {
   Database? _database;
 
   /// Returns the database instance, creating it if needed.
+  ///
+  /// Also re-opens the database if the cached handle was closed externally
+  /// (e.g. by sqflite's native layer when another isolate — such as the
+  /// WorkManager background task — calls close() on the same DB path).
   Future<Database> get database async {
-    if (_database != null) return _database!;
+    if (_database != null && _database!.isOpen) return _database!;
     _database = await _initDatabase();
     return _database!;
   }
@@ -2068,6 +2072,95 @@ class DatabaseHelper {
         'version': 46,
         'description':
             'Add party_addresses table; delivery address snapshot columns on delivery_challans and invoices',
+      });
+    }
+
+    if (oldVersion < 47) {
+      // ── Credit/Debit Note original-invoice link columns (Phase F1) ────────
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN original_invoice_id INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN original_invoice_no TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN original_invoice_date TEXT',
+      );
+
+      await db.insert('schema_version', {
+        'version': 47,
+        'description':
+            'Add original_invoice_id/no/date to invoices for Credit/Debit Note linking',
+      });
+    }
+
+    if (oldVersion < 48) {
+      // ── Purchase Bills + ITC Tracking (Phase G1) ─────────────────────────
+      await db.execute('''
+        CREATE TABLE purchase_bills (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          business_id INTEGER NOT NULL,
+          bill_no TEXT NOT NULL,
+          vendor_party_id INTEGER,
+          vendor_name TEXT NOT NULL,
+          vendor_gstin TEXT,
+          bill_date TEXT NOT NULL,
+          due_date TEXT,
+          place_of_supply TEXT,
+          reverse_charge INTEGER NOT NULL DEFAULT 0,
+          subtotal REAL NOT NULL DEFAULT 0,
+          igst_amount REAL NOT NULL DEFAULT 0,
+          cgst_amount REAL NOT NULL DEFAULT 0,
+          sgst_amount REAL NOT NULL DEFAULT 0,
+          cess_amount REAL NOT NULL DEFAULT 0,
+          tax_total REAL NOT NULL DEFAULT 0,
+          total REAL NOT NULL DEFAULT 0,
+          paid_amount REAL NOT NULL DEFAULT 0,
+          itc_eligibility TEXT NOT NULL DEFAULT 'eligible',
+          itc_block_reason TEXT,
+          itc_availed INTEGER NOT NULL DEFAULT 0,
+          itc_reversal_reason TEXT,
+          notes TEXT,
+          status TEXT NOT NULL DEFAULT 'unpaid',
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX idx_pb_business ON purchase_bills(business_id)');
+      await db.execute(
+          'CREATE INDEX idx_pb_bill_date ON purchase_bills(bill_date)');
+      await db.execute(
+          'CREATE INDEX idx_pb_status ON purchase_bills(status)');
+      await db.execute(
+          'CREATE INDEX idx_pb_rc ON purchase_bills(reverse_charge)');
+
+      await db.execute('''
+        CREATE TABLE purchase_bill_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          bill_id INTEGER NOT NULL,
+          item_name TEXT NOT NULL,
+          description TEXT,
+          qty REAL NOT NULL DEFAULT 1,
+          unit_price REAL NOT NULL DEFAULT 0,
+          tax_pct REAL NOT NULL DEFAULT 0,
+          discount_pct REAL NOT NULL DEFAULT 0,
+          line_total REAL NOT NULL DEFAULT 0,
+          igst_amount REAL NOT NULL DEFAULT 0,
+          cgst_amount REAL NOT NULL DEFAULT 0,
+          sgst_amount REAL NOT NULL DEFAULT 0,
+          hsn_code TEXT,
+          unit TEXT DEFAULT 'PCS',
+          hsn_or_sac TEXT DEFAULT 'HSN',
+          FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
+        )
+      ''');
+
+      await db.insert('schema_version', {
+        'version': 48,
+        'description':
+            'Add purchase_bills + purchase_bill_items tables for ITC tracking (Phase G1)',
       });
     }
   }

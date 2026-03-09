@@ -132,6 +132,19 @@ abstract class GstinValidator {
     return code != null ? _stateByCode[code] : null;
   }
 
+  /// Returns the 2-digit GSTN state code for a given state [name], or `null`
+  /// if the name is not found.
+  ///
+  /// The lookup is case-insensitive and honours the same aliases as
+  /// [stateMatches] (e.g. "J&K" → "01", "Pondicherry" → "34").
+  static String? stateCodeFromName(String stateName) {
+    final norm = _normaliseState(stateName);
+    for (final entry in _stateByCode.entries) {
+      if (entry.value == norm) return entry.key;
+    }
+    return null;
+  }
+
   /// Returns `true` if [gstin]'s embedded state code matches [stateName].
   ///
   /// [stateName] is compared case-insensitively; common aliases are accepted.

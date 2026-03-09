@@ -19,4 +19,10 @@ class InvoiceNumberService {
   Future<String> nextInvoiceNo() => FiscalYearService.instance.nextInvoiceNo();
 
   Future<String> nextQuoteNo() => FiscalYearService.instance.nextQuoteNo();
+
+  Future<String> nextCreditNoteNo() =>
+      FiscalYearService.instance.nextCreditNoteNo();
+
+  Future<String> nextDebitNoteNo() =>
+      FiscalYearService.instance.nextDebitNoteNo();
 }

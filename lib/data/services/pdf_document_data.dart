@@ -308,6 +308,7 @@ class PdfDocumentData {
     this.validUntil,
     required this.seller,
     required this.buyer,
+    this.shipTo,
     this.placeOfSupply,
     this.reverseCharge = false,
     this.notes,
@@ -341,6 +342,10 @@ class PdfDocumentData {
 
   final PdfPartyInfo seller;
   final PdfPartyInfo buyer;
+
+  /// Delivery / ship-to address (invoice + DC only). When non-null the layout
+  /// engine renders a SHIP TO block beside the BILL TO block.
+  final PdfPartyInfo? shipTo;
 
   final String? placeOfSupply;
   final bool reverseCharge;

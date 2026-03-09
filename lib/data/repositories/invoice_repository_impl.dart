@@ -381,4 +381,22 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     }
     return result;
   }
+
+  @override
+  Future<List<Invoice>> getForPeriod({
+    required int businessId,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final db = await _db.database;
+    final fromStr = from.toIso8601String().substring(0, 10);
+    final toStr = to.toIso8601String().substring(0, 10);
+    final rows = await db.query(
+      'invoices',
+      where: 'business_id = ? AND issue_date >= ? AND issue_date <= ?',
+      whereArgs: [businessId, fromStr, toStr],
+      orderBy: 'issue_date ASC',
+    );
+    return _withItems(db, rows);
+  }
 }

@@ -49,4 +49,12 @@ abstract class InvoiceRepository {
 
   /// All non-deleted invoices linked to a party (by [customerPartyId]). P1.2
   Future<List<Invoice>> getByPartyId(int partyId);
+
+  /// All invoices for [businessId] whose [issueDate] falls within
+  /// [[from], [to]] inclusive. Used by GSTR-1 workbook generation.
+  Future<List<Invoice>> getForPeriod({
+    required int businessId,
+    required DateTime from,
+    required DateTime to,
+  });
 }

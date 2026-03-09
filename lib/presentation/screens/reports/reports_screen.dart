@@ -18,6 +18,9 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bookings/bookings_screen.dart';
+import '../gst/gstr1_screen.dart';
+import '../gst/gstr3b_offset_screen.dart';
+import '../gst/purchase_bills_screen.dart';
 import 'budget_screen.dart';
 import 'cash_flow_screen.dart';
 
@@ -416,7 +419,15 @@ class _ReportsBody extends ConsumerWidget {
         ],
         const _CashFlowTimelineCard(),
         const SizedBox(height: AppSpacing.base),
-if (reportMode == 'business') ...[  
+        if (isBusiness) ...[  
+          const _GstReturnsCard(),
+          const SizedBox(height: AppSpacing.sm),
+          const _PurchaseBillsCard(),
+          const SizedBox(height: AppSpacing.sm),
+          const _Gstr3bOffsetCard(),
+          const SizedBox(height: AppSpacing.base),
+        ],
+        if (reportMode == 'business') ...[
           _GstSummaryCard(pnl: pnl),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -3435,6 +3446,187 @@ class _CashFlowTimelineCard extends StatelessWidget {
                     ),
                     Text(
                       'Overdue, upcoming & projected money movement',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: context.colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// GST Returns card — navigates to Gstr1Screen
+// ---------------------------------------------------------------------------
+
+class _GstReturnsCard extends StatelessWidget {
+  const _GstReturnsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const Gstr1Screen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(
+                  Icons.receipt_outlined,
+                  color: context.colorScheme.tertiary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'GST Returns (GSTR-1)',
+                      style: context.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Generate workbook CSV + PDF summary for your CA',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: context.colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Purchase Bills card — navigates to PurchaseBillsScreen
+// ---------------------------------------------------------------------------
+
+class _PurchaseBillsCard extends StatelessWidget {
+  const _PurchaseBillsCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PurchaseBillsScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(
+                  Icons.receipt_long_outlined,
+                  color: context.colorScheme.tertiary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Purchase Bills & ITC',
+                      style: context.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Track vendor invoices, RCM bills, and input tax credit',
+                      style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  size: 16, color: context.colorScheme.outline),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GSTR-3B Offset card — navigates to Gstr3bOffsetScreen
+// ---------------------------------------------------------------------------
+
+class _Gstr3bOffsetCard extends StatelessWidget {
+  const _Gstr3bOffsetCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const Gstr3bOffsetScreen()),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: context.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                ),
+                child: Icon(
+                  Icons.balance_outlined,
+                  color: context.colorScheme.secondary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.base),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'GSTR-3B Offset Summary',
+                      style: context.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'Compute ITC offset and cash required to file GSTR-3B',
                       style: context.textTheme.bodySmall?.copyWith(
                           color: context.colorScheme.onSurfaceVariant),
                     ),

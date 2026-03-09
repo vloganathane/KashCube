@@ -69,6 +69,7 @@ class DeliveryChallanPdfService {
         email: customerParty?.email,
         state: customerParty?.state,
       ),
+      shipTo: _buildShipTo(challan),
       placeOfSupply: challan.placeOfSupply,
       notes: challan.notes,
       lineItems: challan.items
@@ -98,6 +99,27 @@ class DeliveryChallanPdfService {
       purpose: challan.purpose.label,
       ewbNo: challan.ewbNo,
       footerNote: termsAndConditions ?? '',
+    );
+  }
+
+  // ── Delivery address helper ──────────────────────────────────────────────
+
+  PdfPartyInfo? _buildShipTo(DeliveryChallan challan) {
+    final parts = [
+      if (challan.deliveryAddress != null && challan.deliveryAddress!.isNotEmpty)
+        challan.deliveryAddress!,
+      if (challan.deliveryCity != null && challan.deliveryCity!.isNotEmpty)
+        challan.deliveryCity!,
+      if (challan.deliveryState != null && challan.deliveryState!.isNotEmpty)
+        challan.deliveryState!,
+      if (challan.deliveryPincode != null && challan.deliveryPincode!.isNotEmpty)
+        challan.deliveryPincode!,
+    ];
+    if (parts.isEmpty) return null;
+    return PdfPartyInfo(
+      name: challan.customerName,
+      address: parts.join(', '),
+      state: challan.deliveryState,
     );
   }
 

@@ -4,7 +4,7 @@ import 'package:equatable/equatable.dart';
 // Enums
 // ---------------------------------------------------------------------------
 
-enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid }
+enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid, cancelled }
 
 extension InvoiceStatusExt on InvoiceStatus {
   String get label {
@@ -19,6 +19,8 @@ extension InvoiceStatusExt on InvoiceStatus {
         return 'Overdue';
       case InvoiceStatus.partiallyPaid:
         return 'Partial';
+      case InvoiceStatus.cancelled:
+        return 'Cancelled';
     }
   }
 
@@ -41,6 +43,8 @@ extension InvoiceStatusExt on InvoiceStatus {
         return InvoiceStatus.overdue;
       case 'partially_paid':
         return InvoiceStatus.partiallyPaid;
+      case 'cancelled':
+        return InvoiceStatus.cancelled;
       default:
         return InvoiceStatus.draft;
     }
@@ -233,6 +237,10 @@ class Invoice extends Equatable {
     this.deliveryState,
     this.deliveryPincode,
     this.deliveryGstin,
+    // ── Credit/Debit Note original-invoice link (v47) ────────────────────────
+    this.originalInvoiceId,
+    this.originalInvoiceNo,
+    this.originalInvoiceDate,
   });
 
   final int? id;
@@ -316,6 +324,14 @@ class Invoice extends Equatable {
   /// Delivery location GSTIN (may differ from the customer's billing GSTIN).
   final String? deliveryGstin;
 
+  // ── Credit/Debit Note original-invoice link (v47) ────────────────────────
+  /// FK to the original invoice (only non-null for creditNote / debitNote).
+  final int? originalInvoiceId;
+  /// Snapshot of the original invoice number at the time this note was created.
+  final String? originalInvoiceNo;
+  /// Snapshot of the original invoice date (ISO-8601, e.g. '2026-01-15').
+  final String? originalInvoiceDate;
+
   /// `true` when an e-Way Bill has been generated for this invoice.
   bool get hasEwb => ewbNo != null && ewbNo!.isNotEmpty;
 
@@ -378,6 +394,9 @@ class Invoice extends Equatable {
     String? deliveryState,
     String? deliveryPincode,
     String? deliveryGstin,
+    int? originalInvoiceId,
+    String? originalInvoiceNo,
+    String? originalInvoiceDate,
   }) {
     return Invoice(
       id: id ?? this.id,
@@ -426,6 +445,9 @@ class Invoice extends Equatable {
       deliveryState: deliveryState ?? this.deliveryState,
       deliveryPincode: deliveryPincode ?? this.deliveryPincode,
       deliveryGstin: deliveryGstin ?? this.deliveryGstin,
+      originalInvoiceId: originalInvoiceId ?? this.originalInvoiceId,
+      originalInvoiceNo: originalInvoiceNo ?? this.originalInvoiceNo,
+      originalInvoiceDate: originalInvoiceDate ?? this.originalInvoiceDate,
     );
   }
 
@@ -475,6 +497,9 @@ class Invoice extends Equatable {
         'delivery_state': deliveryState,
         'delivery_pincode': deliveryPincode,
         'delivery_gstin': deliveryGstin,
+        'original_invoice_id': originalInvoiceId,
+        'original_invoice_no': originalInvoiceNo,
+        'original_invoice_date': originalInvoiceDate,
       };
 
   factory Invoice.fromMap(Map<String, dynamic> map,
@@ -536,6 +561,9 @@ class Invoice extends Equatable {
         deliveryState: map['delivery_state'] as String?,
         deliveryPincode: map['delivery_pincode'] as String?,
         deliveryGstin: map['delivery_gstin'] as String?,
+        originalInvoiceId: map['original_invoice_id'] as int?,
+        originalInvoiceNo: map['original_invoice_no'] as String?,
+        originalInvoiceDate: map['original_invoice_date'] as String?,
       );
 
   @override

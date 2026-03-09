@@ -31,7 +31,7 @@ import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
 import 'item_catalog_screen.dart';
 
-enum DocumentType { quote, invoice, deliveryChallan }
+enum DocumentType { quote, invoice, deliveryChallan, creditNote, debitNote }
 
 class QuoteBuilderScreen extends ConsumerStatefulWidget {
   const QuoteBuilderScreen({
@@ -40,11 +40,15 @@ class QuoteBuilderScreen extends ConsumerStatefulWidget {
     this.invoiceId,
     this.challanId,
     this.docType = DocumentType.quote,
+    this.sourceInvoice,
   });
   final int? quoteId;
   final int? invoiceId;
   final int? challanId;
   final DocumentType docType;
+  /// When [docType] is [DocumentType.creditNote] or [DocumentType.debitNote],
+  /// pre-fills customer, items, and snapshots the original invoice link.
+  final Invoice? sourceInvoice;
 
   @override
   ConsumerState<QuoteBuilderScreen> createState() =>
@@ -76,6 +80,10 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   Quote? _existingQuote;
   Invoice? _existingInvoice;
   DeliveryChallan? _existingChallan;
+  // ── Credit/Debit Note original-invoice link (set during _initFromSourceInvoice)
+  int? _originalInvoiceId;
+  String? _originalInvoiceNo;
+  String? _originalInvoiceDate;
   // DC-specific state
   ChallanPurpose _challanPurpose = ChallanPurpose.supply;
   DateTime _challanDate = DateTime.now();
@@ -120,6 +128,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         _items.add(const _LineItem());
         _initDocumentNumber();
       }
+    } else if (widget.docType == DocumentType.creditNote ||
+        widget.docType == DocumentType.debitNote) {
+      if (widget.sourceInvoice != null) {
+        _initFromSourceInvoice(widget.sourceInvoice!);
+      } else {
+        _items.add(const _LineItem());
+        _initDocumentNumber();
+      }
     } else {
       if (widget.quoteId != null) {
         _loadQuote();
@@ -131,15 +147,63 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   }
 
   Future<void> _initDocumentNumber() async {
-    final number = widget.docType == DocumentType.invoice
-        ? await InvoiceNumberService.instance.nextInvoiceNo()
-        : widget.docType == DocumentType.deliveryChallan
-            ? await FiscalYearService.instance.nextChallanNo()
-            : await InvoiceNumberService.instance.nextQuoteNo();
+    final String number;
+    if (widget.docType == DocumentType.invoice) {
+      number = await InvoiceNumberService.instance.nextInvoiceNo();
+    } else if (widget.docType == DocumentType.deliveryChallan) {
+      number = await FiscalYearService.instance.nextChallanNo();
+    } else if (widget.docType == DocumentType.creditNote) {
+      number = await InvoiceNumberService.instance.nextCreditNoteNo();
+    } else if (widget.docType == DocumentType.debitNote) {
+      number = await InvoiceNumberService.instance.nextDebitNoteNo();
+    } else {
+      number = await InvoiceNumberService.instance.nextQuoteNo();
+    }
     if (mounted) {
       _documentNoCtrl.text = number;
     }
   }
+
+  /// Pre-fills the builder from [source] invoice when creating a Credit Note
+  /// or Debit Note. Snapshots the original invoice link fields.
+  void _initFromSourceInvoice(Invoice source) {
+    _originalInvoiceId = source.id;
+    _originalInvoiceNo = source.invoiceNo;
+    _originalInvoiceDate = source.issueDate.toIso8601String().substring(0, 10);
+    setState(() {
+      _customerName = source.customerName;
+      _customerCtrl.text = source.customerName;
+      _customerPartyId = source.customerPartyId;
+      _selectedBusinessId = source.businessId;
+      _issueDate = DateTime.now();
+      _dueDate = null; // Credit/debit notes typically have no due date
+      _notesController.text =
+          'Against invoice ${source.invoiceNo} dated '
+          '${source.issueDate.day.toString().padLeft(2, '0')} '
+          '${_monthName(source.issueDate.month)} '
+          '${source.issueDate.year}';
+      _items.clear();
+      _items.addAll(source.items.map(
+        (ii) => _LineItem(
+          itemName: ii.itemName,
+          description: ii.description ?? '',
+          qty: ii.qty,
+          unitPrice: ii.unitPrice,
+          taxPct: ii.taxPct,
+          discountPct: ii.discountPct,
+          hsnCode: ii.hsnCode,
+          unit: ii.unit,
+          hsnOrSac: ii.hsnOrSac,
+        ),
+      ));
+    });
+    _initDocumentNumber();
+  }
+
+  static String _monthName(int m) => const [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ][m - 1];
 
   Future<void> _loadQuote() async {
     final quote =
@@ -420,7 +484,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     setState(() => _isSaving = true);
 
     try {
-      if (widget.docType == DocumentType.invoice) {
+      if (widget.docType == DocumentType.invoice ||
+          widget.docType == DocumentType.creditNote ||
+          widget.docType == DocumentType.debitNote) {
         await _saveInvoice(send: send);
       } else if (widget.docType == DocumentType.deliveryChallan) {
         await _saveChallan();
@@ -561,6 +627,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       deliveryState: _selectedDeliveryAddress?.state,
       deliveryPincode: _selectedDeliveryAddress?.pincode,
       deliveryGstin: _selectedDeliveryAddress?.gstin,
+      invoiceType: switch (widget.docType) {
+        DocumentType.creditNote => InvoiceType.creditNote,
+        DocumentType.debitNote  => InvoiceType.debitNote,
+        _                       => _existingInvoice?.invoiceType ?? InvoiceType.taxInvoice,
+      },
+      originalInvoiceId:   _originalInvoiceId   ?? _existingInvoice?.originalInvoiceId,
+      originalInvoiceNo:   _originalInvoiceNo   ?? _existingInvoice?.originalInvoiceNo,
+      originalInvoiceDate: _originalInvoiceDate  ?? _existingInvoice?.originalInvoiceDate,
       items: _invoiceItems,
       createdAt: _existingInvoice?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
@@ -1234,7 +1308,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isInvoice = widget.docType == DocumentType.invoice;
+    final isCN = widget.docType == DocumentType.creditNote;
+    final isDN = widget.docType == DocumentType.debitNote;
+    final isInvoice = widget.docType == DocumentType.invoice || isCN || isDN;
     final isDC = widget.docType == DocumentType.deliveryChallan;
     final isEdit = isInvoice
         ? _existingInvoice != null
@@ -1242,7 +1318,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             ? _existingChallan != null
             : _existingQuote != null;
     String title;
-    if (isInvoice) {
+    if (isCN) {
+      title = isEdit ? 'Edit Credit Note' : 'New Credit Note';
+    } else if (isDN) {
+      title = isEdit ? 'Edit Debit Note' : 'New Debit Note';
+    } else if (widget.docType == DocumentType.invoice) {
       title = isEdit ? 'Edit Invoice' : 'New Invoice';
     } else if (isDC) {
       title = isEdit ? _existingChallan!.challanNo : 'New Challan';

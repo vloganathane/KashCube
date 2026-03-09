@@ -562,6 +562,7 @@ class _InvoiceTile extends StatelessWidget {
       InvoiceStatus.overdue => context.colorScheme.error,
       InvoiceStatus.sent => Colors.orange,
       InvoiceStatus.partiallyPaid => Colors.blue,
+      InvoiceStatus.cancelled => context.colorScheme.outline,
       InvoiceStatus.draft => context.colorScheme.outline,
     };
     return ListTile(

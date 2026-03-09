@@ -99,6 +99,7 @@ class _InvoicesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(invoiceFilterProvider);
+    final typeFilter = ref.watch(invoiceTypeFilterProvider);
     final invoicesAsync = ref.watch(filteredInvoicesProvider);
 
     return RefreshIndicator(
@@ -109,8 +110,13 @@ class _InvoicesTab extends ConsumerWidget {
         children: [
           _StatusFilterBar(
             selected: filter,
-            onSelected: (s) =>
-                ref.read(invoiceFilterProvider.notifier).state = s,
+            selectedType: typeFilter,
+            onSelected: (s) {
+              ref.read(invoiceFilterProvider.notifier).state = s;
+            },
+            onTypeSelected: (t) {
+              ref.read(invoiceTypeFilterProvider.notifier).state = t;
+            },
           ),
           Expanded(
             child: invoicesAsync.when(
@@ -142,33 +148,75 @@ class _InvoicesTab extends ConsumerWidget {
 }
 
 class _StatusFilterBar extends StatelessWidget {
-  const _StatusFilterBar({required this.selected, required this.onSelected});
+  const _StatusFilterBar({
+    required this.selected,
+    required this.selectedType,
+    required this.onSelected,
+    required this.onTypeSelected,
+  });
   final InvoiceStatus? selected;
+  final InvoiceType? selectedType;
   final ValueChanged<InvoiceStatus?> onSelected;
+  final ValueChanged<InvoiceType?> onTypeSelected;
 
   @override
   Widget build(BuildContext context) {
     final statuses = [null, ...InvoiceStatus.values];
+    // CN / DN as separate chips after the status row
+    const typeChips = [
+      (label: 'Credit Notes', type: InvoiceType.creditNote),
+      (label: 'Debit Notes',  type: InvoiceType.debitNote),
+    ];
     return SizedBox(
       height: 52,
-      child: ListView.separated(
+      child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.base,
           vertical: AppSpacing.sm,
         ),
-        itemCount: statuses.length,
-        separatorBuilder: (context, index) =>
-            const SizedBox(width: AppSpacing.sm),
-        itemBuilder: (_, i) {
-          final s = statuses[i];
-          final label = s?.label ?? 'All';
-          return FilterChip(
-            label: Text(label),
-            selected: selected == s,
-            onSelected: (_) => onSelected(s),
-          );
-        },
+        children: [
+          // Status chips
+          ...statuses.map((s) {
+            final label = s?.label ?? 'All';
+            return Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: FilterChip(
+                label: Text(label),
+                selected: selected == s && selectedType == null,
+                onSelected: (_) {
+                  onSelected(s);
+                  onTypeSelected(null); // clear type filter
+                },
+              ),
+            );
+          }),
+          // Divider
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: Center(
+              child: Container(
+                width: 1,
+                height: 24,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+          ),
+          // Type chips: Credit Notes, Debit Notes
+          ...typeChips.map((tc) => Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: FilterChip(
+              label: Text(tc.label),
+              selected: selectedType == tc.type,
+              onSelected: (_) {
+                onTypeSelected(
+                  selectedType == tc.type ? null : tc.type,
+                );
+                onSelected(null); // clear status filter
+              },
+            ),
+          )),
+        ],
       ),
     );
   }
@@ -218,12 +266,48 @@ class _InvoiceTile extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          invoice.invoiceNo,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                invoice.invoiceNo,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (invoice.invoiceType == InvoiceType.creditNote ||
+                                invoice.invoiceType == InvoiceType.debitNote) ...[
+                              const SizedBox(width: AppSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: (invoice.invoiceType ==
+                                              InvoiceType.creditNote
+                                          ? Theme.of(context).colorScheme.error
+                                          : Colors.orange)
+                                      .withValues(alpha: 0.13),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                                child: Text(
+                                  invoice.invoiceType == InvoiceType.creditNote
+                                      ? 'CN'
+                                      : 'DN',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                    color: invoice.invoiceType ==
+                                            InvoiceType.creditNote
+                                        ? Theme.of(context).colorScheme.error
+                                        : Colors.orange,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -292,6 +376,7 @@ class _InvoiceTile extends ConsumerWidget {
       InvoiceStatus.overdue => const Color(0xFFC62828),
       InvoiceStatus.sent => cs.primary,
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
+      InvoiceStatus.cancelled => cs.outline,
       InvoiceStatus.draft => cs.outline,
     };
   }
@@ -329,6 +414,7 @@ class _StatusChip extends StatelessWidget {
       InvoiceStatus.overdue => const Color(0xFFC62828),
       InvoiceStatus.sent => Theme.of(context).colorScheme.primary,
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
+      InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
     };
     return Container(

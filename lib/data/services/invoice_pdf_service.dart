@@ -89,6 +89,11 @@ class InvoicePdfService {
       type: PdfDocumentType.invoice,
       docNumber: invoice.invoiceNo,
       typeLabel: invoice.invoiceType.label.toUpperCase(),
+      subTypeLabel: (invoice.invoiceType == InvoiceType.creditNote ||
+                    invoice.invoiceType == InvoiceType.debitNote) &&
+                   invoice.originalInvoiceNo != null
+          ? 'Against: ${invoice.originalInvoiceNo}'
+          : null,
       statusLabel: invoice.status.label,
       statusColor: _invoiceStatusColor(invoice.status),
       issueDate: invoice.issueDate,
@@ -102,6 +107,7 @@ class InvoicePdfService {
         email: customerParty?.email,
         state: buyerState,
       ),
+      shipTo: _buildShipTo(invoice),
       placeOfSupply: invoice.placeOfSupply,
       reverseCharge: invoice.reverseCharge,
       notes: invoice.notes,
@@ -130,6 +136,28 @@ class InvoicePdfService {
       ),
       termsAndConditions: termsAndConditions,
       footerNote: 'Thank you for your business!',
+    );
+  }
+
+  // ── Delivery address helper ──────────────────────────────────────────────
+
+  PdfPartyInfo? _buildShipTo(Invoice invoice) {
+    final parts = [
+      if (invoice.deliveryAddress != null && invoice.deliveryAddress!.isNotEmpty)
+        invoice.deliveryAddress!,
+      if (invoice.deliveryCity != null && invoice.deliveryCity!.isNotEmpty)
+        invoice.deliveryCity!,
+      if (invoice.deliveryState != null && invoice.deliveryState!.isNotEmpty)
+        invoice.deliveryState!,
+      if (invoice.deliveryPincode != null && invoice.deliveryPincode!.isNotEmpty)
+        invoice.deliveryPincode!,
+    ];
+    if (parts.isEmpty) return null;
+    return PdfPartyInfo(
+      name: invoice.customerName,
+      gstin: invoice.deliveryGstin,
+      address: parts.join(', '),
+      state: invoice.deliveryState,
     );
   }
 
@@ -277,6 +305,8 @@ class InvoicePdfService {
         return PdfColors.orange700;
       case InvoiceStatus.draft:
         return PdfColors.grey600;
+      case InvoiceStatus.cancelled:
+        return PdfColors.grey400;
     }
   }
 

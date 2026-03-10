@@ -14,7 +14,10 @@ import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../bills/bills_and_payments_screen.dart';
 import '../bookings/bookings_screen.dart';
+import '../gst/gstr1_screen.dart';
+import '../gst/gstr3b_offset_screen.dart';
 import '../gst/purchase_bills_screen.dart';
+import '../reports/cash_flow_screen.dart';
 import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
@@ -381,6 +384,39 @@ class _BusinessHub extends ConsumerWidget {
                     MaterialPageRoute(builder: (_) => const ReportsScreen()),
                   );
                 },
+              ),
+              _HubTile(
+                icon: Icons.show_chart_outlined,
+                label: 'Cash Flow Timeline',
+                subtitle: const _StaticSubtitle(
+                    'Overdue, upcoming & projected money movement'),
+                color: const Color(0xFF00695C),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const CashFlowScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.receipt_outlined,
+                label: 'GST Returns (GSTR-1)',
+                subtitle: const _StaticSubtitle(
+                    'Generate workbook CSV + PDF summary for your CA'),
+                color: const Color(0xFF006064),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const Gstr1Screen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.balance_outlined,
+                label: 'GSTR-3B Offset Summary',
+                subtitle: const _StaticSubtitle(
+                    'Compute ITC offset and cash required to file'),
+                color: const Color(0xFF4E342E),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const Gstr3bOffsetScreen()),
+                ),
               ),
             ],
           ),

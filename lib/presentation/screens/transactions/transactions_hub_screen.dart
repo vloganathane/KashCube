@@ -13,6 +13,7 @@ import '../bills/bills_and_payments_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../reports/budget_screen.dart';
+import '../reports/cash_flow_screen.dart';
 import '../reports/reports_screen.dart';
 import 'category_management_screen.dart';
 import 'transactions_screen.dart';
@@ -199,6 +200,17 @@ class TransactionsHubScreen extends ConsumerWidget {
                 color: const Color(0xFF6A1B9A),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const BudgetScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.show_chart_outlined,
+                label: 'Cash Flow Timeline',
+                subtitle: const _StaticSubtitle(
+                    'Overdue, upcoming & projected money movement'),
+                color: const Color(0xFF00695C),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const CashFlowScreen()),
                 ),
               ),
             ],

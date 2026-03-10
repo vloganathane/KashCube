@@ -89,7 +89,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
                 ),
                 const SizedBox(height: AppSpacing.base),
                 DropdownButtonFormField<PaymentMethod>(
-                  value: selectedMethod,
+                  initialValue: selectedMethod,
                   decoration:
                       const InputDecoration(labelText: 'Payment method'),
                   items: [
@@ -138,6 +138,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     if (amount <= 0) return;
 
     setState(() => _paying = true);
+    final messenger = ScaffoldMessenger.of(context);
     try {
       await ref.read(purchaseBillsProvider.notifier).recordPayment(
             billId: bill.id!,
@@ -165,25 +166,21 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         await ref.read(transactionsProvider.notifier).addTransaction(txn);
       }
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Payment of ${CurrencyFormatter.format(amount)} recorded'),
-          ),
-        );
-      }
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+              'Payment of ${CurrencyFormatter.format(amount)} recorded'),
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Payment failed: $e')));
-      }
+      messenger.showSnackBar(SnackBar(content: Text('Payment failed: $e')));
     } finally {
       if (mounted) setState(() => _paying = false);
     }
   }
 
   Future<void> _deleteBill(BuildContext context) async {
+    final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -205,7 +202,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     );
     if (confirmed != true || !mounted) return;
     await ref.read(purchaseBillsProvider.notifier).remove(bill.id!);
-    if (mounted) Navigator.of(context).pop();
+    navigator.pop();
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -642,7 +639,7 @@ class _LinkedTransactionsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ref.watch(transactionsProvider).when(
           loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
           data: (all) {
             final linked = all
                 .where((t) => t.referenceId == billNo)

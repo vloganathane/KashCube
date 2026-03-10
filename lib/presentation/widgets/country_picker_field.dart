@@ -20,9 +20,7 @@ const WorldCountry kIndiaCountry = WorldCountry.ind();
 ///
 /// Falls back to `"91"` (India) when IDD data is absent.
 String dialCodeFor(WorldCountry country) {
-  final idd = country.idd;
-  if (idd == null) return '91';
-  return idd.phoneCode(leading: ''); // e.g. "91", "971", "44"
+  return country.idd.phoneCode(leading: ''); // e.g. "91", "971", "44"
 }
 
 /// Finds a [WorldCountry] by its common English name (e.g. 'India').

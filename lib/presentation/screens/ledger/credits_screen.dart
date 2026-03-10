@@ -89,7 +89,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
                 return ListView.separated(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       const Divider(height: 1, indent: 72),
                   itemBuilder: (_, i) => _CreditTile(
                     credit: filtered[i],

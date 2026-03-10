@@ -588,7 +588,7 @@ class _AddPurchaseBillScreenState
                 labelText: 'Place of Supply',
                 prefixIcon: Icon(Icons.location_on_outlined),
               ),
-              value: _placeOfSupply,
+              initialValue: _placeOfSupply,
               hint: const Text('(auto from business state)'),
               isExpanded: true,
               items: kIndianStates
@@ -664,7 +664,7 @@ class _AddPurchaseBillScreenState
                 labelText: 'ITC Eligibility',
                 prefixIcon: Icon(Icons.verified_outlined),
               ),
-              value: _itcEligibility,
+              initialValue: _itcEligibility,
               items: const [
                 DropdownMenuItem(
                   value: ItcEligibility.eligible,
@@ -695,7 +695,7 @@ class _AddPurchaseBillScreenState
                   labelText: 'Block Reason *',
                   prefixIcon: Icon(Icons.block_outlined),
                 ),
-                value: _itcBlockReason,
+                initialValue: _itcBlockReason,
                 hint: const Text('Select reason'),
                 validator: (v) => v == null ? 'Required when blocked' : null,
                 items: ItcBlockReason.values
@@ -966,7 +966,7 @@ class _LineItemCard extends StatelessWidget {
                   child: DropdownButtonFormField<double>(
                     decoration: const InputDecoration(
                         labelText: 'GST %', isDense: true),
-                    value: gstRates.contains(item.taxPct) ? item.taxPct : null,
+                    initialValue: gstRates.contains(item.taxPct) ? item.taxPct : null,
                     hint: const Text('Custom'),
                     isExpanded: true,
                     items: gstRates

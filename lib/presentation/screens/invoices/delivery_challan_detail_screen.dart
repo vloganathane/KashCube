@@ -430,7 +430,7 @@ class _StatusBanner extends StatelessWidget {
 
     switch (status) {
       case ChallanStatus.draft:
-        bg = context.colorScheme.surfaceVariant;
+        bg = context.colorScheme.surfaceContainerHighest;
         fg = context.colorScheme.onSurfaceVariant;
         icon = Icons.edit_note_outlined;
         label = 'Draft — not yet dispatched';

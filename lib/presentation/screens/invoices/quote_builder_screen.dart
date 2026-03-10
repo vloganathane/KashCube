@@ -1605,7 +1605,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             // DC-specific: Purpose + Transport
             if (isDC) ...[  
               DropdownButtonFormField<ChallanPurpose>(
-                value: _challanPurpose,
+                initialValue: _challanPurpose,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Purpose',
@@ -1639,7 +1639,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _transportMode,
+                      initialValue: _transportMode,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Mode',

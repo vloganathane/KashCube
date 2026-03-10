@@ -675,20 +675,22 @@ class Gstr1Service {
           if (inv.customerGstin != null && inv.customerGstin!.isNotEmpty) {
             // T4
             final key = '${inv.invoiceNo}|$rate';
-            b2bMap.putIfAbsent(
-              key,
-              () => _B2bAcc(
-                receiverGstin: inv.customerGstin!,
-                receiverName: inv.customerName,
-                invoiceNo: inv.invoiceNo,
-                invoiceDate: invDateStr,
-                invoiceValue: inv.total,
-                placeOfSupply: pos,
-                reverseCharge: inv.reverseCharge,
-                invoiceType: 'Regular',
-                rate: rate,
-              ),
-            )..add(taxable: taxable, cgst: cgst, sgst: sgst, igst: igst);
+            b2bMap
+                .putIfAbsent(
+                  key,
+                  () => _B2bAcc(
+                    receiverGstin: inv.customerGstin!,
+                    receiverName: inv.customerName,
+                    invoiceNo: inv.invoiceNo,
+                    invoiceDate: invDateStr,
+                    invoiceValue: inv.total,
+                    placeOfSupply: pos,
+                    reverseCharge: inv.reverseCharge,
+                    invoiceType: 'Regular',
+                    rate: rate,
+                  ),
+                )
+                .add(taxable: taxable, cgst: cgst, sgst: sgst, igst: igst);
           } else if (isInterState && inv.total > 250000) {
             // T5
             final key = '$pos|$rate';

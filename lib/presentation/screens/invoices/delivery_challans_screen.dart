@@ -62,7 +62,7 @@ class _DeliveryChallansScreenState
                     92,
                   ),
                   itemCount: list.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) =>
                       _ChallanCard(challan: list[index]),
@@ -162,7 +162,7 @@ class _ChallanCard extends ConsumerWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: _statusColor(challan.status, context).withOpacity(0.12),
+                  color: _statusColor(challan.status, context).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -273,7 +273,7 @@ class _StatusChip extends StatelessWidget {
     Color fg;
     switch (status) {
       case ChallanStatus.draft:
-        bg = context.colorScheme.surfaceVariant;
+        bg = context.colorScheme.surfaceContainerHighest;
         fg = context.colorScheme.onSurfaceVariant;
         break;
       case ChallanStatus.dispatched:

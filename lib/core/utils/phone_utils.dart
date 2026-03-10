@@ -14,7 +14,7 @@ class PhoneUtils {
   /// Strips any leading country-code prefix and returns a bare digit string.
   ///
   /// Handles:
-  /// - Numbers starting with +<dialCode> or <dialCode> when 12+ digits (India)
+  /// - Numbers starting with `+<dialCode>` or `<dialCode>` when 12+ digits (India)
   /// - Indian-specific: leading '0'
   /// Returns `null` when [raw] is null, empty, or reduces to empty.
   static String? normalize(String? raw, {String dialCode = _defaultDialCode}) {

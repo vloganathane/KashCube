@@ -340,7 +340,7 @@ class _FilterChipRow extends StatelessWidget {
         padding:
             const EdgeInsets.symmetric(horizontal: AppSpacing.base),
         itemCount: _CashFlowFilter.values.length,
-        separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.xs),
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
         itemBuilder: (_, i) {
           final filter = _CashFlowFilter.values[i];
           return FilterChip(

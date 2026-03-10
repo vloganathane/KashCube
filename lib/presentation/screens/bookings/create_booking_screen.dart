@@ -461,7 +461,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       final businessesAsync = ref.watch(businessesProvider);
                       return businessesAsync.when(
                         loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
                         data: (businesses) {
                           if (businesses.isEmpty) return const SizedBox.shrink();
                           if (businesses.length == 1) {

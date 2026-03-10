@@ -7,6 +7,7 @@ import '../screens/bookings/create_booking_screen.dart';
 import '../screens/invoices/quote_builder_screen.dart';
 import '../screens/ledger/credits_screen.dart';
 import '../screens/loans/loans_screen.dart';
+import '../screens/gst/add_purchase_bill_screen.dart';
 import '../screens/invoices/item_catalog_screen.dart';
 import '../screens/transactions/add_edit_transaction_screen.dart';
 
@@ -127,6 +128,13 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     );
   }
 
+  void _openNewPurchaseBill() {
+    _close();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AddPurchaseBillScreen()),
+    );
+  }
+
   void _openNewBooking() {
     _close();
     Navigator.of(context).push(
@@ -178,6 +186,12 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
             icon: Icons.local_shipping_outlined,
             label: 'Delivery Challan',
             onTap: _openNewDeliveryChallan,
+          )),
+          const SizedBox(height: 12),
+          _animated(SpeedDialOption(
+            icon: Icons.receipt_long_outlined,
+            label: 'Purchase Bill',
+            onTap: _openNewPurchaseBill,
           )),
           const SizedBox(height: 12),
           _animated(SpeedDialOption(

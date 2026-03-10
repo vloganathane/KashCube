@@ -515,13 +515,15 @@ class DatabaseHelper {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
-        bill_context TEXT NOT NULL DEFAULT 'personal'
+        bill_context TEXT NOT NULL DEFAULT 'personal',
+        party_id INTEGER REFERENCES parties(id)
       )
     ''');
 
     await db.execute('CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)');
     await db.execute('CREATE INDEX idx_sp_next ON scheduled_payments(next_date)');
     await db.execute('CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)');
 
     // -- businesses table (multiple business profiles, v14)
     await db.execute('''
@@ -668,6 +670,14 @@ class DatabaseHelper {
         insurance_amt REAL NOT NULL DEFAULT 0,
         packing_amt REAL NOT NULL DEFAULT 0,
         challan_id INTEGER REFERENCES delivery_challans(id) ON DELETE SET NULL,
+        delivery_address TEXT,
+        delivery_city TEXT,
+        delivery_state TEXT,
+        delivery_pincode TEXT,
+        delivery_gstin TEXT,
+        original_invoice_id INTEGER,
+        original_invoice_no TEXT,
+        original_invoice_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -768,9 +778,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 42,
-      'description': 'Full v42 schema (fresh install)',
-
+      'version': 49,
+      'description': 'Full v49 schema (fresh install)',
     });
 
     // -- unit_types table
@@ -832,6 +841,11 @@ class DatabaseHelper {
         distance_km INTEGER,
         converted_invoice_id INTEGER,
         ewb_no TEXT,
+        delivery_address TEXT,
+        delivery_city TEXT,
+        delivery_state TEXT,
+        delivery_pincode TEXT,
+        delivery_gstin TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY (customer_party_id) REFERENCES parties(id),
@@ -899,6 +913,88 @@ class DatabaseHelper {
         'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)');
+
+    // -- party_addresses table (DB v46) — multiple named addresses per party
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS party_addresses (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_id    INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        label       TEXT    NOT NULL DEFAULT 'Address',
+        address     TEXT,
+        city        TEXT,
+        state       TEXT,
+        pincode     TEXT,
+        country     TEXT DEFAULT 'India',
+        gstin       TEXT,
+        is_default  INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_party_addresses_party ON party_addresses(party_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_party_addresses_default ON party_addresses(party_id, is_default)',
+    );
+
+    // -- purchase_bills + purchase_bill_items tables (DB v48 + v49)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS purchase_bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER NOT NULL,
+        bill_no TEXT NOT NULL,
+        vendor_party_id INTEGER,
+        vendor_name TEXT NOT NULL,
+        vendor_gstin TEXT,
+        bill_date TEXT NOT NULL,
+        due_date TEXT,
+        place_of_supply TEXT,
+        reverse_charge INTEGER NOT NULL DEFAULT 0,
+        subtotal REAL NOT NULL DEFAULT 0,
+        igst_amount REAL NOT NULL DEFAULT 0,
+        cgst_amount REAL NOT NULL DEFAULT 0,
+        sgst_amount REAL NOT NULL DEFAULT 0,
+        cess_amount REAL NOT NULL DEFAULT 0,
+        tax_total REAL NOT NULL DEFAULT 0,
+        total REAL NOT NULL DEFAULT 0,
+        paid_amount REAL NOT NULL DEFAULT 0,
+        itc_eligibility TEXT NOT NULL DEFAULT 'eligible',
+        itc_block_reason TEXT,
+        itc_availed INTEGER NOT NULL DEFAULT 0,
+        itc_reversal_reason TEXT,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'unpaid',
+        attachment_path TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_business ON purchase_bills(business_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_bill_date ON purchase_bills(bill_date)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_status ON purchase_bills(status)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_rc ON purchase_bills(reverse_charge)');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS purchase_bill_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        bill_id INTEGER NOT NULL,
+        item_name TEXT NOT NULL,
+        description TEXT,
+        qty REAL NOT NULL DEFAULT 1,
+        unit_price REAL NOT NULL DEFAULT 0,
+        tax_pct REAL NOT NULL DEFAULT 0,
+        discount_pct REAL NOT NULL DEFAULT 0,
+        line_total REAL NOT NULL DEFAULT 0,
+        igst_amount REAL NOT NULL DEFAULT 0,
+        cgst_amount REAL NOT NULL DEFAULT 0,
+        sgst_amount REAL NOT NULL DEFAULT 0,
+        hsn_code TEXT,
+        unit TEXT DEFAULT 'PCS',
+        hsn_or_sac TEXT DEFAULT 'HSN',
+        FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
+      )
+    ''');
 
     // Seed default categories + default accounts
     await _seedCategories(db);

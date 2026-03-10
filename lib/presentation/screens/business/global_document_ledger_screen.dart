@@ -13,6 +13,7 @@ import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../parties/party_360_screen.dart';
+import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Sort and filter enums
@@ -179,6 +180,15 @@ class _GlobalDocumentLedgerScreenState
         title: const Text('Party Document Ledger'),
         centerTitle: false,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search parties',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties),
+              ),
+            ),
+          ),
           PopupMenuButton<_LedgerSort>(
             icon: const Icon(Icons.sort_outlined),
             tooltip: 'Sort',

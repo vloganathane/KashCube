@@ -8,6 +8,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/recurring_transaction.dart';
 import '../../providers/recurring_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../search/search_screen.dart';
 
 final _dateFormat = DateFormat('dd MMM yyyy');
 final _currencyFormat = NumberFormat.currency(
@@ -27,6 +28,17 @@ class RecurringTransactionsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recurring Transactions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search recurring',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(initialFilter: SearchFilter.recurring),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'fab_recurring',

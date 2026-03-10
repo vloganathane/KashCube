@@ -11,6 +11,7 @@ import '../../providers/loan_payment_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Loans Screen
@@ -37,7 +38,20 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
     final overdueAsync = ref.watch(overdueLoansProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Loans')),
+      appBar: AppBar(
+        title: const Text('Loans'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search loans',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(initialFilter: SearchFilter.loans),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Summary row

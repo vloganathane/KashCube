@@ -10,6 +10,7 @@ import '../../../data/models/party.dart';
 import '../../../data/models/scheduled_payment.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../search/search_screen.dart';
 
 final _dateFmt = DateFormat('dd MMM yyyy');
 final _currFmt = NumberFormat.currency(
@@ -64,6 +65,15 @@ class _BillsAndPaymentsScreenState
       appBar: AppBar(
         title: Text(isPersonal ? 'Bills Payable' : 'Payables'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search bills',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(initialFilter: SearchFilter.bills),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',

@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../providers/delivery_challan_provider.dart';
+import '../search/search_screen.dart';
 import 'delivery_challan_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -29,6 +30,17 @@ class _DeliveryChallansScreenState
       appBar: AppBar(
         title: const Text('Delivery Challans'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search challans',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(initialFilter: SearchFilter.challans),
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(52),
           child: _FilterChips(

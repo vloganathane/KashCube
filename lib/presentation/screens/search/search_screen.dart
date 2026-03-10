@@ -8,22 +8,31 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/bill.dart';
 import '../../../data/models/booking.dart';
+import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
+import '../../../data/models/loan.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/purchase_bill.dart';
+import '../../../data/models/recurring_transaction.dart';
 import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/bill_schedule_provider.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/delivery_challan_provider.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/loan_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/purchase_bill_provider.dart';
+import '../../providers/recurring_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../gst/purchase_bill_detail_screen.dart';
+import '../invoices/delivery_challan_detail_screen.dart';
 import '../invoices/invoice_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
+import '../loans/loans_screen.dart';
 import '../parties/party_360_screen.dart';
+import '../recurring/recurring_transactions_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +58,9 @@ enum SearchFilter {
   purchaseBills,
   bookings,
   parties,
+  loans,
+  challans,
+  recurring,
 }
 
 extension SearchFilterExt on SearchFilter {
@@ -61,6 +73,9 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.purchaseBills => 'Purchase Bills',
         SearchFilter.bookings => 'Bookings',
         SearchFilter.parties => 'Parties',
+        SearchFilter.loans => 'Loans',
+        SearchFilter.challans => 'Challans',
+        SearchFilter.recurring => 'Recurring',
       };
 
   IconData get icon => switch (this) {
@@ -72,6 +87,9 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.purchaseBills => Icons.inventory_2_outlined,
         SearchFilter.bookings => Icons.calendar_month_outlined,
         SearchFilter.parties => Icons.people_outline,
+        SearchFilter.loans => Icons.account_balance_wallet_outlined,
+        SearchFilter.challans => Icons.local_shipping_outlined,
+        SearchFilter.recurring => Icons.repeat_outlined,
       };
 }
 
@@ -126,6 +144,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         SearchFilter.purchaseBills => 'Search purchase bills…',
         SearchFilter.bookings => 'Search bookings…',
         SearchFilter.parties => 'Search by name or phone…',
+        SearchFilter.loans => 'Search loans…',
+        SearchFilter.challans => 'Search challans…',
+        SearchFilter.recurring => 'Search recurring transactions…',
       };
 
   @override
@@ -339,6 +360,25 @@ class _SearchResults extends ConsumerWidget {
       (p.email?.toLowerCase().contains(q) ?? false) ||
       p.partyType.label.toLowerCase().contains(q);
 
+  bool _matchLoan(Loan l, String q) =>
+      l.lenderName.toLowerCase().contains(q) ||
+      (l.notes?.toLowerCase().contains(q) ?? false) ||
+      CurrencyFormatter.format(l.principalAmount).contains(q) ||
+      l.direction.name.toLowerCase().contains(q);
+
+  bool _matchChallan(DeliveryChallan c, String q) =>
+      c.customerName.toLowerCase().contains(q) ||
+      c.challanNo.toLowerCase().contains(q) ||
+      (c.notes?.toLowerCase().contains(q) ?? false) ||
+      (c.vehicleNo?.toLowerCase().contains(q) ?? false) ||
+      CurrencyFormatter.format(c.subtotal).contains(q);
+
+  bool _matchRecurring(RecurringTransaction r, String q) =>
+      r.category.toLowerCase().contains(q) ||
+      (r.partyName?.toLowerCase().contains(q) ?? false) ||
+      (r.notes?.toLowerCase().contains(q) ?? false) ||
+      CurrencyFormatter.format(r.amount).contains(q);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final q = query.toLowerCase();
@@ -385,8 +425,27 @@ class _SearchResults extends ConsumerWidget {
             .toList()
         : <Party>[];
 
+    final loans = _show(SearchFilter.loans)
+        ? (ref.watch(activeLoansProvider).valueOrNull ?? <Loan>[])
+            .where((l) => _matchLoan(l, q))
+            .toList()
+        : <Loan>[];
+
+    final challans = _show(SearchFilter.challans)
+        ? (ref.watch(challansProvider).valueOrNull ?? <DeliveryChallan>[])
+            .where((c) => _matchChallan(c, q))
+            .toList()
+        : <DeliveryChallan>[];
+
+    final recurring = _show(SearchFilter.recurring)
+        ? (ref.watch(recurringTransactionsProvider).valueOrNull ?? <RecurringTransaction>[])
+            .where((r) => _matchRecurring(r, q))
+            .toList()
+        : <RecurringTransaction>[];
+
     final total = txns.length + invoices.length + credits.length +
-        bills.length + purchaseBills.length + bookings.length + parties.length;
+        bills.length + purchaseBills.length + bookings.length + parties.length +
+        loans.length + challans.length + recurring.length;
 
     if (total == 0) {
       return Center(
@@ -442,6 +501,21 @@ class _SearchResults extends ConsumerWidget {
           _SectionHeader(title: 'Parties', count: parties.length, icon: Icons.people_outline),
           ...parties.take(10).map((p) => _PartyTile(party: p, query: query)),
           if (parties.length > 10) _MoreRow(count: parties.length - 10, label: 'parties'),
+        ],
+        if (loans.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
+          _SectionHeader(title: 'Loans', count: loans.length, icon: Icons.account_balance_wallet_outlined),
+          ...loans.take(10).map((l) => _LoanTile(loan: l, query: query)),
+          if (loans.length > 10) _MoreRow(count: loans.length - 10, label: 'loans'),
+        ],
+        if (challans.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
+          _SectionHeader(title: 'Challans', count: challans.length, icon: Icons.local_shipping_outlined),
+          ...challans.take(10).map((c) => _ChallanTile(challan: c, query: query)),
+          if (challans.length > 10) _MoreRow(count: challans.length - 10, label: 'challans'),
+        ],
+        if (recurring.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
+          _SectionHeader(title: 'Recurring', count: recurring.length, icon: Icons.repeat_outlined),
+          ...recurring.take(10).map((r) => _RecurringTile(item: r, query: query)),
+          if (recurring.length > 10) _MoreRow(count: recurring.length - 10, label: 'recurring'),
         ],
         const SizedBox(height: AppSpacing.xl),
       ],
@@ -844,6 +918,169 @@ class _PartyTile extends StatelessWidget {
           : null,
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => Party360Screen(party: party)),
+      ),
+    );
+  }
+}
+
+class _LoanTile extends StatelessWidget {
+  const _LoanTile({required this.loan, required this.query});
+  final Loan loan;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final isBorrowed = loan.direction == LoanDirection.borrowed;
+    final amountColor = isBorrowed ? colors.expense : colors.income;
+    final dirLabel = isBorrowed ? 'Borrowed' : 'Lent';
+    final statusColor = loan.isOverdue
+        ? context.colorScheme.error
+        : loan.isCleared
+            ? Colors.green
+            : Colors.orange;
+    final statusLabel = loan.isOverdue
+        ? 'Overdue'
+        : loan.isCleared
+            ? 'Cleared'
+            : 'Active';
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.primaryContainer,
+        child: Icon(
+          Icons.account_balance_wallet_outlined,
+          color: context.colorScheme.onPrimaryContainer,
+          size: AppSpacing.iconMd,
+        ),
+      ),
+      title: _Highlight(text: loan.lenderName, query: query),
+      subtitle: Text(
+        '$dirLabel · ${DateFormatter.format(loan.loanDate)}',
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            CurrencyFormatter.format(loan.pendingAmount),
+            style: context.textTheme.titleSmall?.copyWith(
+                color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+          ),
+          Text(
+            statusLabel,
+            style: context.textTheme.labelSmall
+                ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const LoansScreen()),
+      ),
+    );
+  }
+}
+
+class _ChallanTile extends StatelessWidget {
+  const _ChallanTile({required this.challan, required this.query});
+  final DeliveryChallan challan;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (challan.status) {
+      ChallanStatus.draft => context.colorScheme.outline,
+      ChallanStatus.dispatched => Colors.orange,
+      ChallanStatus.returned => context.colorScheme.primary,
+      ChallanStatus.converted => Colors.blue,
+    };
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.secondaryContainer,
+        child: Icon(
+          Icons.local_shipping_outlined,
+          color: context.colorScheme.onSecondaryContainer,
+          size: AppSpacing.iconMd,
+        ),
+      ),
+      title: _Highlight(text: challan.customerName, query: query),
+      subtitle: Text(
+        '${challan.challanNo} · ${DateFormatter.format(challan.challanDate)}',
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            CurrencyFormatter.format(challan.subtotal),
+            style: context.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Text(
+              challan.status.name,
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      onTap: () {
+        if (challan.id != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!)),
+          );
+        }
+      },
+    );
+  }
+}
+
+class _RecurringTile extends StatelessWidget {
+  const _RecurringTile({required this.item, required this.query});
+  final RecurringTransaction item;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    final isExpense = item.type == 'expense';
+    final amountColor = isExpense ? colors.expense : colors.income;
+    final prefix = isExpense ? '-' : '+';
+    final freqLabel = item.frequency.name;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.tertiaryContainer,
+        child: Icon(
+          Icons.repeat_outlined,
+          color: context.colorScheme.onTertiaryContainer,
+          size: AppSpacing.iconMd,
+        ),
+      ),
+      title: _Highlight(text: item.partyName ?? item.category, query: query),
+      subtitle: Text(
+        '${item.category} · $freqLabel · Next ${DateFormatter.format(item.nextDate)}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Text(
+        '$prefix${CurrencyFormatter.format(item.amount)}',
+        style: context.textTheme.titleSmall?.copyWith(
+            color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+      ),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen()),
       ),
     );
   }

@@ -98,7 +98,9 @@ Future<void> _runActionCenterCheck() async {
 
   Database? db;
   try {
-    db = await openDatabase(dbPath, readOnly: true);
+    // singleInstance: false gives this background isolate its own native DB
+    // handle, preventing it from sharing (and closing) the main isolate's handle.
+    db = await openDatabase(dbPath, readOnly: true, singleInstance: false);
     final today = DateTime.now();
     final todayIso = DateTime(today.year, today.month, today.day)
         .toIso8601String()
@@ -275,7 +277,8 @@ Future<void> _runLowStockCheck() async {
 
   Database? db;
   try {
-    db = await openDatabase(dbPath, readOnly: true);
+    // singleInstance: false gives this background isolate its own native DB handle.
+    db = await openDatabase(dbPath, readOnly: true, singleInstance: false);
     final count = await InventoryService.countLowStockItemsInBackground(db);
     if (count > 0) {
       final names = await InventoryService.getLowStockNamesInBackground(db);

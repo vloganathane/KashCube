@@ -11,44 +11,38 @@ class SettingsRepositoryImpl implements SettingsRepository {
   final DatabaseHelper _dbHelper;
 
   @override
-  Future<String?> get(String key) async {
-    final db = await _dbHelper.database;
-    final rows = await db.query(
-      'settings',
-      where: 'key = ?',
-      whereArgs: [key],
-      limit: 1,
-    );
-    if (rows.isEmpty) return null;
-    return rows.first['value'] as String;
-  }
+  Future<String?> get(String key) => _dbHelper.withDatabase((db) async {
+        final rows = await db.query(
+          'settings',
+          where: 'key = ?',
+          whereArgs: [key],
+          limit: 1,
+        );
+        if (rows.isEmpty) return null;
+        return rows.first['value'] as String;
+      });
 
   @override
-  Future<void> set(String key, String value) async {
-    final db = await _dbHelper.database;
-    await db.insert(
-      'settings',
-      {
-        'key': key,
-        'value': value,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
-  }
+  Future<void> set(String key, String value) => _dbHelper.withDatabase((db) =>
+      db.insert(
+        'settings',
+        {
+          'key': key,
+          'value': value,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      ).then((_) {}));
 
   @override
-  Future<void> remove(String key) async {
-    final db = await _dbHelper.database;
-    await db.delete('settings', where: 'key = ?', whereArgs: [key]);
-  }
+  Future<void> remove(String key) => _dbHelper.withDatabase(
+      (db) => db.delete('settings', where: 'key = ?', whereArgs: [key]).then((_) {}));
 
   @override
-  Future<Map<String, String>> getAll() async {
-    final db = await _dbHelper.database;
-    final rows = await db.query('settings');
-    return {
-      for (final row in rows) row['key'] as String: row['value'] as String,
-    };
-  }
+  Future<Map<String, String>> getAll() => _dbHelper.withDatabase((db) async {
+        final rows = await db.query('settings');
+        return {
+          for (final row in rows) row['key'] as String: row['value'] as String,
+        };
+      });
 }

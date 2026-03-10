@@ -18,13 +18,42 @@ class DatabaseHelper {
 
   /// Returns the database instance, creating it if needed.
   ///
-  /// Also re-opens the database if the cached handle was closed externally
-  /// (e.g. by sqflite's native layer when another isolate — such as the
-  /// WorkManager background task — calls close() on the same DB path).
+  /// Also re-opens the database if the cached handle was closed externally.
+  ///
+  /// Root cause of `database_closed 1`: workmanager 0.6.0 shares the same
+  /// FlutterEngine (and therefore the same sqflite native plugin) between the
+  /// main Dart isolate and WorkManager background isolates.  sqflite's default
+  /// `singleInstance: true` causes background `openDatabase` calls to return
+  /// the *same* native handle (same ID) as the main isolate's open connection.
+  /// When the background task closes that handle, the main isolate's
+  /// `_database` reference becomes a dangling pointer — `isOpen` still reports
+  /// `true` on the Dart side, but the next native query throws `database_closed`.
+  ///
+  /// Primary fix: always pass `singleInstance: false` when opening the DB in
+  /// background tasks (see [ActionCenterBackgroundService]).
+  /// Defence-in-depth: if we encounter `database_closed` anyway (hot restart,
+  /// unforeseen paths), reset and re-open before rethrowing.
   Future<Database> get database async {
     if (_database != null && _database!.isOpen) return _database!;
     _database = await _initDatabase();
     return _database!;
+  }
+
+  /// Executes [op] with a valid database handle, recovering once from a
+  /// stale-handle `database_closed` error (e.g. caused by a hot restart or
+  /// an unexpected isolate interaction).
+  Future<T> withDatabase<T>(Future<T> Function(Database db) op) async {
+    try {
+      return await op(await database);
+    } on DatabaseException catch (e) {
+      if (e.toString().contains('database_closed')) {
+        _database = null;
+        final db = await _initDatabase();
+        _database = db;
+        return await op(db);
+      }
+      rethrow;
+    }
   }
 
   Future<Database> _initDatabase() async {

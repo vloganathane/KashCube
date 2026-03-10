@@ -100,6 +100,7 @@ class InvoiceItem extends Equatable {
     this.hsnCode,
     this.unit = 'PCS',
     this.hsnOrSac = 'HSN',
+    this.catalogItemId,
   });
 
   final int? id;
@@ -117,6 +118,8 @@ class InvoiceItem extends Equatable {
   final String unit;
   /// 'HSN' for products, 'SAC' for services.
   final String hsnOrSac;
+  /// FK to [item_catalog.id] — null for manually-typed items.
+  final int? catalogItemId;
 
   InvoiceItem copyWith({
     int? id,
@@ -131,6 +134,7 @@ class InvoiceItem extends Equatable {
     String? hsnCode,
     String? unit,
     String? hsnOrSac,
+    int? catalogItemId,
   }) {
     return InvoiceItem(
       id: id ?? this.id,
@@ -145,6 +149,7 @@ class InvoiceItem extends Equatable {
       hsnCode: hsnCode ?? this.hsnCode,
       unit: unit ?? this.unit,
       hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+      catalogItemId: catalogItemId ?? this.catalogItemId,
     );
   }
 
@@ -161,6 +166,7 @@ class InvoiceItem extends Equatable {
         'hsn_code': hsnCode,
         'unit': unit,
         'hsn_or_sac': hsnOrSac,
+        'catalog_item_id': catalogItemId,
       };
 
   factory InvoiceItem.fromMap(Map<String, dynamic> map) => InvoiceItem(
@@ -176,6 +182,7 @@ class InvoiceItem extends Equatable {
         hsnCode: map['hsn_code'] as String?,
         unit: (map['unit'] as String?) ?? 'PCS',
         hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
+        catalogItemId: map['catalog_item_id'] as int?,
       );
 
   @override

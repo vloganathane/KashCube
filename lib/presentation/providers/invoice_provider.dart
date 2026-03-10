@@ -7,6 +7,7 @@ import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
 import '../../data/repositories/invoice_repository_impl.dart';
 import '../../data/repositories/item_catalog_repository_impl.dart';
+import '../../data/services/inventory_service.dart';
 import '../../data/services/invoice_number_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
@@ -163,6 +164,8 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
   }
 
   Future<void> remove(int id) async {
+    // Reverse any stock movements before deleting so inventory stays accurate.
+    await InventoryService.instance.reverseMovementsFor('invoice', id);
     await _repo.delete(id);
     await load();
   }
@@ -195,7 +198,24 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
 
   /// Promote a draft invoice to [InvoiceStatus.sent] after the user has
   /// confirmed sharing the PDF. No-op for paid/overdue/partiallyPaid invoices.
+  ///
+  /// Deducts stock for catalog-linked items only when there is no linked DC
+  /// (if a DC already existed the stock was deducted at DC save time).
   Future<void> markSent(int id) async {
+    final invoice = await _repo.getById(id);
+    if (invoice != null && invoice.challanId == null) {
+      for (final item in invoice.items) {
+        if (item.catalogItemId != null && item.qty > 0) {
+          await InventoryService.instance.deductStock(
+            item.catalogItemId!,
+            item.qty,
+            notes: 'Invoice ${invoice.invoiceNo}',
+            referenceId: id,
+            referenceType: 'invoice',
+          );
+        }
+      }
+    }
     await _repo.markSent(id);
     await load();
   }

@@ -9,6 +9,7 @@ import '../../../data/models/item_catalog.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/upgrade_prompt_sheet.dart' show showUpgradePromptSheet;
+import '../invoices/item_catalog_screen.dart';
 
 /// Inventory management screen — lists all tracked products with stock levels.
 ///
@@ -138,12 +139,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _showAddTrackedItemInfo() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-            'Enable inventory tracking for items in the Item Catalog screen.'),
-        duration: Duration(seconds: 3),
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const ItemCatalogScreen()),
     );
   }
 }

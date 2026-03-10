@@ -49,6 +49,8 @@ class _LineItem {
   final TextEditingController hsnCodeCtrl;
   final TextEditingController unitCtrl;
   final String _hsnOrSac;
+  /// FK to [item_catalog.id] — null for manually-typed items.
+  int? catalogItemId;
 
   double get qty => double.tryParse(qtyCtrl.text) ?? 1;
   double get unitPrice => double.tryParse(unitPriceCtrl.text) ?? 0;
@@ -300,6 +302,7 @@ class _AddPurchaseBillScreenState
               item.hsnCodeCtrl.text.trim().isEmpty ? null : item.hsnCodeCtrl.text.trim(),
           unit: item.unitCtrl.text.trim().isEmpty ? 'PCS' : item.unitCtrl.text.trim(),
           hsnOrSac: item._hsnOrSac,
+          catalogItemId: item.catalogItemId,
         ));
       }
 
@@ -374,7 +377,7 @@ class _AddPurchaseBillScreenState
               hsnCode: i.hsnCode ?? '',
               unit: i.unit,
               hsnOrSac: i.hsnOrSac,
-            )));
+            )..catalogItemId = i.catalogItemId));
       if (_items.isEmpty) _items.add(_LineItem());
     } catch (e) {
       if (mounted) {
@@ -434,6 +437,7 @@ class _AddPurchaseBillScreenState
           : picked.taxPct.toString();
       first.hsnCodeCtrl.text = picked.hsnCode ?? '';
       first.unitCtrl.text = picked.unit.toUpperCase();
+      first.catalogItemId = picked.id;
     } else {
       final newItem = _LineItem();
       newItem.itemNameCtrl.text = picked.name;
@@ -447,6 +451,7 @@ class _AddPurchaseBillScreenState
               : picked.taxPct.toString();
       newItem.hsnCodeCtrl.text = picked.hsnCode ?? '';
       newItem.unitCtrl.text = picked.unit.toUpperCase();
+      newItem.catalogItemId = picked.id;
       _items.add(newItem);
     }
     if (picked.id != null) {

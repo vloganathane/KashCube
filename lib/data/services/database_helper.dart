@@ -736,6 +736,7 @@ class DatabaseHelper {
         hsn_code TEXT,
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
+        catalog_item_id INTEGER,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
       )
     ''');
@@ -901,6 +902,7 @@ class DatabaseHelper {
         line_total REAL NOT NULL DEFAULT 0,
         hsn_code TEXT,
         hsn_or_sac TEXT DEFAULT 'HSN',
+        catalog_item_id INTEGER,
         FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
       )
     ''');
@@ -1024,6 +1026,7 @@ class DatabaseHelper {
         hsn_code TEXT,
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
+        catalog_item_id INTEGER,
         FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
       )
     ''');
@@ -2474,6 +2477,20 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 52,
         'description': 'Staff & Payroll: staff + salary_payments tables',
+      });
+    }
+
+    if (oldVersion < 53) {
+      await db.execute(
+          'ALTER TABLE invoice_items ADD COLUMN catalog_item_id INTEGER');
+      await db.execute(
+          'ALTER TABLE delivery_challan_items ADD COLUMN catalog_item_id INTEGER');
+      await db.execute(
+          'ALTER TABLE purchase_bill_items ADD COLUMN catalog_item_id INTEGER');
+      await db.insert('schema_version', {
+        'version': 53,
+        'description':
+            'Link line items to item catalog: catalog_item_id on invoice_items, delivery_challan_items, purchase_bill_items',
       });
     }
   }

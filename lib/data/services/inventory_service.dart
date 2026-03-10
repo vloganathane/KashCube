@@ -166,6 +166,36 @@ class InventoryService {
     );
   }
 
+  /// Reverses all stock movements for a given [referenceType] + [referenceId].
+  ///
+  /// Used when a document (challan, invoice, purchase bill) is deleted or
+  /// cancelled — each original movement delta is negated and recorded as a new
+  /// [StockMovementType.adjustment] entry so the history is fully traceable.
+  Future<void> reverseMovementsFor(
+    String referenceType,
+    int referenceId,
+  ) async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'stock_movements',
+      where: 'reference_type = ? AND reference_id = ?',
+      whereArgs: [referenceType, referenceId],
+    );
+    for (final row in rows) {
+      final itemId = row['item_id'] as int;
+      final originalDelta = (row['qty'] as num).toDouble();
+      if (originalDelta == 0) continue;
+      await _applyMovement(
+        itemId: itemId,
+        delta: -originalDelta,
+        type: StockMovementType.adjustment,
+        notes: 'Reversal of $referenceType #$referenceId',
+        referenceId: referenceId,
+        referenceType: '${referenceType}_reversal',
+      );
+    }
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   Future<void> _applyMovement({

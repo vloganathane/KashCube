@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/delivery_challan.dart';
 import '../../data/repositories/delivery_challan_repository_impl.dart';
+import '../../data/services/inventory_service.dart';
 import '../../domain/repositories/delivery_challan_repository.dart';
 
 // ── Repository ──────────────────────────────────────────────────────────────
@@ -35,17 +36,47 @@ class ChallansNotifier
 
   Future<DeliveryChallan> add(DeliveryChallan challan) async {
     final id = await _repo.insert(challan, challan.items);
+    // Deduct stock for tracked catalog items on every DC save (physical dispatch).
+    for (final item in challan.items) {
+      if (item.catalogItemId != null && item.qty > 0) {
+        await InventoryService.instance.deductStock(
+          item.catalogItemId!,
+          item.qty,
+          notes: 'DC ${challan.challanNo}',
+          referenceId: id,
+          referenceType: 'challan',
+        );
+      }
+    }
     await _load();
     return challan.copyWith(id: id);
   }
 
   Future<DeliveryChallan> edit(DeliveryChallan challan) async {
+    // Reverse previous stock movements for this challan, then re-apply new items.
+    if (challan.id != null) {
+      await InventoryService.instance
+          .reverseMovementsFor('challan', challan.id!);
+    }
     await _repo.update(challan, challan.items);
+    for (final item in challan.items) {
+      if (item.catalogItemId != null && item.qty > 0) {
+        await InventoryService.instance.deductStock(
+          item.catalogItemId!,
+          item.qty,
+          notes: 'DC ${challan.challanNo} (edited)',
+          referenceId: challan.id,
+          referenceType: 'challan',
+        );
+      }
+    }
     await _load();
     return challan;
   }
 
   Future<void> remove(int id) async {
+    // Reverse stock movements before deleting so inventory stays accurate.
+    await InventoryService.instance.reverseMovementsFor('challan', id);
     await _repo.delete(id);
     await _load();
   }

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/purchase_bill.dart';
 import '../../data/repositories/purchase_bill_repository_impl.dart';
+import '../../data/services/inventory_service.dart';
 import '../../domain/repositories/purchase_bill_repository.dart';
 import 'business_provider.dart';
 
@@ -45,17 +46,47 @@ class PurchaseBillsNotifier
 
   Future<void> add(
       PurchaseBill bill, List<PurchaseBillItem> items) async {
-    await _repo.insert(bill, items);
+    final id = await _repo.insert(bill, items);
+    // Add stock for tracked catalog items on purchase bill save.
+    for (final item in items) {
+      if (item.catalogItemId != null && item.qty > 0) {
+        await InventoryService.instance.addStock(
+          item.catalogItemId!,
+          item.qty,
+          notes: 'Purchase Bill ${bill.billNo}',
+          referenceId: id,
+          referenceType: 'purchase_bill',
+        );
+      }
+    }
     await load();
   }
 
   Future<void> edit(
       PurchaseBill bill, List<PurchaseBillItem> items) async {
+    // Reverse previous stock movements then re-apply for edited items.
+    if (bill.id != null) {
+      await InventoryService.instance
+          .reverseMovementsFor('purchase_bill', bill.id!);
+    }
     await _repo.update(bill, items);
+    for (final item in items) {
+      if (item.catalogItemId != null && item.qty > 0) {
+        await InventoryService.instance.addStock(
+          item.catalogItemId!,
+          item.qty,
+          notes: 'Purchase Bill ${bill.billNo} (edited)',
+          referenceId: bill.id,
+          referenceType: 'purchase_bill',
+        );
+      }
+    }
     await load();
   }
 
   Future<void> remove(int id) async {
+    // Reverse stock additions before deleting.
+    await InventoryService.instance.reverseMovementsFor('purchase_bill', id);
     await _repo.delete(id);
     await load();
   }

@@ -83,6 +83,7 @@ class ChallanItem extends Equatable {
     this.unitPrice = 0,
     this.hsnCode,
     this.hsnOrSac = 'HSN',
+    this.catalogItemId,
   });
 
   final int? id;
@@ -94,6 +95,8 @@ class ChallanItem extends Equatable {
   final double unitPrice;
   final String? hsnCode;
   final String hsnOrSac;
+  /// FK to [item_catalog.id] — null for manually-typed items.
+  final int? catalogItemId;
 
   double get lineTotal => qty * unitPrice;
 
@@ -107,6 +110,7 @@ class ChallanItem extends Equatable {
     double? unitPrice,
     String? hsnCode,
     String? hsnOrSac,
+    int? catalogItemId,
   }) =>
       ChallanItem(
         id: id ?? this.id,
@@ -118,6 +122,7 @@ class ChallanItem extends Equatable {
         unitPrice: unitPrice ?? this.unitPrice,
         hsnCode: hsnCode ?? this.hsnCode,
         hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+        catalogItemId: catalogItemId ?? this.catalogItemId,
       );
 
   Map<String, dynamic> toMap() => {
@@ -131,6 +136,7 @@ class ChallanItem extends Equatable {
         'line_total': lineTotal,
         'hsn_code': hsnCode,
         'hsn_or_sac': hsnOrSac,
+        'catalog_item_id': catalogItemId,
       };
 
   factory ChallanItem.fromMap(Map<String, dynamic> map) => ChallanItem(
@@ -143,6 +149,7 @@ class ChallanItem extends Equatable {
         unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0,
         hsnCode: map['hsn_code'] as String?,
         hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
+        catalogItemId: map['catalog_item_id'] as int?,
       );
 
   @override

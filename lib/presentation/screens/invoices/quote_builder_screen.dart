@@ -194,6 +194,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           hsnCode: ii.hsnCode,
           unit: ii.unit,
           hsnOrSac: ii.hsnOrSac,
+          catalogItemId: ii.catalogItemId,
         ),
       ));
     });
@@ -316,6 +317,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           hsnCode: ii.hsnCode,
           unit: ii.unit,
           hsnOrSac: ii.hsnOrSac,
+          catalogItemId: ii.catalogItemId,
         ),
       ));
     });
@@ -370,6 +372,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           hsnCode: ci.hsnCode,
           unit: ci.unit,
           hsnOrSac: ci.hsnOrSac,
+          catalogItemId: ci.catalogItemId,
         ),
       ));
     });
@@ -450,6 +453,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           hsnCode: li.hsnCode,
           unit: li.unit,
           hsnOrSac: li.hsnOrSac,
+          catalogItemId: li.catalogItemId,
         );
       }).toList();
 
@@ -463,6 +467,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             unitPrice: li.unitPrice,
             hsnCode: li.hsnCode,
             hsnOrSac: li.hsnOrSac,
+            catalogItemId: li.catalogItemId,
           ))
       .toList();
 
@@ -1733,6 +1738,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   hsnCode: item.hsnCode,
                   unit: item.unit.toUpperCase(),
                   hsnOrSac: item.hsnOrSac,
+                  catalogItemId: item.id,
                 );
                 setState(() {
                   // If first item is empty, replace it instead of adding new one
@@ -1902,6 +1908,7 @@ class _LineItem {
     this.hsnCode,
     this.unit = 'PCS',
     this.hsnOrSac = 'HSN',
+    this.catalogItemId,
   });
 
   final String itemName;
@@ -1916,6 +1923,8 @@ class _LineItem {
   final String unit;
   /// 'HSN' for products/materials/equipment, 'SAC' for services/labour.
   final String hsnOrSac;
+  /// FK to [item_catalog.id] — null for manually-typed items.
+  final int? catalogItemId;
 
   _LineItem copyWith({
     String? itemName,
@@ -1927,6 +1936,7 @@ class _LineItem {
     String? hsnCode,
     String? unit,
     String? hsnOrSac,
+    int? catalogItemId,
   }) =>
       _LineItem(
         itemName: itemName ?? this.itemName,
@@ -1938,6 +1948,7 @@ class _LineItem {
         hsnCode: hsnCode ?? this.hsnCode,
         unit: unit ?? this.unit,
         hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+        catalogItemId: catalogItemId ?? this.catalogItemId,
       );
 }
 

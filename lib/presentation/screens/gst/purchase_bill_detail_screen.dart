@@ -8,6 +8,7 @@ import '../../../data/models/purchase_bill.dart';
 import '../../../data/models/transaction.dart';
 import '../../providers/purchase_bill_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import '../transactions/transaction_detail_screen.dart';
 import 'add_purchase_bill_screen.dart';
 
@@ -55,86 +56,27 @@ class _DetailViewState extends ConsumerState<_DetailView> {
 
   PurchaseBill get bill => widget.bill;
 
-  // ── Payment dialog ────────────────────────────────────────────────────────
+  // ── Payment sheet ─────────────────────────────────────────────────────────
 
   Future<void> _showPaymentDialog() async {
     final balanceDue = bill.balanceDue;
     if (balanceDue <= 0) return;
+    if (!mounted) return;
 
-    final amountCtrl =
-        TextEditingController(text: balanceDue.toStringAsFixed(2));
-    PaymentMethod selectedMethod = PaymentMethod.upi;
-    bool createTxn = true;
-
-    final confirmed = await showDialog<bool>(
+    final result = await showPaymentMethodPicker(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDlg) => AlertDialog(
-          title: const Text('Record Payment'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: amountCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Amount paid',
-                    prefixText: '₹ ',
-                    helperText:
-                        'Balance due: ${CurrencyFormatter.format(balanceDue)}',
-                  ),
-                  autofocus: true,
-                ),
-                const SizedBox(height: AppSpacing.base),
-                DropdownButtonFormField<PaymentMethod>(
-                  initialValue: selectedMethod,
-                  decoration:
-                      const InputDecoration(labelText: 'Payment method'),
-                  items: [
-                    PaymentMethod.upi,
-                    PaymentMethod.cash,
-                    PaymentMethod.netBanking,
-                    PaymentMethod.cheque,
-                    PaymentMethod.debitCard,
-                    PaymentMethod.creditCard,
-                  ]
-                      .map((m) => DropdownMenuItem(
-                          value: m, child: Text(m.label)))
-                      .toList(),
-                  onChanged: (v) =>
-                      setDlg(() => selectedMethod = v ?? selectedMethod),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                CheckboxListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Create expense transaction'),
-                  subtitle: const Text('Record this as an outgoing payment'),
-                  value: createTxn,
-                  onChanged: (v) => setDlg(() => createTxn = v ?? true),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Record'),
-            ),
-          ],
-        ),
-      ),
+      amount: balanceDue,
+      title: 'Payment Sent',
+      customerName: bill.vendorName,
+      partyPrefix: 'to',
+      defaultDate: DateTime.now(),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (result == null || !mounted) return;
 
-    final amount = double.tryParse(amountCtrl.text.trim()) ?? 0;
+    final paymentMethod = result['method'] as PaymentMethod;
+    final paidDate = result['date'] as DateTime;
+    final amount = result['amount'] as double;
     if (amount <= 0) return;
 
     setState(() => _paying = true);
@@ -143,33 +85,31 @@ class _DetailViewState extends ConsumerState<_DetailView> {
       await ref.read(purchaseBillsProvider.notifier).recordPayment(
             billId: bill.id!,
             amount: amount,
-            paidAt: DateTime.now(),
+            paidAt: paidDate,
           );
 
-      if (createTxn && mounted) {
-        final now = DateTime.now();
-        final txn = Transaction(
-          amount: amount,
-          date: now,
-          type: TransactionType.expense,
-          category: 'Purchase',
-          paymentMethod: selectedMethod,
-          partyName: bill.vendorName,
-          partyId: bill.vendorPartyId,
-          notes: 'Payment for bill ${bill.billNo}',
-          referenceId: bill.billNo,
-          businessId: bill.businessId,
-          verified: true,
-          createdAt: now,
-          updatedAt: now,
-        );
-        await ref.read(transactionsProvider.notifier).addTransaction(txn);
-      }
+      final txn = Transaction(
+        amount: amount,
+        date: paidDate,
+        type: TransactionType.expense,
+        category: 'Purchase',
+        paymentMethod: paymentMethod,
+        partyName: bill.vendorName,
+        partyId: bill.vendorPartyId,
+        notes: 'Payment for bill ${bill.billNo}',
+        referenceId: bill.billNo,
+        businessId: bill.businessId,
+        verified: true,
+        createdAt: paidDate,
+        updatedAt: paidDate,
+      );
+      await ref.read(transactionsProvider.notifier).addTransaction(txn);
 
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-              'Payment of ${CurrencyFormatter.format(amount)} recorded'),
+            'Paid ${CurrencyFormatter.format(amount)} via ${paymentMethod.label}',
+          ),
         ),
       );
     } catch (e) {

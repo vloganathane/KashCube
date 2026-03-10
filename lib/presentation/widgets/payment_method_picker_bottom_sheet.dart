@@ -13,13 +13,17 @@ class PaymentMethodPickerBottomSheet extends StatefulWidget {
   const PaymentMethodPickerBottomSheet({
     super.key,
     required this.amount,
+    this.title,
     this.customerName,
+    this.partyPrefix = 'from',
     this.lastUsedMethod,
     this.defaultDate,
   });
 
   final double amount;
+  final String? title;
   final String? customerName;
+  final String partyPrefix;
   final PaymentMethod? lastUsedMethod;
   final DateTime? defaultDate;
 
@@ -113,7 +117,7 @@ class _PaymentMethodPickerBottomSheetState
 
           // Title
           Text(
-            'Payment Received',
+            widget.title ?? 'Payment Received',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
@@ -169,7 +173,7 @@ class _PaymentMethodPickerBottomSheetState
           if (widget.customerName != null) ...[
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'from ${widget.customerName}',
+              '${widget.partyPrefix} ${widget.customerName}',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
@@ -356,7 +360,9 @@ class _PaymentMethodButton extends StatelessWidget {
 Future<Map<String, dynamic>?> showPaymentMethodPicker({
   required BuildContext context,
   required double amount,
+  String? title,
   String? customerName,
+  String partyPrefix = 'from',
   PaymentMethod? lastUsedMethod,
   DateTime? defaultDate,
 }) {
@@ -364,7 +370,9 @@ Future<Map<String, dynamic>?> showPaymentMethodPicker({
     context: context,
     builder: (context) => PaymentMethodPickerBottomSheet(
       amount: amount,
+      title: title,
       customerName: customerName,
+      partyPrefix: partyPrefix,
       lastUsedMethod: lastUsedMethod,
       defaultDate: defaultDate,
     ),

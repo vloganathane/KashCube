@@ -6,9 +6,8 @@ import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/purchase_bill.dart';
-import '../../../data/models/transaction.dart';
 import '../../providers/purchase_bill_provider.dart';
-import '../../providers/transaction_provider.dart';
+import 'purchase_bill_detail_screen.dart';
 import '../search/search_screen.dart';
 import 'add_purchase_bill_screen.dart';
 
@@ -121,23 +120,9 @@ class _PurchaseBillsScreenState
   }
 
   void _openDetail(PurchaseBill bill) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (_) => _BillDetailSheet(
-        bill: bill,
-        onEdited: () async {
-          Navigator.of(context).pop(); // close sheet
-          final result = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => AddPurchaseBillScreen(billId: bill.id),
-            ),
-          );
-          if (result == true && mounted) {
-            ref.invalidate(purchaseBillsProvider);
-          }
-        },
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
       ),
     );
   }
@@ -687,8 +672,9 @@ class _FilterSheet extends ConsumerWidget {
   }
 }
 
-// ── Bill detail sheet (placeholder) ─────────────────────────────────────────
+// ── (detail moved to PurchaseBillDetailScreen) ──────────────────────────────
 
+// ignore: unused_element
 class _BillDetailSheet extends ConsumerStatefulWidget {
   const _BillDetailSheet({required this.bill, required this.onEdited});
   final PurchaseBill bill;

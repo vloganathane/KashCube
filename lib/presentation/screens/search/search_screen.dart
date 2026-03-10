@@ -20,7 +20,7 @@ import '../../providers/party_provider.dart';
 import '../../providers/purchase_bill_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../bookings/booking_detail_screen.dart';
-import '../gst/add_purchase_bill_screen.dart';
+import '../gst/purchase_bill_detail_screen.dart';
 import '../invoices/invoice_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../parties/party_360_screen.dart';
@@ -808,7 +808,7 @@ class _PurchaseBillTile extends StatelessWidget {
       onTap: () {
         if (bill.id != null) {
           Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => AddPurchaseBillScreen(billId: bill.id),
+            builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
           ));
         }
       },

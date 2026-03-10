@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/indian_states.dart';
@@ -13,6 +16,7 @@ import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/purchase_bill_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../../widgets/bill_picker.dart';
 import '../../../data/models/item_catalog.dart';
 import '../invoices/item_catalog_screen.dart';
 
@@ -108,6 +112,11 @@ class _AddPurchaseBillScreenState
 
   /// Preserved when editing — keep paidAmount, status, itcAvailed, createdAt
   PurchaseBill? _existingBill;
+
+  // ── Bill attachment ─────────────────────────────────────────────────────
+  BillPickerResult? _pendingBill;
+  String? _existingAttachmentPath;
+  bool _attachmentRemoved = false;
 
   // ── GST rate presets ─────────────────────────────────────────────────────────
   static const _gstRates = [0.0, 5.0, 12.0, 18.0, 28.0];
@@ -210,6 +219,30 @@ class _AddPurchaseBillScreenState
     setState(() => _isSaving = true);
 
     try {
+      // ── Resolve attachment path ────────────────────────────────────────
+      String? resolvedAttachmentPath = _existingAttachmentPath;
+      if (_attachmentRemoved && _pendingBill == null) {
+        if (_existingAttachmentPath != null) {
+          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+        }
+        resolvedAttachmentPath = null;
+      }
+      if (_pendingBill != null) {
+        if (_existingAttachmentPath != null) {
+          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+        }
+        final appDir = await getApplicationDocumentsDirectory();
+        final billsDir = Directory('${appDir.path}/bills');
+        if (!await billsDir.exists()) await billsDir.create(recursive: true);
+        final ext = _pendingBill!.fileName.contains('.')
+            ? '.${_pendingBill!.fileName.split('.').last.toLowerCase()}'
+            : '';
+        final ts = DateTime.now().millisecondsSinceEpoch;
+        final destPath = '${billsDir.path}/pb_$ts$ext';
+        await File(_pendingBill!.filePath).copy(destPath);
+        resolvedAttachmentPath = destPath;
+      }
+
       final t = _totals;
       final now = DateTime.now();
       final bill = PurchaseBill(
@@ -236,6 +269,7 @@ class _AddPurchaseBillScreenState
         itcAvailed: false,
         status: PurchaseBillStatus.unpaid,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+        attachmentPath: resolvedAttachmentPath,
         createdAt: now,
         updatedAt: now,
       );
@@ -317,6 +351,7 @@ class _AddPurchaseBillScreenState
       _vendorCtrl.text = bill.vendorName;
       _vendorGstinCtrl.text = bill.vendorGstin ?? '';
       _notesCtrl.text = bill.notes ?? '';
+      _existingAttachmentPath = bill.attachmentPath;
       _vendorPartyId = bill.vendorPartyId;
       _selectedBusinessId = bill.businessId;
       _billDate = bill.billDate;
@@ -722,9 +757,63 @@ class _AddPurchaseBillScreenState
               maxLines: 3,
             ),
 
+            // ── Attachment ─────────────────────────────────────────────────
+            const SizedBox(height: AppSpacing.xl),
+            _SectionHeader(label: 'Attachment'),
+            const SizedBox(height: AppSpacing.sm),
+            _buildAttachmentSection(),
+
             const SizedBox(height: AppSpacing.xxxl),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Bill attachment ────────────────────────────────────────────────────────
+
+  Future<void> _pickBill() async {
+    final result = await showBillPicker(context);
+    if (result != null) {
+      setState(() {
+        _pendingBill = result;
+        _attachmentRemoved = false;
+      });
+    }
+  }
+
+  Widget _buildAttachmentSection() {
+    // Show existing attachment (loaded from DB) unless removed or replaced
+    if (_existingAttachmentPath != null &&
+        !_attachmentRemoved &&
+        _pendingBill == null) {
+      final fileName = _existingAttachmentPath!.split('/').last;
+      final isPdf = fileName.toLowerCase().endsWith('.pdf');
+      return BillPreviewCard(
+        filePath: _existingAttachmentPath!,
+        fileName: fileName,
+        isPdf: isPdf,
+        onRemove: () => setState(() => _attachmentRemoved = true),
+      );
+    }
+
+    // Show pending bill (just picked, not yet saved)
+    if (_pendingBill != null) {
+      final isPdf = _pendingBill!.fileName.toLowerCase().endsWith('.pdf');
+      return BillPreviewCard(
+        filePath: _pendingBill!.filePath,
+        fileName: _pendingBill!.fileName,
+        isPdf: isPdf,
+        onRemove: () => setState(() => _pendingBill = null),
+      );
+    }
+
+    return OutlinedButton.icon(
+      onPressed: _pickBill,
+      icon: const Icon(Icons.receipt_long_outlined),
+      label: const Text('Attach Bill / Receipt'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 48),
       ),
     );
   }

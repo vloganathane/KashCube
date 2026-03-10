@@ -317,6 +317,7 @@ class PurchaseBill extends Equatable {
     this.itcAvailed = false,
     this.itcReversalReason,
     this.notes,
+    this.attachmentPath,
     this.status = PurchaseBillStatus.unpaid,
     required this.createdAt,
     required this.updatedAt,
@@ -362,6 +363,7 @@ class PurchaseBill extends Equatable {
 
   // ── Metadata ─────────────────────────────────────────────────────────────
   final String? notes;
+  final String? attachmentPath;
   final PurchaseBillStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -402,6 +404,7 @@ class PurchaseBill extends Equatable {
     bool? itcAvailed,
     ItcReversalReason? itcReversalReason,
     String? notes,
+    String? attachmentPath,
     PurchaseBillStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -431,6 +434,7 @@ class PurchaseBill extends Equatable {
         itcAvailed: itcAvailed ?? this.itcAvailed,
         itcReversalReason: itcReversalReason ?? this.itcReversalReason,
         notes: notes ?? this.notes,
+        attachmentPath: attachmentPath ?? this.attachmentPath,
         status: status ?? this.status,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -461,6 +465,7 @@ class PurchaseBill extends Equatable {
         'itc_availed': itcAvailed ? 1 : 0,
         'itc_reversal_reason': itcReversalReason?.dbValue,
         'notes': notes,
+        'attachment_path': attachmentPath,
         'status': status.dbValue,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
@@ -499,6 +504,7 @@ class PurchaseBill extends Equatable {
         itcReversalReason:
             ItcReversalReasonExt.fromDb(m['itc_reversal_reason'] as String?),
         notes: m['notes'] as String?,
+        attachmentPath: m['attachment_path'] as String?,
         status: PurchaseBillStatusExt.fromDb(m['status'] as String?),
         createdAt: DateTime.parse(m['created_at'] as String),
         updatedAt: DateTime.parse(m['updated_at'] as String),
@@ -512,6 +518,6 @@ class PurchaseBill extends Equatable {
         subtotal, igstAmount, cgstAmount, sgstAmount, cessAmount,
         taxTotal, total, paidAmount,
         itcEligibility, itcBlockReason, itcAvailed, itcReversalReason,
-        notes, status, createdAt, updatedAt,
+        notes, attachmentPath, status, createdAt, updatedAt,
       ];
 }

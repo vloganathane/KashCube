@@ -6,6 +6,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/purchase_bill.dart';
 import '../../../data/models/transaction.dart';
+import '../../providers/bill_provider.dart';
 import '../../providers/purchase_bill_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
@@ -103,7 +104,16 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         createdAt: paidDate,
         updatedAt: paidDate,
       );
-      await ref.read(transactionsProvider.notifier).addTransaction(txn);
+      final txnId =
+          await ref.read(transactionsProvider.notifier).addTransaction(txn);
+
+      // Auto-attach the vendor's scanned invoice to the payment transaction
+      if (bill.attachmentPath != null) {
+        await ref.read(billNotifierProvider(txnId).notifier).saveBill(
+              sourcePath: bill.attachmentPath!,
+              originalFileName: bill.attachmentPath!.split('/').last,
+            );
+      }
 
       messenger.showSnackBar(
         SnackBar(

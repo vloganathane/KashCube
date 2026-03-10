@@ -2163,6 +2163,16 @@ class DatabaseHelper {
             'Add purchase_bills + purchase_bill_items tables for ITC tracking (Phase G1)',
       });
     }
+
+    if (oldVersion < 49) {
+      await db.execute(
+        'ALTER TABLE purchase_bills ADD COLUMN attachment_path TEXT',
+      );
+      await db.insert('schema_version', {
+        'version': 49,
+        'description': 'Add attachment_path to purchase_bills for vendor invoice attachment',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

@@ -39,12 +39,14 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
     }
   }
 
-  Future<void> addTransaction(Transaction transaction) async {
+  Future<int> addTransaction(Transaction transaction) async {
     try {
-      await _repository.insert(transaction);
+      final id = await _repository.insert(transaction);
       await loadTransactions();
+      return id;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 

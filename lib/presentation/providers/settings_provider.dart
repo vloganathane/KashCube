@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/subscription_tier.dart';
 import '../../data/repositories/settings_repository_impl.dart';
 import '../../data/services/backup_service.dart';
 import '../../data/services/csv_export_service.dart';
@@ -77,6 +78,9 @@ class SettingsKeys {
 
   // PDF document template
   static const documentTemplate = 'document_template';
+
+  // Subscription tier: 'free' | 'starter' | 'business'
+  static const subscriptionTier = 'subscription_tier';
 
   // Home screen widget layout (JSON-encoded list of HomeWidgetConfig)
   static const homeWidgetsConfig = 'home_widgets_config';
@@ -343,6 +347,33 @@ class NotificationSettingsNotifier
 final notificationSettingsProvider = StateNotifierProvider<
     NotificationSettingsNotifier, AsyncValue<NotificationSettings>>(
   (ref) => NotificationSettingsNotifier(ref.read(settingsRepositoryProvider)),
+);
+
+// ---------------------------------------------------------------------------
+// Subscription Tier
+// ---------------------------------------------------------------------------
+
+class SubscriptionTierNotifier extends StateNotifier<SubscriptionTier> {
+  SubscriptionTierNotifier(this._repo) : super(SubscriptionTier.free) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    final value = await _repo.get(SettingsKeys.subscriptionTier);
+    state = SubscriptionTierX.fromDb(value);
+  }
+
+  Future<void> setTier(SubscriptionTier tier) async {
+    await _repo.set(SettingsKeys.subscriptionTier, tier.dbValue);
+    state = tier;
+  }
+}
+
+final subscriptionTierProvider =
+    StateNotifierProvider<SubscriptionTierNotifier, SubscriptionTier>(
+  (ref) => SubscriptionTierNotifier(ref.read(settingsRepositoryProvider)),
 );
 
 

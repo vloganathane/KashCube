@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -146,7 +148,58 @@ class DocumentTemplate {
     pageSize: PageSize.thermal80,
   );
 
-  static const List<DocumentTemplate> presets = [classic, modern, plain, receipt];
+  // ── Industry presets ────────────────────────────────────────────────────────
+
+  /// Pharmacy / medical billing: teal accent, banner header, 2 decimal places.
+  static const pharmacy = DocumentTemplate(
+    id: 'pharmacy',
+    name: 'Pharmacy',
+    accentColor: PdfColor.fromInt(0xFF006064),
+    headerStyle: PdfHeaderStyle.banner,
+    amountDecimalDigits: 2,
+  );
+
+  /// Restaurant / café billing: warm brown accent, banner header.
+  static const restaurant = DocumentTemplate(
+    id: 'restaurant',
+    name: 'Restaurant',
+    accentColor: PdfColor.fromInt(0xFF5D4037),
+    headerStyle: PdfHeaderStyle.banner,
+    amountDecimalDigits: 0,
+  );
+
+  /// Professional services (CA, consultant, agency): blue accent, minimal header.
+  static const service = DocumentTemplate(
+    id: 'service',
+    name: 'Service',
+    accentColor: PdfColor.fromInt(0xFF1565C0),
+    headerStyle: PdfHeaderStyle.minimal,
+    amountDecimalDigits: 0,
+  );
+
+  /// Freelancer / independent contractor: slate accent, no logo, minimal header.
+  static const freelancer = DocumentTemplate(
+    id: 'freelancer',
+    name: 'Freelancer',
+    accentColor: PdfColor.fromInt(0xFF37474F),
+    headerStyle: PdfHeaderStyle.minimal,
+    showLogo: false,
+    amountDecimalDigits: 2,
+  );
+
+  /// Generic (all industries): same layout as Modern with explicit naming.
+  static const generic = DocumentTemplate(
+    id: 'generic',
+    name: 'Generic',
+    accentColor: PdfColor.fromInt(0xFF1B5E20),
+    headerStyle: PdfHeaderStyle.minimal,
+    amountDecimalDigits: 0,
+  );
+
+  static const List<DocumentTemplate> presets = [
+    classic, modern, plain, receipt,
+    pharmacy, restaurant, service, freelancer, generic,
+  ];
 
   static DocumentTemplate fromId(String id) =>
       presets.firstWhere((t) => t.id == id, orElse: () => modern);
@@ -319,6 +372,8 @@ class PdfDocumentData {
     this.ewbNo,
     this.termsAndConditions,
     required this.footerNote,
+    this.upiQrBytes,
+    this.showFreeWatermark = false,
   });
 
   final PdfDocumentType type;
@@ -372,4 +427,13 @@ class PdfDocumentData {
   /// Primary footer sentence, e.g. 'Thank you for your business!' for invoices,
   /// validity sentence for quotes, empty for DC (which uses a declaration block).
   final String footerNote;
+
+  /// Pre-rendered QR code image bytes (PNG) for UPI payment on invoices.
+  /// Null when not applicable (DC, Booking), when the business has no UPI ID,
+  /// or when the active tier is Free.
+  final Uint8List? upiQrBytes;
+
+  /// When true, a "Created with KashCube Free" watermark banner is rendered
+  /// at the bottom of the document. Set to true for Free-tier users.
+  final bool showFreeWatermark;
 }

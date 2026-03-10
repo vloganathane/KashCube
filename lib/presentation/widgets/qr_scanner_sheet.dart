@@ -231,3 +231,140 @@ class _OverlayPainter extends CustomPainter {
   @override
   bool shouldRepaint(_) => false;
 }
+
+// ─── Barcode scanner (EAN / UPC / Code128) ──────────────────────────────────
+
+/// Opens the device camera to scan an EAN / UPC / Code128 product barcode.
+///
+/// Returns the raw barcode string (e.g. `"8901234567890"`) when scanned,
+/// or `null` if the user cancels. No network calls — fully on-device.
+Future<String?> showBarcodeScannerSheet(BuildContext context) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => const _BarcodeScannerSheet(),
+  );
+}
+
+class _BarcodeScannerSheet extends StatefulWidget {
+  const _BarcodeScannerSheet();
+
+  @override
+  State<_BarcodeScannerSheet> createState() => _BarcodeScannerSheetState();
+}
+
+class _BarcodeScannerSheetState extends State<_BarcodeScannerSheet> {
+  final MobileScannerController _controller = MobileScannerController(
+    formats: [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+      BarcodeFormat.code128,
+      BarcodeFormat.code39,
+      BarcodeFormat.itf,
+    ],
+    facing: CameraFacing.back,
+  );
+
+  bool _hasScanned = false;
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_hasScanned) return;
+    for (final barcode in capture.barcodes) {
+      final raw = barcode.rawValue;
+      if (raw != null && raw.isNotEmpty) {
+        _hasScanned = true;
+        _controller.stop();
+        if (mounted) Navigator.pop(context, raw);
+        return;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.65,
+      decoration: BoxDecoration(
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.sm),
+            child: Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: cs.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+            child: Row(
+              children: [
+                Text(
+                  'Scan Product Barcode',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  tooltip: 'Cancel',
+                  onPressed: () => Navigator.pop(context, null),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.base, 0, AppSpacing.base, AppSpacing.base),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    MobileScanner(
+                      controller: _controller,
+                      onDetect: _onDetect,
+                    ),
+                    _ScannerOverlay(),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(
+                bottom: AppSpacing.xxl,
+                left: AppSpacing.xl,
+                right: AppSpacing.xl),
+            child: Text(
+              'Point the camera at an EAN, UPC, or Code128 barcode.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

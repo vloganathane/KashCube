@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/lifecycle_classifier.dart';
@@ -30,11 +31,12 @@ import '../../providers/transaction_provider.dart';
 import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import '../../widgets/reminder_bottom_sheet.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../providers/delivery_challan_provider.dart';
 import 'delivery_challan_detail_screen.dart';
-
+import '../settings/upgrade_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import 'ewb_preview_screen.dart';
 import 'quote_builder_screen.dart';
@@ -430,6 +432,27 @@ class _InvoiceDetailView extends ConsumerWidget {
   }
 
   Future<void> _shareInvoice(BuildContext context, String businessName, WidgetRef ref) async {
+    // Gate: free-tier users see the upgrade prompt before PDF generation.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      if (!context.mounted) return;
+      final action = await showUpgradePromptSheet(context, featureName: 'invoice');
+      if (!context.mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        // Dismissed
+        return;
+      }
+    }
+
     // Show loading indicator
     if (!context.mounted) return;
     showDialog(
@@ -460,6 +483,8 @@ class _InvoiceDetailView extends ConsumerWidget {
         business: business,
         customerParty: customerParty,
         termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
       );
       
       if (!context.mounted) return;

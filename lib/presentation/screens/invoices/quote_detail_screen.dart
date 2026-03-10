@@ -4,6 +4,7 @@ import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/invoice.dart';
@@ -13,6 +14,8 @@ import '../../providers/business_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
+import '../settings/upgrade_screen.dart';
 import 'invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
 
@@ -208,6 +211,22 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 
   Future<void> _sharePdf() async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'quote');
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     setState(() => _loading = true);
     try {
       final business = ref.read(activeBusinessProvider);
@@ -220,6 +239,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         business: business,
         customerParty: party,
         termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
       );
       if (!mounted) return;
       final due = quote.validUntil;

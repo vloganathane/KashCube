@@ -4,10 +4,12 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/gstr1_pdf_service.dart';
 import '../../../data/services/gstr1_service.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/settings_provider.dart';
 import 'gstr_period_picker.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
@@ -94,6 +96,17 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
           AsyncValue.error(e, st);
     } finally {
       setState(() => _generating = false);
+    }
+  }
+
+  Future<void> _exportJson(Gstr1Workbook wb) async {
+    final service = ref.read(gstr1ServiceProvider);
+    try {
+      final xFile = await service.exportJson(wb);
+      await Share.shareXFiles([xFile],
+          text: 'GSTR-1 JSON ${wb.returnPeriodLabel}');
+    } catch (e) {
+      _showError('JSON export failed: $e');
     }
   }
 
@@ -222,6 +235,9 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
                 tabController: _tabController!,
                 onExportCsv: () => _exportCsvZip(wb),
                 onExportPdf: () => _exportPdf(wb),
+                onExportJson: ref.read(subscriptionTierProvider).isBusiness
+                    ? () => _exportJson(wb)
+                    : null,
                 amtFmt: _amtFmt,
               ),
             ),
@@ -275,6 +291,7 @@ class _WorkbookPreview extends StatelessWidget {
     required this.tabController,
     required this.onExportCsv,
     required this.onExportPdf,
+    required this.onExportJson,
     required this.amtFmt,
   });
 
@@ -282,6 +299,7 @@ class _WorkbookPreview extends StatelessWidget {
   final TabController tabController;
   final VoidCallback onExportCsv;
   final VoidCallback onExportPdf;
+  final VoidCallback? onExportJson;
   final NumberFormat amtFmt;
 
   @override
@@ -316,8 +334,22 @@ class _WorkbookPreview extends StatelessWidget {
               ),
             ),
           ],
-        ),
-        const SizedBox(height: AppSpacing.base),
+        ),        const SizedBox(height: AppSpacing.sm),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: onExportJson,
+            icon: Icon(
+              Icons.code_outlined,
+              color: onExportJson == null ? null : const Color(0xFF1565C0),
+            ),
+            label: Text(
+              onExportJson == null
+                  ? 'Export JSON for GST Portal (Business Plan)'
+                  : 'Export JSON for GST Portal',
+            ),
+          ),
+        ),        const SizedBox(height: AppSpacing.base),
 
         // ── Table tabs ──────────────────────────────────────────────────────
         Card(

@@ -29,6 +29,7 @@ class BookingConfirmationPdfService {
     Party? customerParty,
     String? termsAndConditions,
     List<BookingItem>? items,
+    bool showFreeWatermark = false,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
     final data = _bookingToData(
@@ -38,6 +39,7 @@ class BookingConfirmationPdfService {
       logo: logo,
       termsAndConditions: termsAndConditions,
       items: items,
+      showFreeWatermark: showFreeWatermark,
     );
     final ref = (booking.bookingRef ?? 'BK-${booking.id}')
         .replaceAll('/', '-')
@@ -58,6 +60,7 @@ class BookingConfirmationPdfService {
     pw.MemoryImage? logo,
     String? termsAndConditions,
     List<BookingItem>? items,
+    bool showFreeWatermark = false,
   }) {
     final fmt = DateFormat('d MMM yyyy');
     final timeFmt = DateFormat('h:mm a');
@@ -142,6 +145,7 @@ class BookingConfirmationPdfService {
       ),
       termsAndConditions: termsAndConditions,
       footerNote: 'Thank you for your booking! We look forward to serving you.',
+      showFreeWatermark: showFreeWatermark,
     );
   }
 

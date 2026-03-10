@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart' show XFile;
 
 import '../../core/utils/csv_exporter.dart';
@@ -907,6 +909,201 @@ class Gstr1Service {
 
     return CsvExporter.zipFiles('$prefix.zip', files);
   }
+
+  /// Exports [workbook] as a GSTN GSTR-1 portal-compatible JSON file.
+  /// Returns an [XFile] pointing to the JSON that can be shared via share_plus.
+  Future<XFile> exportJson(Gstr1Workbook workbook) async {
+    final period = workbook.returnPeriodLabel;
+    final gstin = workbook.businessGstin;
+
+    // ── B2B: group rows by receiverGstin, then by invoiceNo ──────────────
+    final Map<String, Map<String, List<Gstr1B2bRow>>> b2bMap = {};
+    for (final row in workbook.tableB2b) {
+      b2bMap.putIfAbsent(row.receiverGstin, () => {})[row.invoiceNo] ??= [];
+      b2bMap[row.receiverGstin]![row.invoiceNo]!.add(row);
+    }
+    final b2bJson = b2bMap.entries.map((gstinEntry) {
+      return {
+        'ctin': gstinEntry.key,
+        'inv': gstinEntry.value.entries.map((invEntry) {
+          final rows = invEntry.value;
+          final first = rows.first;
+          return {
+            'inum': first.invoiceNo,
+            'idt': first.invoiceDate, // DD-MM-YYYY from service
+            'val': _round2(first.invoiceValue),
+            'pos': first.placeOfSupply,
+            'rchrg': first.reverseCharge ? 'Y' : 'N',
+            'inv_typ': first.invoiceType == 'Regular' ? 'R' : first.invoiceType,
+            'itms': rows.asMap().entries.map((e) {
+              final r = e.value;
+              return {
+                'num': e.key + 1,
+                'itm_det': {
+                  'rt': r.rate,
+                  'txval': _round2(r.taxableValue),
+                  'iamt': _round2(r.igst),
+                  'camt': _round2(r.cgst),
+                  'samt': _round2(r.sgst),
+                  'csamt': 0.0,
+                },
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+    }).toList();
+
+    // ── B2CL: group by placeOfSupply ──────────────────────────────────────
+    final Map<String, List<Gstr1B2cLargeRow>> b2clMap = {};
+    for (final r in workbook.tableB2cLarge) {
+      b2clMap.putIfAbsent(r.placeOfSupply, () => []).add(r);
+    }
+    final b2clJson = b2clMap.entries.map((e) {
+      return {
+        'pos': e.key,
+        'inv': e.value.asMap().entries.map((ie) {
+          final r = ie.value;
+          return {
+            'inum': 'B2CL-${ie.key + 1}',
+            'idt': '',
+            'val': _round2(r.taxableValue + r.igst),
+            'pos': r.placeOfSupply,
+            'rchrg': 'N',
+            'inv_typ': 'R',
+            'itms': [
+              {
+                'num': 1,
+                'itm_det': {
+                  'rt': r.rate,
+                  'txval': _round2(r.taxableValue),
+                  'iamt': _round2(r.igst),
+                  'camt': 0.0,
+                  'samt': 0.0,
+                  'csamt': 0.0,
+                },
+              }
+            ],
+          };
+        }).toList(),
+      };
+    }).toList();
+
+    // ── B2CS ─────────────────────────────────────────────────────────────
+    final b2csJson = workbook.tableB2cSmall.map((r) {
+      return {
+        'sply_tp': r.igst > 0 ? 'INTER' : 'INTRA',
+        'pos': r.placeOfSupply,
+        'typ': r.type,
+        'rt': r.rate,
+        'txval': _round2(r.taxableValue),
+        'iamt': _round2(r.igst),
+        'camt': _round2(r.cgst),
+        'samt': _round2(r.sgst),
+        'csamt': 0.0,
+      };
+    }).toList();
+
+    // ── CDNR: group by receiverGstin, then by noteNo ─────────────────────
+    final Map<String, Map<String, List<Gstr1CdnRow>>> cdnrMap = {};
+    for (final r in workbook.tableCdn) {
+      cdnrMap.putIfAbsent(r.receiverGstin, () => {})[r.noteNo] ??= [];
+      cdnrMap[r.receiverGstin]![r.noteNo]!.add(r);
+    }
+    final cdnrJson = cdnrMap.entries.map((gstinEntry) {
+      return {
+        'ctin': gstinEntry.key,
+        'nt': gstinEntry.value.entries.map((ntEntry) {
+          final rows = ntEntry.value;
+          final first = rows.first;
+          return {
+            'ntty': first.noteType,
+            'nt_num': first.noteNo,
+            'nt_dt': first.noteDate,
+            'val': _round2(first.value),
+            'pos': first.placeOfSupply,
+            'rchrg': 'N',
+            'inv_typ': 'R',
+            'itms': rows.asMap().entries.map((e) {
+              final r = e.value;
+              return {
+                'num': e.key + 1,
+                'itm_det': {
+                  'rt': r.rate,
+                  'txval': _round2(r.taxableValue),
+                  'iamt': _round2(r.igst),
+                  'camt': _round2(r.cgst),
+                  'samt': _round2(r.sgst),
+                  'csamt': 0.0,
+                },
+              };
+            }).toList(),
+          };
+        }).toList(),
+      };
+    }).toList();
+
+    // ── HSN ───────────────────────────────────────────────────────────────
+    final hsnJson = {
+      'data': workbook.tableHsn.asMap().entries.map((e) {
+        final r = e.value;
+        return {
+          'num': e.key + 1,
+          'hsn_sc': r.hsnCode,
+          'desc': r.description,
+          'uqc': r.uqc,
+          'qty': r.totalQty,
+          'val': _round2(r.totalValue),
+          'txval': _round2(r.taxableValue),
+          'iamt': _round2(r.igst),
+          'camt': _round2(r.cgst),
+          'samt': _round2(r.sgst),
+          'csamt': _round2(r.cess),
+        };
+      }).toList(),
+    };
+
+    // ── Doc Issue ─────────────────────────────────────────────────────────
+    final docIssueJson = {
+      'doc_det': workbook.tableDocSummary.asMap().entries.map((e) {
+        final r = e.value;
+        final net = r.totalSubmitted - r.cancelled;
+        return {
+          'doc_num': e.key + 1,
+          'docs': [
+            {
+              'num': 1,
+              'from': r.seriesFrom,
+              'to': r.seriesTo,
+              'totnum': r.totalSubmitted,
+              'cancel': r.cancelled,
+              'net_issue': net,
+            }
+          ],
+        };
+      }).toList(),
+    };
+
+    // ── Assemble payload ──────────────────────────────────────────────────
+    final payload = <String, dynamic>{
+      'gstin': gstin,
+      'fp': period,
+      'b2b': b2bJson,
+      if (b2clJson.isNotEmpty) 'b2cl': b2clJson,
+      if (b2csJson.isNotEmpty) 'b2cs': b2csJson,
+      if (cdnrJson.isNotEmpty) 'cdnr': cdnrJson,
+      'hsn': hsnJson,
+      'doc_issue': docIssueJson,
+    };
+
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(payload);
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/GSTR1_${period}_$gstin.json');
+    await file.writeAsString(jsonStr);
+    return XFile(file.path, mimeType: 'application/json', name: 'GSTR1_${period}_$gstin.json');
+  }
+
+  static double _round2(double v) => (v * 100).roundToDouble() / 100;
 }
 
 // ─── Private Accumulator Helpers ────────────────────────────────────────────

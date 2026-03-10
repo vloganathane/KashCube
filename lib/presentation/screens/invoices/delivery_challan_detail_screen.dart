@@ -4,6 +4,7 @@ import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -20,7 +21,9 @@ import '../../providers/business_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
 import '../invoices/invoice_detail_screen.dart';
+import '../settings/upgrade_screen.dart';
 import 'quote_builder_screen.dart';
 
 /// Detail view for a single Delivery Challan with action buttons.
@@ -317,6 +320,22 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   }
 
   Future<void> _sharePdf() async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'challan');
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     setState(() => _loading = true);
     try {
       final business = challan.businessId != null
@@ -327,7 +346,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
           : null;
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms);
+          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms, showFreeWatermark: showWatermark);
       await _shareFile(file.path, 'Delivery Challan ${challan.challanNo}');
     } catch (e) {
       _showError('Share failed: $e');

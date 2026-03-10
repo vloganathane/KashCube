@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../providers/settings_provider.dart';
 import 'accounts_manage_screen.dart';
@@ -17,6 +18,7 @@ import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
+import 'upgrade_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -50,7 +52,34 @@ class SettingsScreen extends ConsumerWidget {
           // -- Profile Header --
           _ProfileHeader(),
 
-          // -- Security --
+          // -- KashCube Plan --
+          Consumer(builder: (context, ref, _) {
+            final tier = ref.watch(subscriptionTierProvider);
+            return _SettingsSection(
+              title: 'KashCube Plan',
+              children: [
+                ListTile(
+                  leading: Icon(
+                    tier.isFree
+                        ? Icons.workspace_premium_outlined
+                        : Icons.workspace_premium,
+                    color: tier.isFree ? null : Theme.of(context).colorScheme.primary,
+                  ),
+                  title: Text(tier.isFree
+                      ? 'Upgrade to Starter or Business'
+                      : 'Plan: ${tier.displayName}'),
+                  subtitle: Text(tier.isFree
+                      ? 'Remove watermarks · Export reports · UPI QR'
+                      : 'Manage your subscription'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+                  ),
+                ),
+              ],
+            );
+          }),
           _SettingsSection(
             title: 'Security',
             children: [

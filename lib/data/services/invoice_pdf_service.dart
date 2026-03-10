@@ -1,7 +1,11 @@
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart' show Color;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../models/business.dart';
 import '../models/invoice.dart';
@@ -27,14 +31,22 @@ class InvoicePdfService {
     Business? business,
     Party? customerParty,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
+    final upiQrBytes =
+        (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
+            ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
+            : null;
     final data = _invoiceToData(
       invoice,
       business: business,
       customerParty: customerParty,
       logo: logo,
       termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+      upiQrBytes: upiQrBytes,
     );
     return PdfLayoutEngine.instance.generate(
       data,
@@ -48,14 +60,22 @@ class InvoicePdfService {
     Business? business,
     Party? customerParty,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
+    final upiQrBytes =
+        (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
+            ? await _buildUpiQrBytes(business, quote.total, quote.quoteNo)
+            : null;
     final data = _quoteToData(
       quote,
       business: business,
       customerParty: customerParty,
       logo: logo,
       termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+      upiQrBytes: upiQrBytes,
     );
     return PdfLayoutEngine.instance.generate(
       data,
@@ -72,6 +92,8 @@ class InvoicePdfService {
     Party? customerParty,
     pw.MemoryImage? logo,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
+    Uint8List? upiQrBytes,
   }) {
     final sellerState = business?.state;
     final buyerState = customerParty?.state;
@@ -136,6 +158,8 @@ class InvoicePdfService {
       ),
       termsAndConditions: termsAndConditions,
       footerNote: 'Thank you for your business!',
+      upiQrBytes: upiQrBytes,
+      showFreeWatermark: showFreeWatermark,
     );
   }
 
@@ -169,6 +193,8 @@ class InvoicePdfService {
     Party? customerParty,
     pw.MemoryImage? logo,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
+    Uint8List? upiQrBytes,
   }) {
     final sellerState = business?.state;
     final buyerState = customerParty?.state;
@@ -238,6 +264,8 @@ class InvoicePdfService {
       ),
       termsAndConditions: termsAndConditions,
       footerNote: validNote,
+      upiQrBytes: upiQrBytes,
+      showFreeWatermark: showFreeWatermark,
     );
   }
 
@@ -334,5 +362,47 @@ class InvoicePdfService {
       }
     } catch (_) {}
     return null;
+  }
+
+  // ── UPI QR helpers ──────────────────────────────────────────────────
+
+  /// Builds a UPI deep-link URI for the given [business], invoice [amount], and
+  /// transaction [ref] label.
+  static String _buildUpiUri(Business business, double amount, String ref) {
+    final pa = Uri.encodeComponent(business.upiId!);
+    final pn = Uri.encodeComponent(business.name);
+    final am = amount.toStringAsFixed(2);
+    final tn = Uri.encodeComponent('Payment for $ref');
+    return 'upi://pay?pa=$pa&pn=$pn&am=$am&tn=$tn&cu=INR';
+  }
+
+  /// Generates a 200×200 QR code from [upiUri] and returns PNG bytes.
+  /// Returns null on any failure (no UPI ID, encoding error, etc.).
+  static Future<Uint8List?> _buildUpiQrBytes(
+    Business business,
+    double amount,
+    String ref,
+  ) async {
+    try {
+      final upiUri = _buildUpiUri(business, amount, ref);
+      final painter = QrPainter(
+        data: upiUri,
+        version: QrVersions.auto,
+        errorCorrectionLevel: QrErrorCorrectLevel.M,
+        eyeStyle: const QrEyeStyle(
+          eyeShape: QrEyeShape.square,
+          color: Color(0xFF000000),
+        ),
+        dataModuleStyle: const QrDataModuleStyle(
+          dataModuleShape: QrDataModuleShape.square,
+          color: Color(0xFF000000),
+        ),
+      );
+      final image = await painter.toImage(200);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
   }
 }

@@ -296,6 +296,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
   late final TextEditingController _whatsapp;
   late final TextEditingController _linkedin;
   late final TextEditingController _instagram;
+  late final TextEditingController _upiId;
   String? _logoPath;
   bool _setActive = false;
   bool _saving = false;
@@ -321,6 +322,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
     _whatsapp  = TextEditingController(text: b?.whatsapp ?? '');
     _linkedin  = TextEditingController(text: b?.linkedin ?? '');
     _instagram = TextEditingController(text: b?.instagram ?? '');
+    _upiId     = TextEditingController(text: b?.upiId ?? '');
     _logoPath = b?.logoPath;
     _setActive = b?.isActive ?? false;
     // Country & dial code — load from existing business if set
@@ -341,7 +343,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
     for (final c in [
       _name, _ownerName, _address, _city, _state,
       _pincode, _phone, _email, _gst,
-      _website, _whatsapp, _linkedin, _instagram,
+      _website, _whatsapp, _linkedin, _instagram, _upiId,
     ]) {
       c.dispose();
     }
@@ -408,6 +410,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       whatsapp: nullIfEmpty(_whatsapp),
       linkedin: nullIfEmpty(_linkedin),
       instagram: nullIfEmpty(_instagram),
+      upiId: nullIfEmpty(_upiId),
       isActive: _setActive,
       createdAt: widget.business?.createdAt ?? now,
       updatedAt: now,
@@ -497,6 +500,19 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
                 ),
                 textCapitalization: TextCapitalization.characters,
                 validator: GstinValidator.validate,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // UPI ID (used to generate a payment QR code on invoices)
+              TextFormField(
+                controller: _upiId,
+                decoration: const InputDecoration(
+                  labelText: 'UPI ID (payment QR on invoices)',
+                  hintText: 'yourname@upi',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.qr_code_outlined),
+                ),
+                keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: AppSpacing.sm),
 

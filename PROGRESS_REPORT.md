@@ -1,193 +1,193 @@
 # Kash Cube - Progress Report
-**Date:** 7 March 2026  
-**Current Phase:** Unified Tracking System — All 3 Phases ✅ COMPLETE
+**Date:** 10 March 2026  
+**Current Phase:** Monetization Infrastructure — Sprint 1 ✅ COMPLETE + Sprint 2 ✅ COMPLETE
 
 ---
 
 ## Executive Summary
 
-The app has grown dramatically since the last report (27 Feb). Since then, two
-full implementation plans have landed:
+Since the last report (7 March), two full monetization sprints have landed:
 
-1. **March/April 2026 Plan (Tracks A + B + Phase 2)** — Fiscal Year
-   Management and Storage/Disaster Recovery — **100% complete** (commits
-   `d0a3eb6` → `5f4d00e`).
-2. **Unified Tracking System (Pillars A–D + Shared Lifecycle Layer)** — Party
-   360° View, Cash Flow Timeline, Bulk Actions, Business Flow Tracker,
-   LifecycleTag — **Phases 1 & 2 complete, Phase 3 complete except widget
-   tests** (commit `2182d68`).
+1. **Sprint 1 — Monetization Gate Infrastructure** — `SubscriptionTier` enum, PDF watermark, `UpgradePromptSheet`, report export gate, PDF share wired to upgrade prompt, Upgrade Screen UI — **100% complete**.
+2. **Sprint 2 — Starter Tier Features** — UPI QR on invoice, 5 industry templates, Report PDF export, GSTR-1 JSON export, barcode scanner for item catalog — **100% complete**.
 
-**Database:** v45 (stable)  
-**Flutter Analyze:** 21 issues — **3 actual errors** in `party_statement_pdf_service.dart` (const-eval type), 2 warnings, 16 info-level hints. Needs a fix pass.  
-**App Status:** Feature-rich, approaching beta readiness. Core UX is solid.
+**Database:** v50 (bumped from v45 → v49 in Sprint 1, v49 → v50 in Sprint 2)  
+**Flutter Analyze:** **No issues found!** (0 errors, 0 warnings)  
+**App Status:** Monetization gates live, all Starter + Business tier features implemented. Ready for Sprint 3 (real IAP wiring).
 
 ---
 
-## What Shipped Since 27 Feb 2026
+## What Shipped Since 7 March 2026
 
-### March/April 2026 Plan — ALL COMPLETE
+### Sprint 1 — Monetization Foundation ✅ ALL COMPLETE
 
-#### Track A — Fiscal Year Management
-- [x] DB schema: 7 FY settings keys added (`fiscal_year_start_month`, `invoice_no_format`, `auto_reset_invoice_no`, etc.)
-- [x] `FiscalYearService` — `currentFiscalYear`, `getFYLabel()`, `isApproachingYearEnd()`, `isResetDue()`, `nextInvoiceNo()`
-- [x] `InvoiceNumberService` fully refactored — FY-aware format (`INV-25-26-042`), auto-resets on 1 April
-- [x] FY quick filter in Reports screen — `[This FY ●]  [Last FY]  [Custom]` chip row
-- [x] Year-end warning notifications (7d, last day, next day triggers)
-- [x] Home screen dismissible `MaterialBanner` — shown from 25 March until FY closed
+#### S1-T1 — `SubscriptionTier` enum + provider
+- [x] `lib/core/constants/subscription_tier.dart` — `enum SubscriptionTier { free, starter, business }` with `isStarter`, `isBusiness`, `isFree`, `dbValue`, `displayName` extensions
+- [x] `SettingsKeys.subscriptionTier` key added to `settings_provider.dart`
+- [x] `SubscriptionTierNotifier` + `subscriptionTierProvider` — single source of truth; persisted to SQLite settings
 
-#### Track B — Storage & Disaster Recovery
-- [x] WAL mode + daily integrity check + rolling snapshot (`kash_cube_prev.db`)
-- [x] `android/app/src/main/res/xml/data_extraction_rules.xml` — exclude-only Android backup strategy
-- [x] `PdfCacheManager` — ephemeral PDFs with FY-prefixed filenames, auto-purge >24h
-- [x] `StorageHealthScreen` — per-FY usage bar, image bar, "Back Up Now", "Clear cache"
-- [x] Image compression on import — 800×600, quality 70, hard cap 150 KB
-- [x] DB `VACUUM` on 30-day schedule via background Isolate
-- [x] Encrypted `.kashcube` export/import — AES-256-GCM + PBKDF2 (generation + restore, 5-attempt lockout)
-- [x] Onboarding backup nudge (after 5 transactions, monthly reminder)
+#### S1-T2 — PDF watermark on all 3 document services
+- [x] `PdfDocumentData.showFreeWatermark` field added
+- [x] `PdfLayoutEngine._buildFooter()` — renders a tinted green watermark band on Free tier: _"Created with KashCube Free · Remove watermark → Upgrade to Starter at ₹499/year"_
+- [x] `InvoicePdfService`, `DeliveryChallanPdfService`, `BookingConfirmationPdfService` — all accept and pass `showFreeWatermark` flag
 
-#### Phase 2 — Year-End Closing Wizard
-- [x] 3-step wizard UI
-- [x] FY archiving to `archive_FY{YYYY}.db`
-- [x] Backup prompt in wizard Step 3
-- [x] `backup_rules.xml` updated to include archive DBs
+#### S1-T3 — `UpgradePromptSheet` widget
+- [x] `lib/presentation/widgets/upgrade_prompt_sheet.dart` — reusable bottom sheet with `[Share with Watermark]` + `[Upgrade to Starter ₹499/yr →]` buttons; never hard-blocks the flow
+
+#### S1-T4 — Report export gate on Reports screen
+- [x] Export FAB added to `reports_screen.dart`
+- [x] Free → shows `UpgradePromptSheet`; Starter/Business → format picker (PDF P&L or CSV)
+
+#### S1-T5 — Wire PDF share to upgrade prompt on all 4 detail screens
+- [x] `InvoiceDetailScreen`, `QuoteDetailScreen`, `DeliveryChallanDetailScreen`, `BookingDetailScreen` — Free tier shows `UpgradePromptSheet` ("Share with Watermark" / "Upgrade"); Starter+ shares directly without watermark
+
+#### S1-T6 — Upgrade Screen (UI, no real IAP yet)
+- [x] `lib/presentation/screens/settings/upgrade_screen.dart` — full tier comparison table, pricing (₹59/mo or ₹499/yr · ₹129/mo or ₹999/yr), annual savings callout (30%/35%), cancellation guarantee copy, ITC deductibility note
+- [x] `kDebugMode` dev buttons: "Simulate Starter" / "Simulate Business" / "Reset to Free" for QA
+- [x] Wired into settings screen
 
 ---
 
-### Unified Tracking System — COMPLETE (Phase 3 tests pending)
+### Sprint 2 — Starter Tier Features ✅ ALL COMPLETE
 
-#### Pillar A — Party 360° View
-- [x] `PartyFinancialSummary` model with `compute()` factory
-- [x] `partyFinancialSummaryProvider(partyId)` — parallel SQLite queries
-- [x] `Party360Screen` — net outstanding chip, per-module summary rows  
-- [x] `Party360Screen` unified timeline — all invoices, dues, loans, transactions, bookings in one list
-- [x] "Deals" tab — `FlowChainTile` per business chain
-- [x] Navigation: party name tap in Action Center → `Party360Screen`
-- [x] Party search autocomplete shows net outstanding balance
+#### S2-T1 — UPI Payment QR on Invoice
+- [x] `Business.upiId String?` field added with `copyWith`, `toMap`, `fromMap`, `props` updates
+- [x] DB v50 migration: `ALTER TABLE businesses ADD COLUMN upi_id TEXT`
+- [x] `businesses_screen.dart` — UPI ID `TextFormField` with `Icons.qr_code_outlined`, hint `'yourname@upi'`
+- [x] `PdfDocumentData.upiQrBytes Uint8List?` field added
+- [x] `PdfLayoutEngine` — renders 72×72 QR image + "Scan to pay via UPI" label to left of signatory box when QR bytes present
+- [x] `InvoicePdfService` — `showUpiQr: bool = false` param; generates UPI URI (`upi://pay?pa=…&pn=…&am=…&tn=…&cu=INR`) → `QrPainter.toImage(200)` → `Uint8List`; uses non-deprecated `eyeStyle`/`dataModuleStyle` API
+- [x] `InvoiceDetailScreen` + `QuoteDetailScreen` — `showUpiQr: tier.isStarter` wired
 
-#### Pillar B — Cash Flow Timeline
-- [x] `CashFlowEvent` sealed class (`RecordedEvent`, `OverdueEvent`, `UpcomingEvent`)
-- [x] `cashFlowTimelineProvider` — merges 9 sources, 90-day window
-- [x] `CashFlowScreen` — month navigator, PAST/TODAY/UPCOMING dividers, filter chips, tap-to-detail
-- [x] Reports screen prominent card → `CashFlowScreen`
+#### S2-T2 — 5 Industry Invoice Template Presets
+- [x] `pdf_document_data.dart` — 5 new `DocumentTemplate` static consts: `pharmacy` (#006064/banner), `restaurant` (#5D4037/banner), `service` (#1565C0/minimal), `freelancer` (#37474F/minimal/no-logo), `generic` (#1B5E20/minimal)
+- [x] `presets` list updated: 9 presets total (classic, modern, plain, receipt + 5 new)
+- [x] `database_helper.dart` v50 migration — `_seedDocumentTemplatePresets()` extended with 5 new `INSERT OR IGNORE` rows
 
-#### Pillar C — Bulk Actions
-- [x] Multi-select mode in `ActionCenterScreen` (long-press or AppBar toggle)
-- [x] `BulkReminderService` — sequential WhatsApp deep-link per item, SMS fallback
-- [x] Consolidated Party Statement PDF — `PartyStatementPdfService`
+#### S2-T3 — Report PDF Export
+- [x] `lib/data/services/report_pdf_service.dart` (NEW) — `ReportPdfService.instance.generate(MonthlyPnL, String)` → A4 P&L summary PDF with header, 3-column summary cards, income/expense category tables (sorted by amount, with % share), top 5 parties table, generated-on footer
+- [x] `reports_screen.dart` — format picker bottom sheet: "P&L Summary PDF" → `ReportPdfService` → `Share.shareXFiles`; "Transaction CSV" → existing `CsvExporter`
 
-#### Pillar D — Business Flow Tracker
-- [x] `BusinessFlowChain` model (4 chain types: Quote, Challan, Booking, Direct Invoice)
-- [x] `BusinessFlowChainBuilder` — pure Dart, FK-based assembly (no DB migration needed)
-- [x] `businessFlowChainsProvider(partyId)` + `leakingChainsProvider`
-- [x] `FlowChainTile` widget with reminder event nodes woven in
-- [x] Revenue Leakage alerts in Action Center — `ActionItemType.leakingChain`, dedicated "Leaking" section
+#### S2-T4 — GSTR-1 JSON Export (Business tier)
+- [x] `gstr1_service.dart` — `exportJson(Gstr1Workbook)` method added: builds GSTN portal-compatible JSON (b2b, b2cl, b2cs, cdnr, hsn, doc_issue sections); `_round2()` helper; writes to `getTemporaryDirectory()`, returns `XFile(mimeType: 'application/json')`
+- [x] `gstr1_screen.dart` — `_exportJson()` method; `onExportJson` callback added to `_WorkbookPreview`; full-width "Export JSON for GST Portal" button (disabled with explanatory label when not Business tier)
 
-#### Shared Lifecycle Layer
-- [x] `LifecycleStage` enum + `LifecycleInfo` value class
-- [x] `LifecycleClassifier` — pure Dart, 5 type-specific classifiers
-- [x] `LifecycleTag` widget — colour-coded `[ SENT · 14d ]` pill
-- [x] Wired into: Action Center tiles, `InvoiceDetailScreen`, `FlowChainTile`, `Party360Screen` timeline, `CashFlowScreen` tiles
-- [x] Context-aware action button labels (Send Reminder / Follow Up / Collect Now / Record Balance)
-- [x] "Stale Items" filter chip (items with `daysInStage > 7`) + amber left-border in Party360
-
-#### Other work shipped in same period
-- [x] Party Document Ledger — Options A, B, C + outstanding balance
-- [x] Contact QR deep link + Play Store install referrer
-- [x] Delivery Challan e-Way Bill support + upload how-to card
-- [x] Multi-item Bookings (3D-1 → 3D-3: data layer, form UI, detail/payment/invoice seam)
-- [x] Action Center + WorkManager daily overdue notification (F4)
-- [x] Dues/informal credit improvements (G1-G4 gap closure)
-- [x] `getByPartyId` on Quote, Challan, Booking, Invoice, Credit, Loan repos
+#### S2-T5 — EAN Barcode Scanner for Item Catalog (Business tier)
+- [x] `qr_scanner_sheet.dart` — `showBarcodeScannerSheet(BuildContext) → Future<String?>` added; scans EAN-13, EAN-8, UPC-A, UPC-E, Code128, Code39, ITF using existing `MobileScanner` + `_ScannerOverlay`
+- [x] `item_catalog_screen.dart` — SKU field gets `Icons.barcode_reader` suffix icon on Business tier; taps open scanner, auto-fills SKU controller on successful scan
 
 ---
 
 ## Database Status
 
-**Current Version:** 45
+**Current Version:** 50
 
-**Notable schema additions since v18:**
-- `scheduled_payments.party_id` (v45) — wires bills into Party 360°
-- FY settings keys (fiscal_year_start_month, invoice_no_format, etc.)
-- `transactions.linked_booking_id`, `transactions.business_id` (earlier versions)
-- WAL mode, daily snapshot, 30-day VACUUM
+| Version | Change |
+|---------|--------|
+| v46–v49 | Subscription tier key, various Sprint 1 settings additions |
+| v50 | `businesses.upi_id TEXT` column; 5 new document template presets seeded |
 
 ---
 
 ## Code Quality
 
-**Flutter Analyze:** 21 issues total
-- **3 errors** — `lib/data/services/party_statement_pdf_service.dart` lines 162, 164, 221: `const_eval_type_bool_num_string` — const expression contains non-bool/num/String operand. **Needs fix before next release.**
-- **2 warnings** — `country_picker_field.dart`: unnecessary null comparison + dead code
-- **1 info** — `indian_state_dropdown.dart`: deprecated `value` → use `initialValue`
-- **15 info** — miscellaneous (unused imports, etc.)
+**Flutter Analyze:** ✅ **No issues found!** (maintained throughout all Sprint 1 + Sprint 2 work)
 
-**Tests:**
-- Unit tests: core models, repositories, SMS parser, formatters — covered
-- Widget tests: most screens tested
-- Unified Tracking System (P3.13): **widget tests not yet written** — only outstanding task from the full Unified Tracking plan
+**Tests:** Unit + widget tests cover core models, repositories, SMS parser, formatters. Widget tests for Unified Tracking System screens (Party360°, CashFlowScreen, ActionCenter multi-select) remain outstanding from previous sprint.
 
 ---
 
-## What's NOT Done (Explicitly Deferred)
+## Feature Gate Status (as of 10 March 2026)
 
-- ❌ Widget tests for Unified Tracking System screens (P3.13 partial)
-- ❌ Beta preparation / onboarding flow (3-screen setup, permissions gate)
-- ❌ POS quick mode / counter billing → Year 2
-- ❌ Stock / inventory management → Year 2
-- ❌ e-Invoicing / IRN (requires network calls — will never be built)
-- ❌ Recurring invoice generation (ScheduledPayment integration deferred)
-- ❌ `LifecycleStage` stored in DB — MVP is computed-only; DB-stored variant deferred to Phase 2 (v45+)
-- ❌ Lifecycle stage manual override in InvoiceDetailScreen — deferred
+| Tier | Feature | Status |
+|------|---------|--------|
+| FREE | Transactions (SMS + manual) | ✅ |
+| FREE | Credits / Udhar | ✅ |
+| FREE | Budgets + in-app reports | ✅ |
+| FREE | PIN + biometric lock | ✅ |
+| FREE | Backup / restore (AES-256) | ✅ |
+| FREE | Invoices + Quotes + DCs + Bookings | ✅ |
+| FREE | PDF watermark on Free tier | ✅ Sprint 1 |
+| STARTER | Watermark-free output + upgrade gate | ✅ Sprint 1 |
+| STARTER | Report export (P&L PDF + CSV) | ✅ Sprint 2 |
+| STARTER | Invoice templates (9 presets incl. 5 industry) | ✅ Sprint 2 |
+| STARTER | UPI payment QR on invoice | ✅ Sprint 2 |
+| STARTER | WhatsApp reminder buttons | ✅ |
+| BUSINESS | Purchase Bills + ITC | ✅ |
+| BUSINESS | E-Way Bill + transporter registry | ✅ |
+| BUSINESS | GSTR-3B summary + export | ✅ |
+| BUSINESS | GSTR-1 JSON export (portal-ready) | ✅ Sprint 2 |
+| BUSINESS | Barcode scanner for items (EAN/UPC/Code128) | ✅ Sprint 2 |
+| BUSINESS | Custom invoice templates (unlimited) | ✅ |
+| BUSINESS | Inventory management | ❌ Sprint 4 |
+| BUSINESS | Staff payroll module | ❌ Sprint 4 |
+| BUSINESS | Tally XML / Excel export | ❌ Sprint 4 |
+| BUSINESS | LAN sync (Wi-Fi, zero server) | ❌ Sprint 4 |
+
+---
+
+## What's NOT Done (Deferred)
+
+- ❌ **Sprint 3 — Real IAP wiring** (`in_app_purchase` package, `IapService`, wire to Upgrade Screen)
+- ❌ Widget tests for Unified Tracking System screens (Party360°, CashFlowScreen, ActionCenter)
+- ❌ Inventory management (products, stock movements, reorder alerts) → Sprint 4
+- ❌ Staff payroll module (`staff`, `payroll_runs`, `payroll_items` tables) → Sprint 4
+- ❌ Tally XML / Excel export for CA handoff → Sprint 4
+- ❌ LAN sync (mDNS + TCP socket, ECDH key exchange, `sync_id` migration) → Sprint 4 (requires DB foundation work)
+- ❌ UPI Tip Jar in Settings → About (static QR, zero infra)
+- ❌ GSTR-2B reconciliation (match purchase bills vs imported GSTR-2B JSON)
+- ❌ Beta preparation (onboarding flow, permissions gate, Play Store Internal Test)
+- ❌ Multi-user / staff access (PIN-based profile switching)
+- ❌ e-Invoicing / IRN (requires network calls — will **never** be built)
 
 ---
 
 ## Next Steps — Priority Order
 
-### 1. Fix 3 flutter analyze errors (1–2 hours)
-`party_statement_pdf_service.dart` lines 162, 164, 221 — remove `const` from expressions containing non-primitive operands. Low risk, quick win.
+### 1. Sprint 3 — Wire Real IAP (1–2 sprints)
+- Add `in_app_purchase: ^3.2.0` to pubspec
+- `IapService` — load Play Store products, handle purchase flow, verify receipt locally, update `subscriptionTierProvider`
+- Replace dev simulation buttons in Upgrade Screen with real IAP
+- Product IDs: `com.kashcube.starter.monthly`, `com.kashcube.starter.annual`, `com.kashcube.business.monthly`, `com.kashcube.business.annual`
 
-### 2. Write widget tests for Unified Tracking screens (~3 hours)
-Covers `Party360Screen`, `CashFlowScreen`, `ActionCenterScreen` multi-select, `FlowChainTile`. Completes P3.13 and closes the Unified Tracking plan.
+### 2. UPI Tip Jar (0.5 sprint)
+- Settings → About → "Support KashCube" → static UPI QR image (₹50/₹100/₹200/custom)
+- Zero infrastructure; measures user appreciation before IAP validated
 
-### 3. Beta Preparation (Week 11 from roadmap, ~45 hours)
+### 3. Sprint 4 — Business Tier Build-out
+Priority order within Sprint 4:
+1. **Inventory (Phase A MVP)** — `products` + `stock_movements` tables, DB v51, stock register screen, invoice item → product link
+2. **Low-stock alerts** — WorkManager daily check, local notification
+3. **Tally XML export** — map invoices/transactions to Tally Voucher XML; CA handoff
+4. **Staff payroll** — `staff`, `attendance`, `salary_payments` tables
+5. **LAN Sync (Phase 0 prerequisite)** — add `sync_id` to all 10 core tables, `deleted_at` where missing, `sync_peers` table (DB v52+)
+
+### 4. Beta Preparation (parallel to Sprint 3)
 - 3-screen first-launch flow (Welcome → SMS Permission → Profile)
-- Permission gates wired properly
-- Feedback button (email intent, no network)
-- Play Store Internal Test track
-- **Why now:** All major features are in. Real users will catch edge cases faster than manual testing.
-
-### 4. Party Management Polish (Week 23-24, ~20 hours remaining)
-`Party360Screen` exists and is powerful. Remaining polish:
-- Party FK backfill for existing credits/loans entered as free text (P3.1 partially done)
-- One-shot OS contact picker for phone/email on party form
-- WhatsApp/SMS reminder templates per party
-
-### 5. Bookings polish & calendar view (optional)
-Core bookings are complete (multi-item, PDF, payment). A calendar view (month grid or week strip) would appeal to doctors/homestays. Low priority — list view is functional.
+- App version bump: `1.0.0-beta.1+50` (build = DB version convention)
+- Push to Play Store Internal Test track
+- Recruit 5 real Indian SME users for validation
 
 ---
 
-## Thoughts on the Current State
+## Thoughts on Current State
 
-**Strengths:**
-- The data model is extremely deep for an indie app — 45 DB migrations, 25+ models, all properly linked via FK
-- The Unified Tracking System is a genuine differentiator: most small-business apps never connect invoices, loans, dues, and bookings into one party view
-- Zero network calls maintained throughout — the privacy story is genuinely clean
-- The `LifecycleClassifier` + `LifecycleTag` pattern is well-abstracted and avoids duplication across 5 consumers
-- Business Flow Tracker (revenue leakage detection) is a feature that even enterprise tools miss
+**What's strong:**
+- The monetization architecture is clean — `subscriptionTierProvider` is the single gate; adding a new gated feature is a one-liner (`ref.read(subscriptionTierProvider).isStarter`)
+- Sprint 1 + 2 delivered with zero analyzer issues throughout — discipline maintained
+- UPI QR on invoice is a genuine differentiator for Indian users; no competitors do it offline + on-device
+- 9 invoice templates (including 5 industry-specific) close the Vyapar parity gap on template variety
+- GSTR-1 JSON export is a high-value feature — SMEs/CAs can now upload directly to the GST portal
 
 **Risks / Concerns:**
-1. **Complexity creep:** The app now has 14 screen folders, 34 providers, 26 models, and 19 repository implementations. For an indie app targeting small shopkeepers, this may be more surface area than any one person can QA thoroughly.
-2. **No real users yet:** All testing is manual + unit/widget tests. The billing, bookings, and Unified Tracking features need to be validated against real Indian SME workflows before locking in the UX.
-3. **3 analyzer errors:** Small but should be fixed before beta — they indicate a `const` misuse that could cause subtle runtime issues.
-4. **Widget test debt for new screens:** Party 360°, CashFlowScreen, and ActionCenter multi-select are non-trivial and untested at the widget level.
-5. **App version still at 1.0.0+1:** pubspec.yaml needs bumping before any beta release. Consider `1.0.0-beta.1+45` (build number = DB version convention).
-
-**What to do next (recommended sequence):**
-Fix analyzer → write Unified Tracking widget tests → bump version → Push to Internal Test track → recruit 5 real users.
+1. **IAP not wired yet** — the tier gates are all built but `subscriptionTierProvider` defaults to `free` for real users, and the "Simulate Business" buttons are hidden behind `kDebugMode`. Sprint 3 is blocking monetization.
+2. **Inventory still missing** — the single biggest Vyapar parity gap. Retailers cannot use KashCube for stock management until Sprint 4 lands.
+3. **No real users yet** — all testing is still manual + unit/widget. Need beta testers to validate the billing + GSTR + booking workflows against real Indian SME usage patterns.
+4. **DB at v50** — LAN sync requires adding `sync_id` to all 10 core tables, which will be DB v52+. The earlier this foundation is laid, the less churn on the model layer later.
 
 ---
 
-**Status:** Feature-complete for MVP + beta scope. Ready for bug-fix pass and first external testers.
+**Status:** Monetization gates built, Starter + Business features complete. Blocked on IAP wiring (Sprint 3) before any revenue can be collected.
 
-**HEAD commit:** `2182d68` feat: complete Unified Tracking System all 3 phases
+**HEAD:** Sprint 2 complete — `flutter analyze` → "No issues found!"
+

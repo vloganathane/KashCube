@@ -4,19 +4,24 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/budget.dart';
 import '../../../data/models/transaction.dart';
+import '../../../data/services/report_pdf_service.dart';
 import '../../../domain/repositories/transaction_repository.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/report_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/transaction_provider.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
 import '../bookings/bookings_screen.dart';
 import '../gst/gstr1_screen.dart';
 import '../gst/gstr3b_offset_screen.dart';
@@ -50,6 +55,159 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return Future.value();
   }
 
+  /// Called when the user taps the export icon in the AppBar.
+  ///
+  /// Free users see the [UpgradePromptSheet]; Starter/Business users
+  /// choose between CSV and PDF export.
+  Future<void> _onExportTapped(
+    BuildContext context,
+    WidgetRef ref,
+    bool isFYPeriod,
+    DateTime month,
+  ) async {
+    final tier = ref.read(subscriptionTierProvider);
+    if (tier.isFree) {
+      if (!context.mounted) return;
+      await showUpgradePromptSheet(context, featureName: 'report');
+      return;
+    }
+
+    // Show format picker
+    if (!context.mounted) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text('Export Report',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const SizedBox(height: AppSpacing.lg),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('P&L Summary PDF'),
+              subtitle: const Text('Income, expenses & category breakdown'),
+              onTap: () => Navigator.pop(ctx, 'pdf'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Transaction CSV'),
+              subtitle: const Text('Spreadsheet-ready, all transactions'),
+              onTap: () => Navigator.pop(ctx, 'csv'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    if (choice == 'pdf') {
+      await _exportPdf(context, ref, isFYPeriod, month);
+    } else {
+      await _exportCsv(context, ref, isFYPeriod, month);
+    }
+  }
+
+  /// Generates and shares a P&L summary PDF for the current report period.
+  Future<void> _exportPdf(
+    BuildContext context,
+    WidgetRef ref,
+    bool isFYPeriod,
+    DateTime month,
+  ) async {
+    try {
+      final pnlAsync =
+          isFYPeriod ? ref.read(fyPnLProvider) : ref.read(monthlyPnLProvider);
+      final pnl = pnlAsync.valueOrNull;
+      if (pnl == null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report data not ready. Try again.')),
+        );
+        return;
+      }
+      final periodLabel =
+          ref.read(reportPeriodLabelProvider).valueOrNull ?? 'Report';
+      final file = await ReportPdfService.instance.generate(pnl, periodLabel);
+      if (!context.mounted) return;
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'application/pdf')],
+        subject: 'KashCube P&L Report — $periodLabel',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF export failed: $e')),
+      );
+    }
+  }
+
+  /// Fetch transactions for the current report period and export as CSV.
+  Future<void> _exportCsv(
+    BuildContext context,
+    WidgetRef ref,
+    bool isFYPeriod,
+    DateTime month,
+  ) async {
+    try {
+      final repo = ref.read(transactionRepositoryProvider);
+      List<Transaction> transactions;
+      String fileName;
+
+      if (isFYPeriod) {
+        final range = await ref.read(reportActiveDateRangeProvider.future);
+        transactions =
+            await repo.getByDateRange(range.start, range.end);
+        final label = ref.read(reportPeriodLabelProvider).valueOrNull ?? 'report';
+        fileName = 'kashcube_${label.replaceAll(' ', '_').toLowerCase()}.csv';
+      } else {
+        final start = DateTime(month.year, month.month);
+        final end = DateTime(month.year, month.month + 1)
+            .subtract(const Duration(seconds: 1));
+        transactions = await repo.getByDateRange(start, end);
+        final fmt = DateFormat('MMM_yyyy');
+        fileName = 'kashcube_${fmt.format(month)}.csv';
+      }
+
+      if (!context.mounted) return;
+      if (transactions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No transactions in this period')),
+        );
+        return;
+      }
+
+      final service = ref.read(csvExportServiceProvider);
+      final path = await service.exportTransactions(
+        transactions,
+        fileName: fileName,
+      );
+      if (!context.mounted) return;
+      await Share.shareXFiles(
+        [XFile(path)],
+        subject: 'KashCube Report Export',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Export failed: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final month = ref.watch(reportMonthProvider);
@@ -65,6 +223,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isFYPeriod ? periodLabel : 'Reports'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Export CSV',
+            onPressed: () => _onExportTapped(context, ref, isFYPeriod, month),
+          ),
+        ],
       ),
       body: Column(
         children: [

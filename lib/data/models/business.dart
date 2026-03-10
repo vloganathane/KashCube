@@ -22,6 +22,7 @@ class Business extends Equatable {
     this.whatsapp,
     this.linkedin,
     this.instagram,
+    this.upiId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -52,6 +53,10 @@ class Business extends Equatable {
   final String? whatsapp;
   final String? linkedin;
   final String? instagram;
+
+  /// UPI Virtual Payment Address (VPA) – used to generate a payment QR code
+  /// on invoices. Example: 'yourname@upi'. Stored locally, never transmitted.
+  final String? upiId;
 
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -87,6 +92,7 @@ class Business extends Equatable {
     String? whatsapp,
     String? linkedin,
     String? instagram,
+    String? upiId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -109,6 +115,7 @@ class Business extends Equatable {
         whatsapp: whatsapp ?? this.whatsapp,
         linkedin: linkedin ?? this.linkedin,
         instagram: instagram ?? this.instagram,
+        upiId: upiId ?? this.upiId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -132,6 +139,7 @@ class Business extends Equatable {
         'whatsapp': whatsapp,
         'linkedin': linkedin,
         'instagram': instagram,
+        'upi_id': upiId,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -155,10 +163,11 @@ class Business extends Equatable {
         whatsapp: map['whatsapp'] as String?,
         linkedin: map['linkedin'] as String?,
         instagram: map['instagram'] as String?,
+        upiId: map['upi_id'] as String?,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
 
   @override
-  List<Object?> get props => [id, name, gstNo, phone, isActive];
+  List<Object?> get props => [id, name, gstNo, phone, isActive, upiId];
 }

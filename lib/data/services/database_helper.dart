@@ -2269,6 +2269,15 @@ class DatabaseHelper {
         'description': 'Add attachment_path to purchase_bills for vendor invoice attachment',
       });
     }
+
+    if (oldVersion < 50) {
+      await db.execute('ALTER TABLE businesses ADD COLUMN upi_id TEXT');
+      await _seedDocumentTemplatePresets(db);
+      await db.insert('schema_version', {
+        'version': 50,
+        'description': 'Add upi_id to businesses; seed industry invoice template presets',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -2394,7 +2403,7 @@ class DatabaseHelper {
     return DateTime(fyStartYear, 4, 1).toIso8601String().substring(0, 10);
   }
 
-  /// Seeds the four built-in [document_templates] presets.
+  /// Seeds the nine built-in [document_templates] presets (4 layout + 5 industry).
   /// Safe to call multiple times — uses INSERT OR IGNORE on the preset names.
   Future<void> _seedDocumentTemplatePresets(Database db) async {
     const now = '2026-01-01T00:00:00.000';
@@ -2443,6 +2452,67 @@ class DatabaseHelper {
         'show_logo': 0,
         'amount_decimal_digits': 0,
         'page_size': 'thermal80',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      // Industry presets
+      {
+        'name': 'Pharmacy',
+        'based_on': 'pharmacy',
+        'accent_color_hex': '#006064',
+        'header_style': 'banner',
+        'show_logo': 1,
+        'amount_decimal_digits': 2,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Restaurant',
+        'based_on': 'restaurant',
+        'accent_color_hex': '#5D4037',
+        'header_style': 'banner',
+        'show_logo': 1,
+        'amount_decimal_digits': 0,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Service',
+        'based_on': 'service',
+        'accent_color_hex': '#1565C0',
+        'header_style': 'minimal',
+        'show_logo': 1,
+        'amount_decimal_digits': 0,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Freelancer',
+        'based_on': 'freelancer',
+        'accent_color_hex': '#37474F',
+        'header_style': 'minimal',
+        'show_logo': 0,
+        'amount_decimal_digits': 2,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Generic',
+        'based_on': 'generic',
+        'accent_color_hex': '#1B5E20',
+        'header_style': 'minimal',
+        'show_logo': 1,
+        'amount_decimal_digits': 0,
+        'page_size': 'a4',
         'is_active': 0,
         'is_preset': 1,
         'created_at': now,

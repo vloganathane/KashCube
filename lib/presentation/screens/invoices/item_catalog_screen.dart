@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/hsn_entry.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/services/hsn_search_service.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/unit_type_provider.dart';
+import '../../widgets/qr_scanner_sheet.dart' show showBarcodeScannerSheet;
 
 class ItemCatalogScreen extends ConsumerStatefulWidget {
   /// When [pickMode] is true, tapping an item pops with the selected [ItemCatalog].
@@ -462,10 +465,23 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
               const SizedBox(height: AppSpacing.sm),
               TextFormField(
                 controller: _skuCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'SKU / Item Code',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                   hintText: 'e.g., PROD-001',
+                  suffixIcon: ref.read(subscriptionTierProvider).isBusiness
+                      ? IconButton(
+                          icon: const Icon(Icons.barcode_reader),
+                          tooltip: 'Scan barcode',
+                          onPressed: () async {
+                            final code =
+                                await showBarcodeScannerSheet(context);
+                            if (code != null && mounted) {
+                              _skuCtrl.text = code;
+                            }
+                          },
+                        )
+                      : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

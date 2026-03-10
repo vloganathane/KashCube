@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/phone_utils.dart';
@@ -21,7 +22,9 @@ import '../../../data/models/reminder_item.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
 import '../invoices/invoice_detail_screen.dart';
+import '../settings/upgrade_screen.dart';
 import 'create_booking_screen.dart';
 
 class BookingDetailScreen extends ConsumerWidget {
@@ -390,6 +393,22 @@ class _BookingDetailView extends ConsumerWidget {
   }
 
   Future<void> _shareBookingPdf(BuildContext context, WidgetRef ref) async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'booking confirmation');
+      if (!context.mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     try {
       final business = booking.businessId != null
           ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
@@ -406,6 +425,7 @@ class _BookingDetailView extends ConsumerWidget {
         customerParty: customerParty,
         termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
         items: bookingItems.isNotEmpty ? bookingItems : null,
+        showFreeWatermark: showWatermark,
       );
       await Share.shareXFiles(
         [XFile(file.path)],

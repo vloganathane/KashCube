@@ -26,13 +26,17 @@ class DeliveryChallanPdfService {
     Business? business,
     Party? customerParty,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
-    final data = _challanToData(challan,
-        business: business,
-        customerParty: customerParty,
-        logo: logo,
-        termsAndConditions: termsAndConditions);
+    final data = _challanToData(
+      challan,
+      business: business,
+      customerParty: customerParty,
+      logo: logo,
+      termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+    );
     return PdfLayoutEngine.instance.generate(
       data,
       DocumentTemplate.active,
@@ -48,6 +52,7 @@ class DeliveryChallanPdfService {
     Party? customerParty,
     pw.MemoryImage? logo,
     String? termsAndConditions,
+    bool showFreeWatermark = false,
   }) {
     final hasTransport = (challan.vehicleNo != null && challan.vehicleNo!.isNotEmpty) ||
         (challan.transporterName != null && challan.transporterName!.isNotEmpty) ||
@@ -99,6 +104,7 @@ class DeliveryChallanPdfService {
       purpose: challan.purpose.label,
       ewbNo: challan.ewbNo,
       footerNote: termsAndConditions ?? '',
+      showFreeWatermark: showFreeWatermark,
     );
   }
 

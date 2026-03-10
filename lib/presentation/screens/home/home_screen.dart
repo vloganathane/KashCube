@@ -2124,7 +2124,7 @@ class _AlertsSection extends ConsumerWidget {
             value: CurrencyFormatter.format(overdueTotal),
             color: context.colorScheme.error,
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const InvoicesScreen()),
+              MaterialPageRoute(builder: (_) => const ActionCenterScreen()),
             ),
           ),
         if (hasCredits)

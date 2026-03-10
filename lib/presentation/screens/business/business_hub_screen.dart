@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../providers/booking_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
+import '../../providers/inventory_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/report_provider.dart';
@@ -17,6 +18,7 @@ import '../bookings/bookings_screen.dart';
 import '../gst/gstr1_screen.dart';
 import '../gst/gstr3b_offset_screen.dart';
 import '../gst/purchase_bills_screen.dart';
+import '../inventory/inventory_screen.dart';
 import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
@@ -26,7 +28,9 @@ import '../loans/loans_screen.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/businesses_screen.dart';
+import '../staff/staff_screen.dart';
 import 'global_document_ledger_screen.dart';
+import 'tally_export_screen.dart';
 
 /// Business hub — top-level entry point for all business-related screens.
 /// When business mode is OFF, renders the Personal Finance hub instead.
@@ -242,6 +246,41 @@ class _BusinessHub extends ConsumerWidget {
                       builder: (_) => const ItemCatalogScreen()),
                 ),
               ),
+              _HubTile(
+                icon: Icons.warehouse_outlined,
+                label: 'Inventory',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final count = r.watch(lowStockCountProvider);
+                    final text = count > 0
+                        ? '$count low-stock alert${count > 1 ? 's' : ''}'
+                        : 'Stock levels & movements';
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: count > 0
+                            ? ctx.kashColors.expense
+                            : ctx.colorScheme.outline,
+                      ),
+                    );
+                  },
+                ),
+                color: const Color(0xFF2E7D32),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const InventoryScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.badge_outlined,
+                label: 'Staff & Payroll',
+                subtitle: const _StaticSubtitle('Employees, salary & HR'),
+                color: const Color(0xFF1565C0),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const StaffScreen()),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -404,6 +443,16 @@ class _BusinessHub extends ConsumerWidget {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const Gstr3bOffsetScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.import_export_outlined,
+                label: 'Tally XML Export',
+                subtitle: const _StaticSubtitle(
+                    'Export transactions for Tally ERP import'),
+                color: const Color(0xFF37474F),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TallyExportScreen()),
                 ),
               ),
             ],

@@ -19,6 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
 
+import 'inventory_service.dart';
+
 // ────────────────────────────────────────────────────────────────────────────
 // Task constants
 // ────────────────────────────────────────────────────────────────────────────
@@ -44,6 +46,14 @@ const _kAutoBackupEnabled  = 'auto_backup_enabled';
 const _kAutoBackupInterval = 'auto_backup_interval';
 const _kLastBackupDate     = 'last_backup_date';
 
+// Low-stock alert task constants
+const _lowStockTaskName       = 'com.kashcube.low_stock_alert';
+const _lowStockUniqueName     = 'kash_cube_low_stock_alert';
+const _lowStockChannelId      = 'kash_low_stock';
+const _lowStockChannelName    = 'Low Stock Alerts';
+const _lowStockChannelDesc    = 'Daily check for products that are running low on inventory';
+const _lowStockNotifId        = 60002;
+
 // ────────────────────────────────────────────────────────────────────────────
 // Callback dispatcher — MUST be a top-level function
 // ────────────────────────────────────────────────────────────────────────────
@@ -66,6 +76,12 @@ void callbackDispatcher() {
         await _runAutoBackup();
       } catch (e) {
         debugPrint('[AutoBackup] Task error: $e');
+      }
+    } else if (taskName == _lowStockTaskName) {
+      try {
+        await _runLowStockCheck();
+      } catch (e) {
+        debugPrint('[LowStock] Task error: $e');
       }
     }
     return Future.value(true);
@@ -250,6 +266,62 @@ Future<void> _showAutoBackupFailureNotification() async {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Low-stock check — runs inside the WorkManager isolate
+// ────────────────────────────────────────────────────────────────────────────
+
+Future<void> _runLowStockCheck() async {
+  final dbDir = await getDatabasesPath();
+  final dbPath = path_pkg.join(dbDir, 'kash_cube.db');
+
+  Database? db;
+  try {
+    db = await openDatabase(dbPath, readOnly: true);
+    final count = await InventoryService.countLowStockItemsInBackground(db);
+    if (count > 0) {
+      final names = await InventoryService.getLowStockNamesInBackground(db);
+      await _showLowStockNotification(count, names);
+    }
+    debugPrint('[LowStock] Check complete — $count low-stock items');
+  } finally {
+    await db?.close();
+  }
+}
+
+Future<void> _showLowStockNotification(
+    int count, List<String> names) async {
+  final plugin = FlutterLocalNotificationsPlugin();
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  await plugin.initialize(
+    const InitializationSettings(android: androidInit),
+  );
+
+  final itemWord = count == 1 ? 'product is' : 'products are';
+  final body = names.isNotEmpty
+      ? names.join(', ')
+      : 'Check inventory to restock before running out.';
+
+  final details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _lowStockChannelId,
+      _lowStockChannelName,
+      channelDescription: _lowStockChannelDesc,
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      icon: '@mipmap/ic_launcher',
+    ),
+  );
+
+  await plugin.show(
+    _lowStockNotifId,
+    '$count $itemWord running low on stock',
+    body,
+    details,
+  );
+
+  debugPrint('[LowStock] Notification shown for $count items');
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registration — called from main() at app startup
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -365,5 +437,36 @@ Duration _intervalToDuration(String interval) {
     case 'weekly':
     default:
       return const Duration(days: 7);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Low-stock — registration / cancellation
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Registers the daily low-stock alert task with WorkManager.
+///
+/// Fires around the same initial time as the Action Center check.
+/// No-op if WorkManager is unavailable.  Call after
+/// [registerActionCenterDailyTask] so WorkManager is already initialised.
+Future<void> registerLowStockDailyTask() async {
+  try {
+    await Workmanager().registerPeriodicTask(
+      _lowStockUniqueName,
+      _lowStockTaskName,
+      frequency: const Duration(hours: 24),
+      initialDelay: _initialDelayUntil9am(),
+      constraints: Constraints(
+        networkType: NetworkType.not_required,
+        requiresBatteryNotLow: false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: false,
+      ),
+      existingWorkPolicy: ExistingWorkPolicy.keep,
+    );
+    debugPrint('[LowStock] Daily task registered');
+  } catch (e) {
+    debugPrint('[LowStock] Registration failed (non-fatal): $e');
   }
 }

@@ -33,6 +33,9 @@ class ItemCatalog extends Equatable {
     this.usageCount = 0,
     this.durationMinutes,
     this.isBookable = false,
+    this.trackInventory = false,
+    this.stockQty = 0,
+    this.lowStockThreshold = 5,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -56,8 +59,13 @@ class ItemCatalog extends Equatable {
   final int usageCount;
   final int? durationMinutes;
   final bool isBookable;
+  final bool trackInventory;
+  final double stockQty;
+  final double lowStockThreshold;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  bool get isLowStock => trackInventory && stockQty <= lowStockThreshold;
 
   ItemCatalog copyWith({
     int? id,
@@ -77,6 +85,9 @@ class ItemCatalog extends Equatable {
     int? usageCount,
     int? durationMinutes,
     bool? isBookable,
+    bool? trackInventory,
+    double? stockQty,
+    double? lowStockThreshold,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -98,6 +109,9 @@ class ItemCatalog extends Equatable {
       usageCount: usageCount ?? this.usageCount,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       isBookable: isBookable ?? this.isBookable,
+      trackInventory: trackInventory ?? this.trackInventory,
+      stockQty: stockQty ?? this.stockQty,
+      lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -121,6 +135,9 @@ class ItemCatalog extends Equatable {
         'usage_count': usageCount,
         'duration_minutes': durationMinutes,
         'is_bookable': isBookable ? 1 : 0,
+        'track_inventory': trackInventory ? 1 : 0,
+        'stock_qty': stockQty,
+        'low_stock_threshold': lowStockThreshold,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -142,12 +159,15 @@ class ItemCatalog extends Equatable {
         hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
         isFavorite: (map['is_favorite'] as int?) == 1,
         isActive: (map['is_active'] as int?) == 1,
-        lastUsedAt: map['last_used_at'] != null 
+        lastUsedAt: map['last_used_at'] != null
             ? DateTime.parse(map['last_used_at'] as String)
             : null,
         usageCount: (map['usage_count'] as int?) ?? 0,
         durationMinutes: map['duration_minutes'] as int?,
         isBookable: (map['is_bookable'] as int?) == 1,
+        trackInventory: (map['track_inventory'] as int?) == 1,
+        stockQty: (map['stock_qty'] as num?)?.toDouble() ?? 0,
+        lowStockThreshold: (map['low_stock_threshold'] as num?)?.toDouble() ?? 5,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
@@ -171,6 +191,9 @@ class ItemCatalog extends Equatable {
         usageCount,
         durationMinutes,
         isBookable,
+        trackInventory,
+        stockQty,
+        lowStockThreshold,
         createdAt,
         updatedAt,
       ];

@@ -552,7 +552,7 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
 
-    // -- item_catalog table (v13 + v15 + v19 columns)
+    // -- item_catalog table (v13 + v15 + v19 + v51 inventory columns)
     await db.execute('''
       CREATE TABLE item_catalog (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -572,6 +572,9 @@ class DatabaseHelper {
         usage_count INTEGER NOT NULL DEFAULT 0,
         duration_minutes INTEGER DEFAULT 30,
         is_bookable INTEGER DEFAULT 0,
+        track_inventory INTEGER NOT NULL DEFAULT 0,
+        stock_qty REAL NOT NULL DEFAULT 0,
+        low_stock_threshold REAL NOT NULL DEFAULT 5,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -778,8 +781,8 @@ class DatabaseHelper {
     ''');
 
     await db.insert('schema_version', {
-      'version': 49,
-      'description': 'Full v49 schema (fresh install)',
+      'version': 52,
+      'description': 'Full v52 schema (fresh install)',
     });
 
     // -- unit_types table
@@ -995,6 +998,77 @@ class DatabaseHelper {
         FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
       )
     ''');
+
+    // -- stock_movements table (DB v51)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stock_movements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        movement_type TEXT NOT NULL,
+        qty REAL NOT NULL,
+        stock_after REAL NOT NULL,
+        reference_id INTEGER,
+        reference_type TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (item_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
+
+    // -- staff table (DB v52)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS staff (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        designation TEXT,
+        phone TEXT,
+        email TEXT,
+        department TEXT,
+        salary_type TEXT NOT NULL DEFAULT 'monthly',
+        base_salary REAL NOT NULL DEFAULT 0,
+        join_date TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        bank_name TEXT,
+        account_no TEXT,
+        ifsc_code TEXT,
+        pan TEXT,
+        pf_no TEXT,
+        esi_no TEXT,
+        notes TEXT,
+        business_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        FOREIGN KEY (business_id) REFERENCES businesses(id)
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)');
+
+    // -- salary_payments table (DB v52)
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS salary_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        staff_id INTEGER NOT NULL,
+        pay_period_month INTEGER NOT NULL,
+        pay_period_year INTEGER NOT NULL,
+        base_salary REAL NOT NULL DEFAULT 0,
+        allowances REAL NOT NULL DEFAULT 0,
+        deductions REAL NOT NULL DEFAULT 0,
+        bonus REAL NOT NULL DEFAULT 0,
+        net_salary REAL NOT NULL DEFAULT 0,
+        payment_method TEXT DEFAULT 'bank_transfer',
+        paid_date TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        notes TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)');
 
     // Seed default categories + default accounts
     await _seedCategories(db);
@@ -2276,6 +2350,101 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 50,
         'description': 'Add upi_id to businesses; seed industry invoice template presets',
+      });
+    }
+
+    if (oldVersion < 51) {
+      // Inventory tracking columns on item_catalog
+      await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN track_inventory INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN stock_qty REAL NOT NULL DEFAULT 0');
+      await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN low_stock_threshold REAL NOT NULL DEFAULT 5');
+      // Stock movements ledger
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS stock_movements (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          item_id INTEGER NOT NULL,
+          movement_type TEXT NOT NULL,
+          qty REAL NOT NULL,
+          stock_after REAL NOT NULL,
+          reference_id INTEGER,
+          reference_type TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (item_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
+      await db.insert('schema_version', {
+        'version': 51,
+        'description':
+            'Inventory Phase A: stock tracking columns on item_catalog + stock_movements table',
+      });
+    }
+
+    if (oldVersion < 52) {
+      // Staff roster
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS staff (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          designation TEXT,
+          phone TEXT,
+          email TEXT,
+          department TEXT,
+          salary_type TEXT NOT NULL DEFAULT 'monthly',
+          base_salary REAL NOT NULL DEFAULT 0,
+          join_date TEXT,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          bank_name TEXT,
+          account_no TEXT,
+          ifsc_code TEXT,
+          pan TEXT,
+          pf_no TEXT,
+          esi_no TEXT,
+          notes TEXT,
+          business_id INTEGER,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          updated_at TEXT,
+          FOREIGN KEY (business_id) REFERENCES businesses(id)
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)');
+      // Salary payment records
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS salary_payments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          staff_id INTEGER NOT NULL,
+          pay_period_month INTEGER NOT NULL,
+          pay_period_year INTEGER NOT NULL,
+          base_salary REAL NOT NULL DEFAULT 0,
+          allowances REAL NOT NULL DEFAULT 0,
+          deductions REAL NOT NULL DEFAULT 0,
+          bonus REAL NOT NULL DEFAULT 0,
+          net_salary REAL NOT NULL DEFAULT 0,
+          payment_method TEXT DEFAULT 'bank_transfer',
+          paid_date TEXT,
+          status TEXT NOT NULL DEFAULT 'pending',
+          notes TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)');
+      await db.insert('schema_version', {
+        'version': 52,
+        'description': 'Staff & Payroll: staff + salary_payments tables',
       });
     }
   }

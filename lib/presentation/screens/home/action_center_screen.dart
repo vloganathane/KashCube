@@ -29,6 +29,7 @@ import '../invoices/invoice_detail_screen.dart';
 import '../ledger/credits_screen.dart';
 import '../loans/loans_screen.dart';
 import '../parties/party_360_screen.dart';
+import '../search/search_screen.dart';
 
 /// Default stale threshold — items with no action for this many days are
 /// shown under the "Stale" filter chip.
@@ -112,6 +113,17 @@ class _ActionCenterScreenState extends ConsumerState<ActionCenterScreen> {
               )
             : null,
         actions: [
+          if (!_isSelecting)
+            IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: 'Search invoices',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SearchScreen(
+                      initialFilter: SearchFilter.invoices),
+                ),
+              ),
+            ),
           if (!_isSelecting && overdueCount > 0)
             Padding(
               padding: const EdgeInsets.only(right: AppSpacing.base),

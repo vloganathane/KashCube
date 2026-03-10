@@ -21,6 +21,7 @@ import '../../../data/models/cash_flow_event.dart';
 import '../../../data/models/lifecycle_info.dart';
 import '../../providers/cash_flow_provider.dart';
 import '../../widgets/lifecycle_tag.dart';
+import '../search/search_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Filter
@@ -59,6 +60,16 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
       appBar: AppBar(
         title: const Text('Cash Flow'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search transactions',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(
+                    initialFilter: SearchFilter.transactions),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'About Cash Flow',

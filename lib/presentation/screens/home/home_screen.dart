@@ -26,7 +26,6 @@ import '../bookings/bookings_screen.dart';
 import '../ledger/credits_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
-import '../invoices/invoices_screen.dart';
 import '../search/search_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 import 'action_center_screen.dart';

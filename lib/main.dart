@@ -36,6 +36,10 @@ void main() async {
   // Non-fatal if WorkManager is unavailable on this device.
   await registerActionCenterDailyTask();
 
+  // Re-register auto-backup task if the user had it enabled.
+  // WorkManager tasks can be cleared by OS updates; this restores the schedule.
+  await maybeRestoreAutoBackupTask();
+
   runApp(const ProviderScope(child: KashCubeApp()));
 }
 

@@ -9,9 +9,13 @@
 // 100% on-device — no network calls.
 // ---------------------------------------------------------------------------
 
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path/path.dart' as path_pkg;
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -29,6 +33,17 @@ const _channelDesc =
 
 const _notificationId = 60000;
 
+// Auto-backup task constants
+const _autoBackupTaskName       = 'com.kashcube.auto_backup';
+const _autoBackupUniqueName     = 'kash_cube_auto_backup';
+const _autoBackupChannelId      = 'kash_auto_backup';
+const _autoBackupChannelName    = 'Auto Backup';
+const _autoBackupNotifId        = 60001;
+// SharedPreferences keys (mirrors EncryptedBackupService)
+const _kAutoBackupEnabled  = 'auto_backup_enabled';
+const _kAutoBackupInterval = 'auto_backup_interval';
+const _kLastBackupDate     = 'last_backup_date';
+
 // ────────────────────────────────────────────────────────────────────────────
 // Callback dispatcher — MUST be a top-level function
 // ────────────────────────────────────────────────────────────────────────────
@@ -40,11 +55,18 @@ const _notificationId = 60000;
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
-    if (taskName != _taskName) return Future.value(true);
-    try {
-      await _runActionCenterCheck();
-    } catch (e) {
-      debugPrint('[ActionCenterBg] Error: $e');
+    if (taskName == _taskName) {
+      try {
+        await _runActionCenterCheck();
+      } catch (e) {
+        debugPrint('[ActionCenterBg] Error: $e');
+      }
+    } else if (taskName == _autoBackupTaskName) {
+      try {
+        await _runAutoBackup();
+      } catch (e) {
+        debugPrint('[AutoBackup] Task error: $e');
+      }
     }
     return Future.value(true);
   });
@@ -144,6 +166,90 @@ Future<void> _showNotification(int overdueCount) async {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Auto-backup logic — runs inside the WorkManager isolate
+// ────────────────────────────────────────────────────────────────────────────
+
+Future<void> _runAutoBackup() async {
+  final prefs = await SharedPreferences.getInstance();
+  final enabled = prefs.getBool(_kAutoBackupEnabled) ?? false;
+  if (!enabled) {
+    debugPrint('[AutoBackup] Disabled, skipping');
+    return;
+  }
+
+  try {
+    final dbDir = await getDatabasesPath();
+    final dbFile = File(path_pkg.join(dbDir, 'kash_cube.db'));
+    if (!await dbFile.exists()) throw Exception('Database file not found');
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final backupDir = Directory(path_pkg.join(appDir.path, 'backups'));
+    if (!await backupDir.exists()) await backupDir.create(recursive: true);
+
+    final ts = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+    final backupPath = path_pkg.join(backupDir.path, 'auto_kash_cube_$ts.db');
+    await dbFile.copy(backupPath);
+
+    await _pruneAutoBackupsInDir(backupDir);
+
+    await prefs.setString(_kLastBackupDate, DateTime.now().toIso8601String());
+    debugPrint('[AutoBackup] Created: $backupPath');
+  } catch (e) {
+    debugPrint('[AutoBackup] Failed: $e');
+    await _showAutoBackupFailureNotification();
+  }
+}
+
+/// Keeps only the 3 most-recent auto-backup files; deletes older ones.
+Future<void> _pruneAutoBackupsInDir(Directory backupDir) async {
+  final files = <File>[];
+  await for (final entity in backupDir.list()) {
+    if (entity is File &&
+        path_pkg.basename(entity.path).startsWith('auto_')) {
+      files.add(entity);
+    }
+  }
+  if (files.length <= 3) return;
+
+  final withDates = <({File file, DateTime modified})>[];
+  for (final f in files) {
+    final stat = await f.stat();
+    withDates.add((file: f, modified: stat.modified));
+  }
+  withDates.sort((a, b) => a.modified.compareTo(b.modified));
+
+  for (var i = 0; i < withDates.length - 3; i++) {
+    await withDates[i].file.delete();
+    debugPrint('[AutoBackup] Pruned: ${withDates[i].file.path}');
+  }
+}
+
+Future<void> _showAutoBackupFailureNotification() async {
+  final plugin = FlutterLocalNotificationsPlugin();
+  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  await plugin.initialize(
+    const InitializationSettings(android: androidInit),
+  );
+  await plugin.show(
+    _autoBackupNotifId,
+    'Auto Backup Failed',
+    'Kash Cube could not complete the scheduled backup. '
+        'Open the app to back up manually.',
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        _autoBackupChannelId,
+        _autoBackupChannelName,
+        channelDescription:
+            'Notifications when automatic database backup fails',
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: '@mipmap/ic_launcher',
+      ),
+    ),
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Registration — called from main() at app startup
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -191,4 +297,73 @@ Duration _initialDelayUntil9am() {
   return delay > const Duration(hours: 24)
       ? const Duration(hours: 24)
       : delay;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Auto-backup registration / cancellation — called from settings
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Registers (or replaces) the periodic auto-backup WorkManager task.
+///
+/// [interval] must be one of: 'daily', 'weekly', 'monthly'.
+/// Always call after [registerActionCenterDailyTask] so WorkManager is
+/// already initialised.
+Future<void> registerAutoBackupTask(String interval) async {
+  try {
+    await Workmanager().registerPeriodicTask(
+      _autoBackupUniqueName,
+      _autoBackupTaskName,
+      frequency: _intervalToDuration(interval),
+      constraints: Constraints(
+        networkType: NetworkType.not_required,
+        requiresBatteryNotLow: true,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresStorageNotLow: true,
+      ),
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+    );
+    debugPrint('[AutoBackup] Task registered (interval: $interval)');
+  } catch (e) {
+    debugPrint('[AutoBackup] Registration failed (non-fatal): $e');
+  }
+}
+
+/// Cancels the periodic auto-backup task.
+Future<void> cancelAutoBackupTask() async {
+  try {
+    await Workmanager().cancelByUniqueName(_autoBackupUniqueName);
+    debugPrint('[AutoBackup] Task cancelled');
+  } catch (e) {
+    debugPrint('[AutoBackup] Cancel failed (non-fatal): $e');
+  }
+}
+
+/// Re-registers the auto-backup task on app start if the user had it enabled.
+///
+/// WorkManager tasks can be cleared by OS updates or app installs — calling
+/// this on every startup ensures the schedule stays active.
+Future<void> maybeRestoreAutoBackupTask() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool(_kAutoBackupEnabled) ?? false;
+    if (!enabled) return;
+    final interval = prefs.getString(_kAutoBackupInterval) ?? 'weekly';
+    await registerAutoBackupTask(interval);
+    debugPrint('[AutoBackup] Restored task on startup (interval: $interval)');
+  } catch (e) {
+    debugPrint('[AutoBackup] Restore on startup failed (non-fatal): $e');
+  }
+}
+
+Duration _intervalToDuration(String interval) {
+  switch (interval) {
+    case 'daily':
+      return const Duration(hours: 24);
+    case 'monthly':
+      return const Duration(days: 30);
+    case 'weekly':
+    default:
+      return const Duration(days: 7);
+  }
 }

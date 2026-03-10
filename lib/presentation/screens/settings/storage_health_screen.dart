@@ -12,7 +12,9 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/kash_cube_colors.dart';
+import '../../../data/services/action_center_background_service.dart';
 import '../../../data/services/backup_service.dart';
+import '../../../data/services/encrypted_backup_service.dart';
 import '../../../data/services/pdf_cache_manager.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
@@ -98,6 +100,26 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
   bool _backingUp = false;
   bool _restoring = false;
   bool _exporting = false;
+  bool _autoBackupEnabled = false;
+  String _autoBackupInterval = 'weekly';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoBackupPrefs();
+  }
+
+  Future<void> _loadAutoBackupPrefs() async {
+    final svc = EncryptedBackupService.instance;
+    final enabled = await svc.autoBackupEnabled();
+    final interval = await svc.autoBackupInterval();
+    if (mounted) {
+      setState(() {
+        _autoBackupEnabled = enabled;
+        _autoBackupInterval = interval;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -319,6 +341,41 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       ),
                     ],
                   ),
+                  // ── Auto Backup ──────────────────────────────────────────
+                  const SizedBox(height: AppSpacing.sm),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Auto Backup'),
+                    subtitle: const Text(
+                        'Automatically back up in the background'),
+                    value: _autoBackupEnabled,
+                    onChanged: _toggleAutoBackup,
+                  ),
+                  if (_autoBackupEnabled) ...[
+                    const SizedBox(height: AppSpacing.xs),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(value: 'daily', label: Text('Daily')),
+                        ButtonSegment(value: 'weekly', label: Text('Weekly')),
+                        ButtonSegment(
+                            value: 'monthly', label: Text('Monthly')),
+                      ],
+                      selected: {_autoBackupInterval},
+                      onSelectionChanged: (v) =>
+                          _setAutoBackupInterval(v.first),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Keeps the last 3 auto-backups. '
+                      'On iOS, timing is best-effort.',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -326,6 +383,26 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _toggleAutoBackup(bool value) async {
+    final svc = EncryptedBackupService.instance;
+    await svc.setAutoBackupEnabled(value);
+    if (value) {
+      await registerAutoBackupTask(_autoBackupInterval);
+    } else {
+      await cancelAutoBackupTask();
+    }
+    if (mounted) setState(() => _autoBackupEnabled = value);
+  }
+
+  Future<void> _setAutoBackupInterval(String interval) async {
+    final svc = EncryptedBackupService.instance;
+    await svc.setAutoBackupInterval(interval);
+    if (_autoBackupEnabled) {
+      await registerAutoBackupTask(interval);
+    }
+    if (mounted) setState(() => _autoBackupInterval = interval);
   }
 
   Future<void> _createBackup() async {

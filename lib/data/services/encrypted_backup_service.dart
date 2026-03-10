@@ -52,6 +52,8 @@ const _lockoutMinutes = 15;
 const _prefAttempts = 'enc_backup_attempts';
 const _prefLockedUntil = 'enc_backup_locked_until';
 const _prefLastBackupDate = 'last_backup_date';
+const _prefAutoBackupEnabled = 'auto_backup_enabled';
+const _prefAutoBackupInterval = 'auto_backup_interval';
 
 // ── Exported value objects ─────────────────────────────────────────────────
 
@@ -388,5 +390,31 @@ class EncryptedBackupService {
     final last = await lastBackupDate();
     if (last == null) return null;
     return DateTime.now().difference(last).inDays;
+  }
+
+  // ── Auto-backup preferences ───────────────────────────────────────────────
+
+  /// Whether automatic periodic backup is enabled.
+  Future<bool> autoBackupEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_prefAutoBackupEnabled) ?? false;
+  }
+
+  /// Enable or disable automatic periodic backup.
+  Future<void> setAutoBackupEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_prefAutoBackupEnabled, value);
+  }
+
+  /// Backup interval string: 'daily', 'weekly' (default), or 'monthly'.
+  Future<String> autoBackupInterval() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_prefAutoBackupInterval) ?? 'weekly';
+  }
+
+  /// Persist the backup interval choice ('daily', 'weekly', 'monthly').
+  Future<void> setAutoBackupInterval(String interval) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefAutoBackupInterval, interval);
   }
 }

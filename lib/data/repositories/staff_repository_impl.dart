@@ -1,3 +1,4 @@
+import '../models/party.dart';
 import '../models/staff.dart';
 import '../services/database_helper.dart';
 
@@ -45,6 +46,64 @@ class StaffRepository {
     final map = staff.toMap();
     map['updated_at'] = DateTime.now().toIso8601String();
     await db.update('staff', map, where: 'id = ?', whereArgs: [staff.id]);
+  }
+
+  /// Inserts a staff member and auto-creates a linked [Party] record (type=staff)
+  /// if [staff.partyId] is null. Returns the new staff id.
+  Future<int> insertWithParty(Staff staff) async {
+    final db = await _db.database;
+    final now = DateTime.now();
+
+    return db.transaction((txn) async {
+      // Create the party record first.
+      final partyId = await txn.insert('parties', {
+        'name': staff.name,
+        'phone_number': staff.phone,
+        'email': staff.email,
+        'party_type': PartyType.staff.name,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      final staffWithParty = staff.copyWith(partyId: partyId);
+      final staffId = await txn.insert('staff', staffWithParty.toMap());
+      return staffId;
+    });
+  }
+
+  /// Updates a staff member and keeps the linked [Party] record in sync
+  /// (name, phone, email).
+  Future<void> updateWithParty(Staff staff) async {
+    final db = await _db.database;
+    final now = DateTime.now().toIso8601String();
+
+    await db.transaction((txn) async {
+      final map = staff.toMap();
+      map['updated_at'] = now;
+      await txn.update('staff', map, where: 'id = ?', whereArgs: [staff.id]);
+
+      if (staff.partyId != null) {
+        await txn.update(
+          'parties',
+          {
+            'name': staff.name,
+            'phone_number': staff.phone,
+            'email': staff.email,
+            'updated_at': now,
+          },
+          where: 'id = ?',
+          whereArgs: [staff.partyId],
+        );
+      }
+    });
+  }
+
+  /// Returns the staff record linked to [partyId], or null if none.
+  Future<Staff?> getByPartyId(int partyId) async {
+    final db = await _db.database;
+    final rows = await db
+        .query('staff', where: 'party_id = ?', whereArgs: [partyId]);
+    if (rows.isEmpty) return null;
+    return Staff.fromMap(rows.first);
   }
 
   Future<void> deactivate(int id) async {

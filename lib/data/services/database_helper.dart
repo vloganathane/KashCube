@@ -1070,6 +1070,7 @@ class DatabaseHelper {
         esi_no TEXT,
         notes TEXT,
         business_id INTEGER,
+        party_id INTEGER REFERENCES parties(id),
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         FOREIGN KEY (business_id) REFERENCES businesses(id)
@@ -1077,6 +1078,7 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)');
 
     // -- salary_payments table (DB v52)
     await db.execute('''
@@ -2491,6 +2493,40 @@ class DatabaseHelper {
         'version': 53,
         'description':
             'Link line items to item catalog: catalog_item_id on invoice_items, delivery_challan_items, purchase_bill_items',
+      });
+    }
+
+    if (oldVersion < 54) {
+      // Add party_id FK to staff so every staff member links to a Party (contact) record.
+      await db.execute(
+          'ALTER TABLE staff ADD COLUMN party_id INTEGER REFERENCES parties(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)');
+
+      // Backfill: create a parties row for every existing staff member.
+      final existingStaff = await db.rawQuery(
+          'SELECT id, name, phone, email FROM staff WHERE party_id IS NULL');
+      final now = DateTime.now().toIso8601String();
+      for (final row in existingStaff) {
+        final partyId = await db.insert('parties', {
+          'name': row['name'],
+          'phone_number': row['phone'],
+          'email': row['email'],
+          'party_type': 'staff',
+          'created_at': now,
+          'updated_at': now,
+        });
+        await db.update(
+          'staff',
+          {'party_id': partyId},
+          where: 'id = ?',
+          whereArgs: [row['id']],
+        );
+      }
+      await db.insert('schema_version', {
+        'version': 54,
+        'description':
+            'Link staff to parties: party_id FK on staff, backfill party records for existing staff',
       });
     }
   }

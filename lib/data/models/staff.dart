@@ -23,6 +23,7 @@ class Staff extends Equatable {
     this.esiNo,
     this.notes,
     this.businessId,
+    this.partyId,
     required this.createdAt,
     this.updatedAt,
   });
@@ -45,6 +46,8 @@ class Staff extends Equatable {
   final String? esiNo;
   final String? notes;
   final int? businessId;
+  /// FK to [parties.id] — the contact record for this staff member.
+  final int? partyId;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -67,6 +70,7 @@ class Staff extends Equatable {
     String? esiNo,
     String? notes,
     int? businessId,
+    int? partyId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -89,6 +93,7 @@ class Staff extends Equatable {
         esiNo: esiNo ?? this.esiNo,
         notes: notes ?? this.notes,
         businessId: businessId ?? this.businessId,
+        partyId: partyId ?? this.partyId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -112,6 +117,7 @@ class Staff extends Equatable {
         'esi_no': esiNo,
         'notes': notes,
         'business_id': businessId,
+        'party_id': partyId,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),
       };
@@ -140,6 +146,7 @@ class Staff extends Equatable {
         esiNo: map['esi_no'] as String?,
         notes: map['notes'] as String?,
         businessId: map['business_id'] as int?,
+        partyId: map['party_id'] as int?,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: map['updated_at'] != null
             ? DateTime.tryParse(map['updated_at'] as String)

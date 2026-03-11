@@ -231,7 +231,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       _type = t;
                       if (t == PartyType.vendor || t == PartyType.customer) {
                         _partyContext = 'business';
-                      } else if (t != PartyType.lender &&
+                      } else if (t == PartyType.staff || t != PartyType.lender &&
                           t != PartyType.borrower) {
                         _partyContext = 'personal';
                       }

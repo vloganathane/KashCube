@@ -269,6 +269,8 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
         return colors.credit;
       case PartyType.borrower:
         return colors.overdue;
+      case PartyType.staff:
+        return colors.investment;
     }
   }
 

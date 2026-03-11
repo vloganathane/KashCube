@@ -6,7 +6,8 @@ enum PartyType {
   customer,
   vendor,
   lender,
-  borrower;
+  borrower,
+  staff;
 
   String get label {
     switch (this) {
@@ -20,6 +21,8 @@ enum PartyType {
         return 'Lender';
       case PartyType.borrower:
         return 'Borrower';
+      case PartyType.staff:
+        return 'Staff';
     }
   }
 }

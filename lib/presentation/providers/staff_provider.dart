@@ -23,12 +23,12 @@ class StaffNotifier extends StateNotifier<AsyncValue<List<Staff>>> {
   }
 
   Future<void> add(Staff staff) async {
-    await _staffRepo.insert(staff);
+    await _staffRepo.insertWithParty(staff);
     await load();
   }
 
   Future<void> update(Staff staff) async {
-    await _staffRepo.update(staff);
+    await _staffRepo.updateWithParty(staff);
     await load();
   }
 

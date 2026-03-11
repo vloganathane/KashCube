@@ -47,6 +47,8 @@ import '../../providers/party_provider.dart';
 import '../../providers/party_reminder_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/staff_provider.dart';
+import '../staff/staff_screen.dart';
 import '../../widgets/flow_chain_tile.dart';
 import '../../widgets/lifecycle_tag.dart';
 import '../../widgets/party_form_sheet.dart';
@@ -449,6 +451,10 @@ class _OverviewTab extends ConsumerWidget {
           const SizedBox(height: AppSpacing.base),
           _ContactCard(party: party),
           const SizedBox(height: AppSpacing.sm),
+          if (party.partyType == PartyType.staff)
+            _PayrollCard(party: party),
+          if (party.partyType == PartyType.staff)
+            const SizedBox(height: AppSpacing.sm),
           if (summary.hasOverdueItem)
             _UrgencyBanner(
               label: 'Overdue items — tap Activity to view',
@@ -1213,6 +1219,58 @@ class _SummaryChip extends StatelessWidget {
     );
   }
 }
+
+// ── Payroll card (shown when party type == staff) ─────────────────────────────
+
+class _PayrollCard extends ConsumerWidget {
+  const _PayrollCard({required this.party});
+  final Party party;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final staffAsync = ref.watch(staffProvider);
+
+    return staffAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (err, st) => const SizedBox.shrink(),
+      data: (staffList) {
+        final staff = staffList
+            .where((s) => s.partyId == party.id)
+            .firstOrNull;
+        if (staff == null) return const SizedBox.shrink();
+
+        return Card(
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: context.colorScheme.primaryContainer,
+              child: Icon(Icons.payments_outlined,
+                  color: context.colorScheme.primary, size: 20),
+            ),
+            title: Text(
+              '${CurrencyFormatter.format(staff.baseSalary)} / ${staff.salaryType.name}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle: Text(
+              staff.designation != null
+                  ? '${staff.designation}${staff.department != null ? ' · ${staff.department}' : ''}'
+                  : staff.department ?? 'Staff',
+              style: context.textTheme.bodySmall,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push<void>(
+              context,
+              MaterialPageRoute<void>(
+                builder: (_) => const StaffScreen(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ── Contact card ──────────────────────────────────────────────────────────────
 
 class _ContactCard extends StatelessWidget {
   const _ContactCard({required this.party});

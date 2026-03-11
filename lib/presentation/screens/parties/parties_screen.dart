@@ -143,6 +143,8 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
         return colors.credit;
       case PartyType.borrower:
         return colors.overdue;
+      case PartyType.staff:
+        return colors.investment;
     }
   }
 
@@ -371,6 +373,8 @@ class _PartyTile extends StatelessWidget {
         return colors.credit;
       case PartyType.borrower:
         return colors.overdue;
+      case PartyType.staff:
+        return colors.investment;
     }
   }
 }

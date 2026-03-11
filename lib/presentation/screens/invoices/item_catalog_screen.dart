@@ -14,8 +14,16 @@ import '../../widgets/qr_scanner_sheet.dart' show showBarcodeScannerSheet;
 
 class ItemCatalogScreen extends ConsumerStatefulWidget {
   /// When [pickMode] is true, tapping an item pops with the selected [ItemCatalog].
-  const ItemCatalogScreen({super.key, this.pickMode = false});
+  ///
+  /// Pass [initialEditItem] to auto-open the edit form for a specific item on load
+  /// (e.g. deep-linked from the Inventory screen).
+  const ItemCatalogScreen({
+    super.key,
+    this.pickMode = false,
+    this.initialEditItem,
+  });
   final bool pickMode;
+  final ItemCatalog? initialEditItem;
 
   @override
   ConsumerState<ItemCatalogScreen> createState() =>
@@ -26,6 +34,16 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
   String _search = '';
   final _searchCtrl = TextEditingController();
   ItemCategory? _categoryFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialEditItem != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showItemSheet(context, item: widget.initialEditItem);
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -164,6 +182,11 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
                         _showItemSheet(context, item: filtered[i]),
                     onDelete: () => _confirmDelete(
                         context, ref, filtered[i]),
+                    onToggleTracking: () => ref
+                        .read(catalogProvider.notifier)
+                        .edit(filtered[i].copyWith(
+                            trackInventory: !filtered[i].trackInventory,
+                            updatedAt: DateTime.now())),
                   ),
                 );
               },
@@ -243,6 +266,7 @@ class _CatalogTile extends StatelessWidget {
     required this.onPick,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleTracking,
   });
 
   final ItemCatalog item;
@@ -250,6 +274,60 @@ class _CatalogTile extends StatelessWidget {
   final VoidCallback onPick;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleTracking;
+
+  Color _stockColor(BuildContext context) {
+    if (item.stockQty <= 0) return Theme.of(context).colorScheme.error;
+    if (item.isLowStock) return Colors.orange.shade700;
+    return Theme.of(context).colorScheme.secondary;
+  }
+
+  void _showActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(
+                item.trackInventory
+                    ? Icons.inventory_2_outlined
+                    : Icons.inventory_2,
+              ),
+              title: Text(item.trackInventory
+                  ? 'Disable Stock Tracking'
+                  : 'Enable Stock Tracking'),
+              onTap: () {
+                Navigator.pop(context);
+                onToggleTracking();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit Item'),
+              onTap: () {
+                Navigator.pop(context);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text('Delete',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.error)),
+              onTap: () {
+                Navigator.pop(context);
+                onDelete();
+              },
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -286,27 +364,41 @@ class _CatalogTile extends StatelessWidget {
               'GST ${item.taxPct.toStringAsFixed(0)}%',
               style: TextStyle(
                   fontSize: 11,
-                  color:
-                      Theme.of(context).colorScheme.outline),
+                  color: Theme.of(context).colorScheme.outline),
             ),
-          if (pickMode && item.trackInventory)
-            Text(
-              item.stockQty <= 0
-                  ? 'Out of stock'
-                  : 'Stock: ${item.stockQty % 1 == 0 ? item.stockQty.toInt() : item.stockQty} ${item.unit}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: item.stockQty <= 0
-                    ? Theme.of(context).colorScheme.error
-                    : item.isLowStock
-                        ? Colors.orange.shade700
-                        : Theme.of(context).colorScheme.outline,
+          if (item.trackInventory)
+            Container(
+              margin: const EdgeInsets.only(top: 3),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xs + 2, vertical: 2),
+              decoration: BoxDecoration(
+                color: _stockColor(context).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                border: Border.all(
+                    color: _stockColor(context).withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.inventory_2_outlined,
+                      size: 10, color: _stockColor(context)),
+                  const SizedBox(width: 3),
+                  Text(
+                    item.stockQty <= 0
+                        ? 'Out of stock'
+                        : '${item.stockQty % 1 == 0 ? item.stockQty.toInt() : item.stockQty} ${item.unit.toUpperCase()}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: _stockColor(context),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
-      onLongPress: pickMode ? null : onDelete,
+      onLongPress: pickMode ? null : () => _showActions(context),
     );
   }
 }

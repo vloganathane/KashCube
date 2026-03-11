@@ -93,6 +93,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     _showAdjustDialog(displayed[i], type),
                 onViewHistory: () =>
                     _showMovementsSheet(displayed[i]),
+                onEditCatalog: () =>
+                    _openCatalogEdit(displayed[i]),
               ),
             ),
           );
@@ -143,6 +145,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       context,
       MaterialPageRoute<void>(builder: (_) => const ItemCatalogScreen()),
     );
+  }
+
+  Future<void> _openCatalogEdit(ItemCatalog item) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => ItemCatalogScreen(initialEditItem: item),
+      ),
+    );
+    if (mounted) ref.read(inventoryProvider.notifier).load();
   }
 }
 
@@ -240,11 +252,13 @@ class _ItemTile extends StatelessWidget {
     required this.item,
     required this.onAdjust,
     required this.onViewHistory,
+    required this.onEditCatalog,
   });
 
   final ItemCatalog item;
   final void Function(_AdjustType) onAdjust;
   final VoidCallback onViewHistory;
+  final VoidCallback onEditCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -254,6 +268,7 @@ class _ItemTile extends StatelessWidget {
 
     return Card(
       child: ListTile(
+        onTap: onEditCatalog,
         contentPadding: const EdgeInsets.fromLTRB(
             AppSpacing.base, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
         title: Row(

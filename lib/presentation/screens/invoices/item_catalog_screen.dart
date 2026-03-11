@@ -352,6 +352,7 @@ class _CatalogTile extends StatelessWidget {
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
@@ -368,9 +369,9 @@ class _CatalogTile extends StatelessWidget {
             ),
           if (item.trackInventory)
             Container(
-              margin: const EdgeInsets.only(top: 3),
+              margin: const EdgeInsets.only(top: 1),
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xs + 2, vertical: 2),
+                  horizontal: AppSpacing.xs + 2, vertical: 1),
               decoration: BoxDecoration(
                 color: _stockColor(context).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusSm),

@@ -1031,11 +1031,12 @@ class DatabaseHelper {
       )
     ''');
 
-    // -- stock_movements table (DB v51)
+    // -- stock_movements table (DB v51 + v55 business_id)
     await db.execute('''
       CREATE TABLE IF NOT EXISTS stock_movements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         item_id INTEGER NOT NULL,
+        business_id INTEGER REFERENCES businesses(id),
         movement_type TEXT NOT NULL,
         qty REAL NOT NULL,
         stock_after REAL NOT NULL,
@@ -1048,6 +1049,21 @@ class DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)');
+
+    // -- item_stock table (DB v55) — per-business stock levels
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS item_stock (
+        business_id INTEGER NOT NULL REFERENCES businesses(id),
+        item_id     INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
+        stock_qty           REAL    NOT NULL DEFAULT 0,
+        low_stock_threshold REAL    NOT NULL DEFAULT 5,
+        track_inventory     INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (business_id, item_id)
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)');
 
     // -- staff table (DB v52)
     await db.execute('''
@@ -2527,6 +2543,65 @@ class DatabaseHelper {
         'version': 54,
         'description':
             'Link staff to parties: party_id FK on staff, backfill party records for existing staff',
+      });
+    }
+
+    if (oldVersion < 55) {
+      // 1. Add business_id to stock_movements.
+      await db.execute(
+          'ALTER TABLE stock_movements ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)');
+
+      // 2. Create the item_stock per-business stock table.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS item_stock (
+          business_id INTEGER NOT NULL REFERENCES businesses(id),
+          item_id     INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
+          stock_qty           REAL    NOT NULL DEFAULT 0,
+          low_stock_threshold REAL    NOT NULL DEFAULT 5,
+          track_inventory     INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (business_id, item_id)
+        )
+      ''');
+      await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)');
+
+      // 3. Backfill item_stock from item_catalog for the active business.
+      //    Items that were already tracked get their existing qty/threshold
+      //    assigned to the active business. Other businesses start at 0.
+      final activeBizRows = await db
+          .rawQuery('SELECT id FROM businesses WHERE is_active = 1 LIMIT 1');
+      if (activeBizRows.isNotEmpty) {
+        final activeBizId = activeBizRows.first['id'] as int;
+        final trackedItems = await db.rawQuery(
+          'SELECT id, stock_qty, low_stock_threshold '
+          'FROM item_catalog WHERE track_inventory = 1',
+        );
+        for (final item in trackedItems) {
+          await db.rawInsert(
+            'INSERT OR IGNORE INTO item_stock '
+            '(business_id, item_id, stock_qty, low_stock_threshold, track_inventory) '
+            'VALUES (?, ?, ?, ?, 1)',
+            [
+              activeBizId,
+              item['id'],
+              item['stock_qty'],
+              item['low_stock_threshold'],
+            ],
+          );
+        }
+        // 4. Back-fill stock_movements with the active business id.
+        await db.rawUpdate(
+          'UPDATE stock_movements SET business_id = ? WHERE business_id IS NULL',
+          [activeBizId],
+        );
+      }
+
+      await db.insert('schema_version', {
+        'version': 55,
+        'description':
+            'Per-business inventory: item_stock table, business_id on stock_movements, backfill from item_catalog',
       });
     }
   }

@@ -56,6 +56,7 @@ class PurchaseBillsNotifier
           notes: 'Purchase Bill ${bill.billNo}',
           referenceId: id,
           referenceType: 'purchase_bill',
+          businessId: _businessId,
         );
       }
     }
@@ -78,6 +79,7 @@ class PurchaseBillsNotifier
           notes: 'Purchase Bill ${bill.billNo} (edited)',
           referenceId: bill.id,
           referenceType: 'purchase_bill',
+          businessId: _businessId,
         );
       }
     }

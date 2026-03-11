@@ -11,6 +11,7 @@ import '../../data/services/inventory_service.dart';
 import '../../data/services/invoice_number_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
+import 'business_provider.dart';
 
 // ── Repository providers ─────────────────────────────────────────────────────
 
@@ -45,24 +46,28 @@ final invoiceDateRangeProvider = StateProvider<DateTimeRange?>((_) => null);
 
 class CatalogNotifier
     extends StateNotifier<AsyncValue<List<ItemCatalog>>> {
-  CatalogNotifier(this._repo) : super(const AsyncValue.loading()) {
+  CatalogNotifier(this._repo, this._businessId)
+      : super(const AsyncValue.loading()) {
     load();
   }
 
   final ItemCatalogRepository _repo;
+  final int? _businessId;
 
   Future<void> load() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getAll());
+    state = await AsyncValue.guard(
+      () => _repo.getAll(businessId: _businessId),
+    );
   }
 
   Future<void> add(ItemCatalog item) async {
-    await _repo.insert(item);
+    await _repo.insert(item, activeBusinessId: _businessId);
     await load();
   }
 
   Future<void> edit(ItemCatalog item) async {
-    await _repo.update(item);
+    await _repo.update(item, activeBusinessId: _businessId);
     await load();
   }
 
@@ -84,7 +89,10 @@ class CatalogNotifier
 
 final catalogProvider =
     StateNotifierProvider<CatalogNotifier, AsyncValue<List<ItemCatalog>>>(
-  (ref) => CatalogNotifier(ref.read(itemCatalogRepositoryProvider)),
+  (ref) {
+    final businessId = ref.watch(activeBusinessProvider)?.id;
+    return CatalogNotifier(ref.read(itemCatalogRepositoryProvider), businessId);
+  },
 );
 
 // ── Quotes ───────────────────────────────────────────────────────────────────
@@ -212,6 +220,7 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
             notes: 'Invoice ${invoice.invoiceNo}',
             referenceId: id,
             referenceType: 'invoice',
+            businessId: invoice.businessId,
           );
         }
       }

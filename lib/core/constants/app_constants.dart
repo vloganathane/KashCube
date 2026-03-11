@@ -10,7 +10,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'kash_cube.db';
-  static const int dbVersion = 54;
+  static const int dbVersion = 55;
 
   // Categories (MVP - 10 pre-defined)
   static const List<String> defaultCategories = [

@@ -45,6 +45,7 @@ class ChallansNotifier
           notes: 'DC ${challan.challanNo}',
           referenceId: id,
           referenceType: 'challan',
+          businessId: challan.businessId,
         );
       }
     }
@@ -67,6 +68,7 @@ class ChallansNotifier
           notes: 'DC ${challan.challanNo} (edited)',
           referenceId: challan.id,
           referenceType: 'challan',
+          businessId: challan.businessId,
         );
       }
     }

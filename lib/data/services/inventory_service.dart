@@ -7,9 +7,15 @@ import 'database_helper.dart';
 
 /// Service for inventory stock tracking.
 ///
-/// Handles stock adjustments on [item_catalog] and records every change
-/// in [stock_movements]. All operations run atomically inside a transaction
-/// so stock_qty and movement history are always consistent.
+/// As of DB v55, stock levels are stored per-business in [item_stock].
+/// Every write also records a movement in [stock_movements] with
+/// [businessId] for full per-company audit history.
+///
+/// When [businessId] is null (legacy paths or background workers) the service
+/// falls back to the old behaviour: reading/writing [item_catalog.stock_qty]
+/// directly. This keeps all callsites that pre-date v55 working without
+/// changes while new callers pass [businessId] for correct multi-company
+/// behaviour.
 class InventoryService {
   InventoryService._();
   static final InventoryService instance = InventoryService._();
@@ -18,52 +24,102 @@ class InventoryService {
 
   // ── Queries ────────────────────────────────────────────────────────────────
 
-  /// All items that have inventory tracking enabled (active items only).
+  /// All items that have inventory tracking enabled for [businessId].
+  ///
+  /// When [businessId] is provided the result merges [item_catalog] columns
+  /// with per-business values from [item_stock] (stock_qty, track_inventory,
+  /// low_stock_threshold).  Without a businessId the legacy item_catalog
+  /// columns are used (backwards-compatible).
   Future<List<ItemCatalog>> getTrackedItems({int? businessId}) async {
     final db = await _db.database;
-    final conditions = <String>['is_active = 1', 'track_inventory = 1'];
-    final args = <dynamic>[];
     if (businessId != null) {
-      conditions.add('(business_id = ? OR business_id IS NULL)');
-      args.add(businessId);
+      final rows = await db.rawQuery(
+        '''
+        SELECT
+          ic.id, ic.name, ic.description, ic.sku, ic.category, ic.unit,
+          ic.unit_price, ic.tax_pct, ic.hsn_code, ic.hsn_or_sac,
+          ic.is_favorite, ic.is_active, ic.last_used_at, ic.usage_count,
+          ic.duration_minutes, ic.is_bookable, ic.business_id,
+          ic.created_at, ic.updated_at,
+          ist.track_inventory,
+          ist.stock_qty,
+          ist.low_stock_threshold
+        FROM item_catalog ic
+        JOIN item_stock ist ON ist.item_id = ic.id AND ist.business_id = ?
+        WHERE ic.is_active = 1 AND ist.track_inventory = 1
+        ORDER BY ic.name COLLATE NOCASE
+        ''',
+        [businessId],
+      );
+      return rows.map(ItemCatalog.fromMap).toList();
     }
-    final where = conditions.join(' AND ');
+    // Legacy fallback
     final rows = await db.rawQuery(
-      'SELECT * FROM item_catalog WHERE $where ORDER BY name COLLATE NOCASE',
-      args,
+      'SELECT * FROM item_catalog '
+      'WHERE is_active = 1 AND track_inventory = 1 '
+      'ORDER BY name COLLATE NOCASE',
     );
     return rows.map(ItemCatalog.fromMap).toList();
   }
 
-  /// Items where stock_qty <= low_stock_threshold (and tracking is on).
+  /// Items where stock_qty ≤ low_stock_threshold for [businessId].
   Future<List<ItemCatalog>> getLowStockItems({int? businessId}) async {
     final db = await _db.database;
-    final conditions = <String>[
-      'is_active = 1',
-      'track_inventory = 1',
-      'stock_qty <= low_stock_threshold',
-    ];
-    final args = <dynamic>[];
     if (businessId != null) {
-      conditions.add('(business_id = ? OR business_id IS NULL)');
-      args.add(businessId);
+      final rows = await db.rawQuery(
+        '''
+        SELECT
+          ic.id, ic.name, ic.description, ic.sku, ic.category, ic.unit,
+          ic.unit_price, ic.tax_pct, ic.hsn_code, ic.hsn_or_sac,
+          ic.is_favorite, ic.is_active, ic.last_used_at, ic.usage_count,
+          ic.duration_minutes, ic.is_bookable, ic.business_id,
+          ic.created_at, ic.updated_at,
+          ist.track_inventory,
+          ist.stock_qty,
+          ist.low_stock_threshold
+        FROM item_catalog ic
+        JOIN item_stock ist ON ist.item_id = ic.id AND ist.business_id = ?
+        WHERE ic.is_active = 1
+          AND ist.track_inventory = 1
+          AND ist.stock_qty <= ist.low_stock_threshold
+        ORDER BY ist.stock_qty ASC
+        ''',
+        [businessId],
+      );
+      return rows.map(ItemCatalog.fromMap).toList();
     }
-    final where = conditions.join(' AND ');
+    // Legacy fallback
     final rows = await db.rawQuery(
-      'SELECT * FROM item_catalog WHERE $where ORDER BY stock_qty ASC',
-      args,
+      'SELECT * FROM item_catalog '
+      'WHERE is_active = 1 AND track_inventory = 1 '
+      '  AND stock_qty <= low_stock_threshold '
+      'ORDER BY stock_qty ASC',
     );
     return rows.map(ItemCatalog.fromMap).toList();
   }
 
   /// Recent movements for a specific item (newest first).
+  ///
+  /// When [businessId] is provided only movements for that business are
+  /// returned.
   Future<List<StockMovement>> getMovementsForItem(
     int itemId, {
     int limit = 50,
+    int? businessId,
   }) async {
     final db = await _db.database;
+    if (businessId != null) {
+      final rows = await db.rawQuery(
+        'SELECT * FROM stock_movements '
+        'WHERE item_id = ? AND business_id = ? '
+        'ORDER BY created_at DESC LIMIT ?',
+        [itemId, businessId, limit],
+      );
+      return rows.map(StockMovement.fromMap).toList();
+    }
     final rows = await db.rawQuery(
-      'SELECT * FROM stock_movements WHERE item_id = ? ORDER BY created_at DESC LIMIT ?',
+      'SELECT * FROM stock_movements WHERE item_id = ? '
+      'ORDER BY created_at DESC LIMIT ?',
       [itemId, limit],
     );
     return rows.map(StockMovement.fromMap).toList();
@@ -71,13 +127,14 @@ class InventoryService {
 
   // ── Writes ─────────────────────────────────────────────────────────────────
 
-  /// Adds stock to an item (positive qty).
+  /// Adds [qty] units of stock for [businessId] (or globally when null).
   Future<void> addStock(
     int itemId,
     double qty, {
     String? notes,
     int? referenceId,
     String? referenceType,
+    int? businessId,
   }) async {
     assert(qty > 0, 'addStock qty must be positive');
     await _applyMovement(
@@ -89,16 +146,18 @@ class InventoryService {
       notes: notes,
       referenceId: referenceId,
       referenceType: referenceType,
+      businessId: businessId,
     );
   }
 
-  /// Deducts stock from an item (positive qty = amount to remove).
+  /// Deducts [qty] units of stock (positive qty = amount to remove).
   Future<void> deductStock(
     int itemId,
     double qty, {
     String? notes,
     int? referenceId,
     String? referenceType,
+    int? businessId,
   }) async {
     assert(qty > 0, 'deductStock qty must be positive');
     await _applyMovement(
@@ -110,6 +169,7 @@ class InventoryService {
       notes: notes,
       referenceId: referenceId,
       referenceType: referenceType,
+      businessId: businessId,
     );
   }
 
@@ -118,16 +178,27 @@ class InventoryService {
     int itemId,
     double newQty, {
     String? notes,
+    int? businessId,
   }) async {
     final db = await _db.database;
-    final rows = await db.query(
-      'item_catalog',
-      columns: ['stock_qty'],
-      where: 'id = ?',
-      whereArgs: [itemId],
-    );
-    if (rows.isEmpty) return;
-    final current = (rows.first['stock_qty'] as num).toDouble();
+    double current;
+    if (businessId != null) {
+      final rows = await db.rawQuery(
+        'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
+        [businessId, itemId],
+      );
+      current =
+          rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+    } else {
+      final rows = await db.query(
+        'item_catalog',
+        columns: ['stock_qty'],
+        where: 'id = ?',
+        whereArgs: [itemId],
+      );
+      if (rows.isEmpty) return;
+      current = (rows.first['stock_qty'] as num).toDouble();
+    }
     final delta = newQty - current;
     if (delta == 0) return;
     await _applyMovement(
@@ -135,12 +206,31 @@ class InventoryService {
       delta: delta,
       type: StockMovementType.adjustment,
       notes: notes ?? 'Manual adjustment',
+      businessId: businessId,
     );
   }
 
-  /// Enables or disables inventory tracking for an item without touching stock_qty.
-  Future<void> setTrackInventory(int itemId, {required bool track}) async {
+  /// Enables or disables inventory tracking for [businessId].
+  ///
+  /// Upserts an [item_stock] row for [businessId] and also keeps the legacy
+  /// [item_catalog.track_inventory] column in sync as a global default.
+  Future<void> setTrackInventory(
+    int itemId, {
+    required bool track,
+    int? businessId,
+  }) async {
     final db = await _db.database;
+    if (businessId != null) {
+      await db.rawInsert(
+        '''
+        INSERT INTO item_stock (business_id, item_id, track_inventory, stock_qty, low_stock_threshold)
+        VALUES (?, ?, ?, 0, 5)
+        ON CONFLICT(business_id, item_id) DO UPDATE SET track_inventory = excluded.track_inventory
+        ''',
+        [businessId, itemId, track ? 1 : 0],
+      );
+    }
+    // Keep item_catalog in sync as a global default.
     await db.update(
       'item_catalog',
       {
@@ -152,9 +242,23 @@ class InventoryService {
     );
   }
 
-  /// Sets the low-stock alert threshold for an item.
-  Future<void> setLowStockThreshold(int itemId, double threshold) async {
+  /// Sets the low-stock alert threshold for [businessId].
+  Future<void> setLowStockThreshold(
+    int itemId,
+    double threshold, {
+    int? businessId,
+  }) async {
     final db = await _db.database;
+    if (businessId != null) {
+      await db.rawInsert(
+        '''
+        INSERT INTO item_stock (business_id, item_id, low_stock_threshold, stock_qty, track_inventory)
+        VALUES (?, ?, ?, 0, 0)
+        ON CONFLICT(business_id, item_id) DO UPDATE SET low_stock_threshold = excluded.low_stock_threshold
+        ''',
+        [businessId, itemId, threshold],
+      );
+    }
     await db.update(
       'item_catalog',
       {
@@ -168,9 +272,8 @@ class InventoryService {
 
   /// Reverses all stock movements for a given [referenceType] + [referenceId].
   ///
-  /// Used when a document (challan, invoice, purchase bill) is deleted or
-  /// cancelled — each original movement delta is negated and recorded as a new
-  /// [StockMovementType.adjustment] entry so the history is fully traceable.
+  /// The [business_id] recorded on each original movement is preserved so
+  /// reversals are applied to the correct per-company stock.
   Future<void> reverseMovementsFor(
     String referenceType,
     int referenceId,
@@ -184,6 +287,7 @@ class InventoryService {
     for (final row in rows) {
       final itemId = row['item_id'] as int;
       final originalDelta = (row['qty'] as num).toDouble();
+      final movementBusinessId = row['business_id'] as int?;
       if (originalDelta == 0) continue;
       await _applyMovement(
         itemId: itemId,
@@ -192,6 +296,7 @@ class InventoryService {
         notes: 'Reversal of $referenceType #$referenceId',
         referenceId: referenceId,
         referenceType: '${referenceType}_reversal',
+        businessId: movementBusinessId,
       );
     }
   }
@@ -202,40 +307,64 @@ class InventoryService {
     required int itemId,
     required double delta,
     required StockMovementType type,
+    int? businessId,
     String? notes,
     int? referenceId,
     String? referenceType,
   }) async {
     final db = await _db.database;
     await db.transaction((txn) async {
-      // Read current stock
-      final rows = await txn.query(
-        'item_catalog',
-        columns: ['stock_qty'],
-        where: 'id = ?',
-        whereArgs: [itemId],
-      );
-      if (rows.isEmpty) {
-        debugPrint('[Inventory] Item $itemId not found — skipping movement');
-        return;
-      }
-      final currentStock = (rows.first['stock_qty'] as num).toDouble();
-      final newStock = currentStock + delta;
+      double currentStock;
+      double newStock;
 
-      // Update item stock
-      await txn.update(
-        'item_catalog',
-        {
-          'stock_qty': newStock,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'id = ?',
-        whereArgs: [itemId],
-      );
+      if (businessId != null) {
+        // ── Per-business stock in item_stock ──────────────────────────────
+        final rows = await txn.rawQuery(
+          'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
+          [businessId, itemId],
+        );
+        currentStock =
+            rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+        newStock = currentStock + delta;
+
+        await txn.rawInsert(
+          '''
+          INSERT INTO item_stock
+            (business_id, item_id, stock_qty, low_stock_threshold, track_inventory)
+          VALUES (?, ?, ?, 5, 1)
+          ON CONFLICT(business_id, item_id) DO UPDATE SET stock_qty = excluded.stock_qty
+          ''',
+          [businessId, itemId, newStock],
+        );
+      } else {
+        // ── Legacy: update item_catalog directly ──────────────────────────
+        final rows = await txn.query(
+          'item_catalog',
+          columns: ['stock_qty'],
+          where: 'id = ?',
+          whereArgs: [itemId],
+        );
+        if (rows.isEmpty) {
+          debugPrint('[Inventory] Item $itemId not found — skipping movement');
+          return;
+        }
+        currentStock = (rows.first['stock_qty'] as num).toDouble();
+        newStock = currentStock + delta;
+        await txn.update(
+          'item_catalog',
+          {
+            'stock_qty': newStock,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [itemId],
+        );
+      }
 
       // Record movement
       final movement = StockMovement(
         itemId: itemId,
+        businessId: businessId,
         movementType: type,
         qty: delta,
         stockAfter: newStock,
@@ -247,20 +376,36 @@ class InventoryService {
       await txn.insert('stock_movements', movement.toMap());
 
       debugPrint(
-        '[Inventory] ${type.label}: ${'${delta > 0 ? '+' : ''}${delta.toStringAsFixed(2)}'} '
-        '→ stock now ${newStock.toStringAsFixed(2)} for item $itemId',
+        '[Inventory] ${type.label}: '
+        '${delta > 0 ? '+' : ''}${delta.toStringAsFixed(2)} '
+        '→ stock now ${newStock.toStringAsFixed(2)} '
+        'for item $itemId (biz: $businessId)',
       );
     });
   }
 
+  // ── Background-safe static helpers ────────────────────────────────────────
+
   /// Returns the count of low-stock items across all businesses.
-  /// Used by WorkManager background task — opens the DB directly.
+  ///
+  /// Uses [item_stock] when available, falling back to [item_catalog].
   static Future<int> countLowStockItemsInBackground(Database db) async {
-    final result = await db.rawQuery(
-      'SELECT COUNT(*) AS c FROM item_catalog '
-      'WHERE is_active = 1 AND track_inventory = 1 AND stock_qty <= low_stock_threshold',
-    );
-    return (result.first['c'] as int? ?? 0);
+    // Prefer item_stock (v55+); table may not exist on older schemas.
+    try {
+      final result = await db.rawQuery(
+        'SELECT COUNT(DISTINCT item_id) AS c FROM item_stock '
+        'WHERE track_inventory = 1 AND stock_qty <= low_stock_threshold',
+      );
+      return (result.first['c'] as int? ?? 0);
+    } catch (_) {
+      // Fallback for pre-v55 databases.
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) AS c FROM item_catalog '
+        'WHERE is_active = 1 AND track_inventory = 1 '
+        '  AND stock_qty <= low_stock_threshold',
+      );
+      return (result.first['c'] as int? ?? 0);
+    }
   }
 
   /// Returns low-stock item names for notification body text.
@@ -268,12 +413,28 @@ class InventoryService {
     Database db, {
     int limit = 5,
   }) async {
-    final rows = await db.rawQuery(
-      'SELECT name FROM item_catalog '
-      'WHERE is_active = 1 AND track_inventory = 1 AND stock_qty <= low_stock_threshold '
-      'ORDER BY stock_qty ASC LIMIT ?',
-      [limit],
-    );
-    return rows.map((r) => r['name'] as String).toList();
+    try {
+      final rows = await db.rawQuery(
+        'SELECT DISTINCT ic.name '
+        'FROM item_stock ist '
+        'JOIN item_catalog ic ON ic.id = ist.item_id '
+        'WHERE ist.track_inventory = 1 '
+        '  AND ist.stock_qty <= ist.low_stock_threshold '
+        '  AND ic.is_active = 1 '
+        'ORDER BY ist.stock_qty ASC LIMIT ?',
+        [limit],
+      );
+      return rows.map((r) => r['name'] as String).toList();
+    } catch (_) {
+      // Fallback for pre-v55 databases.
+      final rows = await db.rawQuery(
+        'SELECT name FROM item_catalog '
+        'WHERE is_active = 1 AND track_inventory = 1 '
+        '  AND stock_qty <= low_stock_threshold '
+        'ORDER BY stock_qty ASC LIMIT ?',
+        [limit],
+      );
+      return rows.map((r) => r['name'] as String).toList();
+    }
   }
 }

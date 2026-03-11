@@ -26,27 +26,32 @@ class InventoryNotifier
   }
 
   Future<void> addStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.addStock(itemId, qty, notes: notes);
+    await _inventoryService.addStock(itemId, qty,
+        notes: notes, businessId: _businessId);
     await load();
   }
 
   Future<void> deductStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.deductStock(itemId, qty, notes: notes);
+    await _inventoryService.deductStock(itemId, qty,
+        notes: notes, businessId: _businessId);
     await load();
   }
 
   Future<void> setStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.setStock(itemId, qty, notes: notes);
+    await _inventoryService.setStock(itemId, qty,
+        notes: notes, businessId: _businessId);
     await load();
   }
 
   Future<void> setTrackInventory(int itemId, {required bool track}) async {
-    await _inventoryService.setTrackInventory(itemId, track: track);
+    await _inventoryService.setTrackInventory(itemId,
+        track: track, businessId: _businessId);
     await load();
   }
 
   Future<void> setThreshold(int itemId, double threshold) async {
-    await _inventoryService.setLowStockThreshold(itemId, threshold);
+    await _inventoryService.setLowStockThreshold(itemId, threshold,
+        businessId: _businessId);
     await load();
   }
 }

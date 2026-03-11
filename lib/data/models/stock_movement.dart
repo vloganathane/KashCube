@@ -18,6 +18,7 @@ class StockMovement extends Equatable {
   const StockMovement({
     this.id,
     required this.itemId,
+    this.businessId,
     required this.movementType,
     required this.qty,
     required this.stockAfter,
@@ -29,6 +30,9 @@ class StockMovement extends Equatable {
 
   final int? id;
   final int itemId;
+  /// Which business's stock this movement belongs to. Null for legacy
+  /// movements recorded before the per-business stock (v55) migration.
+  final int? businessId;
   final StockMovementType movementType;
   final double qty;
   final double stockAfter;
@@ -40,6 +44,7 @@ class StockMovement extends Equatable {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'item_id': itemId,
+        'business_id': businessId,
         'movement_type': movementType.name,
         'qty': qty,
         'stock_after': stockAfter,
@@ -52,6 +57,7 @@ class StockMovement extends Equatable {
   factory StockMovement.fromMap(Map<String, dynamic> map) => StockMovement(
         id: map['id'] as int?,
         itemId: map['item_id'] as int,
+        businessId: map['business_id'] as int?,
         movementType: StockMovementType.values.firstWhere(
           (t) => t.name == (map['movement_type'] as String?),
           orElse: () => StockMovementType.adjustment,
@@ -66,5 +72,5 @@ class StockMovement extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, itemId, movementType, qty, stockAfter, referenceId, referenceType, notes, createdAt];
+      [id, itemId, businessId, movementType, qty, stockAfter, referenceId, referenceType, notes, createdAt];
 }

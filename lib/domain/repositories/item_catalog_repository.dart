@@ -7,8 +7,8 @@ abstract class ItemCatalogRepository {
     ItemCategory? category,
   });
   Future<ItemCatalog?> getById(int id);
-  Future<int> insert(ItemCatalog item);
-  Future<void> update(ItemCatalog item);
+  Future<int> insert(ItemCatalog item, {int? activeBusinessId});
+  Future<void> update(ItemCatalog item, {int? activeBusinessId});
   Future<void> delete(int id);
   Future<void> trackUsage(int itemId);
   Future<String> generateNextSku(ItemCategory category);

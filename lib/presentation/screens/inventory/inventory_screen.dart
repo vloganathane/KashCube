@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/item_catalog.dart';
+import '../../providers/business_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/upgrade_prompt_sheet.dart' show showUpgradePromptSheet;
@@ -23,6 +24,8 @@ class InventoryScreen extends ConsumerStatefulWidget {
 
 class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   bool _showLowStockOnly = false;
+  // null means "follow active business"; a set value pins to that business.
+  int? _selectedBusinessId;
 
   @override
   Widget build(BuildContext context) {
@@ -31,16 +34,21 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       return _GatedPlaceholder(tier: tier);
     }
 
-    final inventoryAsync = ref.watch(inventoryProvider);
+    final activeBusinessId = ref.watch(activeBusinessIdProvider);
+    final effectiveId = _selectedBusinessId ?? activeBusinessId;
+    final inventoryAsync = ref.watch(inventoryProvider(effectiveId));
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inventory'),
+        title: _BusinessTitle(
+          selectedBusinessId: effectiveId,
+          onChanged: (id) => setState(() => _selectedBusinessId = id),
+        ),
         centerTitle: false,
         actions: [
           Consumer(
             builder: (_, r, _) {
-              final count = r.watch(lowStockCountProvider);
+              final count = r.watch(lowStockCountProvider(effectiveId));
               return count > 0
                   ? Padding(
                       padding: const EdgeInsets.only(right: AppSpacing.sm),
@@ -81,7 +89,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(inventoryProvider.notifier).load(),
+            onRefresh: () => ref.read(inventoryProvider(effectiveId).notifier).load(),
             child: ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.base),
               itemCount: displayed.length,
@@ -90,11 +98,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
               itemBuilder: (_, i) => _ItemTile(
                 item: displayed[i],
                 onAdjust: (type) =>
-                    _showAdjustDialog(displayed[i], type),
+                    _showAdjustDialog(displayed[i], type, effectiveId),
                 onViewHistory: () =>
                     _showMovementsSheet(displayed[i]),
                 onEditCatalog: () =>
-                    _openCatalogEdit(displayed[i]),
+                    _openCatalogEdit(displayed[i], effectiveId),
               ),
             ),
           );
@@ -111,6 +119,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   Future<void> _showAdjustDialog(
     ItemCatalog item,
     _AdjustType type,
+    int? effectiveId,
   ) async {
     if (type == _AdjustType.history) {
       _showMovementsSheet(item);
@@ -122,7 +131,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
     if (result == null || !mounted) return;
     final (qty, notes) = result;
-    final notifier = ref.read(inventoryProvider.notifier);
+    final notifier = ref.read(inventoryProvider(effectiveId).notifier);
     if (type == _AdjustType.add) {
       await notifier.addStock(item.id!, qty, notes: notes);
     } else if (type == _AdjustType.deduct) {
@@ -147,14 +156,55 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  Future<void> _openCatalogEdit(ItemCatalog item) async {
+  Future<void> _openCatalogEdit(ItemCatalog item, int? effectiveId) async {
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
         builder: (_) => ItemCatalogScreen(initialEditItem: item),
       ),
     );
-    if (mounted) ref.read(inventoryProvider.notifier).load();
+    if (mounted) ref.read(inventoryProvider(effectiveId).notifier).load();
+  }
+}
+
+// ── AppBar business title / picker ────────────────────────────────────────────
+
+/// Shows "Inventory" for single-business accounts.
+/// For multi-business accounts, renders a compact dropdown so the user can
+/// switch the inventory view without changing the global active company.
+class _BusinessTitle extends ConsumerWidget {
+  const _BusinessTitle({required this.selectedBusinessId, required this.onChanged});
+
+  final int? selectedBusinessId;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? [];
+    if (businesses.length <= 1) return const Text('Inventory');
+
+    final style = Theme.of(context).textTheme.titleLarge?.copyWith(
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<int?>(
+        value: selectedBusinessId,
+        isDense: true,
+        icon: Icon(
+          Icons.arrow_drop_down,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
+        style: style,
+        items: businesses
+            .map((b) => DropdownMenuItem<int?>(
+                  value: b.id,
+                  child: Text(b.name, style: style),
+                ))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
   }
 }
 

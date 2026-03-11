@@ -56,23 +56,22 @@ class InventoryNotifier
   }
 }
 
-final inventoryProvider = StateNotifierProvider.autoDispose<InventoryNotifier,
-    AsyncValue<List<ItemCatalog>>>((ref) {
-  final businessId = ref.watch(activeBusinessIdProvider);
-  return InventoryNotifier(businessId);
-});
+final inventoryProvider = StateNotifierProvider.autoDispose
+    .family<InventoryNotifier, AsyncValue<List<ItemCatalog>>, int?>(
+  (ref, businessId) => InventoryNotifier(businessId),
+);
 
 // ── Low-stock items ────────────────────────────────────────────────────────────
 
 final lowStockItemsProvider =
-    FutureProvider.autoDispose<List<ItemCatalog>>((ref) async {
-  final businessId = ref.watch(activeBusinessIdProvider);
-  return _inventoryService.getLowStockItems(businessId: businessId);
-});
+    FutureProvider.autoDispose.family<List<ItemCatalog>, int?>(
+  (ref, businessId) => _inventoryService.getLowStockItems(businessId: businessId),
+);
 
-final lowStockCountProvider = Provider.autoDispose<int>((ref) {
-  return ref.watch(lowStockItemsProvider).valueOrNull?.length ?? 0;
-});
+final lowStockCountProvider = Provider.autoDispose.family<int, int?>(
+  (ref, businessId) =>
+      ref.watch(lowStockItemsProvider(businessId)).valueOrNull?.length ?? 0,
+);
 
 // ── Stock movements for an item ───────────────────────────────────────────────
 

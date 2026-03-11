@@ -5,6 +5,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../providers/booking_provider.dart';
+import '../../providers/business_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../providers/delivery_challan_provider.dart';
 import '../../providers/inventory_provider.dart';
@@ -251,7 +252,8 @@ class _BusinessHub extends ConsumerWidget {
                 label: 'Inventory',
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
-                    final count = r.watch(lowStockCountProvider);
+                    final activeId = r.watch(activeBusinessProvider)?.id;
+                    final count = r.watch(lowStockCountProvider(activeId));
                     final text = count > 0
                         ? '$count low-stock alert${count > 1 ? 's' : ''}'
                         : 'Stock levels & movements';

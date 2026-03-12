@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/pin_hash.dart';
 import '../../../data/models/app_user.dart';
+import '../../../data/models/party.dart';
 import '../../../data/models/user_permission.dart';
 import '../../providers/app_user_provider.dart';
+import '../../providers/party_provider.dart';
 import 'user_permissions_screen.dart';
 
 /// Settings → Team — lists all active app users; FAB adds a new one.
@@ -224,6 +226,16 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
                 pinHash: pinHash,
               ),
             );
+        // Keep the linked Party name in sync when the display name changes.
+        final linkedPartyId = widget.existing!.linkedPartyId;
+        if (name != widget.existing!.displayName && linkedPartyId != null) {
+          final partyRepo = ref.read(partyRepositoryProvider);
+          final linked = await partyRepo.getById(linkedPartyId);
+          if (linked != null) {
+            await partyRepo.update(linked.copyWith(name: name));
+            ref.read(partiesProvider.notifier).load();
+          }
+        }
       } else {
         // Generate a sync_id on insert (the DB DEFAULT handles it but we use
         // a placeholder so toMap() can omit it — DB generates via DEFAULT).
@@ -234,10 +246,27 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
           role: _role,
           pinHash: pinHash,
         );
-        final id = await ref.read(appUsersProvider.notifier).add(newUser);
-        // Seed role-preset permissions for the personal scope
+        final userId = await ref.read(appUsersProvider.notifier).add(newUser);
+
+        // Auto-create a Party(type: staff) so salary payments, advances, and
+        // payslips can all link to this person without any extra owner steps.
+        final partyRepo = ref.read(partyRepositoryProvider);
+        final staffParty = Party(name: name, partyType: PartyType.staff);
+        final partyId = await partyRepo.insert(staffParty);
+
+        // Backfill linked_party_id on the app_user row.
+        await ref.read(appUserRepositoryProvider).update(
+          newUser.copyWith(id: userId, linkedPartyId: partyId),
+        );
+
+        // Push the new party into the in-memory list without a full reload.
+        ref.read(partiesProvider.notifier).addToState(
+          staffParty.copyWith(id: partyId, createdAt: DateTime.now()),
+        );
+
+        // Seed role-preset permissions for the personal scope.
         await ref.read(appUserRepositoryProvider).seedRolePreset(
-              userId: id,
+              userId: userId,
               businessId: UserPermission.kPersonalScope,
               role: _role,
             );

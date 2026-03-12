@@ -111,7 +111,14 @@ class SyncClient {
     });
 
     final resp = await _readMessage(_socket!);
-    if (resp == null || resp['type'] != 'delta_response') {
+    if (resp == null) {
+      throw const SyncException('No response from primary');
+    }
+    // Primary signals that this device has been revoked.
+    if (resp['type'] == 'revocation') {
+      throw const SyncRevokedException('Device has been revoked by the primary');
+    }
+    if (resp['type'] != 'delta_response') {
       throw const SyncException('Invalid delta_response from primary');
     }
 
@@ -221,9 +228,18 @@ class SyncClient {
 }
 
 /// Thrown when a sync operation fails due to a protocol error.
+/// Thrown for general protocol-level errors during sync.
 class SyncException implements Exception {
   const SyncException(this.message);
   final String message;
   @override
   String toString() => 'SyncException: $message';
+}
+
+/// Thrown when the primary reports that this secondary device has been revoked.
+/// The caller must wipe the local [DeviceSessionService] session.
+class SyncRevokedException extends SyncException {
+  const SyncRevokedException(super.message);
+  @override
+  String toString() => 'SyncRevokedException: $message';
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,11 +8,13 @@ import '../../data/models/device_session_token.dart';
 import '../../data/models/linked_device.dart';
 import '../../data/repositories/linked_device_repository_impl.dart';
 import '../../data/services/database_helper.dart';
+import '../../data/services/device_session_service.dart';
 import '../../data/services/identity_service.dart';
 import '../../data/services/lan_discovery_service.dart';
 import '../../data/services/sync_client.dart';
 import '../../data/services/sync_server.dart';
 import '../../data/services/token_service.dart';
+import '../../domain/models/permission.dart';
 import '../../domain/repositories/linked_device_repository.dart';
 import 'settings_provider.dart';
 
@@ -120,12 +123,81 @@ final syncStatusProvider =
 );
 
 // ---------------------------------------------------------------------------
-// Active sync session (secondary side)
+// Active device session (secondary side)
 // ---------------------------------------------------------------------------
 
 /// Stores the [DeviceSession] after a successful pairing.
 /// Null when this device is a primary or hasn't paired yet.
 final deviceSessionProvider = StateProvider<DeviceSession?>((ref) => null);
+
+// ---------------------------------------------------------------------------
+// Verified device session — loaded + grace-checked on app start
+// ---------------------------------------------------------------------------
+
+/// Loads the local [device_session] row, verifies its Ed25519 signature, and
+/// enforces the offline grace period.
+///
+/// This is the canonical source of truth for whether the current device is a
+/// secondary and what permissions it has.  Primary devices get `null`.
+final activeDeviceSessionProvider = FutureProvider<DeviceSession?>((ref) async {
+  // Ensure identity keypair is available before we try to verify the token.
+  await ref.watch(identityServiceProvider.future);
+
+  final session = await DeviceSessionService.instance.loadAndVerify(
+    DatabaseHelper.instance,
+    IdentityService.instance,
+  );
+  if (session == null) return null;
+
+  return DeviceSessionService.instance.enforceGrace(
+    session,
+    DatabaseHelper.instance,
+  );
+});
+
+/// `true` when the secondary device's offline grace period has been exceeded
+/// and all write operations are blocked.
+final isReadOnlyProvider = Provider<bool>((ref) {
+  final sessionAsync = ref.watch(activeDeviceSessionProvider);
+  return sessionAsync.maybeWhen(
+    data: (s) => s?.isReadOnlyForced ?? false,
+    orElse: () => false,
+  );
+});
+
+/// Resolves the [Permission] for [module] from the active device session token.
+///
+/// Returns [Permission.full] when:
+/// - There is no active session (primary device).
+/// - The session preset is `owner_mirror`.
+///
+/// Returns the preset-scoped permission otherwise.
+final sessionPermissionProvider = Provider.family<Permission, String>(
+  (ref, module) {
+    final sessionAsync = ref.watch(activeDeviceSessionProvider);
+    return sessionAsync.maybeWhen(
+      data: (session) {
+        if (session == null) return Permission.full;
+        if (session.token.preset == 'owner_mirror') return Permission.full;
+        try {
+          final scope =
+              jsonDecode(session.token.permissionScope) as Map<String, dynamic>;
+          final m = scope[module] as Map<String, dynamic>?;
+          if (m == null) return Permission.none;
+          return Permission(
+            canView:   m['canView']   as bool? ?? false,
+            canCreate: m['canCreate'] as bool? ?? false,
+            canEdit:   m['canEdit']   as bool? ?? false,
+            canDelete: m['canDelete'] as bool? ?? false,
+          );
+        } catch (_) {
+          return Permission.none;
+        }
+      },
+      orElse: () => Permission.full, // still loading — don't block
+    );
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Primary host flow — start mDNS + TCP, show QR
@@ -228,7 +300,8 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
         deviceName: Platform.localHostname,
       );
 
-      // Persist device_session row
+      // Persisted session row serves as the source of truth;
+      // also update the in-memory provider so the UI reacts immediately.
       await DatabaseHelper.instance.withDatabase((db) async {
         await db.insert(
           'device_session',
@@ -237,8 +310,21 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
         );
       });
 
-      // Initial full pull
-      await _client.pullDeltas(session: session);
+      // Initial full pull — handle revocation gracefully.
+      try {
+        await _client.pullDeltas(session: session);
+      } on SyncRevokedException {
+        // Primary revoked us during the very first pull; wipe the session we
+        // just stored and surface the error.
+        await DeviceSessionService.instance.wipeSession(DatabaseHelper.instance);
+        await _client.disconnect();
+        _ref.read(syncStatusProvider.notifier).error();
+        state = AsyncValue.error(
+          'Device was revoked by the primary.',
+          StackTrace.current,
+        );
+        return;
+      }
 
       await _client.disconnect();
       _ref.read(syncStatusProvider.notifier).done();

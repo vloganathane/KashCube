@@ -5,11 +5,13 @@ import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
 
+import '../models/app_user.dart';
 import '../models/delta_row.dart';
 import '../models/linked_device.dart';
 import '../services/database_helper.dart';
 import '../services/identity_service.dart';
 import '../services/token_service.dart';
+import '../../domain/models/permission.dart';
 import '../../domain/repositories/linked_device_repository.dart';
 
 /// TCP server that runs on the PRIMARY device.
@@ -40,10 +42,16 @@ class SyncServer {
   int get port => _serverSocket?.port ?? 0;
   bool get isRunning => _serverSocket != null;
 
-  // Tables that are synced in full for Owner Mirror
+  // All tables that participate in sync.
   static const List<String> _syncableTables = [
     'transactions', 'credits', 'credit_payments', 'loans',
     'parties',      'accounts', 'categories',     'budgets',
+  ];
+
+  // Subset of syncable tables that have a business_id column.
+  // Only these are delivered to non-owner-mirror secondary devices.
+  static const List<String> _businessScopedTables = [
+    'transactions', 'credits', 'credit_payments', 'loans', 'budgets',
   ];
 
   /// Starts listening on a random free port.  Returns the assigned port.
@@ -106,7 +114,11 @@ class SyncServer {
     final deviceType          = msg['device_type'] as String?;
     final presetStr           = msg['preset']      as String? ?? 'owner_mirror';
 
-    // Build a new LinkedDevice record for the secondary
+    final preset = DevicePreset.fromDb(presetStr);
+
+    // Build a new LinkedDevice record for the secondary.
+    // permissionScope is seeded from the role preset so the secondary can
+    // enforce its own UI gates without a DB round-trip.
     final device = LinkedDevice(
       syncId:              _uuid(),
       deviceId:            secondaryDeviceId,
@@ -114,10 +126,10 @@ class SyncServer {
       deviceOs:            deviceOs,
       deviceType:          deviceType,
       secondaryPublicKey:  secondaryPublicKey,
-      permissionScope:     '{}',
-      businessScope:       '[]',
+      permissionScope:     _permScopeForPreset(preset),
+      businessScope:       '[]',  // admin configures scope in DeviceDetailScreen
       offlineGraceDays:    7,
-      preset:              DevicePreset.fromDb(presetStr),
+      preset:              preset,
     );
 
     await linkedDeviceRepo.insert(device);
@@ -142,13 +154,30 @@ class SyncServer {
     Socket socket,
     Map<String, dynamic> msg,
   ) async {
+    // 1. Verify token signature.
     if (!await _verifyDeviceToken(msg)) {
       await _sendMessage(socket, {'type': 'error', 'message': 'invalid_token'});
       return;
     }
 
+    // 2. Look up the LinkedDevice to check revocation + scope.
+    final tokenPayload   = msg['token_payload'] as String;
+    final decodedPayload = jsonDecode(tokenPayload) as Map<String, dynamic>;
+    final callerDeviceId = decodedPayload['device_id'] as String;
+
+    final device = await linkedDeviceRepo.getByDeviceId(callerDeviceId);
+    if (device == null || !device.isActive) {
+      // Device was revoked — tell the secondary to wipe its session.
+      await _sendMessage(socket, {
+        'type':    'revocation',
+        'message': 'device_revoked',
+      });
+      return;
+    }
+
+    // 3. Build a permission-scoped delta and send it.
     final lastSyncAt = msg['last_sync_at'] as String?;
-    final rows = await _collectDeltas(since: lastSyncAt);
+    final rows = await _collectDeltas(since: lastSyncAt, device: device);
 
     await _sendMessage(socket, {
       'type':        'delta_response',
@@ -168,9 +197,22 @@ class SyncServer {
       return;
     }
 
+    // Check revocation before accepting any writes.
+    final tokenPayload   = msg['token_payload'] as String;
+    final decodedPayload = jsonDecode(tokenPayload) as Map<String, dynamic>;
+    final callerDeviceId = decodedPayload['device_id'] as String;
+
+    final device = await linkedDeviceRepo.getByDeviceId(callerDeviceId);
+    if (device == null || !device.isActive) {
+      await _sendMessage(socket, {'type': 'revocation', 'message': 'device_revoked'});
+      return;
+    }
+
     final rawRows = (msg['rows'] as List<dynamic>?) ?? [];
-    final rows = rawRows.map((r) => DeltaRow.fromJson(r as Map<String, dynamic>)).toList();
-    await _applyDeltas(rows);
+    final rows = rawRows
+        .map((r) => DeltaRow.fromJson(r as Map<String, dynamic>))
+        .toList();
+    await _applyDeltas(rows, device: device);
 
     await _sendMessage(socket, {
       'type':           'upload_ack',
@@ -195,35 +237,91 @@ class SyncServer {
     );
   }
 
-  Future<List<DeltaRow>> _collectDeltas({String? since}) =>
+  Future<List<DeltaRow>> _collectDeltas({
+    String? since,
+    LinkedDevice? device,
+  }) =>
       dbHelper.withDatabase((db) async {
-        final rows = <DeltaRow>[];
-        for (final table in _syncableTables) {
-          final results = await db.query(
-            table,
-            where:     since != null ? "updated_at > ?" : null,
-            whereArgs: since != null ? [since] : null,
-          );
-          for (final row in results) {
-            rows.add(DeltaRow(
-              table:     table,
-              syncId:    row['sync_id'] as String? ?? '',
-              version:   row['version'] as int? ?? 0,
-              updatedAt: row['updated_at'] as String? ??
-                         row['created_at'] as String? ??
-                         DateTime.now().toIso8601String(),
-              operation: 'upsert',
-              payload:   Map<String, dynamic>.from(row),
-            ));
+        final isOwner = device?.isOwnerMirror ?? true;
+
+        // Parse business_scope for non-owner-mirror devices.
+        List<int> businessIds = [];
+        if (!isOwner && device != null) {
+          final parsed = jsonDecode(device.businessScope) as List<dynamic>;
+          businessIds = parsed.cast<int>();
+        }
+
+        final tables = isOwner ? _syncableTables : _businessScopedTables;
+        final rows   = <DeltaRow>[];
+
+        for (final table in tables) {
+          try {
+            late List<Map<String, dynamic>> results;
+
+            if (isOwner) {
+              results = await db.query(
+                table,
+                where:     since != null ? 'updated_at > ?' : null,
+                whereArgs: since != null ? [since] : null,
+              );
+            } else if (businessIds.isEmpty) {
+              // Empty scope → no data for this device yet.
+              results = [];
+            } else {
+              final ph  = businessIds.map((_) => '?').join(',');
+              final where = 'business_id IS NOT NULL AND business_id IN ($ph)'
+                  '${since != null ? ' AND updated_at > ?' : ''}';
+              final args = <Object?>[...businessIds, ?since];
+              results = await db.rawQuery(
+                'SELECT * FROM $table WHERE $where',
+                args,
+              );
+            }
+
+            for (final row in results) {
+              rows.add(DeltaRow(
+                table:     table,
+                syncId:    row['sync_id'] as String? ?? '',
+                version:   row['version'] as int? ?? 0,
+                updatedAt: row['updated_at'] as String? ??
+                           row['created_at'] as String? ??
+                           DateTime.now().toIso8601String(),
+                operation: 'upsert',
+                payload:   Map<String, dynamic>.from(row),
+              ));
+            }
+          } catch (_) {
+            // Table doesn't have the expected column — skip gracefully.
+            continue;
           }
         }
         return rows;
       });
 
-  Future<void> _applyDeltas(List<DeltaRow> rows) =>
+  Future<void> _applyDeltas(
+    List<DeltaRow> rows, {
+    LinkedDevice? device,
+  }) =>
       dbHelper.withDatabase((db) async {
+        final isOwner = device?.isOwnerMirror ?? true;
+        List<int> businessIds = [];
+        if (!isOwner && device != null) {
+          final parsed = jsonDecode(device.businessScope) as List<dynamic>;
+          businessIds = parsed.cast<int>();
+        }
+
         for (final row in rows) {
           if (!_syncableTables.contains(row.table)) continue;
+
+          // For non-owner-mirror: only accept rows within the business scope.
+          if (!isOwner) {
+            if (businessIds.isEmpty) continue;
+            final payload = row.payload;
+            if (payload == null) continue;
+            final bid = payload['business_id'];
+            if (bid == null || !businessIds.contains(bid as int)) continue;
+          }
+
           if (row.isUpsert && row.payload != null) {
             await db.insert(
               row.table,
@@ -234,7 +332,7 @@ class SyncServer {
             await db.update(
               row.table,
               {'deleted_at': DateTime.now().toIso8601String()},
-              where: 'sync_id = ?',
+              where:     'sync_id = ?',
               whereArgs: [row.syncId],
             );
           }
@@ -287,5 +385,40 @@ class SyncServer {
   String _uuid() {
     final bytes = List<int>.generate(16, (_) => DateTime.now().microsecondsSinceEpoch & 0xFF);
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  // ── Permission scope builder ─────────────────────────────────────────────
+
+  /// Builds a JSON permission scope string for the given [preset].
+  ///
+  /// Owner Mirror always gets `'{}'` (the primary's own permission check
+  /// applies — no token gate needed on the secondary for owner mirrors).
+  /// For other presets, the scope is built from [RolePreset.forModule].
+  static String _permScopeForPreset(DevicePreset preset) {
+    if (preset == DevicePreset.ownerMirror) return '{}';
+
+    late AppUserRole role;
+    switch (preset) {
+      case DevicePreset.manager:
+        role = AppUserRole.manager;
+      case DevicePreset.cashier:
+        role = AppUserRole.cashier;
+      case DevicePreset.auditor:
+        role = AppUserRole.auditor;
+      default:
+        role = AppUserRole.custom;
+    }
+
+    final scope = <String, Map<String, bool>>{};
+    for (final module in PermissionModule.all) {
+      final p = RolePreset.forModule(role, module);
+      scope[module] = {
+        'canView':   p.canView,
+        'canCreate': p.canCreate,
+        'canEdit':   p.canEdit,
+        'canDelete': p.canDelete,
+      };
+    }
+    return jsonEncode(scope);
   }
 }

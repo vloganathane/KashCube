@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models/permission.dart';
 import '../data/models/user_permission.dart';
+import 'providers/sync_provider.dart';
+import 'widgets/read_only_mode_banner.dart';
 import '../core/constants/app_config.dart';
 import '../core/utils/deep_link_vcard.dart';
 import '../core/utils/vcard_builder.dart' show parseVCard;
@@ -33,6 +35,33 @@ import 'widgets/sms_confirmation_sheet.dart';
 
 /// Provider for the current bottom navigation tab index.
 final currentTabIndexProvider = StateProvider<int>((ref) => 0);
+
+// ---------------------------------------------------------------------------
+// Tab spec helpers
+// ---------------------------------------------------------------------------
+
+/// Maps a screen index (0–4 in [IndexedStack]) to its [NavigationDestination].
+class _TabSpec {
+  const _TabSpec(this.screenIndex, this.destination);
+  final int                 screenIndex;
+  final NavigationDestination destination;
+}
+
+/// Returns the visible tab specs for the given device session [preset].
+/// Cashier devices only see Home, Transactions, and Business.
+List<_TabSpec> _computeVisibleTabs(String? preset) {
+  const tabs = [
+    _TabSpec(0, NavigationDestination(icon: Icon(Icons.home_outlined),         selectedIcon: Icon(Icons.home),         label: 'Home')),
+    _TabSpec(1, NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions')),
+    _TabSpec(2, NavigationDestination(icon: Icon(Icons.storefront_outlined),   selectedIcon: Icon(Icons.storefront),   label: 'Business')),
+    _TabSpec(3, NavigationDestination(icon: Icon(Icons.people_outline),        selectedIcon: Icon(Icons.people),       label: 'Contacts')),
+    _TabSpec(4, NavigationDestination(icon: Icon(Icons.settings_outlined),     selectedIcon: Icon(Icons.settings),     label: 'Settings')),
+  ];
+  if (preset == 'cashier') {
+    return tabs.sublist(0, 3); // Home, Transactions, Business only
+  }
+  return tabs.toList();
+}
 
 /// App shell with bottom navigation bar, FAB, and SMS listener.
 class AppShell extends ConsumerStatefulWidget {
@@ -241,6 +270,26 @@ class _AppShellState extends ConsumerState<AppShell> {
     final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
     final activeUser = ref.watch(activeAppUserProvider);
 
+    // Device session: null = primary; non-null = secondary.
+    final sessionAsync   = ref.watch(activeDeviceSessionProvider);
+    final session        = sessionAsync.valueOrNull;
+    final sessionPreset  = session?.token.preset;
+    final isStaffTerminal = sessionPreset != null && sessionPreset != 'owner_mirror';
+
+    final visibleTabs = _computeVisibleTabs(sessionPreset);
+
+    // If the current screen index is hidden for this preset, reset to 0.
+    if (!visibleTabs.any((t) => t.screenIndex == currentIndex)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(currentTabIndexProvider.notifier).state = 0;
+      });
+    }
+
+    // Map actual screen index -> nav bar index (clamp for safety).
+    final navBarIndex = visibleTabs
+        .indexWhere((t) => t.screenIndex == currentIndex)
+        .clamp(0, visibleTabs.length - 1);
+
     // Layer 1: module required per bottom-nav tab index.
     // Owner (activeUser == null) bypasses all checks.
     const tabModules = [
@@ -251,14 +300,14 @@ class _AppShellState extends ConsumerState<AppShell> {
       null,                          // 4: Settings — always visible
     ];
 
-    Future<void> handleTabSelected(int index) async {
+    Future<void> handleTabSelected(int screenIndex) async {
       if (activeUser == null) {
-        ref.read(currentTabIndexProvider.notifier).state = index;
+        ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;
       }
-      final module = tabModules[index];
+      final module = tabModules[screenIndex];
       if (module == null) {
-        ref.read(currentTabIndexProvider.notifier).state = index;
+        ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;
       }
       final perm = await ref.read(permissionProvider(
@@ -272,7 +321,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
         return;
       }
-      ref.read(currentTabIndexProvider.notifier).state = index;
+      ref.read(currentTabIndexProvider.notifier).state = screenIndex;
     }
 
     // Show Add-Party sheet whenever a contact arrives via deep link or
@@ -285,43 +334,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     });
 
     return Scaffold(
-      body: IndexedStack(
-        index: currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-        onDestinationSelected: (index) {
-          handleTabSelected(index);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long),
-            label: 'Transactions',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront),
-            label: 'Business',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Contacts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+      body: Column(
+        children: [
+          // Read-only banner: shown when grace period exceeded on a secondary.
+          const ReadOnlyModeBanner(),
+          // Staff mode indicator: subtle top bar for non-owner-mirror secondaries.
+          if (isStaffTerminal) _StaffModeBanner(session: session!),
+          Expanded(
+            child: IndexedStack(
+              index: currentIndex,
+              children: _screens,
+            ),
           ),
         ],
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: navBarIndex,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        onDestinationSelected: (navIdx) {
+          handleTabSelected(visibleTabs[navIdx].screenIndex);
+        },
+        destinations: visibleTabs.map((t) => t.destination).toList(),
       ),
       floatingActionButton: showFab
           ? SpeedDialFab(
@@ -329,6 +362,42 @@ class _AppShellState extends ConsumerState<AppShell> {
               showAllOptions: currentIndex != 2,
             )
           : null,
+    );
+  }
+}
+
+/// Thin banner shown below the status bar when the current device is a linked
+/// secondary (non-owner-mirror).  Reminds the user they are in staff mode.
+class _StaffModeBanner extends StatelessWidget {
+  const _StaffModeBanner({required this.session});
+
+  final dynamic session; // DeviceSessionToken host object
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.secondary.withAlpha(26),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+        child: Row(
+          children: [
+            Icon(
+              Icons.store_outlined,
+              size: 14,
+              color: Theme.of(context).colorScheme.secondary,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Staff Mode',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.secondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

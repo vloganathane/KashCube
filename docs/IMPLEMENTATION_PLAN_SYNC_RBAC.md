@@ -123,7 +123,7 @@ flutter run -d emulator-5554 --hot
 ---
 
 ## Sprint 2 — v59: Phase U (Full RBAC)
-**Status: IN PROGRESS**  
+**Status: DONE ✅**  
 **Estimate:** 5–7 days  
 **DB changes:** None — `app_users` + `user_permissions` already created in v58  
 **Spec:** `USER_PERMISSIONS_BRAINSTORM.md` → Option B + Sections 5–12  
@@ -191,7 +191,7 @@ final permissionProvider = Provider.family<Permission, ({String module, int? bus
 ---
 
 ## Sprint 3 — v60: Phase L1 (Owner Mirror — First LAN Sync)
-**Status: NOT STARTED**  
+**Status: DONE ✅**  
 **Estimate:** 10–14 days (largest sprint)  
 **DB changes:** None (linked_devices + device_session already created in v58)  
 **New packages:** `nsd` (mDNS service discovery), `cryptography: ^2.7.0`  
@@ -486,9 +486,9 @@ Sprint 3 (Owner Mirror) is the longest because it introduces the entire LAN sync
 
 ```
 v58 (Phase 0) ✅
-  └── v59 (Full RBAC)              ← current sprint
-        └── v60 (Owner Mirror)      ← requires v58 sync columns
-              └── v61 (Staff Terminal)
+  └── v59 (Full RBAC) ✅
+        └── v60 (Owner Mirror) ✅
+              └── v61 (Staff Terminal)     ← current sprint
                     └── v62 (Identity)
                           └── v63 (Context Layer)
                                 └── v64 (Sessions Upgrade)

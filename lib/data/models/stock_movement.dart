@@ -7,7 +7,8 @@ enum StockMovementType {
   adjustment('Adjustment'),
   opening('Opening Stock'),
   saleDeduction('Sale'),
-  purchaseAddition('Purchase');
+  purchaseAddition('Purchase'),
+  physicalCount('Physical Count');
 
   const StockMovementType(this.label);
   final String label;

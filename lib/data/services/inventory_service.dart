@@ -30,6 +30,10 @@ class InventoryService {
   /// with per-business values from [item_stock] (stock_qty, track_inventory,
   /// low_stock_threshold).  Without a businessId the legacy item_catalog
   /// columns are used (backwards-compatible).
+  ///
+  /// Uses LEFT JOIN so items marked as tracked in the catalog appear for ALL
+  /// businesses, even if no [item_stock] row exists yet for that business.
+  /// A per-business [item_stock] row overrides the catalog-level flag.
   Future<List<ItemCatalog>> getTrackedItems({int? businessId}) async {
     final db = await _db.database;
     if (businessId != null) {
@@ -41,12 +45,15 @@ class InventoryService {
           ic.is_favorite, ic.is_active, ic.last_used_at, ic.usage_count,
           ic.duration_minutes, ic.is_bookable, ic.business_id,
           ic.created_at, ic.updated_at,
-          ist.track_inventory,
-          ist.stock_qty,
-          ist.low_stock_threshold
+          COALESCE(ist.track_inventory, ic.track_inventory)  AS track_inventory,
+          COALESCE(ist.stock_qty,        ic.stock_qty)        AS stock_qty,
+          COALESCE(ist.low_stock_threshold, ic.low_stock_threshold) AS low_stock_threshold,
+          ist.last_counted_qty,
+          ist.last_counted_at
         FROM item_catalog ic
-        JOIN item_stock ist ON ist.item_id = ic.id AND ist.business_id = ?
-        WHERE ic.is_active = 1 AND ist.track_inventory = 1
+        LEFT JOIN item_stock ist ON ist.item_id = ic.id AND ist.business_id = ?
+        WHERE ic.is_active = 1
+          AND COALESCE(ist.track_inventory, ic.track_inventory) = 1
         ORDER BY ic.name COLLATE NOCASE
         ''',
         [businessId],
@@ -267,6 +274,55 @@ class InventoryService {
       },
       where: 'id = ?',
       whereArgs: [itemId],
+    );
+  }
+
+  /// Records an actual physical stock count for [itemId] at [businessId].
+  ///
+  /// If the count differs from book stock a [StockMovementType.physicalCount]
+  /// movement is created so the variance is fully auditable. [last_counted_qty]
+  /// and [last_counted_at] are always stamped on [item_stock] — even when there
+  /// is no variance — so the inventory screen can show when the item was last
+  /// counted.
+  Future<void> recordPhysicalCount(
+    int itemId,
+    double actualQty, {
+    String? notes,
+    required int businessId,
+  }) async {
+    final db = await _db.database;
+    final rows = await db.rawQuery(
+      'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
+      [businessId, itemId],
+    );
+    final bookStock =
+        rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+    final delta = actualQty - bookStock;
+    if (delta != 0) {
+      await _applyMovement(
+        itemId: itemId,
+        delta: delta,
+        type: StockMovementType.physicalCount,
+        notes: notes ??
+            'Physical count – actual '
+            '${actualQty.toStringAsFixed(actualQty % 1 == 0 ? 0 : 2)}, '
+            'book ${bookStock.toStringAsFixed(bookStock % 1 == 0 ? 0 : 2)}',
+        businessId: businessId,
+      );
+    }
+    // Always stamp the count date — even when qty matches book.
+    final countedAt = DateTime.now().toIso8601String();
+    await db.rawInsert(
+      '''
+      INSERT INTO item_stock
+        (business_id, item_id, stock_qty, track_inventory, low_stock_threshold,
+         last_counted_qty, last_counted_at)
+      VALUES (?, ?, ?, 1, 5, ?, ?)
+      ON CONFLICT(business_id, item_id) DO UPDATE SET
+        last_counted_qty = excluded.last_counted_qty,
+        last_counted_at  = excluded.last_counted_at
+      ''',
+      [businessId, itemId, actualQty, actualQty, countedAt],
     );
   }
 

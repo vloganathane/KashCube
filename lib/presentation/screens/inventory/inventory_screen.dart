@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/models/item_catalog.dart';
+import '../../../data/models/stock_movement.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -123,6 +124,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   ) async {
     if (type == _AdjustType.history) {
       _showMovementsSheet(item);
+      return;
+    }
+    if (type == _AdjustType.physicalCount) {
+      final result = await showDialog<(double, String?)>(
+        context: context,
+        builder: (_) => _PhysicalCountDialog(item: item),
+      );
+      if (result == null || !mounted) return;
+      final (actualQty, notes) = result;
+      await ref
+          .read(inventoryProvider(effectiveId).notifier)
+          .recordPhysicalCount(item.id!, actualQty, notes: notes);
       return;
     }
     final result = await showDialog<(double, String?)>(
@@ -295,7 +308,7 @@ class _EmptyState extends StatelessWidget {
 
 // ── Item tile ──────────────────────────────────────────────────────────────────
 
-enum _AdjustType { add, deduct, set, history }
+enum _AdjustType { add, deduct, set, physicalCount, history }
 
 class _ItemTile extends StatelessWidget {
   const _ItemTile({
@@ -375,6 +388,24 @@ class _ItemTile extends StatelessWidget {
                 ),
               ],
             ),
+            if (item.lastCountedAt != null) ...[              
+              const SizedBox(height: 2),
+              Row(
+                children: [
+                  Text(
+                    'Counted ${DateFormat('d MMM').format(item.lastCountedAt!)}',
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: context.colorScheme.outline),
+                  ),
+                  if (item.lastCountedQty != null)
+                    Text(
+                      '  ·  ${item.lastCountedQty!.toStringAsFixed(item.lastCountedQty! % 1 == 0 ? 0 : 1)} ${item.unit}',
+                      style: context.textTheme.bodySmall
+                          ?.copyWith(color: context.colorScheme.outline),
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
         trailing: PopupMenuButton<_AdjustType>(
@@ -403,6 +434,14 @@ class _ItemTile extends StatelessWidget {
                 Icon(Icons.edit_outlined, size: 18),
                 SizedBox(width: 8),
                 Text('Set Stock'),
+              ]),
+            ),
+            const PopupMenuItem(
+              value: _AdjustType.physicalCount,
+              child: Row(children: [
+                Icon(Icons.fact_check_outlined, size: 18),
+                SizedBox(width: 8),
+                Text('Physical Count'),
               ]),
             ),
             const PopupMenuDivider(),
@@ -458,6 +497,7 @@ class _AdjustDialogState extends State<_AdjustDialog> {
         _AdjustType.add => 'Add Stock',
         _AdjustType.deduct => 'Deduct Stock',
         _AdjustType.set => 'Set Stock',
+        _AdjustType.physicalCount => 'Physical Count',
         _AdjustType.history => 'View History',
       };
 
@@ -525,7 +565,160 @@ class _AdjustDialogState extends State<_AdjustDialog> {
     );
   }
 }
+// ── Physical count dialog ─────────────────────────────────────────────────────────────────────────────
 
+class _PhysicalCountDialog extends StatefulWidget {
+  const _PhysicalCountDialog({required this.item});
+  final ItemCatalog item;
+
+  @override
+  State<_PhysicalCountDialog> createState() => _PhysicalCountDialogState();
+}
+
+class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
+  final _ctrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
+  final _form = GlobalKey<FormState>();
+  double? _actualQty;
+
+  @override
+  void initState() {
+    super.initState();
+    final qty = widget.item.stockQty;
+    _ctrl.text = qty.toStringAsFixed(qty % 1 == 0 ? 0 : 2);
+    _actualQty = qty;
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _notesCtrl.dispose();
+    super.dispose();
+  }
+
+  double get _variance => (_actualQty ?? 0) - widget.item.stockQty;
+
+  @override
+  Widget build(BuildContext context) {
+    final variance = _variance;
+    final varianceIsZero = variance == 0;
+    final varianceColor =
+        variance >= 0 ? context.kashColors.income : context.kashColors.expense;
+    final variancePrefix = variance > 0 ? '+' : '';
+    final unit = widget.item.unit;
+
+    return AlertDialog(
+      title: const Text('Physical Count'),
+      content: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.item.name,
+              style: context.textTheme.bodySmall
+                  ?.copyWith(color: context.colorScheme.outline),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: context.colorScheme.outline.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(AppSpacing.sm),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Book stock: ',
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: context.colorScheme.outline),
+                  ),
+                  Text(
+                    '${widget.item.stockQty.toStringAsFixed(widget.item.stockQty % 1 == 0 ? 0 : 1)} $unit',
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _ctrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Actual count ($unit)',
+                border: const OutlineInputBorder(),
+              ),
+              autofocus: true,
+              onChanged: (v) => setState(() {
+                _actualQty = double.tryParse(v);
+              }),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Enter a quantity';
+                final n = double.tryParse(v);
+                if (n == null || n < 0) return 'Enter a valid number';
+                return null;
+              },
+            ),
+            if (_actualQty != null) ...[              
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Text(
+                    'Variance: ',
+                    style: context.textTheme.bodySmall
+                        ?.copyWith(color: context.colorScheme.outline),
+                  ),
+                  Text(
+                    varianceIsZero
+                        ? 'No change'
+                        : '$variancePrefix${variance.toStringAsFixed(variance % 1 == 0 ? 0 : 1)} $unit',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: varianceIsZero
+                          ? context.colorScheme.outline
+                          : varianceColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.md),
+            TextFormField(
+              controller: _notesCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Notes (optional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 1,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (!_form.currentState!.validate()) return;
+            final qty = double.parse(_ctrl.text);
+            final notes = _notesCtrl.text.trim().isEmpty
+                ? null
+                : _notesCtrl.text.trim();
+            Navigator.pop(context, (qty, notes));
+          },
+          child: const Text('Confirm Count'),
+        ),
+      ],
+    );
+  }
+}
 // ── Movements history sheet ────────────────────────────────────────────────────
 
 class _MovementsSheet extends ConsumerWidget {
@@ -591,7 +784,9 @@ class _MovementsSheet extends ConsumerWidget {
                         radius: 18,
                         backgroundColor: color.withValues(alpha: 0.1),
                         child: Icon(
-                          isIn ? Icons.add : Icons.remove,
+                          m.movementType == StockMovementType.physicalCount
+                              ? Icons.fact_check_outlined
+                              : (isIn ? Icons.add : Icons.remove),
                           color: color,
                           size: 18,
                         ),

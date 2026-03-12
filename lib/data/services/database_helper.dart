@@ -1051,14 +1051,16 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)');
 
-    // -- item_stock table (DB v55) — per-business stock levels
+    // -- item_stock table (DB v55 + v56) — per-business stock levels
     await db.execute('''
       CREATE TABLE IF NOT EXISTS item_stock (
-        business_id INTEGER NOT NULL REFERENCES businesses(id),
-        item_id     INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
+        business_id         INTEGER NOT NULL REFERENCES businesses(id),
+        item_id             INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
         stock_qty           REAL    NOT NULL DEFAULT 0,
         low_stock_threshold REAL    NOT NULL DEFAULT 5,
         track_inventory     INTEGER NOT NULL DEFAULT 0,
+        last_counted_qty    REAL,
+        last_counted_at     TEXT,
         PRIMARY KEY (business_id, item_id)
       )
     ''');
@@ -2602,6 +2604,17 @@ class DatabaseHelper {
         'version': 55,
         'description':
             'Per-business inventory: item_stock table, business_id on stock_movements, backfill from item_catalog',
+      });
+    }
+    if (oldVersion < 56) {
+      await db.execute(
+          'ALTER TABLE item_stock ADD COLUMN last_counted_qty REAL');
+      await db.execute(
+          'ALTER TABLE item_stock ADD COLUMN last_counted_at TEXT');
+      await db.insert('schema_version', {
+        'version': 56,
+        'description':
+            'Physical count: last_counted_qty + last_counted_at on item_stock',
       });
     }
   }

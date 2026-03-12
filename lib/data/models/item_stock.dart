@@ -12,6 +12,8 @@ class ItemStock extends Equatable {
     this.stockQty = 0,
     this.lowStockThreshold = 5,
     this.trackInventory = false,
+    this.lastCountedQty,
+    this.lastCountedAt,
   });
 
   final int businessId;
@@ -19,6 +21,10 @@ class ItemStock extends Equatable {
   final double stockQty;
   final double lowStockThreshold;
   final bool trackInventory;
+  /// Quantity entered at the last physical stock count for this business.
+  final double? lastCountedQty;
+  /// When the last physical count was recorded.
+  final DateTime? lastCountedAt;
 
   bool get isLowStock => trackInventory && stockQty <= lowStockThreshold;
 
@@ -26,6 +32,8 @@ class ItemStock extends Equatable {
     double? stockQty,
     double? lowStockThreshold,
     bool? trackInventory,
+    double? lastCountedQty,
+    DateTime? lastCountedAt,
   }) =>
       ItemStock(
         businessId: businessId,
@@ -33,6 +41,8 @@ class ItemStock extends Equatable {
         stockQty: stockQty ?? this.stockQty,
         lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
         trackInventory: trackInventory ?? this.trackInventory,
+        lastCountedQty: lastCountedQty ?? this.lastCountedQty,
+        lastCountedAt: lastCountedAt ?? this.lastCountedAt,
       );
 
   Map<String, dynamic> toMap() => {
@@ -41,6 +51,9 @@ class ItemStock extends Equatable {
         'stock_qty': stockQty,
         'low_stock_threshold': lowStockThreshold,
         'track_inventory': trackInventory ? 1 : 0,
+        if (lastCountedQty != null) 'last_counted_qty': lastCountedQty,
+        if (lastCountedAt != null)
+          'last_counted_at': lastCountedAt!.toIso8601String(),
       };
 
   factory ItemStock.fromMap(Map<String, dynamic> map) => ItemStock(
@@ -50,9 +63,20 @@ class ItemStock extends Equatable {
         lowStockThreshold:
             (map['low_stock_threshold'] as num?)?.toDouble() ?? 5,
         trackInventory: (map['track_inventory'] as int?) == 1,
+        lastCountedQty: (map['last_counted_qty'] as num?)?.toDouble(),
+        lastCountedAt: map['last_counted_at'] != null
+            ? DateTime.parse(map['last_counted_at'] as String)
+            : null,
       );
 
   @override
-  List<Object?> get props =>
-      [businessId, itemId, stockQty, lowStockThreshold, trackInventory];
+  List<Object?> get props => [
+        businessId,
+        itemId,
+        stockQty,
+        lowStockThreshold,
+        trackInventory,
+        lastCountedQty,
+        lastCountedAt,
+      ];
 }

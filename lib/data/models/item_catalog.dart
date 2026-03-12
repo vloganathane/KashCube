@@ -36,6 +36,8 @@ class ItemCatalog extends Equatable {
     this.trackInventory = false,
     this.stockQty = 0,
     this.lowStockThreshold = 5,
+    this.lastCountedQty,
+    this.lastCountedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -62,6 +64,10 @@ class ItemCatalog extends Equatable {
   final bool trackInventory;
   final double stockQty;
   final double lowStockThreshold;
+  /// Quantity recorded at the last physical count for this business (read-only overlay from item_stock).
+  final double? lastCountedQty;
+  /// When the last physical count was recorded.
+  final DateTime? lastCountedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -88,6 +94,8 @@ class ItemCatalog extends Equatable {
     bool? trackInventory,
     double? stockQty,
     double? lowStockThreshold,
+    double? lastCountedQty,
+    DateTime? lastCountedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -112,6 +120,8 @@ class ItemCatalog extends Equatable {
       trackInventory: trackInventory ?? this.trackInventory,
       stockQty: stockQty ?? this.stockQty,
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
+      lastCountedQty: lastCountedQty ?? this.lastCountedQty,
+      lastCountedAt: lastCountedAt ?? this.lastCountedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -168,6 +178,10 @@ class ItemCatalog extends Equatable {
         trackInventory: (map['track_inventory'] as int?) == 1,
         stockQty: (map['stock_qty'] as num?)?.toDouble() ?? 0,
         lowStockThreshold: (map['low_stock_threshold'] as num?)?.toDouble() ?? 5,
+        lastCountedQty: (map['last_counted_qty'] as num?)?.toDouble(),
+        lastCountedAt: map['last_counted_at'] != null
+            ? DateTime.parse(map['last_counted_at'] as String)
+            : null,
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
@@ -194,6 +208,8 @@ class ItemCatalog extends Equatable {
         trackInventory,
         stockQty,
         lowStockThreshold,
+        lastCountedQty,
+        lastCountedAt,
         createdAt,
         updatedAt,
       ];

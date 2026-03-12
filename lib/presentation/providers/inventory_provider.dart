@@ -54,6 +54,21 @@ class InventoryNotifier
         businessId: _businessId);
     await load();
   }
+
+  Future<void> recordPhysicalCount(
+    int itemId,
+    double actualQty, {
+    String? notes,
+  }) async {
+    if (_businessId == null) return;
+    await _inventoryService.recordPhysicalCount(
+      itemId,
+      actualQty,
+      notes: notes,
+      businessId: _businessId,
+    );
+    await load();
+  }
 }
 
 final inventoryProvider = StateNotifierProvider.autoDispose

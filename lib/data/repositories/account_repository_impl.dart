@@ -6,14 +6,25 @@ import '../../domain/repositories/account_repository.dart';
 
 /// SQLite implementation of [AccountRepository].
 class AccountRepositoryImpl implements AccountRepository {
-  final Future<Database> _db = DatabaseHelper.instance.database;
+  AccountRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
+      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+
+  final DatabaseHelper _dbHelper;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
+
+  Future<Database> get _db => _dbHelper.database;
 
   @override
   Future<List<Account>> getAll({bool activeOnly = true}) async {
     final db = await _db;
     final rows = await db.query(
       'accounts',
-      where: activeOnly ? 'is_active = 1 AND deleted_at IS NULL' : 'deleted_at IS NULL',
+      where: activeOnly ? 'is_active = 1 AND deleted_at IS NULL AND $_ctx' : 'deleted_at IS NULL AND $_ctx',
       orderBy: 'is_primary DESC, account_name ASC',
     );
     return rows.map((r) => Account.fromMap(Map<String, dynamic>.from(r))).toList();
@@ -30,7 +41,9 @@ class AccountRepositoryImpl implements AccountRepository {
   @override
   Future<int> insert(Account account) async {
     final db = await _db;
-    return db.insert('accounts', account.toMap());
+    final map = account.toMap();
+    map['context_id'] = contextId;
+    return db.insert('accounts', map);
   }
 
   @override

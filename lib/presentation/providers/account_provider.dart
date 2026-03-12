@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/account.dart';
 import '../../data/repositories/account_repository_impl.dart';
 import '../../domain/repositories/account_repository.dart';
+import 'context_provider.dart';
 
 final accountRepositoryProvider = Provider<AccountRepository>(
-  (_) => AccountRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return AccountRepositoryImpl(contextId: contextId);
+  },
 );
 
 /// Provides the list of active accounts.
 final accountsProvider =
     StateNotifierProvider<AccountsNotifier, AsyncValue<List<Account>>>(
-  (ref) => AccountsNotifier(ref.read(accountRepositoryProvider)),
+  (ref) => AccountsNotifier(ref.watch(accountRepositoryProvider)),
 );
 
 class AccountsNotifier extends StateNotifier<AsyncValue<List<Account>>> {

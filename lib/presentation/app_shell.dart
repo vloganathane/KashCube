@@ -29,6 +29,7 @@ import 'screens/parties/parties_screen.dart';
 import 'screens/settings/settings_screen.dart';
 import 'screens/transactions/add_edit_transaction_screen.dart';
 import 'screens/transactions/transactions_hub_screen.dart';
+import 'widgets/context_banner_widget.dart';
 import 'widgets/party_form_sheet.dart';
 import 'widgets/speed_dial_fab.dart';
 import 'widgets/sms_confirmation_sheet.dart';
@@ -340,6 +341,8 @@ class _AppShellState extends ConsumerState<AppShell> {
           const ReadOnlyModeBanner(),
           // Staff mode indicator: subtle top bar for non-owner-mirror secondaries.
           if (isStaffTerminal) _StaffModeBanner(session: session!),
+          // Context banner: shown when viewing a linked business session.
+          const ContextBannerWidget(),
           Expanded(
             child: IndexedStack(
               index: currentIndex,

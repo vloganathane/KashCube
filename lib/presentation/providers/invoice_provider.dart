@@ -12,11 +12,15 @@ import '../../data/services/invoice_number_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
 import 'business_provider.dart';
+import 'context_provider.dart';
 
 // ── Repository providers ─────────────────────────────────────────────────────
 
 final itemCatalogRepositoryProvider = Provider<ItemCatalogRepository>(
-  (_) => ItemCatalogRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return ItemCatalogRepositoryImpl(contextId: contextId);
+  },
 );
 
 final quoteRepositoryProvider = Provider<QuoteRepository>(
@@ -24,7 +28,10 @@ final quoteRepositoryProvider = Provider<QuoteRepository>(
 );
 
 final invoiceRepositoryProvider = Provider<InvoiceRepository>(
-  (ref) => InvoiceRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return InvoiceRepositoryImpl(contextId: contextId);
+  },
 );
 
 // ── Filter ───────────────────────────────────────────────────────────────────

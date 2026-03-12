@@ -3,12 +3,24 @@ import '../../data/services/database_helper.dart';
 import '../../domain/repositories/business_repository.dart';
 
 class BusinessRepositoryImpl implements BusinessRepository {
-  final _db = DatabaseHelper.instance;
+  BusinessRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
+      : _db = dbHelper ?? DatabaseHelper.instance;
+
+  final DatabaseHelper _db;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<Business>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query('businesses', orderBy: 'is_active DESC, name ASC');
+    final rows = await db.query(
+      'businesses',
+      where: _ctx,
+    );
     return rows.map(Business.fromMap).toList();
   }
 
@@ -17,7 +29,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final db = await _db.database;
     final rows = await db.query(
       'businesses',
-      where: 'is_active = 1',
+      where: 'is_active = 1 AND $_ctx',
       limit: 1,
     );
     return rows.isEmpty ? null : Business.fromMap(rows.first);
@@ -37,10 +49,12 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final now = DateTime.now().toIso8601String();
     return db.transaction((txn) async {
       if (setActive) {
-        await txn.update('businesses', {'is_active': 0});
+        await txn.update('businesses', {'is_active': 0},
+            where: _ctx);
       }
       return txn.insert('businesses', {
         ...business.toMap(),
+        'context_id': contextId,
         'is_active': setActive ? 1 : 0,
         'created_at': now,
         'updated_at': now,
@@ -72,7 +86,8 @@ class BusinessRepositoryImpl implements BusinessRepository {
   Future<void> setActive(int id) async {
     final db = await _db.database;
     await db.transaction((txn) async {
-      await txn.update('businesses', {'is_active': 0});
+      await txn.update('businesses', {'is_active': 0},
+          where: _ctx);
       await txn.update(
         'businesses',
         {'is_active': 1, 'updated_at': DateTime.now().toIso8601String()},

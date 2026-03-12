@@ -4,11 +4,17 @@ import '../services/database_helper.dart';
 
 /// SQLite implementation of [ScheduledPaymentRepository].
 class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
-  ScheduledPaymentRepositoryImpl([DatabaseHelper? dbHelper])
+  ScheduledPaymentRepositoryImpl([DatabaseHelper? dbHelper, this.contextId])
       : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
   static const _table = 'scheduled_payments';
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   // ── Read ──────────────────────────────────────────────────────────────────
 
@@ -17,7 +23,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL AND is_active = 1',
+      where: 'deleted_at IS NULL AND is_active = 1 AND $_ctx',
       orderBy: 'next_date ASC',
     );
     return rows.map(ScheduledPayment.fromMap).toList();
@@ -28,7 +34,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL AND is_active = 1 AND party_name = ?',
+      where: 'deleted_at IS NULL AND is_active = 1 AND $_ctx AND party_name = ?',
       whereArgs: [partyName],
       orderBy: 'next_date ASC',
     );
@@ -40,7 +46,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL AND is_active = 1 AND bill_context = ?',
+      where: 'deleted_at IS NULL AND is_active = 1 AND $_ctx AND bill_context = ?',
       whereArgs: [context],
       orderBy: 'next_date ASC',
     );
@@ -71,7 +77,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final rows = await db.query(
       _table,
       where:
-          'deleted_at IS NULL AND is_active = 1 AND auto_create = 1 AND next_date <= ?',
+          'deleted_at IS NULL AND is_active = 1 AND $_ctx AND auto_create = 1 AND next_date <= ?',
       whereArgs: [now],
     );
     return rows.map(ScheduledPayment.fromMap).toList();
@@ -94,7 +100,9 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
   @override
   Future<int> insert(ScheduledPayment payment) async {
     final db = await _db.database;
-    return db.insert(_table, payment.toMap());
+    final map = payment.toMap();
+    map['context_id'] = contextId;
+    return db.insert(_table, map);
   }
 
   @override

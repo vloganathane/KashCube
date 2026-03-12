@@ -8,15 +8,26 @@ import '../services/database_helper.dart';
 class TransactionRepositoryImpl implements TransactionRepository {
   final DatabaseHelper _dbHelper;
 
-  TransactionRepositoryImpl({DatabaseHelper? dbHelper})
+  /// The active context for data isolation.
+  /// - null  → personal (owner's own data)
+  /// - int N → linked_business_sessions.id
+  final int? contextId;
+
+  TransactionRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
       : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+
+  /// SQL fragment that constrains rows to the active context.
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   Future<Database> get _db => _dbHelper.database;
 
   @override
   Future<int> insert(Transaction transaction) async {
     final db = await _db;
-    return db.insert('transactions', transaction.toMap());
+    final map = transaction.toMap();
+    map['context_id'] = contextId;
+    return db.insert('transactions', map);
   }
 
   @override
@@ -61,7 +72,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL',
+      where: 'deleted_at IS NULL AND $_ctx',
       orderBy: 'date DESC, created_at DESC',
       limit: limit,
       offset: offset,
@@ -74,7 +85,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND date >= ? AND date <= ?',
+      where: 'deleted_at IS NULL AND $_ctx AND date >= ? AND date <= ?',
       whereArgs: [start.toIso8601String(), end.toIso8601String()],
       orderBy: 'date DESC',
     );
@@ -86,7 +97,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND category = ?',
+      where: 'deleted_at IS NULL AND $_ctx AND category = ?',
       whereArgs: [category],
       orderBy: 'date DESC',
       limit: limit,
@@ -103,7 +114,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.rawQuery(
       "SELECT * FROM transactions "
-      "WHERE deleted_at IS NULL AND category = ? "
+      "WHERE deleted_at IS NULL AND $_ctx AND category = ? "
       "AND date >= ? AND date <= ? "
       "ORDER BY date DESC",
       [category, start.toIso8601String(), end.toIso8601String()],
@@ -118,7 +129,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND type = ?',
+      where: 'deleted_at IS NULL AND $_ctx AND type = ?',
       whereArgs: [type.dbValue],
       orderBy: 'date DESC',
       limit: limit,
@@ -132,7 +143,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final pattern = '%$query%';
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND (party_name LIKE ? OR notes LIKE ? OR category LIKE ?)',
+      where: 'deleted_at IS NULL AND $_ctx AND (party_name LIKE ? OR notes LIKE ? OR category LIKE ?)',
       whereArgs: [pattern, pattern, pattern],
       orderBy: 'date DESC',
       limit: 50,
@@ -145,7 +156,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type = 'invested' "
+      "WHERE deleted_at IS NULL AND $_ctx AND type = 'invested' "
       "AND date >= ? AND date <= ?",
       [start.toIso8601String(), end.toIso8601String()],
     );
@@ -157,7 +168,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type = 'redeemed' "
+      "WHERE deleted_at IS NULL AND $_ctx AND type = 'redeemed' "
       "AND date >= ? AND date <= ?",
       [start.toIso8601String(), end.toIso8601String()],
     );
@@ -171,7 +182,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SELECT "
       "COALESCE(SUM(CASE WHEN type = 'invested' THEN amount ELSE 0 END), 0) AS invested, "
       "COALESCE(SUM(CASE WHEN type = 'redeemed' THEN amount ELSE 0 END), 0) AS redeemed "
-      "FROM transactions WHERE deleted_at IS NULL",
+      "FROM transactions WHERE deleted_at IS NULL AND $_ctx",
     );
     return (
       invested: (rows.first['invested'] as num).toDouble(),
@@ -187,7 +198,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('income', 'received_back', 'redeemed') "
+      "WHERE deleted_at IS NULL AND $_ctx AND type IN ('income', 'received_back', 'redeemed') "
       "AND date >= ? AND date <= ? $modeClause",
       args,
     );
@@ -202,7 +213,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(amount), 0) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('expense', 'paid_back') "
+      "WHERE deleted_at IS NULL AND $_ctx AND type IN ('expense', 'paid_back') "
       "AND date >= ? AND date <= ? $modeClause",
       args,
     );
@@ -217,7 +228,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
+      "WHERE deleted_at IS NULL AND $_ctx AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
       args,
     );
@@ -233,7 +244,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('income', 'received_back', 'redeemed') "
+      "WHERE deleted_at IS NULL AND $_ctx AND type IN ('income', 'received_back', 'redeemed') "
       "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
       args,
@@ -250,7 +261,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     if (mode != null) args.add(mode);
     final rows = await db.rawQuery(
       "SELECT category, SUM(amount) as total FROM transactions "
-      "WHERE deleted_at IS NULL AND type IN ('expense', 'paid_back') "
+      "WHERE deleted_at IS NULL AND $_ctx AND type IN ('expense', 'paid_back') "
       "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY category ORDER BY total DESC",
       args,
@@ -269,7 +280,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as income, "
       "SUM(CASE WHEN type IN ('expense', 'paid_back') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
+      "WHERE deleted_at IS NULL AND $_ctx AND date >= ? AND date <= ? $modeClause"
       "GROUP BY day ORDER BY day",
       args,
     );
@@ -297,7 +308,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SUM(CASE WHEN type IN ('income', 'received_back', 'redeemed') THEN amount ELSE 0 END) as income, "
       "SUM(CASE WHEN type IN ('expense', 'paid_back') THEN amount ELSE 0 END) as expense "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? $modeClause"
+      "WHERE deleted_at IS NULL AND $_ctx AND date >= ? $modeClause"
       "GROUP BY yr, mo ORDER BY yr, mo",
       args,
     );
@@ -330,7 +341,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back') "
       "  THEN amount ELSE 0 END), 0) as expense_total "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND party_name IS NOT NULL AND party_name != '' "
+      "WHERE deleted_at IS NULL AND $_ctx AND party_name IS NOT NULL AND party_name != '' "
       "AND date >= ? AND date <= ? $modeClause"
       "GROUP BY party_name ORDER BY total DESC LIMIT ?",
       args,
@@ -382,7 +393,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SUM(CASE WHEN t.mode = 'business' THEN 1 ELSE 0 END) as business_cnt "
       "FROM transactions t "
       "LEFT JOIN parties p ON LOWER(TRIM(p.name)) = LOWER(TRIM(t.party_name)) "
-      "WHERE t.deleted_at IS NULL AND t.party_name IS NOT NULL AND t.party_name != '' "
+      "WHERE t.deleted_at IS NULL AND t.$_ctx AND t.party_name IS NOT NULL AND t.party_name != '' "
       "AND t.type != 'transfer' "
       "GROUP BY LOWER(TRIM(t.party_name)) "
       "ORDER BY MAX(t.date) DESC",
@@ -413,7 +424,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     // Return ALL transaction types for this party (full khata view).
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND LOWER(TRIM(party_name)) = LOWER(TRIM(?))',
+      where: 'deleted_at IS NULL AND $_ctx AND LOWER(TRIM(party_name)) = LOWER(TRIM(?))',
       whereArgs: [partyName],
       orderBy: 'date ASC',  // ascending for running-balance chronology
     );
@@ -427,7 +438,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SELECT "
       "COALESCE(SUM(CASE WHEN type = 'lent' THEN amount ELSE 0 END), 0) - "
       "COALESCE(SUM(CASE WHEN type = 'received_back' THEN amount ELSE 0 END), 0) as net "
-      "FROM transactions WHERE deleted_at IS NULL",
+      "FROM transactions WHERE deleted_at IS NULL AND $_ctx",
     );
     return (rows.first['net'] as num).toDouble();
   }
@@ -439,7 +450,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "SELECT "
       "COALESCE(SUM(CASE WHEN type = 'borrowed' THEN amount ELSE 0 END), 0) - "
       "COALESCE(SUM(CASE WHEN type = 'paid_back' THEN amount ELSE 0 END), 0) as net "
-      "FROM transactions WHERE deleted_at IS NULL",
+      "FROM transactions WHERE deleted_at IS NULL AND $_ctx",
     );
     return (rows.first['net'] as num).toDouble();
   }
@@ -453,7 +464,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.rawQuery(
       "SELECT * FROM transactions "
-      "WHERE deleted_at IS NULL AND type != 'transfer' "
+      "WHERE deleted_at IS NULL AND $_ctx AND type != 'transfer' "
       "AND date >= ? AND date <= ? "
       "ORDER BY amount DESC LIMIT ?",
       [start.toIso8601String(), end.toIso8601String(), limit],
@@ -480,7 +491,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back','lent') "
       "  THEN amount ELSE 0 END), 0) AS outflow "
       "FROM transactions "
-      "WHERE deleted_at IS NULL AND date >= ? AND date <= ? $modeClause"
+      "WHERE deleted_at IS NULL AND $_ctx AND date >= ? AND date <= ? $modeClause"
       "GROUP BY payment_method",
       args,
     );
@@ -512,7 +523,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back','lent') "
       "  THEN amount ELSE 0 END), 0) AS outflow "
       "FROM transactions "
-      "WHERE deleted_at IS NULL "
+      "WHERE deleted_at IS NULL AND $_ctx "
       "GROUP BY payment_method",
     );
     return {
@@ -540,7 +551,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final rows = await db.query(
       'transactions',
-      where: 'party_id = ? AND deleted_at IS NULL',
+      where: 'party_id = ? AND deleted_at IS NULL AND $_ctx',
       whereArgs: [partyId],
       orderBy: 'date DESC',
     );
@@ -556,6 +567,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final whereParts = <String>[
       'deleted_at IS NULL',
+      _ctx,
       "category IN ('Payroll', 'Payroll Deduction')",
       'party_id = ?',
     ];

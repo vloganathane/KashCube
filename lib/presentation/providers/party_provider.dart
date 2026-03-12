@@ -5,13 +5,17 @@ import '../../data/models/transaction.dart';
 import '../../data/repositories/party_repository_impl.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/party_repository.dart';
+import 'context_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Repository
 // ---------------------------------------------------------------------------
 
 final partyRepositoryProvider = Provider<PartyRepository>(
-  (_) => PartyRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return PartyRepositoryImpl(null, contextId);
+  },
 );
 
 // ---------------------------------------------------------------------------
@@ -20,7 +24,7 @@ final partyRepositoryProvider = Provider<PartyRepository>(
 
 final partiesProvider =
     StateNotifierProvider<PartiesNotifier, AsyncValue<List<Party>>>(
-  (ref) => PartiesNotifier(ref.read(partyRepositoryProvider)),
+  (ref) => PartiesNotifier(ref.watch(partyRepositoryProvider)),
 );
 
 class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {

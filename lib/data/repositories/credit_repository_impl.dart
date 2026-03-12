@@ -5,10 +5,16 @@ import '../services/database_helper.dart';
 import '../../domain/repositories/credit_repository.dart';
 
 class CreditRepositoryImpl implements CreditRepository {
-  CreditRepositoryImpl([DatabaseHelper? helper])
+  CreditRepositoryImpl([DatabaseHelper? helper, this.contextId])
       : _db = helper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   static const _table = 'credits';
 
@@ -19,7 +25,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL',
+      where: 'deleted_at IS NULL AND $_ctx',
       orderBy: 'credit_date DESC',
     );
     return rows.map(Credit.fromMap).toList();
@@ -30,7 +36,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'is_cleared = 0 AND deleted_at IS NULL',
+      where: 'is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       orderBy: 'credit_date DESC',
     );
     return rows.map(Credit.fromMap).toList();
@@ -41,7 +47,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'business_id IS NULL AND is_cleared = 0 AND deleted_at IS NULL',
+      where: 'business_id IS NULL AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       orderBy: 'credit_date DESC',
     );
     return rows.map(Credit.fromMap).toList();
@@ -52,7 +58,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'business_id = ? AND is_cleared = 0 AND deleted_at IS NULL',
+      where: 'business_id = ? AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       whereArgs: [businessId],
       orderBy: 'credit_date DESC',
     );
@@ -64,7 +70,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'customer_name = ? AND deleted_at IS NULL',
+      where: 'customer_name = ? AND deleted_at IS NULL AND $_ctx',
       whereArgs: [partyName],
       orderBy: 'credit_date DESC',
     );
@@ -77,7 +83,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final rows = await db.query(
       _table,
       where:
-          'direction = ? AND is_cleared = 0 AND deleted_at IS NULL',
+          'direction = ? AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       whereArgs: [direction.dbValue],
       orderBy: 'credit_date DESC',
     );
@@ -90,7 +96,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final rows = await db.query(
       _table,
       where:
-          'is_cleared = 0 AND deleted_at IS NULL AND due_date < ? AND due_date IS NOT NULL',
+          'is_cleared = 0 AND deleted_at IS NULL AND $_ctx AND due_date < ? AND due_date IS NOT NULL',
       whereArgs: [DateTime.now().toIso8601String()],
       orderBy: 'due_date ASC',
     );
@@ -104,7 +110,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(pending_amount), 0) AS total FROM $_table "
-      "WHERE direction = 'given' AND is_cleared = 0 AND deleted_at IS NULL",
+      "WHERE direction = 'given' AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx",
     );
     return (result.first['total'] as num?)?.toDouble() ?? 0;
   }
@@ -114,7 +120,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(pending_amount), 0) AS total FROM $_table "
-      "WHERE direction = 'received' AND is_cleared = 0 AND deleted_at IS NULL",
+      "WHERE direction = 'received' AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx",
     );
     return (result.first['total'] as num?)?.toDouble() ?? 0;
   }
@@ -125,7 +131,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final result = await db.rawQuery(
       "SELECT COALESCE(SUM(pending_amount), 0) AS total FROM $_table "
       "WHERE direction = 'given' AND business_id IS NULL "
-      "AND is_cleared = 0 AND deleted_at IS NULL",
+      "AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx",
     );
     return (result.first['total'] as num?)?.toDouble() ?? 0;
   }
@@ -142,7 +148,7 @@ class CreditRepositoryImpl implements CreditRepository {
         SUM(CASE WHEN direction = 'received' THEN pending_amount ELSE 0 END) AS pending_received,
         COUNT(*) AS active_count
       FROM $_table
-      WHERE is_cleared = 0 AND deleted_at IS NULL
+      WHERE is_cleared = 0 AND deleted_at IS NULL AND $_ctx
       GROUP BY customer_name
       ORDER BY pending_given DESC
     ''');
@@ -160,7 +166,7 @@ class CreditRepositoryImpl implements CreditRepository {
   Future<List<String>> getPartyNames() async {
     final db = await _db.database;
     final rows = await db.rawQuery(
-      'SELECT DISTINCT customer_name FROM $_table WHERE deleted_at IS NULL ORDER BY customer_name',
+      'SELECT DISTINCT customer_name FROM $_table WHERE deleted_at IS NULL AND $_ctx ORDER BY customer_name',
     );
     return rows.map((r) => r['customer_name'] as String).toList();
   }
@@ -170,7 +176,9 @@ class CreditRepositoryImpl implements CreditRepository {
   @override
   Future<int> insert(Credit credit) async {
     final db = await _db.database;
-    return db.insert(_table, credit.toMap());
+    final map = credit.toMap();
+    map['context_id'] = contextId;
+    return db.insert(_table, map);
   }
 
   @override
@@ -235,7 +243,7 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'customer_id = ? AND deleted_at IS NULL',
+      where: 'customer_id = ? AND deleted_at IS NULL AND $_ctx',
       whereArgs: [partyId],
       orderBy: 'is_cleared ASC, credit_date DESC',
     );

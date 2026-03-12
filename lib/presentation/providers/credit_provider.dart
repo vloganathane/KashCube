@@ -3,10 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/credit.dart';
 import '../../data/repositories/credit_repository_impl.dart';
 import '../../domain/repositories/credit_repository.dart';
+import 'context_provider.dart';
 
 /// Repository provider for credits / udhar.
+/// Rebuilds automatically when [activeContextProvider] changes.
 final creditRepositoryProvider = Provider<CreditRepository>(
-  (ref) => CreditRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return CreditRepositoryImpl(null, contextId);
+  },
 );
 
 // ── All active credits ─────────────────────────────────────────────────────
@@ -14,7 +19,7 @@ final creditRepositoryProvider = Provider<CreditRepository>(
 /// All active (not cleared, not deleted) credits.
 final activeCreditsProvider =
     StateNotifierProvider<CreditsNotifier, AsyncValue<List<Credit>>>(
-  (ref) => CreditsNotifier(ref.read(creditRepositoryProvider)),
+  (ref) => CreditsNotifier(ref.watch(creditRepositoryProvider)),
 );
 
 class CreditsNotifier extends StateNotifier<AsyncValue<List<Credit>>> {

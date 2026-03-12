@@ -8,6 +8,7 @@ import '../../data/models/party_financial_summary.dart';
 import '../../data/models/party_reminder.dart';
 import '../../data/models/transaction.dart';
 import 'booking_provider.dart';
+import 'context_provider.dart';
 import 'credit_provider.dart';
 import 'invoice_provider.dart';
 import 'loan_provider.dart';
@@ -19,6 +20,8 @@ import 'transaction_provider.dart';
 /// Parameterised by party ID.
 final partyFinancialSummaryProvider =
     FutureProvider.family<PartyFinancialSummary, int>((ref, partyId) async {
+  // Re-evaluate whenever the active context switches.
+  ref.watch(activeContextProvider);
   // Step 1 – fetch party to get name (needed for reminder lookup which is name-based)
   final party = await ref.read(partyRepositoryProvider).getById(partyId);
   if (party == null) throw Exception('Party $partyId not found');

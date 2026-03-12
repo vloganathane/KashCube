@@ -336,55 +336,46 @@ final permissionProvider = Provider.family<Permission, ({String module, int? bus
 ---
 
 ## Sprint 6 — v63: Phase D2 (Context Layer)
-**Status: NOT STARTED**  
+**Status: COMPLETE ✅**  
 **Estimate:** 7–10 days (touches all repositories)  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D2
 
 ### Tasks
 
-#### S6.1 — DB migration v63
+#### S6.1 — DB migration v63 ✅
 - `ALTER TABLE <all 13 syncable tables> ADD COLUMN context_id INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE`
 - All existing rows: `context_id` = NULL (personal context — backward compatible)
 - No backfill needed (NULL is correct default for personal context)
 
-#### S6.2 — `activeContextProvider`
+#### S6.2 — `activeContextProvider` ✅
 ```dart
 final activeContextProvider = StateProvider<int?>((ref) => null);
 // null = personal context; N = linked_business_sessions.id
 ```
 
-#### S6.3 — All repository methods: add `contextId` parameter
-```dart
-// Signature change for all read methods:
-Future<List<Transaction>> getAll({int? businessId, int? contextId = _kPersonal});
-// _kPersonal is the sentinel meaning "contextId IS NULL"
-```
+#### S6.3 — Repository impls: constructor-level `contextId` ✅
+- Architecture choice: `contextId` baked into impl constructors (not per-method)
+- `String get _ctx => contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';`
+- All 9 repo impls updated: Transaction, Credit, Party, Account, Business, ScheduledPayment, ItemCatalog, PurchaseBill, Invoice
 
-Repositories to update:
-- `TransactionRepository`
-- `CreditRepository`
-- `InvoiceRepository`
-- `PartyRepository`
-- `AccountRepository`
-- `ItemCatalogRepository`
-- `ScheduledPaymentRepository`
-- `PurchaseBillRepository`
-- `BusinessRepository`
+#### S6.4 — All providers pass `activeContextProvider` to repo impls ✅
+- All 8 `*repositoryProvider`s watch `activeContextProvider` → create impl with contextId
+- Report provider: all `TransactionRepositoryImpl()` replaced with context-aware version
+- Cascade FutureProviders (cash_flow, party_financial, business_flow): sentinel added
 
-#### S6.4 — All screens pass `activeContextProvider` to their providers
-
-#### S6.5 — `ContextSwitcherWidget`
+#### S6.5 — `ContextSwitcherWidget` ✅
 - App bar dropdown showing personal + active sessions
-- `LinkedSessionsListProvider` — list of non-revoked `linked_business_sessions`
+- `linkedSessionsProvider` — list of non-revoked `linked_business_sessions`
 - Tap item → sets `activeContextProvider`
 
-#### S6.6 — `ContextBannerWidget`
-- Subtle persistent banner when in linked session context
-- "🏪 [Business Name]" with sync status dot
+#### S6.6 — `ContextBannerWidget` ✅
+- Amber persistent banner when in linked session context
+- "[Business Name]" with lock icon if read-only + "Personal" tap to exit
+- Integrated into `AppShell` Column body
 
-#### S6.7 — Empty state for linked session contexts
-- "Waiting for first sync with [Business Name]"
-- Shown when context has no data yet
+#### S6.7 — Empty state for linked session contexts ✅
+- Transactions, Credits, Parties screens: context-aware empty messages
+- "No transactions/dues/contacts from [Business Name] yet"
 
 ---
 

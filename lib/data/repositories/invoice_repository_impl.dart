@@ -175,14 +175,22 @@ class QuoteRepositoryImpl implements QuoteRepository {
 // ---------------------------------------------------------------------------
 
 class InvoiceRepositoryImpl implements InvoiceRepository {
-  InvoiceRepositoryImpl();
+  InvoiceRepositoryImpl({this.contextId});
 
   final _db = DatabaseHelper.instance;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<Invoice>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query('invoices', orderBy: 'created_at DESC');
+    final rows = await db.query('invoices',
+        where: _ctx,
+        orderBy: 'created_at DESC');
     return _withItems(db, rows);
   }
 
@@ -190,7 +198,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   Future<List<Invoice>> getByStatus(InvoiceStatus status) async {
     final db = await _db.database;
     final rows = await db.query('invoices',
-        where: 'status = ?',
+        where: '$_ctx AND status = ?',
         whereArgs: [status.dbValue],
         orderBy: 'created_at DESC');
     return _withItems(db, rows);
@@ -200,7 +208,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   Future<List<Invoice>> getByCustomer(String customerName) async {
     final db = await _db.database;
     final rows = await db.query('invoices',
-        where: 'customer_name = ?',
+        where: '$_ctx AND customer_name = ?',
         whereArgs: [customerName],
         orderBy: 'issue_date DESC');
     return _withItems(db, rows);
@@ -235,7 +243,9 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   Future<int> insert(Invoice invoice, List<InvoiceItem> items) async {
     final db = await _db.database;
     return db.transaction((txn) async {
-      final id = await txn.insert('invoices', invoice.toMap());
+      final map = invoice.toMap();
+      map['context_id'] = contextId;
+      final id = await txn.insert('invoices', map);
       for (final item in items) {
         await txn.insert(
             'invoice_items', item.copyWith(invoiceId: id).toMap());
@@ -367,7 +377,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final db = await _db.database;
     final rows = await db.query(
       'invoices',
-      where: 'customer_party_id = ?',
+      where: '$_ctx AND customer_party_id = ?',
       whereArgs: [partyId],
       orderBy: 'issue_date DESC',
     );
@@ -393,7 +403,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final toStr = to.toIso8601String().substring(0, 10);
     final rows = await db.query(
       'invoices',
-      where: 'business_id = ? AND issue_date >= ? AND issue_date <= ?',
+      where: 'business_id = ? AND $_ctx AND issue_date >= ? AND issue_date <= ?',
       whereArgs: [businessId, fromStr, toStr],
       orderBy: 'issue_date ASC',
     );

@@ -6,6 +6,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/credit.dart';
+import '../../providers/context_provider.dart';
 import '../../providers/credit_provider.dart';
 import '../../widgets/party_picker_field.dart';
 
@@ -84,7 +85,20 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
               data: (all) {
                 final filtered = _applyFilter(all);
                 if (filtered.isEmpty) {
-                  return _EmptyState(filter: _filter);
+                  final activeId = ref.watch(activeContextProvider);
+                  String? linkedName;
+                  if (activeId != null) {
+                    final sessions =
+                        ref.watch(linkedSessionsProvider).valueOrNull ?? [];
+                    linkedName = sessions
+                        .where((s) => s.id == activeId)
+                        .firstOrNull
+                        ?.businessName;
+                  }
+                  return _EmptyState(
+                    filter: _filter,
+                    linkedBusinessName: linkedName,
+                  );
                 }
                 return ListView.separated(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
@@ -463,18 +477,24 @@ class _CreditTile extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.filter});
+  const _EmptyState({required this.filter, this.linkedBusinessName});
   final _CreditsFilter filter;
+  final String? linkedBusinessName;
 
   @override
   Widget build(BuildContext context) {
-    final msg = switch (filter) {
-      _CreditsFilter.all => 'No dues recorded yet.\nTap + to add one.',
-      _CreditsFilter.pendingGiven => 'No money lent out.',
-      _CreditsFilter.pendingReceived => 'You don\'t owe anyone right now.',
-      _CreditsFilter.overdue => 'No overdue entries.',
-      _CreditsFilter.cleared => 'No cleared entries yet.',
-    };
+    String msg;
+    if (linkedBusinessName != null && filter == _CreditsFilter.all) {
+      msg = 'No dues from $linkedBusinessName yet.';
+    } else {
+      msg = switch (filter) {
+        _CreditsFilter.all => 'No dues recorded yet.\nTap + to add one.',
+        _CreditsFilter.pendingGiven => 'No money lent out.',
+        _CreditsFilter.pendingReceived => 'You don\'t owe anyone right now.',
+        _CreditsFilter.overdue => 'No overdue entries.',
+        _CreditsFilter.cleared => 'No cleared entries yet.',
+      };
+    }
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),

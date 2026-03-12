@@ -5,6 +5,7 @@ import '../../data/models/scheduled_payment.dart';
 import '../../data/models/transaction.dart';
 import '../../data/repositories/scheduled_payment_repository_impl.dart';
 import '../../domain/repositories/scheduled_payment_repository.dart';
+import 'context_provider.dart';
 import 'transaction_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -13,7 +14,10 @@ import 'transaction_provider.dart';
 
 final scheduledPaymentRepositoryProvider =
     Provider<ScheduledPaymentRepository>(
-  (_) => ScheduledPaymentRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return ScheduledPaymentRepositoryImpl(null, contextId);
+  },
 );
 
 // ---------------------------------------------------------------------------

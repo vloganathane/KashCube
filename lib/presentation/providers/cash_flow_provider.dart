@@ -8,6 +8,7 @@ import '../../data/models/loan.dart';
 import '../../data/models/scheduled_payment.dart';
 import '../../data/models/transaction.dart';
 import 'booking_provider.dart';
+import 'context_provider.dart';
 import 'credit_provider.dart';
 import 'invoice_provider.dart';
 import 'loan_provider.dart';
@@ -33,6 +34,8 @@ import 'transaction_provider.dart';
 // (overdue → recorded → upcoming → projected).
 
 final cashFlowTimelineProvider = FutureProvider<List<CashFlowEvent>>((ref) async {
+  // Re-evaluate whenever the active context switches.
+  ref.watch(activeContextProvider);
   final now = DateTime.now();
   final cutoffPast = now.subtract(const Duration(days: 30));
 

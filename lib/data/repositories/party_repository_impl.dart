@@ -5,15 +5,23 @@ import '../../data/services/database_helper.dart';
 import '../../domain/repositories/party_repository.dart';
 
 class PartyRepositoryImpl implements PartyRepository {
-  PartyRepositoryImpl([DatabaseHelper? dbHelper])
+  PartyRepositoryImpl([DatabaseHelper? dbHelper, this.contextId])
       : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
+
   @override
   Future<int> insert(Party party) async {
     final db = await _db.database;
-    return db.insert('parties', party.toMap());
+    final map = party.toMap();
+    map['context_id'] = contextId;
+    return db.insert('parties', map);
   }
 
   @override
@@ -59,7 +67,7 @@ class PartyRepositoryImpl implements PartyRepository {
     final db = await _db.database;
     final rows = await db.query(
       'parties',
-      where: 'deleted_at IS NULL',
+      where: 'deleted_at IS NULL AND $_ctx',
       orderBy: 'name COLLATE NOCASE ASC',
     );
     return rows.map(Party.fromMap).toList();
@@ -70,7 +78,7 @@ class PartyRepositoryImpl implements PartyRepository {
     final db = await _db.database;
     final rows = await db.query(
       'parties',
-      where: 'deleted_at IS NULL AND party_type = ?',
+      where: 'deleted_at IS NULL AND $_ctx AND party_type = ?',
       whereArgs: [type.name],
       orderBy: 'name COLLATE NOCASE ASC',
     );
@@ -84,7 +92,7 @@ class PartyRepositoryImpl implements PartyRepository {
     final q = '%${query.trim()}%';
     final rows = await db.query(
       'parties',
-      where: 'deleted_at IS NULL AND (name LIKE ? OR phone_number LIKE ?)',
+      where: 'deleted_at IS NULL AND $_ctx AND (name LIKE ? OR phone_number LIKE ?)',
       whereArgs: [q, q],
       orderBy: 'name COLLATE NOCASE ASC',
     );
@@ -97,7 +105,7 @@ class PartyRepositoryImpl implements PartyRepository {
     final trimmed = name.trim();
     final rows = await db.query(
       'parties',
-      where: 'deleted_at IS NULL AND name = ? COLLATE NOCASE',
+      where: 'deleted_at IS NULL AND $_ctx AND name = ? COLLATE NOCASE',
       whereArgs: [trimmed],
       limit: 1,
     );
@@ -128,7 +136,7 @@ class PartyRepositoryImpl implements PartyRepository {
     final db = await _db.database;
     final rows = await db.query(
       'parties',
-      where: "deleted_at IS NULL AND party_type = 'staff'",
+      where: "deleted_at IS NULL AND $_ctx AND party_type = 'staff'",
       orderBy: 'name COLLATE NOCASE ASC',
     );
     return rows.map(Party.fromMap).toList();

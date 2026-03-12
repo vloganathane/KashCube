@@ -7,6 +7,7 @@ import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/transaction.dart';
+import '../../providers/context_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import 'add_edit_transaction_screen.dart';
@@ -405,6 +406,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Widget _buildEmptyState(bool noTransactions) {
+    final activeId = ref.watch(activeContextProvider);
+    String title;
+    String subtitle;
+    if (noTransactions && activeId != null) {
+      final sessions = ref.watch(linkedSessionsProvider).valueOrNull ?? [];
+      final match = sessions.where((s) => s.id == activeId).firstOrNull;
+      final name = match?.businessName ?? 'this business';
+      title = 'No transactions from $name yet';
+      subtitle = 'Sync to import data from this linked session';
+    } else if (noTransactions) {
+      title = 'No transactions yet';
+      subtitle = 'Tap + to add your first transaction';
+    } else {
+      title = 'No matching transactions';
+      subtitle = 'Try a different filter or search term';
+    }
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -418,16 +435,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           ),
           const SizedBox(height: AppSpacing.base),
           Text(
-            noTransactions ? 'No transactions yet' : 'No matching transactions',
+            title,
             style: context.textTheme.titleMedium?.copyWith(
               color: context.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            noTransactions
-                ? 'Tap + to add your first transaction'
-                : 'Try a different filter or search term',
+            subtitle,
             style: context.textTheme.bodyMedium?.copyWith(
               color: context.colorScheme.outline,
             ),

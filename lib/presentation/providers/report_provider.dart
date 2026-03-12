@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/transaction.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../data/services/fiscal_year_service.dart';
+import 'context_provider.dart';
 import '../../domain/repositories/transaction_repository.dart';
 
 /// Tracks which month the reports screen is displaying.
@@ -52,7 +53,8 @@ final monthlyPnLProvider =
   (ref) {
     final month = ref.watch(reportMonthProvider);
     final mode = ref.watch(reportModeProvider);
-    return MonthlyPnLNotifier(TransactionRepositoryImpl(), month, mode);
+    final contextId = ref.watch(activeContextProvider);
+    return MonthlyPnLNotifier(TransactionRepositoryImpl(contextId: contextId), month, mode);
   },
 );
 
@@ -113,7 +115,8 @@ class MonthlyPnLNotifier extends StateNotifier<AsyncValue<MonthlyPnL>> {
 final pnlForMonthProvider =
     FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {
   final mode = ref.watch(reportModeProvider);
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
   final results = await Future.wait([
@@ -133,7 +136,8 @@ final pnlForMonthProvider =
 final paymentMethodSplitProvider = FutureProvider.family<
     Map<String, ({double income, double expense})>, DateTime>((ref, month) async {
   final mode = ref.watch(reportModeProvider);
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
   return repo.getByPaymentMethod(start, end, mode: mode);
@@ -143,7 +147,8 @@ final paymentMethodSplitProvider = FutureProvider.family<
 /// Key is a record (String category, int year, int month).
 final categoryTransactionsProvider = FutureProvider.family<
     List<Transaction>, ({String category, int year, int month})>((ref, key) async {
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   final start = DateTime(key.year, key.month, 1);
   final end = DateTime(key.year, key.month + 1, 0, 23, 59, 59);
   return repo.getByCategoryInRange(key.category, start, end);
@@ -153,7 +158,8 @@ final categoryTransactionsProvider = FutureProvider.family<
 final ytdSummaryProvider =
     FutureProvider.family<MonthlyPnL, DateTime>((ref, month) async {
   final mode = ref.watch(reportModeProvider);
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   final start = DateTime(month.year, 1, 1);
   final end = DateTime(month.year, month.month + 1, 0, 23, 59, 59);
   final results = await Future.wait([
@@ -174,7 +180,8 @@ final monthlyTotalsProvider =
     StateNotifierProvider<MonthlyTotalsNotifier, AsyncValue<List<MonthlyTotal>>>(
   (ref) {
     final mode = ref.watch(reportModeProvider);
-    return MonthlyTotalsNotifier(TransactionRepositoryImpl(), mode);
+    final contextId = ref.watch(activeContextProvider);
+    return MonthlyTotalsNotifier(TransactionRepositoryImpl(contextId: contextId), mode);
   },
 );
 
@@ -182,7 +189,8 @@ final monthlyTotalsProvider =
 final monthlyTotalsForCountProvider =
     FutureProvider.family<List<MonthlyTotal>, int>((ref, count) async {
   final mode = ref.watch(reportModeProvider);
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   return repo.getMonthlyTotals(months: count, mode: mode);
 });
 
@@ -211,7 +219,8 @@ final dailyTotalsProvider =
   (ref) {
     final month = ref.watch(reportMonthProvider);
     final mode = ref.watch(reportModeProvider);
-    return DailyTotalsNotifier(TransactionRepositoryImpl(), month, mode);
+    final contextId = ref.watch(activeContextProvider);
+    return DailyTotalsNotifier(TransactionRepositoryImpl(contextId: contextId), month, mode);
   },
 );
 
@@ -298,7 +307,8 @@ final reportPeriodLabelProvider = FutureProvider<String>((ref) async {
 final fyPnLProvider = FutureProvider<MonthlyPnL>((ref) async {
   final range = await ref.watch(reportActiveDateRangeProvider.future);
   final mode = ref.watch(reportModeProvider);
-  final repo = TransactionRepositoryImpl();
+  final contextId = ref.watch(activeContextProvider);
+  final repo = TransactionRepositoryImpl(contextId: contextId);
   final results = await Future.wait([
     repo.getTotalIncome(range.start, range.end, mode: mode),
     repo.getTotalExpense(range.start, range.end, mode: mode),

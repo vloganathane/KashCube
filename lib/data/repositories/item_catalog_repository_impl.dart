@@ -5,7 +5,15 @@ import '../../data/services/database_helper.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
 
 class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
+  ItemCatalogRepositoryImpl({this.contextId});
+
   final _dbHelper = DatabaseHelper.instance;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'ic.context_id IS NULL' : 'ic.context_id = $contextId';
 
   /// Columns from [item_catalog] that are not overridden by [item_stock].
   static const _catalogCols = '''
@@ -28,6 +36,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
     final args = <dynamic>[];
 
     if (activeOnly) conditions.add('ic.is_active = 1');
+    conditions.add(_ctx);
 
     if (category != null) {
       conditions.add('ic.category = ?');
@@ -88,7 +97,12 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   @override
   Future<int> insert(ItemCatalog item, {int? activeBusinessId}) async {
     final db = await _dbHelper.database;
-    final id = await db.insert('item_catalog', item.toMap());
+    final map = item.toMap();
+    // context_id on item_catalog is the row's context (not business context)
+    if (!map.containsKey('context_id') || map['context_id'] == null) {
+      map['context_id'] = contextId;
+    }
+    final id = await db.insert('item_catalog', map);
     if (activeBusinessId != null) {
       await _upsertItemStock(
         db,

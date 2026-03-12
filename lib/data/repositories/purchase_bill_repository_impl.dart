@@ -3,7 +3,15 @@ import '../../data/services/database_helper.dart';
 import '../../domain/repositories/purchase_bill_repository.dart';
 
 class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
+  PurchaseBillRepositoryImpl({this.contextId});
+
   final _db = DatabaseHelper.instance;
+
+  /// The active context for data isolation.
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   // ── helpers ─────────────────────────────────────────────────────────────
 
@@ -29,10 +37,9 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
     final db = await _db.database;
     return db.transaction((txn) async {
       final now = DateTime.now();
-      final id = await txn.insert(
-        'purchase_bills',
-        bill.copyWith(createdAt: now, updatedAt: now).toMap(),
-      );
+      final map = bill.copyWith(createdAt: now, updatedAt: now).toMap();
+      map['context_id'] = contextId;
+      final id = await txn.insert('purchase_bills', map);
       for (final item in items) {
         await txn.insert(
           'purchase_bill_items',
@@ -91,7 +98,7 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
     final db = await _db.database;
     final rows = await db.query(
       'purchase_bills',
-      where: 'business_id = ?',
+      where: 'business_id = ? AND $_ctx',
       whereArgs: [businessId],
       orderBy: 'bill_date DESC',
     );
@@ -113,7 +120,7 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
     final db = await _db.database;
     final rows = await db.query(
       'purchase_bills',
-      where: 'business_id = ? AND bill_date >= ? AND bill_date <= ?',
+      where: 'business_id = ? AND $_ctx AND bill_date >= ? AND bill_date <= ?',
       whereArgs: [
         businessId,
         from.toIso8601String().substring(0, 10),
@@ -135,7 +142,7 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
     final db = await _db.database;
     final rows = await db.query(
       'purchase_bills',
-      where: "business_id = ? AND status IN ('unpaid', 'partially_paid')",
+      where: "business_id = ? AND $_ctx AND status IN ('unpaid', 'partially_paid')",
       whereArgs: [businessId],
       orderBy: 'due_date ASC',
     );

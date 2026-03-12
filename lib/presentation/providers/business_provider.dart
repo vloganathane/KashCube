@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/business.dart';
 import '../../data/repositories/business_repository_impl.dart';
 import '../../domain/repositories/business_repository.dart';
+import 'context_provider.dart';
 
-// ── Repository ────────────────────────────────────────────────────────────────
+// ── Repository ──────────────────────────────────────────────────────────────────────
 
 final businessRepositoryProvider = Provider<BusinessRepository>(
-  (_) => BusinessRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return BusinessRepositoryImpl(contextId: contextId);
+  },
 );
 
 // ── List of all businesses ────────────────────────────────────────────────────

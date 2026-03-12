@@ -5,6 +5,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/party.dart';
+import '../../providers/context_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../../widgets/vcard_qr_dialog.dart';
@@ -88,8 +89,19 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                     .toList();
 
                 if (filtered.isEmpty) {
+                  final activeId = ref.watch(activeContextProvider);
+                  String? linkedName;
+                  if (activeId != null) {
+                    final sessions =
+                        ref.watch(linkedSessionsProvider).valueOrNull ?? [];
+                    linkedName = sessions
+                        .where((s) => s.id == activeId)
+                        .firstOrNull
+                        ?.businessName;
+                  }
                   return _EmptyState(
                     hasQuery: _typeFilter != null,
+                    linkedBusinessName: linkedName,
                     onAdd: () => _showAddEditSheet(context),
                   );
                 }
@@ -442,10 +454,15 @@ class _TypeBadge extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.hasQuery, required this.onAdd});
+  const _EmptyState({
+    required this.hasQuery,
+    required this.onAdd,
+    this.linkedBusinessName,
+  });
 
   final bool hasQuery;
   final VoidCallback onAdd;
+  final String? linkedBusinessName;
 
   @override
   Widget build(BuildContext context) {
@@ -458,13 +475,19 @@ class _EmptyState extends StatelessWidget {
               color: Theme.of(context).colorScheme.outlineVariant),
           const SizedBox(height: AppSpacing.md),
           Text(
-            hasQuery ? 'No contacts match' : 'No contacts yet',
+            hasQuery
+                ? 'No contacts match'
+                : linkedBusinessName != null
+                    ? 'No contacts from $linkedBusinessName yet'
+                    : 'No contacts yet',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),
           if (!hasQuery)
             Text(
-              'Add customers, vendors, or lenders\nto track your financial relationships.',
+              linkedBusinessName != null
+                  ? 'Sync to import contacts from this linked session.'
+                  : 'Add customers, vendors, or lenders\nto track your financial relationships.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),

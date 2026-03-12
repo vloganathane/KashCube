@@ -3,22 +3,27 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/transaction.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import 'context_provider.dart';
 
 /// Provider for the transaction repository instance.
+/// Rebuilds automatically when [activeContextProvider] changes.
 final transactionRepositoryProvider = Provider<TransactionRepository>(
-  (ref) => TransactionRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return TransactionRepositoryImpl(contextId: contextId);
+  },
 );
 
 /// Provider for the transaction list state.
 final transactionsProvider =
     StateNotifierProvider<TransactionsNotifier, AsyncValue<List<Transaction>>>(
-  (ref) => TransactionsNotifier(ref.read(transactionRepositoryProvider)),
+  (ref) => TransactionsNotifier(ref.watch(transactionRepositoryProvider)),
 );
 
 /// Provider for recent transactions (home screen).
 final recentTransactionsProvider =
     StateNotifierProvider<RecentTransactionsNotifier, AsyncValue<List<Transaction>>>(
-  (ref) => RecentTransactionsNotifier(ref.read(transactionRepositoryProvider)),
+  (ref) => RecentTransactionsNotifier(ref.watch(transactionRepositoryProvider)),
 );
 
 /// Manages the full transaction list state.

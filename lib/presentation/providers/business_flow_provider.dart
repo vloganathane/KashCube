@@ -16,6 +16,7 @@ import '../../data/models/party_reminder.dart';
 import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
 import 'booking_provider.dart';
+import 'context_provider.dart';
 import 'delivery_challan_provider.dart';
 import 'invoice_provider.dart';
 import 'party_provider.dart';
@@ -31,6 +32,8 @@ import 'transaction_provider.dart';
 final businessFlowChainsProvider =
     FutureProvider.family<List<BusinessFlowChain>, int>(
         (ref, partyId) async {
+  // Re-evaluate whenever the active context switches.
+  ref.watch(activeContextProvider);
   // Fetch party to get name
   final party = await ref.read(partyRepositoryProvider).getById(partyId);
   if (party == null) throw Exception('Party $partyId not found');

@@ -5,11 +5,15 @@ import '../../data/repositories/purchase_bill_repository_impl.dart';
 import '../../data/services/inventory_service.dart';
 import '../../domain/repositories/purchase_bill_repository.dart';
 import 'business_provider.dart';
+import 'context_provider.dart';
 
 // ── Repository ────────────────────────────────────────────────────────────────
 
 final purchaseBillRepositoryProvider = Provider<PurchaseBillRepository>(
-  (_) => PurchaseBillRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return PurchaseBillRepositoryImpl(contextId: contextId);
+  },
 );
 
 // ── Filters ───────────────────────────────────────────────────────────────────

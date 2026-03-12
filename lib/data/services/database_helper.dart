@@ -3286,6 +3286,52 @@ class DatabaseHelper {
             'Phase D1: my_identity table, linked_business_sessions (replaces sync device_session)',
       });
     }
+
+    // ── v63: Phase D2 — Context Layer ──────────────────────────────────────
+    //
+    // Add context_id to all 13 syncable P0 tables.
+    // context_id IS NULL  → personal (owner) data — never purged on unlink
+    // context_id = N      → linked business session N — cascades on unlink
+    if (oldVersion < 63) {
+      const contextTables = [
+        'transactions',
+        'credits',
+        'credit_payments',
+        'loans',
+        'parties',
+        'accounts',
+        'categories',
+        'budgets',
+        'item_catalog',
+        'scheduled_payments',
+        'businesses',
+        'invoices',
+        'purchase_bills',
+      ];
+      for (final tbl in contextTables) {
+        try {
+          await db.execute(
+            'ALTER TABLE $tbl ADD COLUMN context_id INTEGER '
+            'REFERENCES linked_business_sessions(id) ON DELETE CASCADE',
+          );
+        } catch (e) {
+          debugPrint('[DB v63] context_id already exists on $tbl: $e');
+        }
+        try {
+          await db.execute(
+            'CREATE INDEX IF NOT EXISTS idx_${tbl}_context '
+            'ON $tbl(context_id)',
+          );
+        } catch (e) {
+          debugPrint('[DB v63] context index already exists on $tbl: $e');
+        }
+      }
+      await db.insert('schema_version', {
+        'version': 63,
+        'description':
+            'Phase D2: context_id on all 13 syncable P0 tables for dual-primary context isolation',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

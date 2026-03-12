@@ -225,6 +225,9 @@ class DatabaseHelper {
         updated_at TEXT,
         deleted_at TEXT,
         FOREIGN KEY (party_id) REFERENCES parties(id),
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (account_id) REFERENCES accounts(id),
         FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),
         FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)
@@ -269,6 +272,9 @@ class DatabaseHelper {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (customer_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
@@ -291,6 +297,11 @@ class DatabaseHelper {
         transaction_id INTEGER,
         notes TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id)
       )
@@ -330,6 +341,9 @@ class DatabaseHelper {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (lender_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
@@ -388,9 +402,16 @@ class DatabaseHelper {
         instagram TEXT,
         country TEXT,
         dial_code TEXT,
+        staff_role TEXT,
+        staff_salary REAL,
+        staff_salary_type TEXT DEFAULT 'monthly',
+        staff_join_date TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
-        deleted_at TEXT
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
 
@@ -415,7 +436,10 @@ class DatabaseHelper {
         icon TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
-        deleted_at TEXT
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
 
@@ -436,7 +460,12 @@ class DatabaseHelper {
         is_system INTEGER DEFAULT 1,
         is_active INTEGER DEFAULT 1,
         keywords TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
 
@@ -450,6 +479,10 @@ class DatabaseHelper {
         budget_amount REAL NOT NULL,
         alert_at_percentage REAL NOT NULL DEFAULT 80,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         UNIQUE(year, month, category)
       )
     ''');
@@ -545,7 +578,10 @@ class DatabaseHelper {
         updated_at TEXT,
         deleted_at TEXT,
         bill_context TEXT NOT NULL DEFAULT 'personal',
-        party_id INTEGER REFERENCES parties(id)
+        party_id INTEGER REFERENCES parties(id),
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
 
@@ -576,7 +612,11 @@ class DatabaseHelper {
         country TEXT,
         dial_code TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
@@ -605,7 +645,11 @@ class DatabaseHelper {
         stock_qty REAL NOT NULL DEFAULT 0,
         low_stock_threshold REAL NOT NULL DEFAULT 5,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)');
@@ -712,6 +756,10 @@ class DatabaseHelper {
         original_invoice_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
       )
     ''');
@@ -812,7 +860,7 @@ class DatabaseHelper {
 
     await db.insert('schema_version', {
       'version': 52,
-      'description': 'Full v52 schema (fresh install)',
+      'description': 'Progressive schema seed (fresh install base)',
     });
 
     // -- unit_types table
@@ -1001,6 +1049,10 @@ class DatabaseHelper {
         attachment_path TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
         FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
     ''');
@@ -1126,6 +1178,162 @@ class DatabaseHelper {
     await _seedCategories(db);
     await _seedAccounts(db);
     await _seedFySettings(db);
+
+    // ── v58: identity & sync tables ──────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_users (
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id          TEXT NOT NULL,
+        display_name       TEXT NOT NULL DEFAULT 'Owner',
+        role               TEXT NOT NULL DEFAULT 'owner',
+        pin_hash           TEXT,
+        public_key         TEXT,
+        status             TEXT NOT NULL DEFAULT 'active',
+        invited_by         INTEGER REFERENCES app_users(id),
+        sync_id            TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version            INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at         TEXT,
+        deleted_at         TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id       INTEGER NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+        business_id   INTEGER NOT NULL DEFAULT -1,
+        can_view      INTEGER NOT NULL DEFAULT 1,
+        can_add       INTEGER NOT NULL DEFAULT 0,
+        can_edit      INTEGER NOT NULL DEFAULT 0,
+        can_delete    INTEGER NOT NULL DEFAULT 0,
+        can_export    INTEGER NOT NULL DEFAULT 0,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at    TEXT,
+        UNIQUE(user_id, business_id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS subscription (
+        id              INTEGER PRIMARY KEY DEFAULT 1,
+        plan            TEXT NOT NULL DEFAULT 'free',
+        purchased_at    TEXT,
+        expires_at      TEXT,
+        receipt_data    TEXT,
+        updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute("INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')");
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS plan_features (
+        plan          TEXT NOT NULL,
+        feature_key   TEXT NOT NULL,
+        int_value     INTEGER,
+        bool_value    INTEGER,
+        text_value    TEXT,
+        PRIMARY KEY (plan, feature_key)
+      )
+    ''');
+    await _seedPlanFeatures(db);
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS linked_devices (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id            TEXT NOT NULL UNIQUE,
+        display_name         TEXT NOT NULL DEFAULT '',
+        role                 TEXT NOT NULL DEFAULT 'mirror',
+        public_key           TEXT NOT NULL,
+        secondary_public_key TEXT NOT NULL DEFAULT '',
+        pairing_code_hash    TEXT,
+        last_seen_at         TEXT,
+        status               TEXT NOT NULL DEFAULT 'pending',
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at           TEXT,
+        deleted_at           TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS device_recovery (
+        id                   INTEGER PRIMARY KEY DEFAULT 1,
+        recovery_phrase_hash TEXT,
+        argon2_params        TEXT,
+        encrypted_seed       TEXT,
+        last_updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS pairing_history (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id    TEXT NOT NULL,
+        event        TEXT NOT NULL,
+        metadata     TEXT,
+        occurred_at  TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_outbox (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_name      TEXT NOT NULL,
+        row_sync_id     TEXT NOT NULL,
+        operation       TEXT NOT NULL,
+        payload         TEXT NOT NULL,
+        target_device   TEXT,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        delivered_at    TEXT
+      )
+    ''');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_outbox_pending ON sync_outbox(created_at) WHERE delivered_at IS NULL');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS device_session (
+        id              INTEGER PRIMARY KEY DEFAULT 1,
+        active_user_id  INTEGER REFERENCES app_users(id),
+        active_business_id INTEGER,
+        locked          INTEGER NOT NULL DEFAULT 0,
+        last_activity_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute("INSERT OR IGNORE INTO device_session (id, locked) VALUES (1, 0)");
+
+    // ── v58: UPDATE triggers (auto-stamp updated_at) ──────────────────────────
+    const p0Tables = [
+      'transactions', 'credits', 'credit_payments', 'loans', 'parties',
+      'accounts', 'categories', 'budgets', 'item_catalog', 'scheduled_payments',
+      'businesses', 'invoices', 'purchase_bills',
+    ];
+    for (final tbl in p0Tables) {
+      await db.execute('''
+        CREATE TRIGGER IF NOT EXISTS trg_${tbl}_sync_updated
+        AFTER UPDATE ON $tbl
+        FOR EACH ROW
+        WHEN NEW.updated_at = OLD.updated_at OR OLD.updated_at IS NULL
+        BEGIN
+          UPDATE $tbl SET updated_at = datetime('now') WHERE id = NEW.id;
+        END
+      ''');
+    }
+
+    // ── v58: unique sync_id indexes ────────────────────────────────────────────
+    for (final tbl in p0Tables) {
+      await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)');
+    }
+
+    await db.insert('schema_version', {
+      'version': 58,
+      'description': 'Full v58 schema with sync foundation (fresh install)',
+      'applied_at': DateTime.now().toIso8601String(),
+    });
 
     debugPrint('Database created successfully.');
   }
@@ -2617,6 +2825,342 @@ class DatabaseHelper {
             'Physical count: last_counted_qty + last_counted_at on item_stock',
       });
     }
+
+    if (oldVersion < 57) {
+      // Add staff-specific columns to parties
+      await db.execute(
+          'ALTER TABLE parties ADD COLUMN staff_role TEXT');
+      await db.execute(
+          'ALTER TABLE parties ADD COLUMN staff_salary REAL');
+      await db.execute(
+          "ALTER TABLE parties ADD COLUMN staff_salary_type TEXT DEFAULT 'monthly'");
+      await db.execute(
+          'ALTER TABLE parties ADD COLUMN staff_join_date TEXT');
+
+      // Back-fill from old staff table (rows that were linked to a party)
+      await db.execute('''
+        UPDATE parties SET
+          staff_role        = (SELECT designation FROM staff WHERE party_id = parties.id),
+          staff_salary      = (SELECT base_salary  FROM staff WHERE party_id = parties.id),
+          staff_salary_type = (SELECT salary_type  FROM staff WHERE party_id = parties.id),
+          staff_join_date   = (SELECT join_date     FROM staff WHERE party_id = parties.id)
+        WHERE id IN (SELECT party_id FROM staff WHERE party_id IS NOT NULL)
+      ''');
+
+      // Seed Payroll categories for existing installs (safe INSERT OR IGNORE)
+      await db.rawInsert('''
+        INSERT OR IGNORE INTO categories
+          (name, category_type, mode, icon, color, sort_order, is_system, is_active, keywords)
+        VALUES
+          ('Payroll', 'expense', 'both', 'badge', '#1565C0', 100, 1, 1, 'salary,wages,payroll,staff'),
+          ('Payroll Deduction', 'expense', 'both', 'remove_circle_outline', '#C62828', 101, 1, 1, 'tds,pf,esi,deduction')
+      ''');
+
+      await db.insert('schema_version', {
+        'version': 57,
+        'description':
+            'HRMS: parties gains staff_role/salary/type/join_date; Payroll categories seeded',
+      });
+    }
+
+    // ── v58: Phase 0 — Sync Foundation ───────────────────────────────────────
+    // Adds sync_id + version + created_by_device_id to all P0 tables.
+    // Adds updated_at / deleted_at to tables that were missing them.
+    // Creates UPDATE triggers for updated_at + version maintenance.
+    // Creates 9 new tables: app_users, user_permissions, subscription,
+    //   plan_features, linked_devices, device_recovery, pairing_history,
+    //   sync_outbox, device_session.
+    // Seeds subscription (free tier) and plan_features matrix.
+    if (oldVersion < 58) {
+      // ── Step A: Add sync columns to existing P0 tables ─────────────────────
+
+      // transactions: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE transactions ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE transactions ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE transactions ADD COLUMN created_by_device_id TEXT');
+
+      // credits: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE credits ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE credits ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE credits ADD COLUMN created_by_device_id TEXT');
+
+      // credit_payments: missing updated_at + deleted_at
+      await db.execute('ALTER TABLE credit_payments ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE credit_payments ADD COLUMN updated_at TEXT');
+      await db.execute('ALTER TABLE credit_payments ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE credit_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE credit_payments ADD COLUMN created_by_device_id TEXT');
+
+      // loans: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE loans ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE loans ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE loans ADD COLUMN created_by_device_id TEXT');
+
+      // parties: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE parties ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE parties ADD COLUMN created_by_device_id TEXT');
+
+      // accounts: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE accounts ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE accounts ADD COLUMN created_by_device_id TEXT');
+
+      // categories: missing updated_at + deleted_at
+      await db.execute('ALTER TABLE categories ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE categories ADD COLUMN updated_at TEXT');
+      await db.execute('ALTER TABLE categories ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE categories ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE categories ADD COLUMN created_by_device_id TEXT');
+
+      // budgets: missing updated_at (no deleted_at — keyed by year+month+category)
+      await db.execute('ALTER TABLE budgets ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE budgets ADD COLUMN updated_at TEXT');
+      await db.execute('ALTER TABLE budgets ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE budgets ADD COLUMN created_by_device_id TEXT');
+
+      // item_catalog: already has updated_at; missing deleted_at
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE item_catalog ADD COLUMN created_by_device_id TEXT');
+
+      // scheduled_payments: already has updated_at, deleted_at
+      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN created_by_device_id TEXT');
+
+      // businesses: already has updated_at; missing deleted_at
+      await db.execute('ALTER TABLE businesses ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE businesses ADD COLUMN created_by_device_id TEXT');
+
+      // invoices: already has updated_at; missing deleted_at
+      await db.execute('ALTER TABLE invoices ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE invoices ADD COLUMN created_by_device_id TEXT');
+
+      // purchase_bills: already has updated_at; missing deleted_at
+      await db.execute('ALTER TABLE purchase_bills ADD COLUMN sync_id TEXT');
+      await db.execute('ALTER TABLE purchase_bills ADD COLUMN deleted_at TEXT');
+      await db.execute('ALTER TABLE purchase_bills ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE purchase_bills ADD COLUMN created_by_device_id TEXT');
+
+      // ── Step B: Backfill sync_id for all existing rows ─────────────────────
+      const p0Tables = [
+        'transactions', 'credits', 'credit_payments', 'loans', 'parties',
+        'accounts', 'categories', 'budgets', 'item_catalog', 'scheduled_payments',
+        'businesses', 'invoices', 'purchase_bills',
+      ];
+      for (final tbl in p0Tables) {
+        await db.execute(
+          "UPDATE $tbl SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL",
+        );
+      }
+
+      // ── Step C: Create unique indexes on sync_id ───────────────────────────
+      for (final tbl in p0Tables) {
+        await db.execute(
+          "CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)",
+        );
+      }
+
+      // ── Step D: CREATE UPDATE triggers (updated_at + version) ─────────────
+      // Pattern: WHEN NEW.updated_at = OLD.updated_at (or either NULL) prevents
+      // the trigger from re-firing on its own UPDATE, eliminating infinite recursion.
+      for (final tbl in p0Tables) {
+        await db.execute('''
+          CREATE TRIGGER IF NOT EXISTS trg_${tbl}_sync_updated
+            AFTER UPDATE ON $tbl
+            FOR EACH ROW
+            WHEN NEW.updated_at = OLD.updated_at OR OLD.updated_at IS NULL
+            BEGIN
+              UPDATE $tbl SET
+                updated_at = datetime('now'),
+                version    = COALESCE(OLD.version, 0) + 1
+              WHERE id = OLD.id;
+            END
+        ''');
+      }
+
+      // ── Step E: CREATE new tables ──────────────────────────────────────────
+
+      // app_users — named profiles with PINs and roles (both devices)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS app_users (
+          id              INTEGER PRIMARY KEY AUTOINCREMENT,
+          sync_id         TEXT    UNIQUE NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+          display_name    TEXT    NOT NULL,
+          pin_hash        TEXT,
+          role            TEXT    NOT NULL DEFAULT 'custom',
+          linked_party_id INTEGER,
+          is_active       INTEGER NOT NULL DEFAULT 1,
+          default_device_id TEXT,
+          last_login_at   TEXT,
+          created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+          updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (linked_party_id) REFERENCES parties(id) ON DELETE SET NULL
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_app_users_party ON app_users(linked_party_id)',
+      );
+
+      // user_permissions — RBAC permission rows (both devices)
+      // business_id = -1 is the sentinel for "personal data scope" (avoids NULL != NULL)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS user_permissions (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id     INTEGER NOT NULL,
+          business_id INTEGER NOT NULL DEFAULT -1,
+          module      TEXT    NOT NULL,
+          can_view    INTEGER NOT NULL DEFAULT 1,
+          can_create  INTEGER NOT NULL DEFAULT 0,
+          can_edit    INTEGER NOT NULL DEFAULT 0,
+          can_delete  INTEGER NOT NULL DEFAULT 0,
+          UNIQUE (user_id, business_id, module),
+          FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_user_perms_user ON user_permissions(user_id)',
+      );
+
+      // subscription — local subscription state, always 1 row (both devices)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS subscription (
+          id              INTEGER PRIMARY KEY,
+          plan            TEXT NOT NULL DEFAULT 'free',
+          source          TEXT DEFAULT 'none',
+          purchase_token  TEXT,
+          plan_started_at TEXT,
+          plan_expires_at TEXT,
+          is_trial        INTEGER NOT NULL DEFAULT 0,
+          trial_ends_at   TEXT
+        )
+      ''');
+
+      // plan_features — plan × feature capability matrix (both devices)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS plan_features (
+          plan         TEXT NOT NULL,
+          feature      TEXT NOT NULL,
+          enabled      INTEGER NOT NULL DEFAULT 1,
+          limit_value  INTEGER,
+          PRIMARY KEY (plan, feature)
+        )
+      ''');
+
+      // linked_devices — registry of paired secondaries (primary device only)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS linked_devices (
+          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          sync_id              TEXT    UNIQUE NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+          device_id            TEXT    NOT NULL UNIQUE,
+          device_name          TEXT    NOT NULL,
+          device_type          TEXT,
+          device_os            TEXT,
+          secondary_public_key TEXT    NOT NULL DEFAULT '',
+          user_id              INTEGER,
+          linked_party_id      INTEGER,
+          permission_scope     TEXT    NOT NULL DEFAULT '{}',
+          business_scope       TEXT    NOT NULL DEFAULT '[]',
+          offline_grace_days   INTEGER NOT NULL DEFAULT 7,
+          last_sync_at         TEXT,
+          revoked_at           TEXT,
+          created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+          updated_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+          FOREIGN KEY (user_id)         REFERENCES app_users(id) ON DELETE SET NULL,
+          FOREIGN KEY (linked_party_id) REFERENCES parties(id)   ON DELETE SET NULL
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_linked_devices_revoked ON linked_devices(revoked_at)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_linked_devices_party ON linked_devices(linked_party_id)',
+      );
+
+      // device_recovery — recovery key hash for primary disaster recovery
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS device_recovery (
+          id               INTEGER PRIMARY KEY,
+          recovery_key_hash TEXT NOT NULL,
+          kdf_salt         TEXT NOT NULL,
+          created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+          last_rotated_at  TEXT
+        )
+      ''');
+
+      // pairing_history — completed pairing audit log
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS pairing_history (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          device_id        TEXT NOT NULL,
+          device_name      TEXT NOT NULL,
+          permission_preset TEXT NOT NULL DEFAULT 'custom',
+          paired_at        TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_pairing_history_time ON pairing_history(paired_at DESC)',
+      );
+
+      // sync_outbox — outbound event queue (primary device only)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_outbox (
+          id               INTEGER PRIMARY KEY AUTOINCREMENT,
+          target_device_id TEXT,
+          event_type       TEXT NOT NULL,
+          payload          TEXT,
+          created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+          delivered_at     TEXT
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending ON sync_outbox(delivered_at) WHERE delivered_at IS NULL',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_outbox_target ON sync_outbox(target_device_id)',
+      );
+
+      // device_session — session credential on secondary (secondary device only; 1 row max)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS device_session (
+          id                  INTEGER PRIMARY KEY,
+          this_device_id      TEXT NOT NULL,
+          primary_device_id   TEXT NOT NULL,
+          primary_public_key  TEXT NOT NULL,
+          token_payload       TEXT NOT NULL DEFAULT '{}',
+          token_signature     TEXT NOT NULL DEFAULT '',
+          permission_scope    TEXT NOT NULL DEFAULT '{}',
+          business_scope      TEXT NOT NULL DEFAULT '[]',
+          offline_grace_days  INTEGER NOT NULL DEFAULT 7,
+          issued_at           TEXT NOT NULL DEFAULT (datetime('now')),
+          last_sync_at        TEXT,
+          is_read_only_forced INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+
+      // ── Step F: Seed subscription (free tier, 1 row) ───────────────────────
+      await db.execute(
+        "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')",
+      );
+
+      // ── Step G: Seed plan_features matrix ─────────────────────────────────
+      await _seedPlanFeatures(db);
+
+      await db.insert('schema_version', {
+        'version': 58,
+        'description':
+            'Phase 0: sync_id + version + triggers on all P0 tables; 9 new auth/sync tables; subscription seeded',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -2683,6 +3227,40 @@ class DatabaseHelper {
         debugPrint('[DB] hsn_master: inserted $inserted $type rows');
       }
     });
+  }
+
+  /// Seeds the [plan_features] table with the free / pro / team capability matrix.
+  /// Uses [ConflictAlgorithm.ignore] so re-running on upgrades is safe.
+  Future<void> _seedPlanFeatures(Database db) async {
+    final rows = <Map<String, Object?>>[
+      // linked_devices
+      {'plan': 'free',  'feature': 'linked_devices',          'enabled': 1, 'limit_value': 0},
+      {'plan': 'pro',   'feature': 'linked_devices',          'enabled': 1, 'limit_value': 2},
+      {'plan': 'team',  'feature': 'linked_devices',          'enabled': 1, 'limit_value': 10},
+      // app_users
+      {'plan': 'free',  'feature': 'app_users',               'enabled': 1, 'limit_value': 0},
+      {'plan': 'pro',   'feature': 'app_users',               'enabled': 1, 'limit_value': 3},
+      {'plan': 'team',  'feature': 'app_users',               'enabled': 1, 'limit_value': 20},
+      // cashier_mode
+      {'plan': 'free',  'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
+      {'plan': 'pro',   'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
+      {'plan': 'team',  'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
+      // businesses
+      {'plan': 'free',  'feature': 'businesses',              'enabled': 1, 'limit_value': 1},
+      {'plan': 'pro',   'feature': 'businesses',              'enabled': 1, 'limit_value': 3},
+      {'plan': 'team',  'feature': 'businesses',              'enabled': 1, 'limit_value': 10},
+      // report_history_months (0 = unlimited)
+      {'plan': 'free',  'feature': 'report_history_months',   'enabled': 1, 'limit_value': 3},
+      {'plan': 'pro',   'feature': 'report_history_months',   'enabled': 1, 'limit_value': 24},
+      {'plan': 'team',  'feature': 'report_history_months',   'enabled': 1, 'limit_value': 0},
+      // lan_sync
+      {'plan': 'free',  'feature': 'lan_sync',                'enabled': 0, 'limit_value': 0},
+      {'plan': 'pro',   'feature': 'lan_sync',                'enabled': 1, 'limit_value': 1},
+      {'plan': 'team',  'feature': 'lan_sync',                'enabled': 1, 'limit_value': 1},
+    ];
+    for (final row in rows) {
+      await db.insert('plan_features', row, conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
   }
 
   /// Inserts fiscal-year defaults into the settings table.
@@ -2905,6 +3483,11 @@ class DatabaseHelper {
       {'name': 'Other Income', 'icon': 'attach_money', 'color': '#388E3C', 'keywords': ''},
     ];
 
+    final payrollCategories = [
+      {'name': 'Payroll', 'icon': 'badge', 'color': '#1565C0', 'sort_order': 100, 'keywords': 'salary,wages,payroll,staff'},
+      {'name': 'Payroll Deduction', 'icon': 'remove_circle_outline', 'color': '#C62828', 'sort_order': 101, 'keywords': 'tds,pf,esi,deduction'},
+    ];
+
     for (var i = 0; i < expenseCategories.length; i++) {
       final cat = expenseCategories[i];
       await db.insert('categories', {
@@ -2929,6 +3512,20 @@ class DatabaseHelper {
         'icon': cat['icon'],
         'color': cat['color'],
         'sort_order': i,
+        'is_system': 1,
+        'is_active': 1,
+        'keywords': cat['keywords'],
+      });
+    }
+
+    for (final cat in payrollCategories) {
+      await db.insert('categories', {
+        'name': cat['name'],
+        'category_type': 'expense',
+        'mode': 'both',
+        'icon': cat['icon'],
+        'color': cat['color'],
+        'sort_order': cat['sort_order'],
         'is_system': 1,
         'is_active': 1,
         'keywords': cat['keywords'],

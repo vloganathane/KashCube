@@ -33,6 +33,7 @@ class PartyPickerField extends ConsumerStatefulWidget {
     this.validator,
     this.onSelected,
     this.onPartySelected,
+    this.filterTypes,
   });
 
   final TextEditingController controller;
@@ -45,6 +46,9 @@ class PartyPickerField extends ConsumerStatefulWidget {
   
   /// Called after a party is selected from autocomplete - provides full Party object.
   final void Function(Party party)? onPartySelected;
+
+  /// When set, only parties of these types appear in suggestions and the picker.
+  final List<PartyType>? filterTypes;
 
   @override
   ConsumerState<PartyPickerField> createState() => _PartyPickerFieldState();
@@ -61,18 +65,23 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
   
   Future<void> _openPicker() async {
     _focusNode.unfocus();  // Close autocomplete dropdown
-    final result = await showModalBottomSheet<String>(
+    final result = await showModalBottomSheet<({Party? party, String? name})>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (_) => _PartyPickerSheet(initial: widget.controller.text),
+      builder: (_) => _PartyPickerSheet(
+        initial: widget.controller.text,
+        filterTypes: widget.filterTypes,
+      ),
     );
     if (result != null && mounted) {
-      widget.controller.text = result;
-      widget.onSelected?.call(result);
+      final name = result.party?.name ?? result.name ?? '';
+      widget.controller.text = name;
+      widget.onSelected?.call(name);
+      if (result.party != null) widget.onPartySelected?.call(result.party!);
     }
   }
 
@@ -80,6 +89,10 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
   Widget build(BuildContext context) {
     final partiesAsync = ref.watch(partiesProvider);
     final allParties = partiesAsync.valueOrNull ?? [];
+    // Apply type filter when provided
+    final sourceParties = widget.filterTypes != null
+        ? allParties.where((p) => widget.filterTypes!.contains(p.partyType)).toList()
+        : allParties;
 
     // Build outstanding map from active credits and loans for subtitle hints.
     final credits = ref.watch(activeCreditsProvider).valueOrNull ?? [];
@@ -108,7 +121,7 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
           return const Iterable<Party>.empty();
         }
         final query = textEditingValue.text.toLowerCase();
-        return allParties.where((party) {
+        return sourceParties.where((party) {
           return party.name.toLowerCase().contains(query) ||
               (party.phoneNumber?.contains(query) ?? false);
         }).take(5);  // Show max 5 suggestions
@@ -225,8 +238,9 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
 // ---------------------------------------------------------------------------
 
 class _PartyPickerSheet extends ConsumerStatefulWidget {
-  const _PartyPickerSheet({this.initial = ''});
+  const _PartyPickerSheet({this.initial = '', this.filterTypes});
   final String initial;
+  final List<PartyType>? filterTypes;
 
   @override
   ConsumerState<_PartyPickerSheet> createState() => _PartyPickerSheetState();
@@ -280,18 +294,22 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
     final colors = theme.extension<KashCubeColors>()!;
     final partiesAsync = ref.watch(partiesProvider);
     final allParties = partiesAsync.valueOrNull ?? [];
+    // Apply type filter when provided
+    final sourceParties = widget.filterTypes != null
+        ? allParties.where((p) => widget.filterTypes!.contains(p.partyType)).toList()
+        : allParties;
 
     // Filter by query
     final filtered = _query.isEmpty
-        ? allParties
-        : allParties
+        ? sourceParties
+        : sourceParties
             .where((p) =>
                 p.name.toLowerCase().contains(_query.toLowerCase()) ||
                 (p.phoneNumber?.contains(_query) ?? false))
             .toList();
 
     // Show "Add new" row only when query is non-empty and no exact name match
-    final hasExactMatch = allParties
+    final hasExactMatch = sourceParties
         .any((p) => p.name.toLowerCase() == _query.toLowerCase());
     final showAddNew = _query.isNotEmpty && !hasExactMatch;
 
@@ -358,36 +376,37 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
               child: ListView(
                 controller: scrollController,
                 children: [
-                  // ── Pick from Contacts ───────────────────────────────
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor:
-                          theme.colorScheme.secondaryContainer,
-                      child: Icon(Icons.contacts_outlined,
-                          size: 20,
-                          color: theme.colorScheme.onSecondaryContainer),
+                  // ── Pick from Contacts (hidden when type-filtered) ───
+                  if (widget.filterTypes == null)
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor:
+                            theme.colorScheme.secondaryContainer,
+                        child: Icon(Icons.contacts_outlined,
+                            size: 20,
+                            color: theme.colorScheme.onSecondaryContainer),
+                      ),
+                      title: const Text('Pick from Contacts'),
+                      subtitle: const Text(
+                          'Opens your contacts app — only selected contact is read'),
+                      onTap: () async {
+                        // Capture navigator before any async gap.
+                        final nav = Navigator.of(context);
+                        final proceed = await requestContactsPickerRationale(
+                          context,
+                          settingsRepository:
+                              ref.read(settingsRepositoryProvider),
+                        );
+                        if (!proceed || !mounted) return;
+                        final contact =
+                            await FlutterContacts.openExternalPick();
+                        if (contact == null || !mounted) return;
+                        final name = contact.displayName.trim();
+                        if (name.isNotEmpty) nav.pop((party: null, name: name));
+                      },
                     ),
-                    title: const Text('Pick from Contacts'),
-                    subtitle: const Text(
-                        'Opens your contacts app — only selected contact is read'),
-                    onTap: () async {
-                      // Capture navigator before any async gap.
-                      final nav = Navigator.of(context);
-                      final proceed = await requestContactsPickerRationale(
-                        context,
-                        settingsRepository:
-                            ref.read(settingsRepositoryProvider),
-                      );
-                      if (!proceed || !mounted) return;
-                      final contact =
-                          await FlutterContacts.openExternalPick();
-                      if (contact == null || !mounted) return;
-                      final name = contact.displayName.trim();
-                      if (name.isNotEmpty) nav.pop(name);
-                    },
-                  ),
 
-                  if (allParties.isNotEmpty || filtered.isNotEmpty)
+                  if (sourceParties.isNotEmpty || filtered.isNotEmpty)
                     const Divider(indent: 16, endIndent: 16),
 
                   // ── Saved parties ────────────────────────────────────
@@ -423,7 +442,10 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                             : null,
                         trailing: _TypeBadge(
                             label: party.partyType.label, color: tc),
-                        onTap: () => Navigator.pop(context, party.name),
+                        onTap: () => Navigator.pop(
+                          context,
+                          (party: party, name: null),
+                        ),
                       );
                     }),
 
@@ -453,7 +475,7 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                         await ref
                             .read(partiesProvider.notifier)
                             .add(newParty);
-                        if (mounted) nav.pop(name);
+                        if (mounted) nav.pop((party: null, name: name));
                       },
                     ),
                   ],
@@ -468,7 +490,10 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                       title: Text('Use "$_query" without saving'),
                       subtitle:
                           const Text('One-off name, not added to parties'),
-                      onTap: () => Navigator.pop(context, _query.trim()),
+                      onTap: () => Navigator.pop(
+                        context,
+                        (party: null, name: _query.trim()),
+                      ),
                     ),
                   ],
 

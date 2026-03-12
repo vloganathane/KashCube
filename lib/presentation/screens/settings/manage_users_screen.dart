@@ -8,6 +8,7 @@ import '../../../data/models/party.dart';
 import '../../../data/models/user_permission.dart';
 import '../../providers/app_user_provider.dart';
 import '../../providers/party_provider.dart';
+import '../../widgets/party_picker_field.dart';
 import 'user_permissions_screen.dart';
 
 /// Settings → Team — lists all active app users; FAB adds a new one.
@@ -189,6 +190,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
   late final TextEditingController _pinConfirmCtrl;
   late AppUserRole _role;
   bool _isSaving = false;
+  /// Set when the user picks an existing staff party (Option A).
+  /// Null means save will auto-create a new Party(staff) (Option B).
+  Party? _selectedParty;
 
   bool get _isEdit => widget.existing != null;
 
@@ -199,6 +203,13 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
     _pinCtrl = TextEditingController();
     _pinConfirmCtrl = TextEditingController();
     _role = widget.existing?.role ?? AppUserRole.cashier;
+    // When user clears / types over the name, unlink the selected party.
+    _nameCtrl.addListener(() {
+      if (_selectedParty != null &&
+          _nameCtrl.text.trim() != _selectedParty!.name) {
+        setState(() => _selectedParty = null);
+      }
+    });
   }
 
   @override
@@ -219,54 +230,51 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
 
     try {
       if (_isEdit) {
+        // On edit: sync the party name if one is linked
+        final existing = widget.existing!;
         await ref.read(appUsersProvider.notifier).save(
-              widget.existing!.copyWith(
+              existing.copyWith(
                 displayName: name,
                 role: _role,
                 pinHash: pinHash,
+                linkedPartyId: _selectedParty?.id ?? existing.linkedPartyId,
               ),
             );
-        // Keep the linked Party name in sync when the display name changes.
-        final linkedPartyId = widget.existing!.linkedPartyId;
-        if (name != widget.existing!.displayName && linkedPartyId != null) {
-          final partyRepo = ref.read(partyRepositoryProvider);
-          final linked = await partyRepo.getById(linkedPartyId);
-          if (linked != null) {
-            await partyRepo.update(linked.copyWith(name: name));
-            ref.read(partiesProvider.notifier).load();
+        // If a new party was linked or name changed, sync the party name
+        final linkedId = _selectedParty?.id ?? existing.linkedPartyId;
+        if (linkedId != null && name.isNotEmpty) {
+          final party = await ref.read(partyRepositoryProvider).getById(linkedId);
+          if (party != null && party.name != name) {
+            await ref.read(partyRepositoryProvider).update(party.copyWith(name: name));
           }
         }
       } else {
-        // Generate a sync_id on insert (the DB DEFAULT handles it but we use
-        // a placeholder so toMap() can omit it — DB generates via DEFAULT).
-        const tempSyncId = '';
+        // Option A: user picked an existing staff party — link it directly.
+        // Option B: no party selected — auto-create Party(staff, name).
+        int linkedPartyId;
+        if (_selectedParty != null) {
+          linkedPartyId = _selectedParty!.id!;
+        } else {
+          linkedPartyId = await ref.read(partyRepositoryProvider).insert(
+                Party(
+                  name: name,
+                  partyType: PartyType.staff,
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
+                ),
+              );
+          ref.invalidate(staffMembersProvider);
+        }
         final newUser = AppUser(
-          syncId: tempSyncId,
+          syncId: '',
           displayName: name,
           role: _role,
           pinHash: pinHash,
+          linkedPartyId: linkedPartyId,
         );
-        final userId = await ref.read(appUsersProvider.notifier).add(newUser);
-
-        // Auto-create a Party(type: staff) so salary payments, advances, and
-        // payslips can all link to this person without any extra owner steps.
-        final partyRepo = ref.read(partyRepositoryProvider);
-        final staffParty = Party(name: name, partyType: PartyType.staff);
-        final partyId = await partyRepo.insert(staffParty);
-
-        // Backfill linked_party_id on the app_user row.
-        await ref.read(appUserRepositoryProvider).update(
-          newUser.copyWith(id: userId, linkedPartyId: partyId),
-        );
-
-        // Push the new party into the in-memory list without a full reload.
-        ref.read(partiesProvider.notifier).addToState(
-          staffParty.copyWith(id: partyId, createdAt: DateTime.now()),
-        );
-
-        // Seed role-preset permissions for the personal scope.
+        final id = await ref.read(appUsersProvider.notifier).add(newUser);
         await ref.read(appUserRepositoryProvider).seedRolePreset(
-              userId: userId,
+              userId: id,
               businessId: UserPermission.kPersonalScope,
               role: _role,
             );
@@ -318,13 +326,44 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.base),
-            TextFormField(
+            PartyPickerField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Display Name'),
-              textCapitalization: TextCapitalization.words,
+              labelText: 'Display Name',
+              filterTypes: const [PartyType.staff],
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? 'Name required' : null,
+              onPartySelected: (party) {
+                setState(() => _selectedParty = party);
+              },
             ),
+            if (_selectedParty != null)
+              Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    Icon(Icons.link,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Linked to existing staff party',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedParty = null);
+                      },
+                      child: Icon(Icons.close,
+                          size: 14,
+                          color: Theme.of(context).colorScheme.outline),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: AppSpacing.base),
             DropdownButtonFormField<AppUserRole>(
               initialValue: _role,

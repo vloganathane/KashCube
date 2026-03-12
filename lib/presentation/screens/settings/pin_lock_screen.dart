@@ -1,19 +1,11 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/utils/pin_hash.dart';
 import '../../providers/settings_provider.dart';
-
-/// Hashes a PIN using SHA-256.
-String _hashPin(String pin) {
-  final bytes = utf8.encode(pin);
-  return sha256.convert(bytes).toString();
-}
 
 /// Mode for the PIN screen.
 enum PinScreenMode {
@@ -118,7 +110,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
       case PinScreenMode.unlock:
       case PinScreenMode.remove:
         final storedHash = await settingsRepo.get(SettingsKeys.pinHash);
-        final enteredHash = _hashPin(_enteredPin);
+        final enteredHash = hashPin(_enteredPin);
 
         if (storedHash == enteredHash) {
           if (_currentMode == PinScreenMode.remove) {
@@ -154,7 +146,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
 
       case PinScreenMode.confirm:
         if (_enteredPin == _firstPin) {
-          final hash = _hashPin(_enteredPin);
+          final hash = hashPin(_enteredPin);
           await settingsRepo.set(SettingsKeys.pinHash, hash);
           await settingsRepo.set(SettingsKeys.appLockEnabled, 'true');
           ref.invalidate(appLockEnabledProvider);

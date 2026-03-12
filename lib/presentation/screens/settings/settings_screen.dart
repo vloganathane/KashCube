@@ -12,6 +12,7 @@ import 'pin_lock_screen.dart';
 import 'businesses_screen.dart';
 import 'unit_types_screen.dart';
 import 'document_terms_screen.dart';
+import 'manage_users_screen.dart';
 import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
@@ -128,6 +129,25 @@ class SettingsScreen extends ConsumerWidget {
                   leading: Icon(Icons.fingerprint),
                   title: Text('Biometric Unlock'),
                   subtitle: Text('Error loading'),
+                ),
+              ),
+            ],
+          ),
+
+          // -- Accounts --
+          _SettingsSection(
+            title: 'Team',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.group_outlined),
+                title: const Text('Team Members'),
+                subtitle: const Text('Add staff, assign roles & permissions'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const ManageUsersScreen(),
+                  ),
                 ),
               ),
             ],

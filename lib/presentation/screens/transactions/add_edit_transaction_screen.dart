@@ -35,6 +35,9 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
     this.transaction,
     this.initialType,
     this.initialPartyName,
+    this.initialCategory,
+    this.initialAmount,
+    this.initialDescription,
   });
 
   /// If non-null, we're editing this transaction.
@@ -45,6 +48,15 @@ class AddEditTransactionScreen extends ConsumerStatefulWidget {
 
   /// Pre-fill the party name field when creating a new transaction.
   final String? initialPartyName;
+
+  /// Pre-select this category when creating a new transaction.
+  final String? initialCategory;
+
+  /// Pre-fill the amount field when creating a new transaction.
+  final double? initialAmount;
+
+  /// Pre-fill the description/notes field when creating a new transaction.
+  final String? initialDescription;
 
   bool get isEditing => transaction != null;
 
@@ -120,12 +132,21 @@ class _AddEditTransactionScreenState
     } else {
       _type = widget.initialType ?? TransactionType.expense;
       _mode = TransactionMode.personal;
-      _category = AppConstants.defaultCategories.first;
+      _category = widget.initialCategory ?? AppConstants.defaultCategories.first;
       _paymentMethod = PaymentMethod.upi;
       _date = DateTime.now();
       _time = TimeOfDay.now();
       if (widget.initialPartyName != null) {
         _partyNameController.text = widget.initialPartyName!;
+      }
+      if (widget.initialAmount != null) {
+        final rawAmount = widget.initialAmount!.toStringAsFixed(
+          widget.initialAmount! == widget.initialAmount!.roundToDouble() ? 0 : 2,
+        );
+        _amountController.text = IndianCurrencyInputFormatter.format(rawAmount);
+      }
+      if (widget.initialDescription != null) {
+        _notesController.text = widget.initialDescription!;
       }
     }
   }

@@ -55,7 +55,7 @@ extension InvoiceStatusExt on InvoiceStatus {
 // InvoiceType
 // ---------------------------------------------------------------------------
 
-enum InvoiceType { taxInvoice, billOfSupply, creditNote, debitNote }
+enum InvoiceType { taxInvoice, billOfSupply, creditNote, debitNote, payslip }
 
 extension InvoiceTypeExt on InvoiceType {
   String get label => const {
@@ -63,6 +63,7 @@ extension InvoiceTypeExt on InvoiceType {
     InvoiceType.billOfSupply: 'Bill of Supply',
     InvoiceType.creditNote:   'Credit Note',
     InvoiceType.debitNote:    'Debit Note',
+    InvoiceType.payslip:      'Payslip',
   }[this]!;
 
   String get dbValue => const {
@@ -70,6 +71,7 @@ extension InvoiceTypeExt on InvoiceType {
     InvoiceType.billOfSupply: 'bill_of_supply',
     InvoiceType.creditNote:   'credit_note',
     InvoiceType.debitNote:    'debit_note',
+    InvoiceType.payslip:      'payslip',
   }[this]!;
 
   static InvoiceType fromDb(String? v) {
@@ -77,6 +79,7 @@ extension InvoiceTypeExt on InvoiceType {
       case 'bill_of_supply': return InvoiceType.billOfSupply;
       case 'credit_note':    return InvoiceType.creditNote;
       case 'debit_note':     return InvoiceType.debitNote;
+      case 'payslip':        return InvoiceType.payslip;
       default:               return InvoiceType.taxInvoice;
     }
   }

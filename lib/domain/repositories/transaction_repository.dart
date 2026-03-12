@@ -110,6 +110,14 @@ abstract class TransactionRepository {
     DateTime end, {
     String? mode,
   });
+
+  /// Get payroll transactions (category 'Payroll' or 'Payroll Deduction') for a
+  /// staff party, optionally filtered to a specific [month] and [year].
+  Future<List<Transaction>> getPayrollHistory({
+    required int staffPartyId,
+    int? month,
+    int? year,
+  });
 }
 
 /// Daily income/expense totals.

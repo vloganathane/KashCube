@@ -30,4 +30,7 @@ abstract class PartyRepository {
   /// Update [reminderSentAt] on a transaction to record when a
   /// WhatsApp / SMS / Email reminder was dispatched.
   Future<void> markReminderSent(int transactionId);
+
+  /// Get all staff parties (partyType == staff), ordered by name.
+  Future<List<Party>> getStaffMembers();
 }

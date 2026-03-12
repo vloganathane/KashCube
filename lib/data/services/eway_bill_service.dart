@@ -590,6 +590,8 @@ class EwayBillService {
         return 'CRN';
       case InvoiceType.debitNote:
         return 'DBN';
+      case InvoiceType.payslip:
+        return 'INV'; // payslips are excluded from GST filing but need a fallback
     }
   }
 

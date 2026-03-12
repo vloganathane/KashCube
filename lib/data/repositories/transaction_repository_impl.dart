@@ -546,4 +546,35 @@ class TransactionRepositoryImpl implements TransactionRepository {
     );
     return rows.map(Transaction.fromMap).toList();
   }
+
+  @override
+  Future<List<Transaction>> getPayrollHistory({
+    required int staffPartyId,
+    int? month,
+    int? year,
+  }) async {
+    final db = await _db;
+    final whereParts = <String>[
+      'deleted_at IS NULL',
+      "category IN ('Payroll', 'Payroll Deduction')",
+      'party_id = ?',
+    ];
+    final args = <dynamic>[staffPartyId];
+    if (month != null && year != null) {
+      whereParts.add("strftime('%Y', date) = ? AND strftime('%m', date) = ?");
+      args
+        ..add(year.toString())
+        ..add(month.toString().padLeft(2, '0'));
+    } else if (year != null) {
+      whereParts.add("strftime('%Y', date) = ?");
+      args.add(year.toString());
+    }
+    final rows = await db.query(
+      'transactions',
+      where: whereParts.join(' AND '),
+      whereArgs: args,
+      orderBy: 'date DESC',
+    );
+    return rows.map(Transaction.fromMap).toList();
+  }
 }

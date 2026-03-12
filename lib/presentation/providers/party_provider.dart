@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/party.dart';
+import '../../data/models/transaction.dart';
 import '../../data/repositories/party_repository_impl.dart';
+import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/party_repository.dart';
 
 // ---------------------------------------------------------------------------
@@ -111,3 +113,29 @@ final partyNameSuggestionsProvider =
   final results = await repo.search(query);
   return results.map((p) => p.name).toList();
 });
+
+// ---------------------------------------------------------------------------
+// Staff — HRMS Phase S1
+// ---------------------------------------------------------------------------
+
+/// All active staff parties (partyType == staff), ordered by name.
+final staffMembersProvider = FutureProvider<List<Party>>((ref) async {
+  final repo = ref.read(partyRepositoryProvider);
+  return repo.getStaffMembers();
+});
+
+/// Payroll transaction history for a single staff member.
+///
+/// Pass a record of `(partyId, month, year)` where month/year are the
+/// pay period (1-based month). Set month = 0 to load all history.
+final staffPayrollProvider =
+    FutureProvider.family<List<Transaction>, ({int partyId, int month, int year})>(
+  (ref, args) async {
+    final repo = TransactionRepositoryImpl();
+    return repo.getPayrollHistory(
+      staffPartyId: args.partyId,
+      month: args.month > 0 ? args.month : null,
+      year: args.year > 0 ? args.year : null,
+    );
+  },
+);

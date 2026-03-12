@@ -1182,38 +1182,38 @@ class DatabaseHelper {
     // ── v58: identity & sync tables ──────────────────────────────────────────
     await db.execute('''
       CREATE TABLE IF NOT EXISTS app_users (
-        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_id          TEXT NOT NULL,
-        display_name       TEXT NOT NULL DEFAULT 'Owner',
-        role               TEXT NOT NULL DEFAULT 'owner',
-        pin_hash           TEXT,
-        public_key         TEXT,
-        status             TEXT NOT NULL DEFAULT 'active',
-        invited_by         INTEGER REFERENCES app_users(id),
-        sync_id            TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-        version            INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
-        created_at         TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at         TEXT,
-        deleted_at         TEXT
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        sync_id         TEXT    UNIQUE NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+        display_name    TEXT    NOT NULL,
+        pin_hash        TEXT,
+        role            TEXT    NOT NULL DEFAULT 'custom',
+        linked_party_id INTEGER,
+        is_active       INTEGER NOT NULL DEFAULT 1,
+        default_device_id TEXT,
+        last_login_at   TEXT,
+        created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (linked_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
     ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_app_users_party ON app_users(linked_party_id)');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS user_permissions (
-        id            INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id       INTEGER NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
-        business_id   INTEGER NOT NULL DEFAULT -1,
-        can_view      INTEGER NOT NULL DEFAULT 1,
-        can_add       INTEGER NOT NULL DEFAULT 0,
-        can_edit      INTEGER NOT NULL DEFAULT 0,
-        can_delete    INTEGER NOT NULL DEFAULT 0,
-        can_export    INTEGER NOT NULL DEFAULT 0,
-        created_at    TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at    TEXT,
-        UNIQUE(user_id, business_id)
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     INTEGER NOT NULL,
+        business_id INTEGER NOT NULL DEFAULT -1,
+        module      TEXT    NOT NULL,
+        can_view    INTEGER NOT NULL DEFAULT 1,
+        can_create  INTEGER NOT NULL DEFAULT 0,
+        can_edit    INTEGER NOT NULL DEFAULT 0,
+        can_delete  INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (user_id, business_id, module),
+        FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
       )
     ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_user_perms_user ON user_permissions(user_id)');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS subscription (

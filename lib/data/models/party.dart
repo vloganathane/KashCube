@@ -57,6 +57,11 @@ class Party extends Equatable {
     this.whatsapp,
     this.linkedin,
     this.instagram,
+    // Staff-specific fields (partyType == staff only)
+    this.staffRole,
+    this.staffSalary,
+    this.staffSalaryType,
+    this.staffJoinDate,
   });
 
   final int? id;
@@ -99,6 +104,16 @@ class Party extends Equatable {
   final String? whatsapp;
   final String? linkedin;
   final String? instagram;
+
+  // Staff-specific fields (populated only when partyType == staff)
+  /// Role / designation e.g. "Manager", "Driver", "Accountant".
+  final String? staffRole;
+  /// Base salary amount.
+  final double? staffSalary;
+  /// Salary frequency: 'monthly', 'daily', or 'hourly'.
+  final String? staffSalaryType;
+  /// Join date stored as ISO-8601 date string (YYYY-MM-DD).
+  final String? staffJoinDate;
 
   /// Net credit balance for this party (given - received).
   double get netCredit => totalCreditGiven - totalCreditReceived;
@@ -144,6 +159,10 @@ class Party extends Equatable {
     String? whatsapp,
     String? linkedin,
     String? instagram,
+    String? staffRole,
+    double? staffSalary,
+    String? staffSalaryType,
+    String? staffJoinDate,
   }) {
     return Party(
       id: id ?? this.id,
@@ -173,6 +192,10 @@ class Party extends Equatable {
       whatsapp: whatsapp ?? this.whatsapp,
       linkedin: linkedin ?? this.linkedin,
       instagram: instagram ?? this.instagram,
+      staffRole: staffRole ?? this.staffRole,
+      staffSalary: staffSalary ?? this.staffSalary,
+      staffSalaryType: staffSalaryType ?? this.staffSalaryType,
+      staffJoinDate: staffJoinDate ?? this.staffJoinDate,
     );
   }
 
@@ -205,6 +228,10 @@ class Party extends Equatable {
       'whatsapp': whatsapp,
       'linkedin': linkedin,
       'instagram': instagram,
+      'staff_role': staffRole,
+      'staff_salary': staffSalary,
+      'staff_salary_type': staffSalaryType,
+      'staff_join_date': staffJoinDate,
     };
   }
 
@@ -240,6 +267,10 @@ class Party extends Equatable {
       whatsapp: map['whatsapp'] as String?,
       linkedin: map['linkedin'] as String?,
       instagram: map['instagram'] as String?,
+      staffRole: map['staff_role'] as String?,
+      staffSalary: (map['staff_salary'] as num?)?.toDouble(),
+      staffSalaryType: map['staff_salary_type'] as String?,
+      staffJoinDate: map['staff_join_date'] as String?,
     );
   }
 

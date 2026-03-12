@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../domain/models/permission.dart';
+import '../data/models/user_permission.dart';
 import '../core/constants/app_config.dart';
 import '../core/utils/deep_link_vcard.dart';
 import '../core/utils/vcard_builder.dart' show parseVCard;
@@ -13,6 +15,7 @@ import '../data/models/parsed_sms.dart';
 import '../data/models/party.dart';
 import '../data/models/transaction.dart';
 import '../data/services/sms_parser.dart';
+import 'providers/app_user_provider.dart';
 import 'providers/deep_link_provider.dart';
 import 'providers/party_provider.dart';
 import 'providers/scheduled_payment_provider.dart';
@@ -236,6 +239,41 @@ class _AppShellState extends ConsumerState<AppShell> {
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
     final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
+    final activeUser = ref.watch(activeAppUserProvider);
+
+    // Layer 1: module required per bottom-nav tab index.
+    // Owner (activeUser == null) bypasses all checks.
+    const tabModules = [
+      PermissionModule.transactions, // 0: Home
+      PermissionModule.transactions, // 1: Transactions
+      PermissionModule.invoices,     // 2: Business
+      PermissionModule.credits,      // 3: Contacts
+      null,                          // 4: Settings — always visible
+    ];
+
+    Future<void> handleTabSelected(int index) async {
+      if (activeUser == null) {
+        ref.read(currentTabIndexProvider.notifier).state = index;
+        return;
+      }
+      final module = tabModules[index];
+      if (module == null) {
+        ref.read(currentTabIndexProvider.notifier).state = index;
+        return;
+      }
+      final perm = await ref.read(permissionProvider(
+        (module: module, businessId: UserPermission.kPersonalScope),
+      ));
+      if (!perm.canView) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("You don't have access to this section.")),
+          );
+        }
+        return;
+      }
+      ref.read(currentTabIndexProvider.notifier).state = index;
+    }
 
     // Show Add-Party sheet whenever a contact arrives via deep link or
     // install referrer — one-shot, resets to null after handling.
@@ -255,7 +293,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         selectedIndex: currentIndex,
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         onDestinationSelected: (index) {
-          ref.read(currentTabIndexProvider.notifier).state = index;
+          handleTabSelected(index);
         },
         destinations: const [
           NavigationDestination(

@@ -122,4 +122,15 @@ class PartyRepositoryImpl implements PartyRepository {
     );
     debugPrint('Reminder sent logged for transaction #$transactionId');
   }
+
+  @override
+  Future<List<Party>> getStaffMembers() async {
+    final db = await _db.database;
+    final rows = await db.query(
+      'parties',
+      where: "deleted_at IS NULL AND party_type = 'staff'",
+      orderBy: 'name COLLATE NOCASE ASC',
+    );
+    return rows.map(Party.fromMap).toList();
+  }
 }

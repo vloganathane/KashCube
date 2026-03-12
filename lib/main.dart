@@ -8,8 +8,10 @@ import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/pdf_cache_manager.dart';
 import 'presentation/app_shell.dart';
+import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
+import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
 
 void main() async {
@@ -162,7 +164,25 @@ class _LockGateState extends ConsumerState<_LockGate>
       );
     }
 
-    return const AppShell();
+    // After owner unlocks, check whether any staff users have been added.
+    // If there are staff users, show the selection screen so either the owner
+    // or a staff member can choose who is operating the device.
+    // If no staff users exist, go straight to AppShell (owner flow).
+    final hasUsers = ref.watch(hasAnyAppUserProvider);
+    return hasUsers.when(
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => const AppShell(),
+      data: (has) {
+        if (!has) return const AppShell();
+        return UserSelectionScreen(
+          onOwnerSelected: () {
+            // activeAppUserProvider stays null → full owner access
+          },
+        );
+      },
+    );
   }
 }
 

@@ -1,7 +1,7 @@
 # Implementation Plan: Sync Foundation → RBAC → Linked Devices → Dual-Primary
 # Sprint-Level Coding Plan
 
-**Version:** 1.0  
+**Version:** 1.1  
 **Date:** 12 March 2026  
 **Status:** Active  
 **Depends on:** `ARCHITECTURE_DECISIONS.md`, `USER_PERMISSIONS_BRAINSTORM.md`, `LINKED_DEVICES_BRAINSTORM.md`, `DUAL_PRIMARY_IDENTITY_SPEC.md`
@@ -19,7 +19,7 @@ Do not start a sprint without reading its referenced sections. Architecture deci
 ---
 
 ## Sprint 1 — v58: Phase 0 (Sync Foundation)
-**Status: IN PROGRESS**  
+**Status: DONE ✅**  
 **Estimate:** 3–5 days  
 **File changes:** `app_constants.dart`, `database_helper.dart` only  
 **No model/provider changes:** Phase 0 is pure DB infrastructure  
@@ -122,88 +122,75 @@ flutter run -d emulator-5554 --hot
 
 ---
 
-## Sprint 2 — v59: Phase U1 (Cashier Mode)
-**Status: NOT STARTED**  
-**Estimate:** 3–4 days  
-**DB changes:** Settings keys only — no schema migration  
-**Spec:** `USER_PERMISSIONS_BRAINSTORM.md` → Option C + Section 11 Phase U1
-
-### Tasks
-
-#### S2.1 — Settings keys
-Add to `SettingsRepository`:
-```dart
-static const String cashierModeEnabled    = 'cashier_mode_enabled';
-static const String cashierModePinHash    = 'cashier_mode_pin_hash';
-static const String cashierModeBusinessId = 'cashier_mode_business_id';
-```
-
-#### S2.2 — `CashierModeSetupScreen`
-- Location: `lib/presentation/screens/settings/cashier_mode_setup_screen.dart`
-- Owner enables cashier mode, creates 4-digit cashier PIN, selects which business
-- PIN stored as Argon2id hash (same as owner PIN — use existing `PinHashService`)
-- Route: Settings → Security → Cashier Mode
-
-#### S2.3 — `CashierModeBannerWidget`
-- Location: `lib/presentation/widgets/cashier_mode_banner.dart`
-- Shown on home screen when `cashier_mode_enabled = true`
-- Yellow banner: "Cashier Mode — tap to exit"
-- Tapping shows `ExitCashierModeSheet` (requires owner PIN)
-
-#### S2.4 — `ExitCashierModeSheet`
-- 4-digit PIN entry that checks against owner's `pin_hash`
-- On success: set `cashier_mode_enabled = false`
-
-#### S2.5 — Provider filter
-- `activeModeProvider` (StateProvider<String>) — 'owner' | 'cashier'
-- All screen providers read `activeModeProvider` and filter/gate accordingly
-- Cashier mode: hide Reports, Settings, Loans/Credits; show only Transactions + Invoices for the selected business
-
----
-
-## Sprint 3 — v60: Phase U2 (Full RBAC)
-**Status: NOT STARTED**  
+## Sprint 2 — v59: Phase U (Full RBAC)
+**Status: IN PROGRESS**  
 **Estimate:** 5–7 days  
-**DB changes:** `app_users` + `user_permissions` tables already created in v58  
-**Spec:** `USER_PERMISSIONS_BRAINSTORM.md` → Option B + Section 8–11 Phase U2
+**DB changes:** None — `app_users` + `user_permissions` already created in v58  
+**Spec:** `USER_PERMISSIONS_BRAINSTORM.md` → Option B + Sections 5–12  
+**Replaces:** former Cashier Mode sprint (Option C) — RBAC covers the cashier use case natively via the `cashier` role preset
 
 ### Tasks
 
-#### S3.1 — Models
-- `AppUser` model (`lib/data/models/app_user.dart`)
-- `UserPermission` model
-- `Permission` value object (canView, canCreate, canEdit, canDelete)
-- `RolePreset` enum (owner/manager/cashier/auditor/custom) + preset definitions
+#### S2.1 — Models
+- `AppUser` model (`lib/data/models/app_user.dart`) — maps to `app_users` table
+- `UserPermission` model (`lib/data/models/user_permission.dart`) — maps to `user_permissions` table
+- `Permission` value object (`lib/domain/models/permission.dart`) — (canView, canAdd, canEdit, canDelete, canExport)
+- `RolePreset` enum (`lib/domain/models/role_preset.dart`) — owner/manager/cashier/auditor/custom + preset definitions
 
-#### S3.2 — Repositories
-- `AppUserRepository` (abstract in domain/, implementation in data/)
-- `UserPermissionRepository`
+#### S2.2 — Repositories
+- `AppUserRepository` — abstract interface in `lib/domain/repositories/`
+- `AppUserRepositoryImpl` — implementation in `lib/data/repositories/`
+  - `getAll()`, `getById(int id)`, `create(AppUser)`, `update(AppUser)`, `setActive(int id, bool active)`
+- `UserPermissionRepository` — abstract + impl
+  - `getForUser(int userId)`, `setPermissions(int userId, int businessId, Permission)`, `deleteForUser(int userId)`
+- Seed owner-mode role presets on first-use via `RolePreset.seedFor(AppUser)`
 
-#### S3.3 — Providers
+#### S2.3 — Riverpod providers
 ```dart
+// In lib/presentation/providers/auth_providers.dart
 final activeAppUserProvider = StateProvider<AppUser?>((ref) => null);
-// null = owner (full access)
+// null = owner (device PIN / biometric — existing flow, unchanged)
 
-final permissionProvider = Provider.family<Permission, ({String module, int? businessId})>(...)
+final permissionProvider = Provider.family<Permission, ({String module, int? businessId})>(
+  (ref, arg) {
+    final user = ref.watch(activeAppUserProvider);
+    if (user == null) return Permission.full; // owner
+    return ref.read(userPermissionRepositoryProvider)
+              .getPermission(userId: user.id!, module: arg.module, businessId: arg.businessId);
+  },
+);
 ```
 
-#### S3.4 — Screens
-- `UserSelectionScreen` — launch screen with user avatars
-- `StaffPinScreen` — 4-digit PIN entry for app users
-- `ManageUsersScreen` (Settings → Team)
-- `AddEditUserSheet` — name, role, PIN, business assignment
-- `UserPermissionsScreen` — per-module CRUD toggles
-- Integration in `StaffDetailScreen`: "Grant App Access" section
+#### S2.4 — Screens
+- `UserSelectionScreen` (`lib/presentation/screens/auth/user_selection_screen.dart`)
+  - Shown at app startup when `app_users` table is non-empty
+  - Owner tile → existing PIN/biometric flow; Staff tiles → `StaffPinScreen`
+- `StaffPinScreen` (`lib/presentation/screens/auth/staff_pin_screen.dart`)
+  - 4-digit keypad; validates against `app_users.pin_hash`; sets `activeAppUserProvider`
+  - Lockout after 5 wrong attempts (display countdown, require owner to unlock)
+- `ManageUsersScreen` (`lib/presentation/screens/settings/manage_users_screen.dart`)
+  - Settings → Team; lists active app users with role chips; FAB = Add User
+- `AddEditUserSheet` (`lib/presentation/screens/settings/add_edit_user_sheet.dart`)
+  - Display name, role dropdown, PIN (2×), optional business scope multi-select
+  - If creating from `StaffDetailScreen`: pre-fills name + links `linked_party_id`
+- `UserPermissionsScreen` (`lib/presentation/screens/settings/user_permissions_screen.dart`)
+  - Per-module CRUD toggles grouped by business; shown from `ManageUsersScreen` → user → Edit
+- `StaffDetailScreen` "App Access" card — "Grant App Access" / "Active ●" per spec Section 12
 
-#### S3.5 — Enforcement
-Apply permission checks to:
-- Bottom nav visibility (Layer 1 — UI)
-- All existing Riverpod providers (Layer 2 — data access)
-- All write actions in providers/use cases (Layer 3 — mutation guards)
+#### S2.5 — Session timeout
+- `SessionTimeoutService` — idle timer (configurable, default 5 min for non-owner users)
+- On timeout: `activeAppUserProvider.state = null` is NOT used — instead navigate to `UserSelectionScreen`
+- Implemented as a single `Timer` reset on every user interaction (PointerDownEvent in `AppWrapper`)
+
+#### S2.6 — Enforcement (3-layer)
+- **Layer 1 — Navigation:** Bottom nav items hidden when `!perm.canView`
+- **Layer 2 — Providers:** All list providers return `[]` when `!perm.canView`
+- **Layer 3 — Mutations:** All write notifiers throw `PermissionDeniedException` when `!perm.canAdd/Edit/Delete`
+- Cashier role: automatically hides Reports, Credits (view), Settings, Loans; shows Transactions + Invoices for assigned business only
 
 ---
 
-## Sprint 4 — v61: Phase L1 (Owner Mirror — First LAN Sync)
+## Sprint 3 — v60: Phase L1 (Owner Mirror — First LAN Sync)
 **Status: NOT STARTED**  
 **Estimate:** 10–14 days (largest sprint)  
 **DB changes:** None (linked_devices + device_session already created in v58)  
@@ -212,7 +199,7 @@ Apply permission checks to:
 
 ### Tasks
 
-#### S4.1 — IdentityService
+#### S3.1 — IdentityService
 - `lib/data/services/identity_service.dart`
 - On first run: generate Ed25519 keypair via `cryptography` package
 - Store private key in `flutter_secure_storage` (key: `device_signing_private_key`)
@@ -220,95 +207,95 @@ Apply permission checks to:
 - Generate `device_id` UUID and store in settings
 - Expose `sign(Uint8List data)` and `devicePublicKey` getter
 
-#### S4.2 — TokenService
+#### S3.2 — TokenService
 - `lib/data/services/token_service.dart`
 - `issueToken(LinkedDevice device)` → signs permission payload with Ed25519
 - `verifyToken(String tokenJson, String signature, String publicKeyB64)` → bool
 - `parseToken(String tokenJson)` → `DeviceSessionToken` model
 
-#### S4.3 — LAN Discovery (`nsd` package)
+#### S3.3 — LAN Discovery (`nsd` package)
 - `lib/data/services/lan_discovery_service.dart`
 - Primary: register mDNS service `_kashcube._tcp`
 - Secondary: browse for `_kashcube._tcp` on same Wi-Fi
 - Resolve: extract IP + port from discovered service
 
-#### S4.4 — SyncServer (primary)
+#### S3.4 — SyncServer (primary)
 - `lib/data/services/sync_server.dart`
 - Listens on `dart:io` ServerSocket (random port)
 - Accepts connections from secondaries
 - Handles: pairing handshake, delta requests, delta uploads from secondary
 
-#### S4.5 — SyncClient (secondary)
+#### S3.5 — SyncClient (secondary)
 - `lib/data/services/sync_client.dart`
 - Discovers primary via mDNS
 - Connects to SyncServer
 - Sends delta request (device_id + last_sync_timestamp)
 - Applies received rows to local DB
 
-#### S4.6 — Delta serialization
+#### S3.6 — Delta serialization
 - `DeltaRow` model: table + sync_id + version + updated_at + operation + payload
 - JSON serialization / deserialization
 - Apply delta: for each row, if `incoming.version > local.version` → upsert
 
-#### S4.7 — Screens (primary)
+#### S3.7 — Screens (primary)
 - `LinkedDevicesScreen` (Settings → Linked Devices)
 - `LinkDeviceScreen` — QR code generator, shows device permission preset selector
 - `DeviceDetailScreen` — last sync time, "Revoke" button
 
-#### S4.8 — Screens (secondary)
+#### S3.8 — Screens (secondary)
 - `LinkDeviceOnboardingScreen` — QR scanner, first-run only
 - `GraceExpiryBannerWidget` — shown when offline > 7 days
 
-#### S4.9 — Owner Mirror validation
+#### S3.9 — Owner Mirror validation
 - Full bidirectional sync for owner mirror (same permissions on both sides)
 - Conflict resolution: `version` counter wins; `updated_at` as tiebreaker
 - Smoke test: edit a transaction on device A → sync → see it on device B
 
 ---
 
-## Sprint 5 — v62: Phase L2 (Staff Terminal — Permission-Scoped Sync)
+## Sprint 4 — v61: Phase L2 (Staff Terminal — Permission-Scoped Sync)
 **Status: NOT STARTED**  
 **Estimate:** 5–7 days  
-**Pre-condition:** Sprint 4 complete and stable  
+**Pre-condition:** Sprint 3 complete and stable  
 **Spec:** `LINKED_DEVICES_BRAINSTORM.md` → Section 6 + Section 7
 
 ### Tasks
 
-#### S5.1 — Permission-scoped delta on primary
+#### S4.1 — Permission-scoped delta on primary
 - `SyncServer.buildDelta()`: filter rows by `device.business_scope` and `device.permission_scope`
 - Never include `business_id IS NULL` rows for non-owner-mirror devices
 - Never include rows for businesses outside `business_scope`
 
-#### S5.2 — Token verification on secondary
+#### S4.2 — Token verification on secondary
 - `DeviceSessionService` — verifies Ed25519 token on every app start
 - Reads `device_session` table → validates signature → loads permissions to Riverpod
 - `sessionPermissionProvider` replaces `permissionProvider` on secondary devices 
 
-#### S5.3 — Grace period enforcement
+#### S4.3 — Grace period enforcement
 - `GraceCheckService` — runs on app foreground (not on every frame)
 - Computes days since `device_session.last_sync_at`
 - After 7 days: sets `is_read_only_forced = 1` on `device_session`
 - `ReadOnlyModeBannerWidget` — shown when `is_read_only_forced = 1`
 
-#### S5.4 — Revocation
+#### S4.4 — Revocation
 - Primary: "Revoke" → sets `linked_devices.revoked_at`, queues `sync_outbox` event
 - Secondary: on sync, receives revocation → wipes session + business-scoped data
 
-#### S5.5 — Staff terminal UX
+#### S4.5 — Staff terminal UX
 - Secondary app bar shows: "🏪 [Business Name] — Staff Mode"
 - All personal-context features hidden (no reports, no personal transactions)
 
 ---
 
-## Sprint 6 — v63: Phase D1 (My Identity)
+## Sprint 5 — v62: Phase D1 (My Identity)
 **Status: NOT STARTED**  
 **Estimate:** 3–4 days  
-**Pre-condition:** Sprint 5 complete  
+**Pre-condition:** Sprint 4 complete  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D1
 
 ### Tasks
 
-#### S6.1 — DB migration v63
+#### S5.1 — DB migration v62
 - `CREATE TABLE my_identity` (1-row identity table)
 - `ALTER TABLE linked_devices ADD COLUMN secondary_identity_id TEXT`
 - `ALTER TABLE app_users ADD COLUMN identity_id TEXT`
@@ -316,57 +303,57 @@ Apply permission checks to:
 - `CREATE TABLE linked_business_sessions` (replaces `device_session`)
 - Migrate existing `device_session` row to `linked_business_sessions`
 
-#### S6.2 — `IdentityService` v2
+#### S5.2 — `IdentityService` v2
 - On upgrade: generate Ed25519 identity keypair (separate from device signing key)
 - Store private key in `flutter_secure_storage` (key: `identity_private_key`)
 - Generate `identity_id` UUID → store in `my_identity`
 - `identityPublicKey` getter
 - `identityQrPayload()` → JSON for QR display
 
-#### S6.3 — `IdentityRepository`
+#### S5.3 — `IdentityRepository`
 - `getMyIdentity()` → `MyIdentity`
 - `updateDisplayName(String name)`
 
-#### S6.4 — `identityProvider`
+#### S5.4 — `identityProvider`
 - `FutureProvider<MyIdentity>` — always returns the 1 row
 - Used in ProfileScreen, pairing flow
 
-#### S6.5 — `IdentitySetupScreen`
+#### S5.5 — `IdentitySetupScreen`
 - Shown ONLY on fresh install (first run with `my_identity` table empty)
 - "What's your name?" → creates `my_identity` + generates keypair
 - Not shown to existing users (identity generated silently in migration)
 
-#### S6.6 — `ProfileScreen`
+#### S5.6 — `ProfileScreen`
 - Settings → Profile
 - Shows: display name, identity QR, public key fingerprint (last 8 chars)
 - "Show My QR" button for pairing as secondary
 
-#### S6.7 — Backup v2
+#### S5.7 — Backup v2
 - `BackupService.exportBackup()`: add `identity` section to JSON
 - `BackupService.importBackup()`: restore `my_identity` + identity private key
 - Old backups (no identity section): generate fresh identity on restore
 
 ---
 
-## Sprint 7 — v64: Phase D2 (Context Layer)
+## Sprint 6 — v63: Phase D2 (Context Layer)
 **Status: NOT STARTED**  
 **Estimate:** 7–10 days (touches all repositories)  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D2
 
 ### Tasks
 
-#### S7.1 — DB migration v64
+#### S6.1 — DB migration v63
 - `ALTER TABLE <all 13 syncable tables> ADD COLUMN context_id INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE`
 - All existing rows: `context_id` = NULL (personal context — backward compatible)
 - No backfill needed (NULL is correct default for personal context)
 
-#### S7.2 — `activeContextProvider`
+#### S6.2 — `activeContextProvider`
 ```dart
 final activeContextProvider = StateProvider<int?>((ref) => null);
 // null = personal context; N = linked_business_sessions.id
 ```
 
-#### S7.3 — All repository methods: add `contextId` parameter
+#### S6.3 — All repository methods: add `contextId` parameter
 ```dart
 // Signature change for all read methods:
 Future<List<Transaction>> getAll({int? businessId, int? contextId = _kPersonal});
@@ -384,36 +371,36 @@ Repositories to update:
 - `PurchaseBillRepository`
 - `BusinessRepository`
 
-#### S7.4 — All screens pass `activeContextProvider` to their providers
+#### S6.4 — All screens pass `activeContextProvider` to their providers
 
-#### S7.5 — `ContextSwitcherWidget`
+#### S6.5 — `ContextSwitcherWidget`
 - App bar dropdown showing personal + active sessions
 - `LinkedSessionsListProvider` — list of non-revoked `linked_business_sessions`
 - Tap item → sets `activeContextProvider`
 
-#### S7.6 — `ContextBannerWidget`
+#### S6.6 — `ContextBannerWidget`
 - Subtle persistent banner when in linked session context
 - "🏪 [Business Name]" with sync status dot
 
-#### S7.7 — Empty state for linked session contexts
+#### S6.7 — Empty state for linked session contexts
 - "Waiting for first sync with [Business Name]"
 - Shown when context has no data yet
 
 ---
 
-## Sprint 8 — v65: Phase D3 (Linked Sessions Upgrade)
+## Sprint 7 — v64: Phase D3 (Linked Sessions Upgrade)
 **Status: NOT STARTED**  
 **Estimate:** 5–7 days  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D3
 
 ### Tasks
 
-#### S8.1 — Token schema extension
+#### S7.1 — Token schema extension
 - `TokenService.issueToken()` now includes `plan_features` from `plan_features` table in payload
 - `linked_business_sessions.token_payload` stores updated schema
 - `PlanGate` reads plan_features from local table (personal) OR from session token (linked context)
 
-#### S8.2 — `PlanGate` context-aware
+#### S7.2 — `PlanGate` context-aware
 ```dart
 class PlanGate {
   bool canDo(String feature) => /* personal context: local plan */;
@@ -421,15 +408,15 @@ class PlanGate {
 }
 ```
 
-#### S8.3 — Identity-first pairing on secondary
+#### S7.3 — Identity-first pairing on secondary
 - `ProfileScreen` shows identity QR
 - When Suresh scans Ravi's QR: primary receives `identity_id` + `identity_public_key` + `display_name`
 - `linked_devices.secondary_identity_id` populated during pairing
 
-#### S8.4 — `LinkedDevicesScreen` shows identity display names
+#### S7.4 — `LinkedDevicesScreen` shows identity display names
 - List item: "Ravi Kumar" (not "Galaxy S23")
 
-#### S8.5 — Multiple session management
+#### S7.5 — Multiple session management
 - `LinkedSessionsScreen` (Settings → Linked Sessions)
 - Shows all active sessions with business name + last sync
 - "+ Link to a Business" button
@@ -437,14 +424,14 @@ class PlanGate {
 
 ---
 
-## Sprint 9 — v66: Phase D4 (Payroll Loop)
+## Sprint 8 — v65: Phase D4 (Payroll Loop)
 **Status: NOT STARTED**  
 **Estimate:** 4–5 days  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D4 + Section 6.1
 
 ### Tasks
 
-#### S9.1 — DB migration v66
+#### S8.1 — DB migration v65
 ```sql
 CREATE TABLE payroll_notifications (
   id                 INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -461,16 +448,16 @@ CREATE TABLE payroll_notifications (
 )
 ```
 
-#### S9.2 — `SyncServer` new event type
+#### S8.2 — `SyncServer` new event type
 - Add `payrollNotification` to `SyncEventType` enum 
 - Filter by `target_identity_id` when delivering from `sync_outbox`
 - Only the targeted person receives their notification
 
-#### S9.3 — Primary UX: payroll opt-in
+#### S8.3 — Primary UX: payroll opt-in
 - `StaffDetailScreen` → "Pay Salary" flow: add "Notify [Name]?" toggle (default OFF)
 - On confirm with toggle ON: queue `sync_outbox` event
 
-#### S9.4 — Secondary UX
+#### S8.4 — Secondary UX
 - `PayrollNotificationsBanner` widget on home screen
 - `PayrollNotificationsSheet`: list of pending with [Add Income] / [Dismiss]
 - On [Add Income]: creates `Transaction(context_id = NULL, type = income, category = 'Salary')`
@@ -482,35 +469,33 @@ CREATE TABLE payroll_notifications (
 | Sprint | Version | Feature | Min days | Max days |
 |--------|---------|---------|----------|----------|
 | 1 | v58 | Phase 0: Sync Foundation | 3 | 5 |
-| 2 | v59 | Phase U1: Cashier Mode | 3 | 4 |
-| 3 | v60 | Phase U2: Full RBAC | 5 | 7 |
-| 4 | v61 | Phase L1: Owner Mirror | 10 | 14 |
-| 5 | v62 | Phase L2: Staff Terminal | 5 | 7 |
-| 6 | v63 | Phase D1: My Identity | 3 | 4 |
-| 7 | v64 | Phase D2: Context Layer | 7 | 10 |
-| 8 | v65 | Phase D3: Sessions Upgrade | 5 | 7 |
-| 9 | v66 | Phase D4: Payroll Loop | 4 | 5 |
-| **Total** | | | **45 days** | **63 days** |
+| 2 | v59 | Phase U: Full RBAC | 5 | 7 |
+| 3 | v60 | Phase L1: Owner Mirror | 10 | 14 |
+| 4 | v61 | Phase L2: Staff Terminal | 5 | 7 |
+| 5 | v62 | Phase D1: My Identity | 3 | 4 |
+| 6 | v63 | Phase D2: Context Layer | 7 | 10 |
+| 7 | v64 | Phase D3: Sessions Upgrade | 5 | 7 |
+| 8 | v65 | Phase D4: Payroll Loop | 4 | 5 |
+| **Total** | | | **42 days** | **59 days** |
 
-Sprint 4 (Owner Mirror) is the longest because it introduces the entire LAN sync infrastructure from scratch. Every other sprint builds on it.
+Sprint 3 (Owner Mirror) is the longest because it introduces the entire LAN sync infrastructure from scratch. Every other sprint builds on it.
 
 ---
 
 ## Dependency Graph
 
 ```
-v58 (Phase 0)
-  └── v59 (Cashier Mode)          ← can start as soon as v58 is stable
-        └── v60 (Full RBAC)
-  └── v61 (Owner Mirror)           ← requires v58 sync columns
-        └── v62 (Staff Terminal)
-              └── v63 (Identity)
-                    └── v64 (Context Layer)
-                          └── v65 (Sessions Upgrade)
-                                └── v66 (Payroll Loop)
+v58 (Phase 0) ✅
+  └── v59 (Full RBAC)              ← current sprint
+        └── v60 (Owner Mirror)      ← requires v58 sync columns
+              └── v61 (Staff Terminal)
+                    └── v62 (Identity)
+                          └── v63 (Context Layer)
+                                └── v64 (Sessions Upgrade)
+                                      └── v65 (Payroll Loop)
 ```
 
-v59 (Cashier Mode) and v61 (Owner Mirror) can be started in parallel after v58. All other sprints are sequential.
+All sprints are sequential. No parallel paths — Cashier Mode removed; RBAC covers the cashier use case via role preset.
 
 ---
 

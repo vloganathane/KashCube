@@ -29,7 +29,7 @@ import '../loans/loans_screen.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 import '../settings/businesses_screen.dart';
-import '../staff/staff_screen.dart';
+import '../staff/staff_list_screen.dart';
 import 'global_document_ledger_screen.dart';
 import 'tally_export_screen.dart';
 
@@ -273,14 +273,14 @@ class _BusinessHub extends ConsumerWidget {
                       builder: (_) => const InventoryScreen()),
                 ),
               ),
+              // Staff & Payroll
               _HubTile(
                 icon: Icons.badge_outlined,
                 label: 'Staff & Payroll',
                 subtitle: const _StaticSubtitle('Employees, salary & HR'),
                 color: const Color(0xFF1565C0),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const StaffScreen()),
+                  MaterialPageRoute(builder: (_) => const StaffListScreen()),
                 ),
               ),
             ],

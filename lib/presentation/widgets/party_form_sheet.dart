@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/contacts_helper.dart';
@@ -61,6 +62,11 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   late PartyType _type;
   late String _partyContext;
   String? _businessCardImagePath;
+  // Staff-specific
+  late final TextEditingController _staffRole;
+  late final TextEditingController _staffSalary;
+  String _staffSalaryType = 'monthly';
+  DateTime? _staffJoinDate;
   bool _onlineExpanded = false;
   WorldCountry? _selectedCountry; // null = India (default)
   String _dialCode = '91';
@@ -88,6 +94,17 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _type = p?.partyType ?? PartyType.personal;
     _partyContext = p?.partyContext ?? 'personal';
     _businessCardImagePath = p?.businessCardImagePath;
+    // Staff fields
+    _staffRole = TextEditingController(text: p?.staffRole ?? '');
+    _staffSalary = TextEditingController(
+      text: p?.staffSalary != null ? p!.staffSalary!.toStringAsFixed(0) : '',
+    );
+    _staffSalaryType = p?.staffSalaryType ?? 'monthly';
+    if (p?.staffJoinDate != null) {
+      try {
+        _staffJoinDate = DateTime.parse(p!.staffJoinDate!);
+      } catch (_) {}
+    }
     // Country & dial code — load from existing party if set
     if (p?.country != null) {
       _selectedCountry = countryByName(p!.country);
@@ -127,6 +144,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _whatsapp.dispose();
     _linkedin.dispose();
     _instagram.dispose();
+    _staffRole.dispose();
+    _staffSalary.dispose();
     super.dispose();
   }
 
@@ -438,6 +457,9 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
 
+              // ── Staff fields (shown only for staff type) ──────────────
+              if (_type == PartyType.staff) ..._buildStaffFields(),
+
               // ── Saved Addresses ───────────────────────────────────────
               if (widget.existing?.id != null)
                 _PartyAddressesSection(
@@ -535,6 +557,93 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
         ),
       ),
     );
+  }
+
+  // ── Staff-specific fields ────────────────────────────────────────────────
+
+  List<Widget> _buildStaffFields() {
+    return [
+      // Role / Designation
+      TextFormField(
+        controller: _staffRole,
+        decoration: const InputDecoration(
+          labelText: 'Role / Designation',
+          hintText: 'e.g. Manager, Driver, Accountant',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.work_outline),
+        ),
+        textCapitalization: TextCapitalization.words,
+      ),
+      const SizedBox(height: AppSpacing.sm),
+
+      // Base Salary + type
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: TextFormField(
+              controller: _staffSalary,
+              decoration: const InputDecoration(
+                labelText: 'Base Salary (₹)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.currency_rupee),
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            flex: 2,
+            child: DropdownButtonFormField<String>(
+              initialValue: _staffSalaryType,
+              decoration: const InputDecoration(
+                labelText: 'Per',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'monthly', child: Text('Month')),
+                DropdownMenuItem(value: 'daily', child: Text('Day')),
+                DropdownMenuItem(value: 'hourly', child: Text('Hour')),
+              ],
+              onChanged: (v) => setState(() => _staffSalaryType = v ?? 'monthly'),
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.sm),
+
+      // Join Date
+      InkWell(
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: _staffJoinDate ?? DateTime.now(),
+            firstDate: DateTime(2000),
+            lastDate: DateTime.now(),
+          );
+          if (picked != null) setState(() => _staffJoinDate = picked);
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            labelText: 'Join Date',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.calendar_today_outlined),
+          ),
+          child: Text(
+            _staffJoinDate != null
+                ? DateFormat('d MMM yyyy').format(_staffJoinDate!)
+                : 'Tap to select',
+            style: _staffJoinDate != null
+                ? null
+                : TextStyle(color: Theme.of(context).colorScheme.outline),
+          ),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+    ];
   }
 
   Future<void> _pickBusinessCard() async {
@@ -740,6 +849,17 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       totalCreditReceived: existing?.totalCreditReceived ?? 0,
       createdAt: existing?.createdAt,
       updatedAt: DateTime.now(),
+      // Staff fields (preserved as-is for non-staff types)
+      staffRole: _type == PartyType.staff && _staffRole.text.trim().isNotEmpty
+          ? _staffRole.text.trim()
+          : existing?.staffRole,
+      staffSalary: _type == PartyType.staff && _staffSalary.text.trim().isNotEmpty
+          ? double.tryParse(_staffSalary.text.trim())
+          : existing?.staffSalary,
+      staffSalaryType: _type == PartyType.staff ? _staffSalaryType : existing?.staffSalaryType,
+      staffJoinDate: _type == PartyType.staff && _staffJoinDate != null
+          ? DateFormat('yyyy-MM-dd').format(_staffJoinDate!)
+          : existing?.staffJoinDate,
     );
 
     if (existing == null) {

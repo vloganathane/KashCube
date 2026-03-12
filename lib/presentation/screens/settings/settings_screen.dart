@@ -18,6 +18,7 @@ import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
+import 'linked_devices_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
 
@@ -134,7 +135,27 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
-          // -- Accounts --
+          // -- Team --
+          _SettingsSection(
+            title: 'Sync',
+            children: [
+              ListTile(
+                leading: const Icon(Icons.devices_outlined),
+                title: const Text('Linked Devices'),
+                subtitle: const Text(
+                    'Pair a tablet or second phone for shared access over Wi-Fi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LinkedDevicesScreen(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // -- Team --
           _SettingsSection(
             title: 'Team',
             children: [

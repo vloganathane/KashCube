@@ -84,6 +84,11 @@ class SettingsKeys {
 
   // Home screen widget layout (JSON-encoded list of HomeWidgetConfig)
   static const homeWidgetsConfig = 'home_widgets_config';
+
+  // Device identity (LAN sync)
+  static const deviceId         = 'device_id';
+  static const primaryPublicKey = 'primary_public_key';
+  static const deviceName       = 'device_name';
 }
 
 // ---------------------------------------------------------------------------

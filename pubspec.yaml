@@ -59,6 +59,14 @@ dependencies:
   # AES-256-GCM encryption for .kashcube backup export — 100% on-device
   encrypt: ^5.0.3
 
+  # Ed25519 keypair signing + Argon2id KDF — LAN sync and backup recovery
+  # Pure Dart, no network calls, no platform channels
+  cryptography: ^2.7.0
+
+  # mDNS service discovery for LAN sync (Android NsdManager / iOS NetServiceBrowser)
+  # Purely local — discovers peers on the same Wi-Fi; no internet required
+  nsd: ^4.1.0
+
   # Secure key-value storage (OS keystore) — used exclusively for optional
   # GSP API key when user explicitly opts into e-Way Bill auto-generation.
   # Default state: GSP is disabled, nothing is stored here.

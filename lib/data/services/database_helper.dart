@@ -1329,9 +1329,44 @@ class DatabaseHelper {
           'CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)');
     }
 
+    // ── v62: my_identity & linked_business_sessions ───────────────────────────
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS my_identity (
+        id           INTEGER PRIMARY KEY,
+        identity_id  TEXT    NOT NULL UNIQUE,
+        display_name TEXT    NOT NULL,
+        avatar_seed  TEXT,
+        public_key   TEXT    NOT NULL,
+        created_at   TEXT    DEFAULT (datetime('now')),
+        updated_at   TEXT    DEFAULT (datetime('now'))
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS linked_business_sessions (
+        id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id           TEXT    NOT NULL UNIQUE,
+        primary_identity_id  TEXT    NOT NULL,
+        primary_public_key   TEXT    NOT NULL,
+        primary_device_name  TEXT,
+        business_name        TEXT    NOT NULL DEFAULT 'Linked Business',
+        business_ids         TEXT    NOT NULL DEFAULT '[]',
+        token_payload        TEXT    NOT NULL,
+        token_signature      TEXT    NOT NULL,
+        permission_scope     TEXT    NOT NULL DEFAULT '{}',
+        offline_grace_days   INTEGER NOT NULL DEFAULT 7,
+        issued_at            TEXT    NOT NULL,
+        last_sync_at         TEXT,
+        is_read_only_forced  INTEGER DEFAULT 0,
+        display_order        INTEGER DEFAULT 0,
+        unlinked_at          TEXT,
+        created_at           TEXT    DEFAULT (datetime('now'))
+      )
+    ''');
+
     await db.insert('schema_version', {
-      'version': 58,
-      'description': 'Full v58 schema with sync foundation (fresh install)',
+      'version': 62,
+      'description': 'Full v62 schema: sync foundation + Phase D1 my_identity + linked_business_sessions (fresh install)',
       'applied_at': DateTime.now().toIso8601String(),
     });
 
@@ -3159,6 +3194,96 @@ class DatabaseHelper {
         'version': 58,
         'description':
             'Phase 0: sync_id + version + triggers on all P0 tables; 9 new auth/sync tables; subscription seeded',
+      });
+    }
+
+    // ── v62: Phase D1 — My Identity Foundation ─────────────────────────────
+    if (oldVersion < 62) {
+      // my_identity — permanent per-install Ed25519 identity (1 row)
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS my_identity (
+          id           INTEGER PRIMARY KEY,
+          identity_id  TEXT    NOT NULL UNIQUE,
+          display_name TEXT    NOT NULL,
+          avatar_seed  TEXT,
+          public_key   TEXT    NOT NULL,
+          created_at   TEXT    DEFAULT (datetime('now')),
+          updated_at   TEXT    DEFAULT (datetime('now'))
+        )
+      ''');
+
+      // linked_business_sessions — replaces sync device_session; multi-session support
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS linked_business_sessions (
+          id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_id           TEXT    NOT NULL UNIQUE,
+          primary_identity_id  TEXT    NOT NULL,
+          primary_public_key   TEXT    NOT NULL,
+          primary_device_name  TEXT,
+          business_name        TEXT    NOT NULL DEFAULT 'Linked Business',
+          business_ids         TEXT    NOT NULL DEFAULT '[]',
+          token_payload        TEXT    NOT NULL,
+          token_signature      TEXT    NOT NULL,
+          permission_scope     TEXT    NOT NULL DEFAULT '{}',
+          offline_grace_days   INTEGER NOT NULL DEFAULT 7,
+          issued_at            TEXT    NOT NULL,
+          last_sync_at         TEXT,
+          is_read_only_forced  INTEGER DEFAULT 0,
+          display_order        INTEGER DEFAULT 0,
+          unlinked_at          TEXT,
+          created_at           TEXT    DEFAULT (datetime('now'))
+        )
+      ''');
+
+      // Migrate existing sync device_session → linked_business_sessions (best effort).
+      // The device_session table may have either the app-management schema or the
+      // sync-credential schema (token_payload etc.) — only migrate the latter.
+      try {
+        await db.execute('''
+          INSERT OR IGNORE INTO linked_business_sessions (
+            session_id, primary_identity_id, primary_public_key,
+            business_name, business_ids, token_payload, token_signature,
+            permission_scope, offline_grace_days, issued_at,
+            last_sync_at, is_read_only_forced
+          )
+          SELECT
+            lower(hex(randomblob(16))),
+            primary_device_id,
+            primary_public_key,
+            'Linked Business',
+            business_scope,
+            token_payload,
+            token_signature,
+            permission_scope,
+            offline_grace_days,
+            issued_at,
+            last_sync_at,
+            is_read_only_forced
+          FROM device_session
+          WHERE token_payload IS NOT NULL AND token_payload != '{}'
+          LIMIT 1
+        ''');
+      } catch (e) {
+        // device_session has app-management schema only — no sync data to migrate
+        debugPrint('[DB v62] device_session migration skipped: $e');
+      }
+
+      // Add identity columns to linked_devices and app_users
+      try {
+        await db.execute(
+          'ALTER TABLE linked_devices ADD COLUMN secondary_identity_id TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE app_users ADD COLUMN identity_id TEXT',
+        );
+      } catch (_) {}
+
+      await db.insert('schema_version', {
+        'version': 62,
+        'description':
+            'Phase D1: my_identity table, linked_business_sessions (replaces sync device_session)',
       });
     }
   }

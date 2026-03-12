@@ -254,7 +254,7 @@ final permissionProvider = Provider.family<Permission, ({String module, int? bus
 ---
 
 ## Sprint 4 — v61: Phase L2 (Staff Terminal — Permission-Scoped Sync)
-**Status: NOT STARTED**  
+**Status: DONE ✅**  
 **Estimate:** 5–7 days  
 **Pre-condition:** Sprint 3 complete and stable  
 **Spec:** `LINKED_DEVICES_BRAINSTORM.md` → Section 6 + Section 7
@@ -288,7 +288,7 @@ final permissionProvider = Provider.family<Permission, ({String module, int? bus
 ---
 
 ## Sprint 5 — v62: Phase D1 (My Identity)
-**Status: NOT STARTED**  
+**Status: DONE ✅**  
 **Estimate:** 3–4 days  
 **Pre-condition:** Sprint 4 complete  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D1
@@ -488,8 +488,8 @@ Sprint 3 (Owner Mirror) is the longest because it introduces the entire LAN sync
 v58 (Phase 0) ✅
   └── v59 (Full RBAC) ✅
         └── v60 (Owner Mirror) ✅
-              └── v61 (Staff Terminal)     ← current sprint
-                    └── v62 (Identity)
+              └── v61 (Staff Terminal) ✅
+                    └── v62 (Identity)          ← current sprint
                           └── v63 (Context Layer)
                                 └── v64 (Sessions Upgrade)
                                       └── v65 (Payroll Loop)

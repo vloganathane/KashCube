@@ -300,11 +300,10 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
         deviceName: Platform.localHostname,
       );
 
-      // Persisted session row serves as the source of truth;
-      // also update the in-memory provider so the UI reacts immediately.
+      // Persist session row; also update in-memory provider so the UI reacts immediately.
       await DatabaseHelper.instance.withDatabase((db) async {
         await db.insert(
-          'device_session',
+          'linked_business_sessions',
           session.toMap(),
           conflictAlgorithm: ConflictAlgorithm.replace,
         );

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/delta_row.dart';
 import '../models/device_session_token.dart';
@@ -85,9 +86,9 @@ class SyncClient {
     );
 
     return DeviceSession(
-      thisDeviceId:    deviceId,
-      primaryDeviceId: resp['primary_device_id'] as String,
-      token:           token,
+      sessionId:         const Uuid().v4(),
+      primaryIdentityId: resp['primary_device_id'] as String,
+      token:             token,
     );
   }
 
@@ -102,9 +103,10 @@ class SyncClient {
   }) async {
     _assertConnected();
 
+    final deviceId = await identity.deviceId;
     await _sendMessage(_socket!, {
       'type':            'delta_request',
-      'device_id':       session.thisDeviceId,
+      'device_id':       deviceId,
       'last_sync_at':    lastSyncAt?.toIso8601String(),
       'token_payload':   session.token.payload,
       'token_signature': session.token.signatureBase64,
@@ -139,9 +141,10 @@ class SyncClient {
   }) async {
     _assertConnected();
 
+    final deviceId = await identity.deviceId;
     await _sendMessage(_socket!, {
       'type':            'delta_upload',
-      'device_id':       session.thisDeviceId,
+      'device_id':       deviceId,
       'rows':            rows.map((r) => r.toJson()).toList(),
       'token_payload':   session.token.payload,
       'token_signature': session.token.signatureBase64,

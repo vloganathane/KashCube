@@ -9,6 +9,7 @@ import '../../providers/settings_provider.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
+import 'profile_screen.dart';
 import 'businesses_screen.dart';
 import 'unit_types_screen.dart';
 import 'document_terms_screen.dart';
@@ -85,6 +86,16 @@ class SettingsScreen extends ConsumerWidget {
           _SettingsSection(
             title: 'Security',
             children: [
+              ListTile(
+                leading: const Icon(Icons.fingerprint_rounded),
+                title: const Text('My Identity'),
+                subtitle: const Text('View your identity QR and display name'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                ),
+              ),
               appLockAsync.when(
                 data: (enabled) => SwitchListTile(
                   secondary: const Icon(Icons.lock_outline),

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -6,7 +7,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../repositories/identity_repository_impl.dart';
 import 'database_helper.dart';
+import 'identity_service.dart';
 
 /// Service for creating and restoring local database backups.
 ///
@@ -134,6 +137,102 @@ class BackupService {
       total += b.size;
     }
     return total;
+  }
+
+  // ── Identity section (v62+) ─────────────────────────────────────────────
+
+  /// Exports the `my_identity` row and identity private-key seed as a JSON
+  /// map suitable for embedding in a backup archive.
+  ///
+  /// Returns `null` when no identity has been set up yet.
+  Future<Map<String, dynamic>?> exportIdentitySection() async {
+    try {
+      final identity = await IdentityRepositoryImpl().getMyIdentity();
+      if (identity == null) return null;
+
+      final privateSeed =
+          await IdentityService.instance.exportIdentityPrivateKeySeed();
+
+      return {
+        'schema': 1,
+        'identity_id':      identity.identityId,
+        'display_name':     identity.displayName,
+        'public_key':       identity.publicKey,
+        if (identity.avatarSeed case final seed?) 'avatar_seed': seed,
+        'created_at':       identity.createdAt.toIso8601String(),
+        if (privateSeed != null) 'private_key_seed': privateSeed,
+      };
+    } catch (e) {
+      debugPrint('[BackupService] exportIdentitySection failed: $e');
+      return null;
+    }
+  }
+
+  /// Restores the identity from a JSON section previously produced by
+  /// [exportIdentitySection].
+  ///
+  /// If [section] is `null` (old backup without identity), a fresh identity
+  /// will be generated on the next app start via [IdentitySetupScreen] or the
+  /// silent init path.
+  Future<void> importIdentitySection(Map<String, dynamic>? section) async {
+    if (section == null) {
+      // Old backup — clear any existing identity so fresh generation is triggered
+      debugPrint('[BackupService] importIdentitySection: no identity section, will generate fresh identity');
+      return;
+    }
+
+    try {
+      final privateSeed = section['private_key_seed'] as String?;
+      if (privateSeed != null) {
+        await IdentityService.instance.importIdentityPrivateKeySeed(privateSeed);
+      }
+
+      final identityId  = section['identity_id']  as String?;
+      final displayName = section['display_name'] as String?;
+      final publicKey   = section['public_key']   as String?;
+
+      if (identityId != null && displayName != null && publicKey != null) {
+        await DatabaseHelper.instance.withDatabase((db) async {
+          await db.delete('my_identity');
+          await db.insert('my_identity', {
+            'id':           1,
+            'identity_id':  identityId,
+            'display_name': displayName,
+            'public_key':   publicKey,
+            if (section['avatar_seed'] != null)
+              'avatar_seed': section['avatar_seed'],
+            if (section['created_at'] != null)
+              'created_at': section['created_at'],
+          });
+        });
+        debugPrint('[BackupService] importIdentitySection: restored identity $identityId');
+      }
+    } catch (e) {
+      debugPrint('[BackupService] importIdentitySection failed: $e');
+      rethrow;
+    }
+  }
+
+  /// Serialises the identity section to a JSON string for inclusion in an
+  /// encrypted backup archive (convenience wrapper).
+  Future<String?> exportIdentityJson() async {
+    final section = await exportIdentitySection();
+    if (section == null) return null;
+    return jsonEncode(section);
+  }
+
+  /// Deserialises and restores an identity section from a JSON string.
+  Future<void> importIdentityJson(String? json) async {
+    if (json == null || json.isEmpty) {
+      return importIdentitySection(null);
+    }
+    try {
+      final map = jsonDecode(json) as Map<String, dynamic>;
+      await importIdentitySection(map);
+    } catch (e) {
+      debugPrint('[BackupService] importIdentityJson parse error: $e');
+      rethrow;
+    }
   }
 }
 

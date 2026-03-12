@@ -6,10 +6,10 @@ import '../models/device_session_token.dart';
 import 'database_helper.dart';
 import 'identity_service.dart';
 
-/// Manages the secondary device's stored session credential (`device_session`
-/// table, one row max).
+/// Manages the secondary device's stored session credential
+/// (`linked_business_sessions` table, one active row max).
 ///
-/// Primary devices have no `device_session` row — all methods return early.
+/// Primary devices have no row — all methods return early.
 ///
 /// Usage:
 /// ```dart
@@ -21,20 +21,26 @@ class DeviceSessionService {
   DeviceSessionService._();
   static final DeviceSessionService instance = DeviceSessionService._();
 
+  static const String _kTable = 'linked_business_sessions';
+
   // ── Public API ────────────────────────────────────────────────────────────
 
-  /// Reads the `device_session` table and verifies the primary's Ed25519
-  /// signature over the token payload.
+  /// Reads the first active `linked_business_sessions` row and verifies the
+  /// primary's Ed25519 signature over the token payload.
   ///
   /// Returns `null` when:
-  /// - There is no row (this is the primary device).
+  /// - There is no active row (this is the primary device or has no session).
   /// - The signature is invalid (token was tampered with).
   Future<DeviceSession?> loadAndVerify(
     DatabaseHelper dbHelper,
     IdentityService identity,
   ) async {
     final rows = await dbHelper.withDatabase(
-      (db) => db.query('device_session', limit: 1),
+      (db) => db.query(
+        _kTable,
+        where: 'unlinked_at IS NULL',
+        limit: 1,
+      ),
     );
     if (rows.isEmpty) return null;
 
@@ -73,15 +79,21 @@ class DeviceSessionService {
     final daysSince = DateTime.now().difference(lastSync).inDays;
     if (daysSince >= session.token.offlineGraceDays) {
       await dbHelper.withDatabase(
-        (db) => db.update('device_session', {'is_read_only_forced': 1}),
+        (db) => db.update(
+          _kTable,
+          {'is_read_only_forced': 1},
+          where: 'session_id = ?',
+          whereArgs: [session.sessionId],
+        ),
       );
       debugPrint(
         'DeviceSessionService: grace period exceeded ($daysSince days) — read-only forced',
       );
       return DeviceSession(
-        thisDeviceId:     session.thisDeviceId,
-        primaryDeviceId:  session.primaryDeviceId,
+        sessionId:        session.sessionId,
+        primaryIdentityId: session.primaryIdentityId,
         token:            session.token,
+        businessName:     session.businessName,
         lastSyncAt:       session.lastSyncAt,
         isReadOnlyForced: true,
       );
@@ -90,10 +102,16 @@ class DeviceSessionService {
     return session;
   }
 
-  /// Deletes the `device_session` row.  Called when the primary revokes this
-  /// device during a sync cycle.
+  /// Marks all active sessions as unlinked.  Called when the primary revokes
+  /// this device during a sync cycle.
   Future<void> wipeSession(DatabaseHelper dbHelper) async {
-    await dbHelper.withDatabase((db) => db.delete('device_session'));
+    await dbHelper.withDatabase(
+      (db) => db.update(
+        _kTable,
+        {'unlinked_at': DateTime.now().toIso8601String()},
+        where: 'unlinked_at IS NULL',
+      ),
+    );
     debugPrint('DeviceSessionService: session wiped (device revoked)');
   }
 }

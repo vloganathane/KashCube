@@ -3362,6 +3362,38 @@ class DatabaseHelper {
             'Phase D3: shareable_plan_features on subscription; secondary_display_name on linked_devices',
       });
     }
+
+    if (oldVersion < 65) {
+      // payroll_notifications — cross-context salary events delivered to secondary
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS payroll_notifications (
+          id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+          notification_id        TEXT    NOT NULL UNIQUE,
+          source_identity_id     TEXT    NOT NULL,
+          business_name          TEXT    NOT NULL,
+          amount                 REAL    NOT NULL,
+          currency               TEXT    NOT NULL DEFAULT 'INR',
+          reference_label        TEXT,
+          paid_on                TEXT    NOT NULL,
+          received_at            TEXT    DEFAULT (datetime('now')),
+          status                 TEXT    NOT NULL DEFAULT 'pending',
+          created_transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL
+        )
+      ''');
+      // Add target_identity_id to sync_outbox for privacy-filtered delivery
+      try {
+        await db.execute(
+          'ALTER TABLE sync_outbox ADD COLUMN target_identity_id TEXT',
+        );
+      } catch (e) {
+        debugPrint('[DB v65] target_identity_id already exists: $e');
+      }
+      await db.insert('schema_version', {
+        'version': 65,
+        'description':
+            'Phase D4: payroll_notifications table + sync_outbox.target_identity_id',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

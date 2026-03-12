@@ -90,6 +90,8 @@ class SyncServer {
           await _handleDeltaRequest(socket, msg);
         case 'delta_upload':
           await _handleDeltaUpload(socket, msg);
+        case 'payroll_notification_request':
+          await _handlePayrollNotificationRequest(socket, msg);
         default:
           await _sendMessage(socket, {'type': 'error', 'message': 'unknown_type'});
       }
@@ -261,6 +263,76 @@ class SyncServer {
     await _sendMessage(socket, {
       'type':           'upload_ack',
       'received_count': rows.length,
+    });
+  }
+
+  // ── Payroll notification delivery ────────────────────────────────────────
+
+  /// Delivers pending payroll notifications to a secondary device, filtered
+  /// by the secondary's permanent [secondaryIdentityId].
+  ///
+  /// Only the specifically-targeted secondary receives its own notifications —
+  /// no cross-device leakage.
+  Future<void> _handlePayrollNotificationRequest(
+    Socket socket,
+    Map<String, dynamic> msg,
+  ) async {
+    if (!await _verifyDeviceToken(msg)) {
+      await _sendMessage(socket, {'type': 'error', 'message': 'invalid_token'});
+      return;
+    }
+
+    final tokenPayload   = msg['token_payload'] as String;
+    final decodedPayload = jsonDecode(tokenPayload) as Map<String, dynamic>;
+    final callerDeviceId = decodedPayload['device_id'] as String;
+
+    final device = await linkedDeviceRepo.getByDeviceId(callerDeviceId);
+    if (device == null || !device.isActive) {
+      await _sendMessage(socket, {
+        'type':    'revocation',
+        'message': 'device_revoked',
+      });
+      return;
+    }
+
+    final identityId = device.secondaryIdentityId;
+    if (identityId == null) {
+      await _sendMessage(socket, {
+        'type':          'payroll_notification_response',
+        'notifications': <dynamic>[],
+      });
+      return;
+    }
+
+    // Query pending outbox events for this identity.
+    final rows = await dbHelper.withDatabase(
+      (db) => db.query(
+        'sync_outbox',
+        where:     'event_type = ? AND target_identity_id = ? AND delivered_at IS NULL',
+        whereArgs: ['payroll_notification', identityId],
+      ),
+    );
+
+    // Mark as delivered before sending (at-most-once delivery).
+    if (rows.isNotEmpty) {
+      final ids = rows.map((r) => r['id'] as int).toList();
+      await dbHelper.withDatabase(
+        (db) => db.update(
+          'sync_outbox',
+          {'delivered_at': DateTime.now().toIso8601String()},
+          where:     'id IN (${List.filled(ids.length, '?').join(',')})',
+          whereArgs: ids,
+        ),
+      );
+    }
+
+    final events = rows
+        .map((r) => jsonDecode(r['payload'] as String) as Map<String, dynamic>)
+        .toList();
+
+    await _sendMessage(socket, {
+      'type':          'payroll_notification_response',
+      'notifications': events,
     });
   }
 

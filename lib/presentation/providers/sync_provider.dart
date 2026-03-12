@@ -7,6 +7,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../data/models/device_session_token.dart';
 import '../../data/models/linked_device.dart';
 import '../../data/models/my_identity.dart';
+import '../../data/models/payroll_notification.dart';
 import '../../data/repositories/linked_device_repository_impl.dart';
 import '../../data/services/database_helper.dart';
 import '../../data/services/device_session_service.dart';
@@ -402,4 +403,85 @@ class LinkedSessionsNotifier
 final linkedSessionsProvider = StateNotifierProvider<LinkedSessionsNotifier,
     AsyncValue<List<DeviceSession>>>(
   (_) => LinkedSessionsNotifier(),
+);
+
+// ---------------------------------------------------------------------------
+// Payroll notifications (secondary side — personal context)
+// ---------------------------------------------------------------------------
+
+/// Loads all pending [PayrollNotification] rows from the local DB.
+///
+/// Only relevant on secondary devices — primaries never receive these.
+final pendingPayrollNotificationsProvider =
+    FutureProvider<List<PayrollNotification>>((ref) async {
+  final rows = await DatabaseHelper.instance.withDatabase(
+    (db) => db.query(
+      'payroll_notifications',
+      where:   'status = ?',
+      whereArgs: ['pending'],
+      orderBy: 'received_at DESC',
+    ),
+  );
+  return rows.map(PayrollNotification.fromMap).toList();
+});
+
+/// Manages payroll notification actions: dismiss and add-as-income.
+class PayrollNotificationsNotifier
+    extends StateNotifier<AsyncValue<List<PayrollNotification>>> {
+  PayrollNotificationsNotifier() : super(const AsyncValue.loading()) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await DatabaseHelper.instance.withDatabase(
+        (db) => db.query(
+          'payroll_notifications',
+          where:     'status = ?',
+          whereArgs: ['pending'],
+          orderBy:   'received_at DESC',
+        ),
+      );
+      state = AsyncValue.data(rows.map(PayrollNotification.fromMap).toList());
+    } catch (e, s) {
+      state = AsyncValue.error(e, s);
+    }
+  }
+
+  void refresh() => _load();
+
+  /// Marks a notification as dismissed without creating a transaction.
+  Future<void> dismiss(String notificationId) async {
+    await DatabaseHelper.instance.withDatabase(
+      (db) => db.update(
+        'payroll_notifications',
+        {'status': 'dismissed'},
+        where:     'notification_id = ?',
+        whereArgs: [notificationId],
+      ),
+    );
+    _load();
+  }
+
+  /// Marks a notification as added after the caller creates the income
+  /// transaction, linking [transactionId] for traceability.
+  Future<void> markAdded(String notificationId, {int? transactionId}) async {
+    await DatabaseHelper.instance.withDatabase(
+      (db) => db.update(
+        'payroll_notifications',
+        {
+          'status': 'added',
+          'created_transaction_id': ?transactionId,
+        },
+        where:     'notification_id = ?',
+        whereArgs: [notificationId],
+      ),
+    );
+    _load();
+  }
+}
+
+final payrollNotificationsNotifierProvider = StateNotifierProvider<
+    PayrollNotificationsNotifier, AsyncValue<List<PayrollNotification>>>(
+  (_) => PayrollNotificationsNotifier(),
 );

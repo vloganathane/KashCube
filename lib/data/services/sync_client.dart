@@ -166,6 +166,63 @@ class SyncClient {
     return resp['received_count'] as int? ?? 0;
   }
 
+  // ── Payroll notification fetch ───────────────────────────────────────────
+
+  /// Requests pending payroll notifications from the primary, stores them
+  /// locally in [payroll_notifications], and returns the count received.
+  ///
+  /// The primary filters by the secondary's permanent [secondaryIdentityId] so
+  /// only this device's notifications are delivered — no cross-device leakage.
+  Future<int> fetchPayrollNotifications({
+    required DeviceSession session,
+  }) async {
+    _assertConnected();
+
+    final deviceId = await identity.deviceId;
+    await _sendMessage(_socket!, {
+      'type':            'payroll_notification_request',
+      'device_id':       deviceId,
+      'token_payload':   session.token.payload,
+      'token_signature': session.token.signatureBase64,
+    });
+
+    final resp = await _readMessage(_socket!);
+    if (resp == null) {
+      throw const SyncException('No response from primary');
+    }
+    if (resp['type'] == 'revocation') {
+      throw const SyncRevokedException('Device has been revoked by the primary');
+    }
+    if (resp['type'] != 'payroll_notification_response') {
+      throw const SyncException('Invalid payroll_notification_response from primary');
+    }
+
+    final rawList = (resp['notifications'] as List<dynamic>?) ?? [];
+    if (rawList.isEmpty) return 0;
+
+    await dbHelper.withDatabase((db) async {
+      for (final item in rawList) {
+        final n = item as Map<String, dynamic>;
+        await db.insert(
+          'payroll_notifications',
+          {
+            'notification_id':    n['notification_id'],
+            'source_identity_id': n['source_identity_id'],
+            'business_name':      n['business_name'],
+            'amount':             n['amount'],
+            'currency':           n['currency'] ?? 'INR',
+            'reference_label':    n['reference_label'],
+            'paid_on':            n['paid_on'],
+            'status':             'pending',
+          },
+          conflictAlgorithm: ConflictAlgorithm.ignore,
+        );
+      }
+    });
+
+    return rawList.length;
+  }
+
   // ── Apply rows ───────────────────────────────────────────────────────────
 
   Future<void> _applyDeltas(List<DeltaRow> rows) =>

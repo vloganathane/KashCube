@@ -26,6 +26,13 @@ class DeviceSessionToken extends Equatable {
   int get offlineGraceDays => decodedPayload['offline_grace_days'] as int? ?? 7;
   String get preset => decodedPayload['preset'] as String? ?? 'owner_mirror';
 
+  /// Feature map embedded by the primary at pairing time.
+  /// Keys are feature names (e.g. 'lan_sync'); value is a map with
+  /// `enabled` (bool) and `limit` (int) from the primary's plan_features table.
+  /// Returns `null` for tokens issued before D3 (v64).
+  Map<String, dynamic>? get planFeatures =>
+      decodedPayload['plan_features'] as Map<String, dynamic>?;
+
   factory DeviceSessionToken.fromMap(Map<String, dynamic> map) =>
       DeviceSessionToken(
         payload:                 map['token_payload'] as String,

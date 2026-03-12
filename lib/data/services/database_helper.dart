@@ -3332,6 +3332,36 @@ class DatabaseHelper {
             'Phase D2: context_id on all 13 syncable P0 tables for dual-primary context isolation',
       });
     }
+
+    // ── v64: Phase D3 — Linked Sessions Upgrade ────────────────────────────
+    //
+    // 1. subscription.shareable_plan_features — pre-serialised plan features
+    //    JSON cached on primary; embedded in session tokens and shared to
+    //    secondary during pairing so it can gate features without a DB hit.
+    // 2. linked_devices.secondary_display_name — human-readable name for the
+    //    linked identity captured during pairing (so the UI shows "Ravi Kumar"
+    //    instead of "Ravi's Galaxy S23").
+    if (oldVersion < 64) {
+      try {
+        await db.execute(
+          'ALTER TABLE subscription ADD COLUMN shareable_plan_features TEXT',
+        );
+      } catch (e) {
+        debugPrint('[DB v64] shareable_plan_features already exists: $e');
+      }
+      try {
+        await db.execute(
+          'ALTER TABLE linked_devices ADD COLUMN secondary_display_name TEXT',
+        );
+      } catch (e) {
+        debugPrint('[DB v64] secondary_display_name already exists: $e');
+      }
+      await db.insert('schema_version', {
+        'version': 64,
+        'description':
+            'Phase D3: shareable_plan_features on subscription; secondary_display_name on linked_devices',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

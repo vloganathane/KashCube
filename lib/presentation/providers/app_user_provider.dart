@@ -19,6 +19,10 @@ final appUserRepositoryProvider = Provider<AppUserRepository>(
 /// Non-null = a staff AppUser (restricted by their permissions).
 final activeAppUserProvider = StateProvider<AppUser?>((ref) => null);
 
+/// Increment to tell _LockGate to return to the UserSelectionScreen.
+/// Read-and-increment from anywhere that needs a "switch profile" action.
+final switchUserProvider = StateProvider<int>((ref) => 0);
+
 // ── User list ─────────────────────────────────────────────────────────────────
 
 final appUsersProvider =

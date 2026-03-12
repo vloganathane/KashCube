@@ -8,7 +8,7 @@ import 'identity_service.dart';
 ///
 /// A token payload is a JSON string containing:
 ///   device_id, permission_scope, business_scope, offline_grace_days,
-///   preset, issued_at
+///   preset, issued_at, plan_features (optional)
 ///
 /// The payload is Ed25519-signed by the PRIMARY device.  The secondary stores
 /// it in `device_session.token_payload` + `device_session.token_signature`.
@@ -19,8 +19,15 @@ class TokenService {
 
   /// Issues a [DeviceSessionToken] for [device].
   /// Must be called on the PRIMARY device.
-  Future<DeviceSessionToken> issue(LinkedDevice device) async {
-    final payload = _buildPayload(device);
+  ///
+  /// [planFeatures] — optional map of feature → {enabled, limit} loaded from
+  /// the primary's `plan_features` table.  When provided it is embedded in
+  /// the signed payload so the secondary can gate features without a DB hit.
+  Future<DeviceSessionToken> issue(
+    LinkedDevice device, {
+    Map<String, dynamic>? planFeatures,
+  }) async {
+    final payload = _buildPayload(device, planFeatures: planFeatures);
     final payloadBytes = utf8.encode(payload);
     final sig = await _identity.sign(payloadBytes);
     final pubKeyB64 = await _identity.publicKeyBase64;
@@ -57,14 +64,18 @@ class TokenService {
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
-  String _buildPayload(LinkedDevice device) {
-    final map = {
+  String _buildPayload(
+    LinkedDevice device, {
+    Map<String, dynamic>? planFeatures,
+  }) {
+    final map = <String, dynamic>{
       'device_id':          device.deviceId,
       'permission_scope':   device.permissionScope,
       'business_scope':     device.businessScope,
       'offline_grace_days': device.offlineGraceDays,
       'preset':             device.preset.dbValue,
       'issued_at':          DateTime.now().toIso8601String(),
+      'plan_features': ?planFeatures,
     };
     return jsonEncode(map);
   }

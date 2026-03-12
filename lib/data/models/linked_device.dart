@@ -37,6 +37,8 @@ class LinkedDevice extends Equatable {
     this.revokedAt,
     this.createdAt,
     this.preset = DevicePreset.ownerMirror,
+    this.secondaryIdentityId,
+    this.secondaryDisplayName,
   });
 
   final int? id;
@@ -55,6 +57,12 @@ class LinkedDevice extends Equatable {
   final DateTime? revokedAt;
   final DateTime? createdAt;
   final DevicePreset preset;
+  /// Permanent identity UUID of the secondary device (from `my_identity`).
+  /// Populated during D3 identity-first pairing; null for older pairings.
+  final String? secondaryIdentityId;
+  /// Human-readable display name of the secondary's identity.
+  /// e.g. "Ravi Kumar" — shown in LinkedDevicesScreen instead of device name.
+  final String? secondaryDisplayName;
 
   bool get isActive => revokedAt == null;
   bool get isOwnerMirror => preset == DevicePreset.ownerMirror;
@@ -83,6 +91,8 @@ class LinkedDevice extends Equatable {
             : null,
         preset:             DevicePreset.fromDb(
             map['permission_preset'] as String? ?? 'owner_mirror'),
+        secondaryIdentityId:   map['secondary_identity_id'] as String?,
+        secondaryDisplayName:  map['secondary_display_name'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -101,6 +111,8 @@ class LinkedDevice extends Equatable {
         'permission_preset': preset.dbValue,
         if (lastSyncAt != null) 'last_sync_at': lastSyncAt!.toIso8601String(),
         if (revokedAt != null) 'revoked_at': revokedAt!.toIso8601String(),
+        if (secondaryIdentityId != null) 'secondary_identity_id': secondaryIdentityId,
+        if (secondaryDisplayName != null) 'secondary_display_name': secondaryDisplayName,
       };
 
   LinkedDevice copyWith({
@@ -120,6 +132,8 @@ class LinkedDevice extends Equatable {
     DateTime? revokedAt,
     DateTime? createdAt,
     DevicePreset? preset,
+    String? secondaryIdentityId,
+    String? secondaryDisplayName,
   }) =>
       LinkedDevice(
         id:                 id              ?? this.id,
@@ -138,11 +152,14 @@ class LinkedDevice extends Equatable {
         revokedAt:          revokedAt       ?? this.revokedAt,
         createdAt:          createdAt       ?? this.createdAt,
         preset:             preset          ?? this.preset,
+        secondaryIdentityId:  secondaryIdentityId  ?? this.secondaryIdentityId,
+        secondaryDisplayName: secondaryDisplayName ?? this.secondaryDisplayName,
       );
 
   @override
   List<Object?> get props => [
         id, deviceId, deviceName, secondaryPublicKey,
         permissionScope, businessScope, revokedAt,
+        secondaryIdentityId, secondaryDisplayName,
       ];
 }

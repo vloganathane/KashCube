@@ -380,8 +380,7 @@ final activeContextProvider = StateProvider<int?>((ref) => null);
 ---
 
 ## Sprint 7 — v64: Phase D3 (Linked Sessions Upgrade)
-**Status: NOT STARTED**  
-**Estimate:** 5–7 days  
+**Status: COMPLETE ✅**  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D3
 
 ### Tasks

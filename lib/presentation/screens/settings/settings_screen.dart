@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/app_user_provider.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
@@ -20,6 +21,7 @@ import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'storage_health_screen.dart';
 import 'linked_devices_screen.dart';
+import 'linked_sessions_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
 
@@ -163,6 +165,19 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              ListTile(
+                leading: const Icon(Icons.business_center_outlined),
+                title: const Text('Linked Sessions'),
+                subtitle: const Text(
+                    'Manage your connections to primary business devices'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LinkedSessionsScreen(),
+                  ),
+                ),
+              ),
             ],
           ),
 
@@ -182,6 +197,16 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              Consumer(builder: (context, ref, _) {
+                final hasUsers = ref.watch(hasAnyAppUserProvider);
+                if (hasUsers.valueOrNull != true) return const SizedBox.shrink();
+                return ListTile(
+                  leading: const Icon(Icons.switch_account_outlined),
+                  title: const Text('Switch Profile'),
+                  subtitle: const Text('Return to the profile selection screen'),
+                  onTap: () => ref.read(switchUserProvider.notifier).state++,
+                );
+              }),
             ],
           ),
 

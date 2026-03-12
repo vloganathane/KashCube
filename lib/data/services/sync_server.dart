@@ -113,6 +113,9 @@ class SyncServer {
     final deviceOs            = msg['device_os']   as String?;
     final deviceType          = msg['device_type'] as String?;
     final presetStr           = msg['preset']      as String? ?? 'owner_mirror';
+    // D3: identity-first pairing — secondary sends its identity info
+    final secondaryIdentityId   = msg['secondary_identity_id']   as String?;
+    final secondaryDisplayName  = msg['secondary_display_name']  as String?;
 
     final preset = DevicePreset.fromDb(presetStr);
 
@@ -130,12 +133,17 @@ class SyncServer {
       businessScope:       '[]',  // admin configures scope in DeviceDetailScreen
       offlineGraceDays:    7,
       preset:              preset,
+      secondaryIdentityId:  secondaryIdentityId,
+      secondaryDisplayName: secondaryDisplayName,
     );
 
     await linkedDeviceRepo.insert(device);
 
+    // Load primary's plan features to embed in the token.
+    final planFeatures = await dbHelper.withDatabase(_loadPlanFeaturesForToken);
+
     // Issue signed session token
-    final token = await tokenService.issue(device);
+    final token = await tokenService.issue(device, planFeatures: planFeatures);
     final primaryKeyB64  = await identity.publicKeyBase64;
     final primaryDeviceId = await identity.deviceId;
 
@@ -146,6 +154,42 @@ class SyncServer {
       'primary_public_key': primaryKeyB64,
       'primary_device_id':  primaryDeviceId,
     });
+  }
+
+  /// Queries the local subscription + plan_features tables and returns a
+  /// feature map suitable for embedding in the session token.
+  ///
+  /// Also caches the serialised features in `subscription.shareable_plan_features`
+  /// so it can be used efficiently on subsequent syncs.
+  Future<Map<String, dynamic>> _loadPlanFeaturesForToken(Database db) async {
+    final subRows = await db.query('subscription', limit: 1);
+    final plan = subRows.isNotEmpty
+        ? (subRows.first['plan'] as String? ?? 'free')
+        : 'free';
+
+    final featureRows = await db.query(
+      'plan_features',
+      where: 'plan = ?',
+      whereArgs: [plan],
+    );
+
+    final features = <String, dynamic>{};
+    for (final row in featureRows) {
+      features[row['feature'] as String] = {
+        'enabled': (row['enabled'] as int?) == 1,
+        'limit':   row['limit_value'] as int? ?? 0,
+      };
+    }
+
+    // Cache serialised features for quick access on future syncs.
+    if (subRows.isNotEmpty) {
+      await db.update(
+        'subscription',
+        {'shareable_plan_features': jsonEncode(features)},
+      );
+    }
+
+    return features;
   }
 
   // ── Delta request (secondary wants rows) ─────────────────────────────────

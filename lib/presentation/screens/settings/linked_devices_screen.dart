@@ -90,6 +90,16 @@ class LinkedDevicesScreen extends ConsumerWidget {
       final port   = payload['port']   as int;
       final preset = payload['preset'] as String? ?? 'owner_mirror';
 
+      // D3: identity-first pairing — confirm who we are linking with.
+      final primaryDisplayName = payload['primary_display_name'] as String?;
+      if (primaryDisplayName != null && context.mounted) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => _LinkConfirmDialog(primaryName: primaryDisplayName),
+        );
+        if (confirmed != true || !context.mounted) return;
+      }
+
       await ref.read(linkJoinProvider.notifier).pair(
             ip:     ip,
             port:   port,
@@ -108,6 +118,64 @@ class LinkedDevicesScreen extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Link confirmation dialog
+// ---------------------------------------------------------------------------
+
+/// Shown when the QR payload includes the primary's identity display name.
+/// Gives the user a chance to verify they are linking to the right person.
+class _LinkConfirmDialog extends StatelessWidget {
+  const _LinkConfirmDialog({required this.primaryName});
+  final String primaryName;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AlertDialog(
+      title: const Text('Confirm pairing'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.link_rounded, size: 48, color: cs.primary),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'You are linking to:',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            primaryName,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Make sure you are on the same Wi-Fi as this person before confirming.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Link'),
+        ),
+      ],
+    );
   }
 }
 
@@ -139,7 +207,8 @@ class _DeviceTile extends StatelessWidget {
         ),
       ),
       title: Text(
-        device.deviceName,
+        // D3: Prefer identity display name (e.g. "Ravi Kumar") over device name.
+        device.secondaryDisplayName ?? device.deviceName,
         style: Theme.of(context)
             .textTheme
             .bodyLarge

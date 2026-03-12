@@ -8,6 +8,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../data/models/linked_device.dart';
+import '../../../data/models/my_identity.dart';
+import '../../providers/identity_provider.dart';
 import '../../providers/sync_provider.dart';
 
 /// Shown on the PRIMARY device to let a secondary scan and pair.
@@ -84,8 +86,9 @@ class _LinkDeviceScreenState extends ConsumerState<LinkDeviceScreen> {
           ),
         ),
         data: (port) {
-          final ip      = _localIp ?? '...';
-          final qrData  = _buildQrPayload(ip, port);
+          final ip       = _localIp ?? '...';
+          final identity = ref.watch(myIdentityProvider).valueOrNull;
+          final qrData   = _buildQrPayload(ip, port, identity: identity);
           return SingleChildScrollView(
             padding: const EdgeInsets.all(AppSpacing.base),
             child: Column(
@@ -232,12 +235,20 @@ class _LinkDeviceScreenState extends ConsumerState<LinkDeviceScreen> {
     );
   }
 
-  String _buildQrPayload(String ip, int port) {
+  /// Builds the JSON payload encoded into the QR code.
+  ///
+  /// Includes the primary's identity ([identity_id] + [display_name]) so the
+  /// secondary can show "Linking with: Suresh Gupta" before confirming pairing.
+  String _buildQrPayload(String ip, int port, {MyIdentity? identity}) {
     return jsonEncode({
-      'type':              'kashcube_pair_v1',
-      'ip':                ip,
-      'port':              port,
-      'preset':            _preset.dbValue,
+      'type':   'kashcube_pair_v1',
+      'ip':     ip,
+      'port':   port,
+      'preset': _preset.dbValue,
+      if (identity != null) ...{
+        'primary_identity_id':  identity.identityId,
+        'primary_display_name': identity.displayName,
+      },
     });
   }
 }

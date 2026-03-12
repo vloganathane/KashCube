@@ -82,6 +82,7 @@ class _LockGateState extends ConsumerState<_LockGate>
     with WidgetsBindingObserver {
   bool _isLocked = true;
   bool _checkedLock = false;
+  bool _ownerChosen = false; // set when owner tile is tapped
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class _LockGateState extends ConsumerState<_LockGate>
       setState(() {
         _isLocked = lockEnabled == 'true';
         _checkedLock = true;
+        _ownerChosen = false; // reset on re-lock
       });
     }
 
@@ -150,6 +152,12 @@ class _LockGateState extends ConsumerState<_LockGate>
 
   @override
   Widget build(BuildContext context) {
+    // Listen for switch-user requests from anywhere in the app.
+    ref.listen<int>(switchUserProvider, (_, __) {
+      ref.read(activeAppUserProvider.notifier).state = null;
+      setState(() => _ownerChosen = false);
+    });
+
     if (!_checkedLock) {
       // Splash / loading while we check lock state
       return const Scaffold(
@@ -183,6 +191,7 @@ class _LockGateState extends ConsumerState<_LockGate>
     // If there are staff users, show the selection screen so either the owner
     // or a staff member can choose who is operating the device.
     // If no staff users exist, go straight to AppShell (owner flow).
+    final activeUser = ref.watch(activeAppUserProvider);
     final hasUsers = ref.watch(hasAnyAppUserProvider);
     return hasUsers.when(
       loading: () => const Scaffold(
@@ -190,11 +199,10 @@ class _LockGateState extends ConsumerState<_LockGate>
       ),
       error: (e, _) => const AppShell(),
       data: (has) {
-        if (!has) return const AppShell();
+        // No staff, owner tapped, or staff already authenticated → go straight in.
+        if (!has || _ownerChosen || activeUser != null) return const AppShell();
         return UserSelectionScreen(
-          onOwnerSelected: () {
-            // activeAppUserProvider stays null → full owner access
-          },
+          onOwnerSelected: () => setState(() => _ownerChosen = true),
         );
       },
     );

@@ -54,11 +54,18 @@ class SyncClient {
   /// Sends a `pair_request` to the primary and returns the issued token.
   ///
   /// The caller must already have called [connect].
+  ///
+  /// [secondaryIdentityId] and [secondaryDisplayName] are the permanent
+  /// identity UUID and display name of THIS (secondary) device.  When
+  /// provided, the primary stores them in the `linked_devices` row so the
+  /// device list can show "Ravi Kumar" instead of "Ravi's Galaxy S23".
   Future<DeviceSession> sendPairRequest({
     required String preset,
     required String deviceOs,
     required String deviceType,
     required String deviceName,
+    String? secondaryIdentityId,
+    String? secondaryDisplayName,
   }) async {
     _assertConnected();
     final deviceId  = await identity.deviceId;
@@ -72,6 +79,8 @@ class SyncClient {
       'device_os':   deviceOs,
       'device_type': deviceType,
       'preset':      preset,
+      'secondary_identity_id': ?secondaryIdentityId,
+      'secondary_display_name': ?secondaryDisplayName,
     });
 
     final resp = await _readMessage(_socket!);

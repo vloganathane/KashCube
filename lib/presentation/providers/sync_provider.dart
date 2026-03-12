@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/models/device_session_token.dart';
 import '../../data/models/linked_device.dart';
+import '../../data/models/my_identity.dart';
 import '../../data/repositories/linked_device_repository_impl.dart';
 import '../../data/services/database_helper.dart';
 import '../../data/services/device_session_service.dart';
@@ -293,11 +294,20 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
       await _client.connect(ip: host, port: p);
       _ref.read(syncStatusProvider.notifier).syncing();
 
+      // Load THIS device's identity to send to the primary (identity-first pairing).
+      final myIdentity = await DatabaseHelper.instance.withDatabase((db) async {
+        final rows = await db.query('my_identity', limit: 1);
+        if (rows.isEmpty) return null;
+        return MyIdentity.fromMap(rows.first);
+      });
+
       final session = await _client.sendPairRequest(
         preset:     preset,
         deviceOs:   Platform.operatingSystem,
         deviceType: 'phone',
         deviceName: Platform.localHostname,
+        secondaryIdentityId:   myIdentity?.identityId,
+        secondaryDisplayName:  myIdentity?.displayName,
       );
 
       // Persist session row; also update in-memory provider so the UI reacts immediately.
@@ -348,4 +358,48 @@ final linkJoinProvider = StateNotifierProvider.autoDispose<LinkJoinNotifier,
     ref.onDispose(() => LanDiscoveryService.instance.stopDiscovery());
     return notifier;
   },
+);
+
+// ---------------------------------------------------------------------------
+// All linked business sessions (S7.5 — LinkedSessionsScreen)
+// ---------------------------------------------------------------------------
+
+class LinkedSessionsNotifier
+    extends StateNotifier<AsyncValue<List<DeviceSession>>> {
+  LinkedSessionsNotifier() : super(const AsyncValue.loading()) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final rows = await DatabaseHelper.instance.withDatabase((db) => db.query(
+            'linked_business_sessions',
+            where: 'unlinked_at IS NULL',
+            orderBy: 'display_order ASC, created_at DESC',
+          ));
+      state = AsyncValue.data(rows.map(DeviceSession.fromMap).toList());
+    } catch (e, s) {
+      state = AsyncValue.error(e, s);
+    }
+  }
+
+  /// Unlinks a session: sets `unlinked_at` timestamp and refreshes.
+  Future<void> unlink(String sessionId) async {
+    await DatabaseHelper.instance.withDatabase(
+      (db) => db.update(
+        'linked_business_sessions',
+        {'unlinked_at': DateTime.now().toIso8601String()},
+        where: 'session_id = ?',
+        whereArgs: [sessionId],
+      ),
+    );
+    await _load();
+  }
+
+  void refresh() => _load();
+}
+
+final linkedSessionsProvider = StateNotifierProvider<LinkedSessionsNotifier,
+    AsyncValue<List<DeviceSession>>>(
+  (_) => LinkedSessionsNotifier(),
 );

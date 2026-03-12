@@ -5,24 +5,79 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../data/services/iap_service.dart';
+import '../../providers/iap_provider.dart';
 import '../../providers/settings_provider.dart';
 
 /// Subscription upgrade screen — shows tier comparison and pricing.
 ///
-/// In the current build, purchase buttons are placeholders; real IAP
-/// wiring (via `in_app_purchase`) ships in Sprint 3.
-///
-/// In debug builds only, simulation buttons allow switching tiers for QA.
-class UpgradeScreen extends ConsumerWidget {
+/// CTA buttons trigger Google Play's in-app purchase flow via [IapService].
+/// In debug builds, simulation chips allow switching tiers for QA without IAP.
+class UpgradeScreen extends ConsumerStatefulWidget {
   const UpgradeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<UpgradeScreen> createState() => _UpgradeScreenState();
+}
+
+class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
+  /// Product ID currently being purchased — shows loading while Play UI is open.
+  String? _purchasingProductId;
+
+  Future<void> _purchase(String productId) async {
+    final iapAsync = ref.read(iapServiceProvider);
+    final iap = iapAsync.valueOrNull;
+    if (iap == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Play Store billing is not available on this device.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _purchasingProductId = productId);
+    try {
+      await iap.buySubscription(productId);
+      // Purchase result arrives via the IapService stream listener;
+      // tier will be updated automatically in [subscriptionTierProvider].
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Purchase error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _purchasingProductId = null);
+    }
+  }
+
+  Future<void> _restorePurchases() async {
+    final iap = ref.read(iapServiceProvider).valueOrNull;
+    if (iap == null) return;
+    await iap.restorePurchases();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Purchases restored')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentTier = ref.watch(subscriptionTierProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('KashCube Plans'),
+        actions: [
+          TextButton(
+            onPressed: _restorePurchases,
+            child: const Text('Restore'),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(
@@ -37,8 +92,12 @@ class UpgradeScreen extends ConsumerWidget {
             tier: SubscriptionTier.starter,
             monthlyPrice: '₹59',
             annualPrice: '₹499',
+            annualProductId: KashCubeProducts.starterAnnual,
+            monthlyProductId: KashCubeProducts.starterMonthly,
             annualSavingsPct: 30,
             currentTier: currentTier,
+            purchasingProductId: _purchasingProductId,
+            onPurchase: _purchase,
             features: const [
               'Watermark-free PDFs & documents',
               'UPI payment QR on invoices',
@@ -53,8 +112,12 @@ class UpgradeScreen extends ConsumerWidget {
             tier: SubscriptionTier.business,
             monthlyPrice: '₹129',
             annualPrice: '₹999',
+            annualProductId: KashCubeProducts.businessAnnual,
+            monthlyProductId: KashCubeProducts.businessMonthly,
             annualSavingsPct: 35,
             currentTier: currentTier,
+            purchasingProductId: _purchasingProductId,
+            onPurchase: _purchase,
             features: const [
               'Everything in Starter',
               'GSTR-1 JSON + Tally XML export',
@@ -142,8 +205,12 @@ class _PricingCard extends StatelessWidget {
     required this.tier,
     required this.monthlyPrice,
     required this.annualPrice,
+    required this.annualProductId,
+    required this.monthlyProductId,
     required this.annualSavingsPct,
     required this.currentTier,
+    required this.purchasingProductId,
+    required this.onPurchase,
     required this.features,
     this.highlight = false,
   });
@@ -151,8 +218,13 @@ class _PricingCard extends StatelessWidget {
   final SubscriptionTier tier;
   final String monthlyPrice;
   final String annualPrice;
+  final String annualProductId;
+  final String monthlyProductId;
   final int annualSavingsPct;
   final SubscriptionTier currentTier;
+  /// The product ID currently being purchased (null = none in-flight).
+  final String? purchasingProductId;
+  final void Function(String productId) onPurchase;
   final List<String> features;
   final bool highlight;
 
@@ -162,6 +234,10 @@ class _PricingCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = context.colorScheme;
     final tt = context.textTheme;
+
+    final buyingAnnual = purchasingProductId == annualProductId;
+    final buyingMonthly = purchasingProductId == monthlyProductId;
+    final anyBuying = purchasingProductId != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -260,41 +336,44 @@ class _PricingCard extends StatelessWidget {
               )),
           const SizedBox(height: AppSpacing.md),
 
-          // CTA buttons
+          // CTA buttons — shown only if this tier is not already active
           if (!_isActive) ...[
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () => _showComingSoon(context),
-                child: Text('Get $annualPrice/year'),
+                onPressed: anyBuying ? null : () => onPurchase(annualProductId),
+                child: buyingAnnual
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('Get $annualPrice/year'),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () => _showComingSoon(context),
-                child: Text('Try $monthlyPrice/month'),
+                onPressed: anyBuying ? null : () => onPurchase(monthlyProductId),
+                child: buyingMonthly
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text('Try $monthlyPrice/month'),
               ),
             ),
           ],
 
-          // GST note for business users
+          // GST note
           const SizedBox(height: AppSpacing.sm),
           Text(
             '18% GST applicable · ITC claimable for GST-registered businesses',
             style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('In-app purchase coming soon — stay tuned!'),
-        duration: Duration(seconds: 2),
       ),
     );
   }

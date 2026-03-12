@@ -3,7 +3,7 @@
 
 **Version:** 1.0  
 **Date:** 10 March 2026  
-**Status:** IN PROGRESS  
+**Status:** COMPLETE 🏆  
 **Prerequisite:** Feature audit complete (March 2026) — 16/27 features built  
 **Goal:** Ship the monetization gate infrastructure; all existing fully-built features become properly gated
 
@@ -150,9 +150,9 @@ Currently exports CSV ZIP. Add JSON export method that produces the GSTN portal-
 
 ---
 
-## Sprint 3 — IAP Wiring
+## Sprint 3 — IAP Wiring ✅ COMPLETE
 
-### S3-T1 — Add `in_app_purchase` package
+### S3-T1 — Add `in_app_purchase` package ✅
 **File:** `pubspec.yaml`
 
 ```yaml
@@ -169,7 +169,7 @@ com.kashcube.business.annual    ₹999/year
 
 ---
 
-### S3-T2 — IAP Service
+### S3-T2 — IAP Service ✅
 **File:** `lib/data/services/iap_service.dart` ← **new**
 
 - Load products from Play Store
@@ -179,8 +179,8 @@ com.kashcube.business.annual    ₹999/year
 
 ---
 
-### S3-T3 — Wire Upgrade Screen to real IAP
-Replace the dev-only simulation buttons in `UpgradeScreen` with real IAP purchase flow via `IapService`.
+### S3-T3 — Wire Upgrade Screen to real IAP ✅
+Replaced placeholder buttons in `UpgradeScreen` with real IAP purchase flow via `IapService`. Annual and monthly buttons for Starter and Business tiers now call `IapService.buySubscription()`. Loading indicators shown while Google Play UI is open. Restore purchases action in AppBar.
 
 ---
 
@@ -215,10 +215,10 @@ Sprint 2 (Next): Complete Starter features
   S2-T3 GSTR-1 JSON export
   S2-T4 EAN barcode scanner
 
-Sprint 3 (After): Real IAP
-  S3-T1 in_app_purchase package
-  S3-T2 IapService
-  S3-T3 Wire to Upgrade Screen
+Sprint 3 ✅: Real IAP
+  S3-T1 in_app_purchase package ✅
+  S3-T2 IapService ✅
+  S3-T3 Wire to Upgrade Screen ✅
 
 Sprint 4 (Phase 2): Business tier build-out
   Inventory → Tally XML → Payroll → LAN sync

@@ -9,6 +9,7 @@ import 'data/services/notification_service.dart';
 import 'data/services/pdf_cache_manager.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
+import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/identity_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
@@ -58,6 +59,8 @@ class KashCubeApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Activate the scheduler so notifications stay in sync with upcoming items.
     ref.watch(notificationSchedulerProvider);
+    // Initialise Play Billing so the subscription listener is live from startup.
+    ref.watch(iapServiceProvider);
 
     return MaterialApp(
       title: 'Kash Cube',

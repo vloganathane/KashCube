@@ -415,7 +415,7 @@ class PlanGate {
 ---
 
 ## Sprint 8 — v65: Phase D4 (Payroll Loop)
-**Status: NOT STARTED**  
+**Status: COMPLETE ✅** (commit `b023525`, 9 files, 744 insertions)  
 **Estimate:** 4–5 days  
 **Spec:** `DUAL_PRIMARY_IDENTITY_SPEC.md` → Section 9 Phase D4 + Section 6.1
 

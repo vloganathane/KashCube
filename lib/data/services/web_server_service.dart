@@ -9,6 +9,9 @@ import 'package:shelf_web_socket/shelf_web_socket.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'package:sqflite/sqflite.dart';
+
+import 'database_helper.dart';
 import 'web_api_routes.dart';
 
 /// Runs on the phone. Serves the KashCube Web SPA + REST API over LAN.
@@ -31,6 +34,8 @@ class WebServerService {
 
   HttpServer? _server;
   String? _sessionToken;
+  String? _webDeviceId;   // device_id of the active linked_devices row
+  DateTime? _lastTouchAt; // debounces last_sync_at DB writes
   String? _spaHtml;
 
   /// WebSocket clients subscribed to real-time events.
@@ -66,6 +71,7 @@ class WebServerService {
     _sessionToken = const Uuid().v4().replaceAll('-', '');
     _spaHtml = spaHtml;
     _lanIp = await _resolveLanIp();
+    await _registerWebSession();
 
     // ── API router (all /api/* routes) ──────────────────────────────────────
     // shelf_router supports parameterized handlers via dynamic dispatch:
@@ -121,15 +127,87 @@ class WebServerService {
     }
     _wsClients.clear();
     await _server!.close(force: true);
+    await _revokeWebSession();
     _server = null;
     _sessionToken = null;
     _spaHtml = null;
   }
 
   /// Regenerate token — existing browser sessions are immediately invalidated.
-  void revokeSession() {
+  /// A new [linked_devices] row is inserted so the next browser scan appears
+  /// in the Linked Devices list with its own last-active timestamp.
+  Future<void> revokeSession() async {
+    await _revokeWebSession();
     _sessionToken = const Uuid().v4().replaceAll('-', '');
+    await _registerWebSession();
     _push({'event': 'session_revoked'});
+  }
+
+  /// Kills the current web session without creating a new one.
+  /// Called when the user revokes the web device from Linked Devices screen.
+  Future<void> killWebSession() async {
+    await _revokeWebSession();
+    _sessionToken = null;
+  }
+
+  // ── Web session DB helpers ────────────────────────────────────────────────
+
+  Future<void> _registerWebSession() async {
+    final newId  = const Uuid().v4();
+    final syncId = const Uuid().v4().replaceAll('-', '');
+    _webDeviceId = newId;
+    await DatabaseHelper.instance.withDatabase((db) async {
+      await db.insert(
+        'linked_devices',
+        {
+          'sync_id':              syncId,
+          'device_id':            newId,
+          'device_name':          'KashCube Web',
+          'device_type':          'web',
+          'device_os':            'browser',
+          'secondary_public_key': '',
+          'permission_scope':     '{"read": true}',
+          'business_scope':       '[]',
+          'offline_grace_days':   0,
+          'created_at':           DateTime.now().toIso8601String(),
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+    });
+  }
+
+  Future<void> _revokeWebSession() async {
+    final id = _webDeviceId;
+    if (id == null) return;
+    _webDeviceId = null;
+    await DatabaseHelper.instance.withDatabase((db) async {
+      await db.update(
+        'linked_devices',
+        {'revoked_at': DateTime.now().toIso8601String()},
+        where:     'device_id = ?',
+        whereArgs: [id],
+      );
+    });
+  }
+
+  /// Updates `last_sync_at` on the web session row, debounced to once/minute.
+  Future<void> _touchLastActive() async {
+    final id  = _webDeviceId;
+    final now = DateTime.now();
+    if (id == null) return;
+    if (_lastTouchAt != null &&
+        now.difference(_lastTouchAt!) < const Duration(minutes: 1)) {
+      return;
+    }
+    _lastTouchAt = now;
+    await DatabaseHelper.instance.withDatabase((db) async {
+      await db.update(
+        'linked_devices',
+        {'last_sync_at': now.toIso8601String()},
+        where:     'device_id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   // ── Real-time push ────────────────────────────────────────────────────────
@@ -158,8 +236,10 @@ class WebServerService {
 
   /// Checks `X-KashCube-Token` header or `?token=` query param.
   /// Returns 401 if missing or invalid.
+  /// Also debounces a `last_sync_at` update so the Linked Devices screen
+  /// shows "Last active" correctly (WhatsApp Web model).
   Middleware _authMiddleware() {
-    return (Handler inner) => (Request req) {
+    return (Handler inner) => (Request req) async {
           final header = req.headers['x-kashcube-token'];
           final query = req.url.queryParameters['token'];
           final provided = header ?? query;
@@ -170,6 +250,7 @@ class WebServerService {
               headers: {'content-type': 'application/json'},
             );
           }
+          unawaited(_touchLastActive());
           return inner(req);
         };
   }
@@ -205,8 +286,8 @@ class WebServerService {
         headers: {'content-type': 'application/json'},
       );
 
-  Response _handleRevoke(Request req) {
-    revokeSession();
+  Future<Response> _handleRevoke(Request req) async {
+    await revokeSession();
     return Response.ok(
       jsonEncode({'ok': true}),
       headers: {'content-type': 'application/json'},

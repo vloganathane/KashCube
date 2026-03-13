@@ -232,9 +232,11 @@ class _DeviceTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: cs.primaryContainer,
         child: Icon(
-          device.deviceType == 'tablet'
-              ? Icons.tablet_android_rounded
-              : Icons.smartphone_rounded,
+          device.deviceType == 'web'
+              ? Icons.laptop_rounded
+              : device.deviceType == 'tablet'
+                  ? Icons.tablet_android_rounded
+                  : Icons.smartphone_rounded,
           color: cs.onPrimaryContainer,
         ),
       ),
@@ -250,7 +252,7 @@ class _DeviceTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            device.preset.label,
+            device.deviceType == 'web' ? 'Browser Session' : device.preset.label,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -258,7 +260,7 @@ class _DeviceTile extends StatelessWidget {
           ),
           if (lastSync != null)
             Text(
-              'Last sync: ${DateFormatter.format(lastSync)}',
+              '${device.deviceType == 'web' ? 'Last active' : 'Last sync'}: ${DateFormatter.format(lastSync)}',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall

@@ -59,28 +59,33 @@ class DeviceDetailScreen extends ConsumerWidget {
           _InfoCard(
             children: [
               _InfoRow(
-                icon: device.deviceType == 'tablet'
-                    ? Icons.tablet_android_rounded
-                    : Icons.smartphone_rounded,
+                icon: device.deviceType == 'web'
+                    ? Icons.laptop_rounded
+                    : device.deviceType == 'tablet'
+                        ? Icons.tablet_android_rounded
+                        : Icons.smartphone_rounded,
                 label: 'Device',
                 value: device.deviceName,
               ),
               if (device.deviceOs != null)
                 _InfoRow(
-                  icon:  Icons.phone_android_rounded,
-                  label: 'OS',
-                  value: device.deviceOs!,
+                  icon:  device.deviceType == 'web'
+                      ? Icons.public_rounded
+                      : Icons.phone_android_rounded,
+                  label: 'Platform',
+                  value: device.deviceType == 'web' ? 'Browser' : device.deviceOs!,
                 ),
               _InfoRow(
                 icon:  Icons.admin_panel_settings_outlined,
                 label: 'Role',
-                value: device.preset.label,
+                value: device.deviceType == 'web' ? 'Browser Session' : device.preset.label,
               ),
-              _InfoRow(
-                icon:  Icons.timer_outlined,
-                label: 'Offline grace',
-                value: '${device.offlineGraceDays} days',
-              ),
+              if (device.deviceType != 'web')
+                _InfoRow(
+                  icon:  Icons.timer_outlined,
+                  label: 'Offline grace',
+                  value: '${device.offlineGraceDays} days',
+                ),
             ],
           ),
 
@@ -90,8 +95,10 @@ class DeviceDetailScreen extends ConsumerWidget {
           _InfoCard(
             children: [
               _InfoRow(
-                icon:  Icons.sync_rounded,
-                label: 'Last sync',
+                icon:  device.deviceType == 'web'
+                    ? Icons.access_time_rounded
+                    : Icons.sync_rounded,
+                label: device.deviceType == 'web' ? 'Last active' : 'Last sync',
                 value: device.lastSyncAt != null
                     ? DateFormatter.format(device.lastSyncAt!)
                     : 'Never',

@@ -17,6 +17,7 @@ import '../../data/services/lan_discovery_service.dart';
 import '../../data/services/sync_client.dart';
 import '../../data/services/sync_server.dart';
 import '../../data/services/token_service.dart';
+import '../../data/services/web_server_service.dart';
 import '../../domain/models/permission.dart';
 import '../../domain/repositories/linked_device_repository.dart';
 import 'settings_provider.dart';
@@ -93,6 +94,15 @@ class LinkedDevicesNotifier
   Future<void> refresh() => _load();
 
   Future<void> revoke(String deviceId) async {
+    // If revoking a web session, also kill the in-memory token so the browser
+    // gets an immediate 401 — same behaviour as WhatsApp's "Log out of Web".
+    final current = state.valueOrNull;
+    if (current != null) {
+      final match = current.where((d) => d.deviceId == deviceId);
+      if (match.isNotEmpty && match.first.deviceType == 'web') {
+        await WebServerService.instance.killWebSession();
+      }
+    }
     await _repo.revoke(deviceId);
     await _load();
   }

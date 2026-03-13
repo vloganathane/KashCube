@@ -70,8 +70,8 @@ class WebServerNotifier extends StateNotifier<WebServerState> {
     state = const WebServerState();
   }
 
-  void revokeSession() {
-    _service.revokeSession();
+  Future<void> revokeSession() async {
+    await _service.revokeSession();
     // Update QR payload — new token has been generated
     state = state.copyWith(qrPayload: _service.qrPayload);
   }

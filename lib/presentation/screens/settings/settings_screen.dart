@@ -24,6 +24,7 @@ import 'linked_devices_screen.dart';
 import 'linked_sessions_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
+import 'kashcube_web_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -175,6 +176,19 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const LinkedSessionsScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.computer_outlined),
+                title: const Text('KashCube Web'),
+                subtitle: const Text(
+                    'Access data from any browser on the same Wi-Fi — no internet'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const KashCubeWebScreen(),
                   ),
                 ),
               ),

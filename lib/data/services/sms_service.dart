@@ -21,12 +21,14 @@ class SmsService {
 
   /// Whether SMS permission has been granted.
   Future<bool> get hasPermission async {
+    if (kIsWeb) return false;
     final permissionsGranted = await _telephony.requestPhoneAndSmsPermissions;
     return permissionsGranted ?? false;
   }
 
   /// Request SMS permission from the user.
   Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
     final granted = await _telephony.requestPhoneAndSmsPermissions;
     return granted ?? false;
   }
@@ -35,6 +37,7 @@ class SmsService {
   ///
   /// [onTransactionDetected] is called when a financial SMS is parsed.
   void startListening({required OnTransactionSmsDetected onTransactionDetected}) {
+    if (kIsWeb) return;
     if (_isListening) return;
 
     _onTransactionDetected = onTransactionDetected;
@@ -50,6 +53,7 @@ class SmsService {
 
   /// Stop listening for incoming SMS.
   void stopListening() {
+    if (kIsWeb) return;
     _isListening = false;
     _onTransactionDetected = null;
     debugPrint('SmsService: Stopped listening');
@@ -60,6 +64,7 @@ class SmsService {
   /// [maxCount] limits how many SMS to read (default: 200).
   /// Returns only financial SMS that could be parsed.
   Future<List<ParsedSms>> readExistingSms({int maxCount = 200}) async {
+    if (kIsWeb) return [];
     try {
       final messages = await _telephony.getInboxSms(
         columns: [

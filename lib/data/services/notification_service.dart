@@ -52,7 +52,7 @@ class NotificationService {
   // ── Initialise ─────────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    if (_initialized) return;
+    if (kIsWeb || _initialized) return;
 
     // Set up timezone database (IST = Asia/Kolkata)
     tz_data.initializeTimeZones();
@@ -77,6 +77,7 @@ class NotificationService {
   /// Requests POST_NOTIFICATIONS permission on Android 13+ (API 33+).
   /// Safe to call repeatedly; no-op if already granted.
   Future<bool> requestPermission() async {
+    if (kIsWeb) return false;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();

@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
 import 'data/services/action_center_background_service.dart';
+import 'data/services/db_factory.dart';
 import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/pdf_cache_manager.dart';
@@ -20,33 +22,40 @@ import 'presentation/screens/settings/pin_lock_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialise local notifications before the first frame.
-  // 100% on-device — no network calls.
-  await NotificationService.instance.initialize();
-  await NotificationService.instance.requestPermission();
+  // Set the correct SQLite backend (WASM on web, native on Android).
+  await initDatabaseFactory();
+
+  if (!kIsWeb) {
+    // Initialise local notifications before the first frame.
+    // 100% on-device — no network calls.
+    await NotificationService.instance.initialize();
+    await NotificationService.instance.requestPermission();
+  }
 
   // Ensure current_fy_start is in sync with today's FY.
   // This also triggers isResetDue() to return true if the FY has flipped
   // since the last launch, so invoice numbers reset correctly.
   await FiscalYearService.instance.ensureCurrentFYStart();
 
-  // Show year-end notifications if the FY is within 7 days of ending
-  // or if the old FY was never closed after the new year started.
-  await NotificationService.instance.checkAndShowYearEndAlerts();
+  if (!kIsWeb) {
+    // Show year-end notifications if the FY is within 7 days of ending
+    // or if the old FY was never closed after the new year started.
+    await NotificationService.instance.checkAndShowYearEndAlerts();
 
-  // Backup reminder if no encrypted backup in 30 days (or ever).
-  await NotificationService.instance.checkAndShowBackupReminder();
+    // Backup reminder if no encrypted backup in 30 days (or ever).
+    await NotificationService.instance.checkAndShowBackupReminder();
 
-  // Register daily Action Center background task (fires ~9 AM via WorkManager).
-  // Non-fatal if WorkManager is unavailable on this device.
-  await registerActionCenterDailyTask();
+    // Register daily Action Center background task (fires ~9 AM via WorkManager).
+    // Non-fatal if WorkManager is unavailable on this device.
+    await registerActionCenterDailyTask();
 
-  // Register daily low-stock inventory alert task.
-  await registerLowStockDailyTask();
+    // Register daily low-stock inventory alert task.
+    await registerLowStockDailyTask();
 
-  // Re-register auto-backup task if the user had it enabled.
-  // WorkManager tasks can be cleared by OS updates; this restores the schedule.
-  await maybeRestoreAutoBackupTask();
+    // Re-register auto-backup task if the user had it enabled.
+    // WorkManager tasks can be cleared by OS updates; this restores the schedule.
+    await maybeRestoreAutoBackupTask();
+  }
 
   runApp(const ProviderScope(child: KashCubeApp()));
 }
@@ -129,6 +138,8 @@ class _LockGateState extends ConsumerState<_LockGate>
   }
 
   Future<void> _attemptBiometric() async {
+    if (kIsWeb) return; // web auth = session token; no biometric
+
     final settingsRepo = ref.read(settingsRepositoryProvider);
     final bioEnabled = await settingsRepo.get(SettingsKeys.biometricEnabled);
 

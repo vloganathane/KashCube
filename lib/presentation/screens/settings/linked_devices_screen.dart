@@ -22,6 +22,22 @@ class LinkedDevicesScreen extends ConsumerWidget {
     final devicesAsync     = ref.watch(linkedDevicesProvider);
     final isSecondaryAsync = ref.watch(isSecondaryDeviceProvider);
     final isSecondary      = isSecondaryAsync.valueOrNull ?? false;
+    final syncState        = ref.watch(syncNowProvider);
+
+    ref.listen<SyncNowState>(syncNowProvider, (_, next) {
+      if (!context.mounted) return;
+      if (next.status == SyncStatus.done) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(
+              'Synced — ${next.pulled} received, ${next.pushed} sent'),
+        ));
+      } else if (next.status == SyncStatus.error && next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content:         Text(next.error!),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ));
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -32,6 +48,12 @@ class LinkedDevicesScreen extends ConsumerWidget {
             tooltip: 'Refresh',
             onPressed: () => ref.read(linkedDevicesProvider.notifier).refresh(),
           ),
+          if (isSecondary)
+            IconButton(
+              icon:    const Icon(Icons.qr_code_scanner_rounded),
+              tooltip: 'Re-pair (Scan QR)',
+              onPressed: () => _scanAndJoin(context, ref),
+            ),
         ],
       ),
       body: devicesAsync.when(
@@ -51,9 +73,19 @@ class LinkedDevicesScreen extends ConsumerWidget {
       ),
       floatingActionButton: isSecondary
           ? FloatingActionButton.extended(
-              onPressed: () => _scanAndJoin(context, ref),
-              icon:  const Icon(Icons.qr_code_scanner_rounded),
-              label: const Text('Scan to Sync'),
+              onPressed: syncState.isRunning
+                  ? null
+                  : () => ref.read(syncNowProvider.notifier).syncNow(),
+              icon: syncState.isRunning
+                  ? const SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.sync_rounded),
+              label: Text(_syncLabel(syncState.status)),
             )
           : FloatingActionButton.extended(
               onPressed: () => Navigator.push(
@@ -277,7 +309,7 @@ class _EmptyState extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               isSecondary
-                  ? 'Tap "Scan to Sync" to pull the latest data from your primary device.'
+                  ? 'Tap "Sync Now" to exchange changes with your primary device.'
                   : 'Link a tablet or second phone to share your Kash Cube data over Wi-Fi. No internet needed.',
               style: Theme.of(context)
                   .textTheme
@@ -291,4 +323,13 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+
+String _syncLabel(SyncStatus status) => switch (status) {
+      SyncStatus.scanning   => 'Scanning…',
+      SyncStatus.connecting => 'Connecting…',
+      SyncStatus.syncing    => 'Syncing…',
+      _                     => 'Sync Now',
+    };
 

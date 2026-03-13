@@ -166,6 +166,43 @@ class SyncClient {
     return resp['received_count'] as int? ?? 0;
   }
 
+  // ── Local delta builder (secondary → primary push) ───────────────────────
+
+  /// Collects all locally-modified rows since [since] for uploading to the
+  /// primary via [pushDeltas].
+  ///
+  /// Mirrors the server-side `_collectDeltas` logic but runs on the secondary.
+  Future<List<DeltaRow>> buildLocalDeltas({DateTime? since}) =>
+      dbHelper.withDatabase((db) async {
+        final rows = <DeltaRow>[];
+        for (final table in _syncableTables) {
+          try {
+            final results = await db.query(
+              table,
+              where:     since != null ? 'updated_at > ?' : null,
+              whereArgs: since != null ? [since.toIso8601String()] : null,
+            );
+            for (final row in results) {
+              rows.add(DeltaRow(
+                table:     table,
+                syncId:    row['sync_id']    as String? ?? '',
+                version:   row['version']    as int?    ?? 0,
+                updatedAt: row['updated_at'] as String? ??
+                           row['created_at'] as String? ??
+                           DateTime.now().toIso8601String(),
+                operation: row['deleted_at'] != null ? 'delete' : 'upsert',
+                payload:   row['deleted_at'] == null
+                    ? Map<String, dynamic>.from(row)
+                    : null,
+              ));
+            }
+          } catch (_) {
+            continue;
+          }
+        }
+        return rows;
+      });
+
   // ── Payroll notification fetch ───────────────────────────────────────────
 
   /// Requests pending payroll notifications from the primary, stores them

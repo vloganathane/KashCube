@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -484,4 +485,146 @@ class PayrollNotificationsNotifier
 final payrollNotificationsNotifierProvider = StateNotifierProvider<
     PayrollNotificationsNotifier, AsyncValue<List<PayrollNotification>>>(
   (_) => PayrollNotificationsNotifier(),
+);
+
+// ---------------------------------------------------------------------------
+// Sync Now (secondary) — delta exchange against an existing session
+// ---------------------------------------------------------------------------
+
+class SyncNowState {
+  const SyncNowState({
+    this.status    = SyncStatus.idle,
+    this.pulled    = 0,
+    this.pushed    = 0,
+    this.error,
+    this.lastSyncAt,
+  });
+
+  final SyncStatus status;
+  final int        pulled;
+  final int        pushed;
+  final String?    error;
+  final DateTime?  lastSyncAt;
+
+  bool get isRunning =>
+      status == SyncStatus.scanning ||
+      status == SyncStatus.connecting ||
+      status == SyncStatus.syncing;
+}
+
+class SyncNowNotifier extends StateNotifier<SyncNowState> {
+  SyncNowNotifier(this._client, this._discovery, this._ref)
+      : super(const SyncNowState());
+
+  final SyncClient          _client;
+  final LanDiscoveryService _discovery;
+  final Ref                 _ref;
+
+  Future<void> syncNow() async {
+    if (state.isRunning) return;
+
+    // 1. Load the verified active session.
+    final session = await _ref.read(activeDeviceSessionProvider.future);
+    if (session == null) {
+      state = const SyncNowState(
+        status: SyncStatus.error,
+        error:  'No active session — pair with a primary device first.',
+      );
+      return;
+    }
+
+    state = const SyncNowState(status: SyncStatus.scanning);
+
+    // 2. Discover primary via mDNS.
+    String? host;
+    int?    port;
+    final found = Completer<void>();
+    await _discovery.startDiscovery(
+      onFound: (ip, p, _) {
+        host = ip;
+        port = p;
+        if (!found.isCompleted) found.complete();
+      },
+    );
+    try {
+      await found.future.timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      // primary not found within timeout
+    }
+    await _discovery.stopDiscovery();
+
+    if (host == null || port == null) {
+      state = const SyncNowState(
+        status: SyncStatus.error,
+        error:  'Primary device not found. Make sure both devices are on the same Wi-Fi.',
+      );
+      return;
+    }
+
+    state = const SyncNowState(status: SyncStatus.connecting);
+    try {
+      await _client.connect(ip: host!, port: port!);
+      state = const SyncNowState(status: SyncStatus.syncing);
+
+      // 3. Pull deltas from primary.
+      final pulled = await _client.pullDeltas(
+        session:    session,
+        lastSyncAt: session.lastSyncAt,
+      );
+
+      // 4. Push local changes to primary.
+      final localRows =
+          await _client.buildLocalDeltas(since: session.lastSyncAt);
+      final pushed = localRows.isEmpty
+          ? 0
+          : await _client.pushDeltas(session: session, rows: localRows);
+
+      // 5. Stamp watermark.
+      final now = DateTime.now();
+      await DatabaseHelper.instance.withDatabase(
+        (db) => db.update(
+          'linked_business_sessions',
+          {'last_sync_at': now.toIso8601String()},
+          where:     'session_id = ?',
+          whereArgs: [session.sessionId],
+        ),
+      );
+
+      await _client.disconnect();
+      state = SyncNowState(
+        status:     SyncStatus.done,
+        pulled:     pulled,
+        pushed:     pushed,
+        lastSyncAt: now,
+      );
+    } on SyncRevokedException {
+      await _client.disconnect();
+      await DeviceSessionService.instance.wipeSession(DatabaseHelper.instance);
+      state = const SyncNowState(
+        status: SyncStatus.error,
+        error:  'Access was revoked by the primary.',
+      );
+    } catch (e) {
+      await _client.disconnect();
+      state = SyncNowState(
+        status: SyncStatus.error,
+        error:  e.toString(),
+      );
+    }
+  }
+
+  void reset() => state = const SyncNowState();
+}
+
+final syncNowProvider =
+    StateNotifierProvider.autoDispose<SyncNowNotifier, SyncNowState>(
+  (ref) {
+    final notifier = SyncNowNotifier(
+      ref.read(syncClientProvider),
+      LanDiscoveryService.instance,
+      ref,
+    );
+    ref.onDispose(LanDiscoveryService.instance.stopDiscovery);
+    return notifier;
+  },
 );

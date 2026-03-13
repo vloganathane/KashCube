@@ -10,12 +10,13 @@ import '../models/delta_row.dart';
 import '../models/device_session_token.dart';
 import '../services/database_helper.dart';
 import '../services/identity_service.dart';
+import '../services/sync_transport.dart';
 
 /// TCP client that runs on the SECONDARY device.
 ///
 /// Protocol mirrors [SyncServer]: every message is framed as:
 ///   [4-byte big-endian length][UTF-8 JSON payload]
-class SyncClient {
+class SyncClient implements SyncTransport {
   SyncClient({
     required this.identity,
     required this.dbHelper,
@@ -33,6 +34,19 @@ class SyncClient {
     'transactions', 'credits', 'credit_payments', 'loans',
     'parties',      'accounts', 'categories',     'budgets',
   ];
+
+  // ── SyncTransport interface ────────────────────────────────────────────
+
+  /// Opens a TCP connection. [endpoint] must use scheme `kashcube-tcp`
+  /// (or any non-ws scheme); host and port are extracted from it.
+  @override
+  Future<void> open(Uri endpoint) =>
+      connect(ip: endpoint.host, port: endpoint.port);
+
+  @override
+  Future<void> close() => disconnect();
+
+  // ── TCP transport ─────────────────────────────────────────────────────────
 
   /// Opens a TCP connection to the primary at [ip]:[port].
   Future<void> connect({required String ip, required int port}) async {
@@ -331,21 +345,4 @@ class SyncClient {
       throw const SyncException('SyncClient not connected — call connect() first');
     }
   }
-}
-
-/// Thrown when a sync operation fails due to a protocol error.
-/// Thrown for general protocol-level errors during sync.
-class SyncException implements Exception {
-  const SyncException(this.message);
-  final String message;
-  @override
-  String toString() => 'SyncException: $message';
-}
-
-/// Thrown when the primary reports that this secondary device has been revoked.
-/// The caller must wipe the local [DeviceSessionService] session.
-class SyncRevokedException extends SyncException {
-  const SyncRevokedException(super.message);
-  @override
-  String toString() => 'SyncRevokedException: $message';
 }

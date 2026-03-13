@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -15,6 +17,8 @@ import '../../data/services/device_session_service.dart';
 import '../../data/services/identity_service.dart';
 import '../../data/services/lan_discovery_service.dart';
 import '../../data/services/sync_client.dart';
+import '../../data/services/sync_transport.dart';
+import '../../data/services/ws_sync_transport.dart';
 import '../../data/services/sync_server.dart';
 import '../../data/services/token_service.dart';
 import '../../data/services/web_server_service.dart';
@@ -55,6 +59,17 @@ final syncClientProvider = Provider<SyncClient>((ref) {
     identity: IdentityService.instance,
     dbHelper: DatabaseHelper.instance,
   );
+});
+
+/// Platform-aware transport: WS on web, TCP on Android.
+final syncTransportProvider = Provider<SyncTransport>((ref) {
+  if (kIsWeb) {
+    return WsSyncTransport(
+      identity: IdentityService.instance,
+      dbHelper: DatabaseHelper.instance,
+    );
+  }
+  return ref.read(syncClientProvider);
 });
 
 // ---------------------------------------------------------------------------
@@ -523,10 +538,10 @@ class SyncNowState {
 }
 
 class SyncNowNotifier extends StateNotifier<SyncNowState> {
-  SyncNowNotifier(this._client, this._discovery, this._ref)
+  SyncNowNotifier(this._transport, this._discovery, this._ref)
       : super(const SyncNowState());
 
-  final SyncClient          _client;
+  final SyncTransport       _transport;
   final LanDiscoveryService _discovery;
   final Ref                 _ref;
 
@@ -543,51 +558,90 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
       return;
     }
 
-    state = const SyncNowState(status: SyncStatus.scanning);
+    // 2. Connect to primary — WS on web (direct URL), mDNS+TCP on Android.
+    if (kIsWeb) {
+      // Read the stored WS URL from settings (written during WebConnectScreen).
+      final wsUrl = await DatabaseHelper.instance.withDatabase((db) async {
+        final rows = await db.query(
+          'settings',
+          where:     'key = ?',
+          whereArgs: ['web_sync_url'],
+          limit:     1,
+        );
+        return rows.isNotEmpty ? rows.first['value'] as String? : null;
+      });
 
-    // 2. Discover primary via mDNS.
-    String? host;
-    int?    port;
-    final found = Completer<void>();
-    await _discovery.startDiscovery(
-      onFound: (ip, p, _) {
-        host = ip;
-        port = p;
-        if (!found.isCompleted) found.complete();
-      },
-    );
-    try {
-      await found.future.timeout(const Duration(seconds: 10));
-    } on TimeoutException {
-      // primary not found within timeout
-    }
-    await _discovery.stopDiscovery();
+      if (wsUrl == null) {
+        state = const SyncNowState(
+          status: SyncStatus.error,
+          error:  'No web session. Scan the QR code from Settings → KashCube Web on your phone.',
+        );
+        return;
+      }
 
-    if (host == null || port == null) {
-      state = const SyncNowState(
-        status: SyncStatus.error,
-        error:  'Primary device not found. Make sure both devices are on the same Wi-Fi.',
+      state = const SyncNowState(status: SyncStatus.connecting);
+      try {
+        await _transport.open(Uri.parse(wsUrl));
+      } catch (e) {
+        state = SyncNowState(
+          status: SyncStatus.error,
+          error:  'Connection failed. Re-scan the QR from your phone. ($e)',
+        );
+        return;
+      }
+    } else {
+      state = const SyncNowState(status: SyncStatus.scanning);
+
+      // Discover primary via mDNS.
+      String? host;
+      int?    port;
+      final found = Completer<void>();
+      await _discovery.startDiscovery(
+        onFound: (ip, p, _) {
+          host = ip;
+          port = p;
+          if (!found.isCompleted) found.complete();
+        },
       );
-      return;
+      try {
+        await found.future.timeout(const Duration(seconds: 10));
+      } on TimeoutException {
+        // primary not found within timeout
+      }
+      await _discovery.stopDiscovery();
+
+      if (host == null || port == null) {
+        state = const SyncNowState(
+          status: SyncStatus.error,
+          error:  'Primary device not found. Make sure both devices are on the same Wi-Fi.',
+        );
+        return;
+      }
+
+      state = const SyncNowState(status: SyncStatus.connecting);
+      try {
+        await _transport.open(
+            Uri(scheme: 'kashcube-tcp', host: host!, port: port!));
+      } catch (e) {
+        state = SyncNowState(status: SyncStatus.error, error: e.toString());
+        return;
+      }
     }
 
-    state = const SyncNowState(status: SyncStatus.connecting);
+    state = const SyncNowState(status: SyncStatus.syncing);
     try {
-      await _client.connect(ip: host!, port: port!);
-      state = const SyncNowState(status: SyncStatus.syncing);
-
       // 3. Pull deltas from primary.
-      final pulled = await _client.pullDeltas(
+      final pulled = await _transport.pullDeltas(
         session:    session,
         lastSyncAt: session.lastSyncAt,
       );
 
       // 4. Push local changes to primary.
       final localRows =
-          await _client.buildLocalDeltas(since: session.lastSyncAt);
+          await _transport.buildLocalDeltas(since: session.lastSyncAt);
       final pushed = localRows.isEmpty
           ? 0
-          : await _client.pushDeltas(session: session, rows: localRows);
+          : await _transport.pushDeltas(session: session, rows: localRows);
 
       // 5. Stamp watermark.
       final now = DateTime.now();
@@ -600,7 +654,7 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
         ),
       );
 
-      await _client.disconnect();
+      await _transport.close();
       state = SyncNowState(
         status:     SyncStatus.done,
         pulled:     pulled,
@@ -608,14 +662,14 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
         lastSyncAt: now,
       );
     } on SyncRevokedException {
-      await _client.disconnect();
+      await _transport.close();
       await DeviceSessionService.instance.wipeSession(DatabaseHelper.instance);
       state = const SyncNowState(
         status: SyncStatus.error,
         error:  'Access was revoked by the primary.',
       );
     } catch (e) {
-      await _client.disconnect();
+      await _transport.close();
       state = SyncNowState(
         status: SyncStatus.error,
         error:  e.toString(),
@@ -630,11 +684,11 @@ final syncNowProvider =
     StateNotifierProvider.autoDispose<SyncNowNotifier, SyncNowState>(
   (ref) {
     final notifier = SyncNowNotifier(
-      ref.read(syncClientProvider),
+      ref.read(syncTransportProvider),
       LanDiscoveryService.instance,
       ref,
     );
-    ref.onDispose(LanDiscoveryService.instance.stopDiscovery);
+    if (!kIsWeb) ref.onDispose(LanDiscoveryService.instance.stopDiscovery);
     return notifier;
   },
 );

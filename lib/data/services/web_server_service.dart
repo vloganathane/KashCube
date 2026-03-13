@@ -11,7 +11,15 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:sqflite/sqflite.dart';
 
+import '../models/app_user.dart';
+import '../models/delta_row.dart';
+import '../models/linked_device.dart';
+import '../repositories/linked_device_repository_impl.dart';
+import '../../domain/models/permission.dart';
+import '../../domain/repositories/linked_device_repository.dart';
 import 'database_helper.dart';
+import 'identity_service.dart';
+import 'token_service.dart';
 import 'web_api_routes.dart';
 
 /// Runs on the phone. Serves the KashCube Web SPA + REST API over LAN.
@@ -41,6 +49,11 @@ class WebServerService {
   /// WebSocket clients subscribed to real-time events.
   final List<WebSocketChannel> _wsClients = [];
 
+  // ── Sync handler dependencies (lazy — initialised on first use) ──────────
+  IdentityService get _identity       => IdentityService.instance;
+  TokenService    get _tokenService   => TokenService(_identity);
+  LinkedDeviceRepository get _linkedDeviceRepo => LinkedDeviceRepositoryImpl();
+
   bool get isRunning => _server != null;
   String? get sessionToken => _sessionToken;
   int? get port => _server?.port;
@@ -52,11 +65,22 @@ class WebServerService {
     return 'http://$ip:${_server!.port}';
   }
 
-  /// Payload embedded in the QR code — base URL + session token.
+  /// QR payload for the browser companion (JSON, type kashcube_web_v1).
+  ///
+  /// The browser parses this to get the WS URL and session token.
+  /// WS URL: `ws://ip:port/ws?token=<token>`
   String? get qrPayload {
     final url = localUrl;
     if (url == null || _sessionToken == null) return null;
-    return '$url?token=$_sessionToken';
+    final ip   = _lanIp ?? _server!.address.address;
+    final port = _server!.port;
+    return jsonEncode({
+      'type':    'kashcube_web_v1',
+      'ws':      'ws://$ip:$port/ws',
+      'api':     '$url/api/v1',
+      'token':   _sessionToken,
+      'version': 1,
+    });
   }
 
   String? _lanIp;
@@ -96,13 +120,23 @@ class WebServerService {
         .addMiddleware(_authMiddleware())
         .addHandler(apiRouter.call);
 
-    // WebSocket — cb receives (channel, subprotocol)
+    // WebSocket — single endpoint for both sync protocol and live refresh.
+    // Token validation happens before the HTTP → WS upgrade so invalid
+    // browsers get a plain HTTP 401 rather than a WS handshake rejection.
     final wsHandler = webSocketHandler(
       (WebSocketChannel channel, String? _) {
         _wsClients.add(channel);
         channel.stream.listen(
-          null,
-          onDone: () => _wsClients.remove(channel),
+          (data) async {
+            try {
+              final msg  = jsonDecode(data as String) as Map<String, dynamic>;
+              final resp = await _handleSyncMessage(msg);
+              channel.sink.add(jsonEncode(resp));
+            } catch (_) {
+              // Ignore malformed messages; live-refresh frames carry no body.
+            }
+          },
+          onDone:  () => _wsClients.remove(channel),
           onError: (_) => _wsClients.remove(channel),
         );
       },
@@ -110,7 +144,17 @@ class WebServerService {
 
     final mainRouter = Router()
       ..get('/', _serveIndex)
-      ..get('/ws', (Request req) => wsHandler(req))
+      ..get('/ws', (Request req) async {
+        final token = req.url.queryParameters['token'];
+        if (token == null || token != _sessionToken) {
+          return Response(
+            401,
+            body: jsonEncode({'error': 'Unauthorized'}),
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return wsHandler(req);
+      })
       ..mount('/api/', apiHandler);
 
     final handler = const Pipeline()
@@ -566,5 +610,280 @@ if (TOKEN) {
 </script>
 </body>
 </html>''';
-}
 
+  // ── WebSocket sync protocol handlers ─────────────────────────────────────
+  //
+  // Mirrors SyncServer message handling over WebSocket.
+  // On web the browser is the secondary device; messages arrive over the
+  // same `/ws` connection used for live-refresh push events.
+
+  /// Routes an incoming WS message to the appropriate sync handler.
+  /// Returns the response map to be JSON-encoded and sent back.
+  Future<Map<String, dynamic>> _handleSyncMessage(
+      Map<String, dynamic> msg) async {
+    switch (msg['type'] as String?) {
+      case 'pair_request':
+        return _wsHandlePairRequest(msg);
+      case 'delta_request':
+        return _wsHandleDeltaRequest(msg);
+      case 'delta_upload':
+        return _wsHandleDeltaUpload(msg);
+      default:
+        return {'type': 'error', 'message': 'unknown_type'};
+    }
+  }
+
+  Future<Map<String, dynamic>> _wsHandlePairRequest(
+      Map<String, dynamic> msg) async {
+    final secondaryDeviceId   = msg['device_id']   as String;
+    final secondaryDeviceName = msg['device_name']  as String;
+    final secondaryPublicKey  = msg['public_key']   as String;
+    final deviceOs            = msg['device_os']    as String?;
+    final deviceType          = msg['device_type']  as String?;
+    final presetStr           = msg['preset']       as String? ?? 'owner_mirror';
+    final secondaryIdentityId  = msg['secondary_identity_id']  as String?;
+    final secondaryDisplayName = msg['secondary_display_name'] as String?;
+
+    final preset = DevicePreset.fromDb(presetStr);
+    final syncId = const Uuid().v4().replaceAll('-', '');
+
+    final device = LinkedDevice(
+      syncId:               syncId,
+      deviceId:             secondaryDeviceId,
+      deviceName:           secondaryDeviceName,
+      deviceOs:             deviceOs,
+      deviceType:           deviceType,
+      secondaryPublicKey:   secondaryPublicKey,
+      permissionScope:      _wsPermScopeForPreset(preset),
+      businessScope:        '[]',
+      offlineGraceDays:     7,
+      preset:               preset,
+      secondaryIdentityId:  secondaryIdentityId,
+      secondaryDisplayName: secondaryDisplayName,
+    );
+
+    await _linkedDeviceRepo.insert(device);
+
+    final planFeatures =
+        await DatabaseHelper.instance.withDatabase(_wsLoadPlanFeatures);
+
+    final token          = await _tokenService.issue(device, planFeatures: planFeatures);
+    final primaryKeyB64  = await _identity.publicKeyBase64;
+    final primaryDeviceId = await _identity.deviceId;
+
+    return {
+      'type':               'pair_response',
+      'token_payload':      token.payload,
+      'token_signature':    token.signatureBase64,
+      'primary_public_key': primaryKeyB64,
+      'primary_device_id':  primaryDeviceId,
+    };
+  }
+
+  Future<Map<String, dynamic>> _wsHandleDeltaRequest(
+      Map<String, dynamic> msg) async {
+    if (!await _wsVerifyToken(msg)) {
+      return {'type': 'error', 'message': 'invalid_token'};
+    }
+
+    final tokenPayload   = msg['token_payload'] as String;
+    final decodedPayload = jsonDecode(tokenPayload) as Map<String, dynamic>;
+    final callerDeviceId = decodedPayload['device_id'] as String;
+
+    final device = await _linkedDeviceRepo.getByDeviceId(callerDeviceId);
+    if (device == null || !device.isActive) {
+      return {'type': 'revocation', 'message': 'device_revoked'};
+    }
+
+    final lastSyncAt = msg['last_sync_at'] as String?;
+    final rows = await _wsCollectDeltas(since: lastSyncAt, device: device);
+
+    return {
+      'type':        'delta_response',
+      'rows':        rows.map((r) => r.toJson()).toList(),
+      'server_time': DateTime.now().toIso8601String(),
+    };
+  }
+
+  Future<Map<String, dynamic>> _wsHandleDeltaUpload(
+      Map<String, dynamic> msg) async {
+    if (!await _wsVerifyToken(msg)) {
+      return {'type': 'error', 'message': 'invalid_token'};
+    }
+
+    final tokenPayload   = msg['token_payload'] as String;
+    final decodedPayload = jsonDecode(tokenPayload) as Map<String, dynamic>;
+    final callerDeviceId = decodedPayload['device_id'] as String;
+
+    final device = await _linkedDeviceRepo.getByDeviceId(callerDeviceId);
+    if (device == null || !device.isActive) {
+      return {'type': 'revocation', 'message': 'device_revoked'};
+    }
+
+    final rawRows = (msg['rows'] as List<dynamic>?) ?? [];
+    final rows =
+        rawRows.map((r) => DeltaRow.fromJson(r as Map<String, dynamic>)).toList();
+    await _wsApplyDeltas(rows, device: device);
+
+    return {'type': 'upload_ack', 'received_count': rows.length};
+  }
+
+  // ── Sync helpers ──────────────────────────────────────────────────────────
+
+  static const List<String> _wsSyncableTables = [
+    'transactions', 'credits', 'credit_payments', 'loans',
+    'parties',      'accounts', 'categories',     'budgets',
+  ];
+
+  static const List<String> _wsBusinessScopedTables = [
+    'transactions', 'credits', 'credit_payments', 'loans', 'budgets',
+  ];
+
+  Future<bool> _wsVerifyToken(Map<String, dynamic> msg) async {
+    final tokenPayload = msg['token_payload']   as String?;
+    final tokenSig     = msg['token_signature'] as String?;
+    if (tokenPayload == null || tokenSig == null) return false;
+    final pubKeyB64 = await _identity.publicKeyBase64;
+    return _identity.verify(
+      message:         utf8.encode(tokenPayload),
+      sigBase64:       tokenSig,
+      publicKeyBase64: pubKeyB64,
+    );
+  }
+
+  Future<List<DeltaRow>> _wsCollectDeltas({
+    String? since,
+    LinkedDevice? device,
+  }) =>
+      DatabaseHelper.instance.withDatabase((db) async {
+        final isOwner     = device?.isOwnerMirror ?? true;
+        List<int> bizIds  = [];
+        if (!isOwner && device != null) {
+          bizIds =
+              (jsonDecode(device.businessScope) as List<dynamic>).cast<int>();
+        }
+
+        final tables = isOwner ? _wsSyncableTables : _wsBusinessScopedTables;
+        final rows   = <DeltaRow>[];
+
+        for (final table in tables) {
+          try {
+            late List<Map<String, dynamic>> results;
+            if (isOwner) {
+              results = await db.query(
+                table,
+                where:     since != null ? 'updated_at > ?' : null,
+                whereArgs: since != null ? [since] : null,
+              );
+            } else {
+              if (bizIds.isEmpty) continue;
+              final placeholders = bizIds.map((_) => '?').join(',');
+              results = since != null
+                  ? await db.rawQuery(
+                      'SELECT * FROM $table WHERE updated_at > ? AND business_id IN ($placeholders)',
+                      [since, ...bizIds],
+                    )
+                  : await db.rawQuery(
+                      'SELECT * FROM $table WHERE business_id IN ($placeholders)',
+                      bizIds,
+                    );
+            }
+            for (final row in results) {
+              rows.add(DeltaRow(
+                table:     table,
+                syncId:    row['sync_id']    as String? ?? '',
+                version:   row['version']    as int?    ?? 0,
+                updatedAt: row['updated_at'] as String? ??
+                           row['created_at'] as String? ??
+                           DateTime.now().toIso8601String(),
+                operation: row['deleted_at'] != null ? 'delete' : 'upsert',
+                payload:   row['deleted_at'] == null
+                    ? Map<String, dynamic>.from(row)
+                    : null,
+              ));
+            }
+          } catch (_) {
+            continue;
+          }
+        }
+        return rows;
+      });
+
+  Future<void> _wsApplyDeltas(List<DeltaRow> rows,
+      {LinkedDevice? device}) =>
+      DatabaseHelper.instance.withDatabase((db) async {
+        final isOwner    = device?.isOwnerMirror ?? true;
+        List<int> bizIds = [];
+        if (!isOwner && device != null) {
+          bizIds =
+              (jsonDecode(device.businessScope) as List<dynamic>).cast<int>();
+        }
+        for (final row in rows) {
+          if (!_wsSyncableTables.contains(row.table)) continue;
+          if (!isOwner) {
+            if (bizIds.isEmpty) continue;
+            final bid = row.payload?['business_id'];
+            if (bid == null || !bizIds.contains(bid as int)) continue;
+          }
+          if (row.isUpsert && row.payload != null) {
+            await db.insert(row.table, row.payload!,
+                conflictAlgorithm: ConflictAlgorithm.replace);
+          } else if (row.isDelete) {
+            await db.update(
+              row.table,
+              {'deleted_at': DateTime.now().toIso8601String()},
+              where:     'sync_id = ?',
+              whereArgs: [row.syncId],
+            );
+          }
+        }
+      });
+
+  Future<Map<String, dynamic>> _wsLoadPlanFeatures(Database db) async {
+    final subRows =
+        await db.query('subscription', limit: 1);
+    final plan = subRows.isNotEmpty
+        ? (subRows.first['plan'] as String? ?? 'free')
+        : 'free';
+    final featureRows = await db.query('plan_features',
+        where: 'plan = ?', whereArgs: [plan]);
+    final features = <String, dynamic>{};
+    for (final row in featureRows) {
+      features[row['feature'] as String] = {
+        'enabled': (row['enabled'] as int?) == 1,
+        'limit':   row['limit_value'] as int? ?? 0,
+      };
+    }
+    if (subRows.isNotEmpty) {
+      await db.update('subscription',
+          {'shareable_plan_features': jsonEncode(features)});
+    }
+    return features;
+  }
+
+  static String _wsPermScopeForPreset(DevicePreset preset) {
+    if (preset == DevicePreset.ownerMirror) return '{}';
+    late AppUserRole role;
+    switch (preset) {
+      case DevicePreset.manager:
+        role = AppUserRole.manager;
+      case DevicePreset.cashier:
+        role = AppUserRole.cashier;
+      case DevicePreset.auditor:
+        role = AppUserRole.auditor;
+      default:
+        role = AppUserRole.custom;
+    }
+    final scope = <String, Map<String, bool>>{};
+    for (final module in PermissionModule.all) {
+      final p = RolePreset.forModule(role, module);
+      scope[module] = {
+        'canView':   p.canView,
+        'canCreate': p.canCreate,
+        'canEdit':   p.canEdit,
+        'canDelete': p.canDelete,
+      };
+    }
+    return jsonEncode(scope);
+  }
+}

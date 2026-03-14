@@ -80,8 +80,9 @@ class WebServerNotifier extends StateNotifier<WebServerState> {
 final webServerProvider =
     StateNotifierProvider<WebServerNotifier, WebServerState>(
   (ref) {
-    final notifier = WebServerNotifier();
-    ref.onDispose(notifier.stop);
-    return notifier;
+    // keepAlive: server must survive tab/screen changes on the phone.
+    // The user explicitly stops the server from the Settings screen.
+    ref.keepAlive();
+    return WebServerNotifier();
   },
 );

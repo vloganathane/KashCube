@@ -93,6 +93,10 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.4
 
+  # Web platform interop — used only in http_client_web.dart (browser XHR).
+  # Already a transitive dep; listed explicitly for clarity.
+  web: ^1.1.1
+
   # Deep link / App Link handling — routes kashcube.com/c URLs into the app.
   # No network calls made by this package; it only listens to OS intent delivery.
   app_links: ^6.3.2

@@ -115,14 +115,24 @@ class WebServerService {
           (Request req, String id) => WebApiRoutes.getInvoicePdf(req, id))
       ..get('/v1/credits', WebApiRoutes.listCredits);
 
-    // Auth middleware applied to the entire API sub-pipeline
+    // HTTP sync endpoints — browser companion uses these instead of WS so
+    // there is no HijackException risk passing through async middleware.
+    apiRouter
+      ..post('/v1/sync/pair',  _httpHandlePair)
+      ..post('/v1/sync/delta', _httpHandleDelta)
+      ..post('/v1/sync/push',  _httpHandlePush);
+
+    // Auth + CORS middleware applied to the entire API sub-pipeline.
+    // CORS here is safe because this is pure HTTP request/response — no
+    // HijackException can be swallowed by the async middleware.
     final apiHandler = const Pipeline()
+        .addMiddleware(_corsHeaders())
         .addMiddleware(_authMiddleware())
         .addHandler(apiRouter.call);
 
-    // WebSocket — single endpoint for both sync protocol and live refresh.
-    // Token validation happens before the HTTP → WS upgrade so invalid
-    // browsers get a plain HTTP 401 rather than a WS handshake rejection.
+    // WebSocket — kept for live-refresh push events (transaction_created etc).
+    // The WS handler is mounted directly WITHOUT the async CORS middleware so
+    // the HijackException thrown by shelf_web_socket can propagate correctly.
     final wsHandler = webSocketHandler(
       (WebSocketChannel channel, String? _) {
         _wsClients.add(channel);
@@ -132,9 +142,7 @@ class WebServerService {
               final msg  = jsonDecode(data as String) as Map<String, dynamic>;
               final resp = await _handleSyncMessage(msg);
               channel.sink.add(jsonEncode(resp));
-            } catch (_) {
-              // Ignore malformed messages; live-refresh frames carry no body.
-            }
+            } catch (_) {}
           },
           onDone:  () => _wsClients.remove(channel),
           onError: (_) => _wsClients.remove(channel),
@@ -144,7 +152,9 @@ class WebServerService {
 
     final mainRouter = Router()
       ..get('/', _serveIndex)
-      ..get('/ws', (Request req) async {
+      ..get('/ws', (Request req) {
+        // Token check before upgrade — returns plain 401 on failure so the
+        // browser sees a normal HTTP error rather than a WS handshake failure.
         final token = req.url.queryParameters['token'];
         if (token == null || token != _sessionToken) {
           return Response(
@@ -153,15 +163,15 @@ class WebServerService {
             headers: {'content-type': 'application/json'},
           );
         }
+        // Synchronous hand-off to wsHandler — no async wrapper so
+        // HijackException propagates to shelf_io correctly.
         return wsHandler(req);
       })
       ..mount('/api/', apiHandler);
 
-    final handler = const Pipeline()
-        .addMiddleware(_corsHeaders())
-        .addHandler(mainRouter.call);
-
-    _server = await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
+    // Top-level handler: no CORS middleware here — CORS is only on apiHandler.
+    // This keeps the WS route outside any async CORS wrapper.
+    _server = await shelf_io.serve(mainRouter.call, InternetAddress.anyIPv4, port);
   }
 
   Future<void> stop() async {
@@ -336,6 +346,36 @@ class WebServerService {
       jsonEncode({'ok': true}),
       headers: {'content-type': 'application/json'},
     );
+  }
+
+  // ── HTTP sync endpoints ───────────────────────────────────────────────────
+
+  Future<Response> _httpHandlePair(Request req) async {
+    final body = jsonDecode(await req.readAsString()) as Map<String, dynamic>;
+    // Revoke the placeholder linked_devices row that _registerWebSession()
+    // created at server-start time.  _wsHandlePairRequest will insert the real
+    // row keyed on the browser's own device_id, so we then update _webDeviceId
+    // to point at that row — ensuring revokeSession() / killWebSession() always
+    // target the correct record.
+    await _revokeWebSession();
+    final result = await _wsHandlePairRequest(body);
+    _webDeviceId = body['device_id'] as String?;
+    return Response.ok(jsonEncode(result),
+        headers: {'content-type': 'application/json'});
+  }
+
+  Future<Response> _httpHandleDelta(Request req) async {
+    final body = jsonDecode(await req.readAsString()) as Map<String, dynamic>;
+    final result = await _wsHandleDeltaRequest(body);
+    return Response.ok(jsonEncode(result),
+        headers: {'content-type': 'application/json'});
+  }
+
+  Future<Response> _httpHandlePush(Request req) async {
+    final body = jsonDecode(await req.readAsString()) as Map<String, dynamic>;
+    final result = await _wsHandleDeltaUpload(body);
+    return Response.ok(jsonEncode(result),
+        headers: {'content-type': 'application/json'});
   }
 
   // ── LAN IP ────────────────────────────────────────────────────────────────

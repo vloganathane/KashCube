@@ -1,5 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -65,7 +67,7 @@ class IdentityService {
     // ── Load or generate device_name ────────────────────────────────────────
     final storedName = await settings.get(SettingsKeys.deviceName);
     if (storedName == null || storedName.isEmpty) {
-      final name = Platform.localHostname;
+      final name = kIsWeb ? 'KashCube Web' : Platform.localHostname;
       await settings.set(SettingsKeys.deviceName, name);
     }
 

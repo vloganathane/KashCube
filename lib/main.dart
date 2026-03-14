@@ -115,7 +115,8 @@ class _LockGateState extends ConsumerState<_LockGate>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
       // Evict stale/excess PDFs whenever the app comes back to foreground.
-      PdfCacheManager.instance.evict();
+      // PdfCacheManager uses getTemporaryDirectory() — unavailable on web.
+      if (!kIsWeb) PdfCacheManager.instance.evict();
       // Re-lock when app comes back from background
       _checkLock();
     }

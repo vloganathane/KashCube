@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:telephony/telephony.dart';
 
 import '../models/parsed_sms.dart';
-import 'sms_parser.dart';
+import 'sms_parser_service.dart';
 
 /// Callback for when a new transaction SMS is detected.
 typedef OnTransactionSmsDetected = void Function(ParsedSms parsedSms);
@@ -12,9 +12,15 @@ typedef OnTransactionSmsDetected = void Function(ParsedSms parsedSms);
 /// Uses the telephony package for Android SMS access.
 /// All processing happens locally — no SMS data is ever transmitted.
 class SmsService {
-  SmsService._();
-  static final SmsService instance = SmsService._();
+  /// Creates a [SmsService] with an optional [SmsParserService].
+  ///
+  /// In production, pass the result of `ref.read(smsParserProvider)` so that
+  /// the service can be replaced with a mock in unit tests. When omitted a
+  /// default [SmsParserService] instance is used.
+  SmsService({SmsParserService? parser})
+      : _parser = parser ?? const SmsParserService();
 
+  final SmsParserService _parser;
   final Telephony _telephony = Telephony.instance;
   bool _isListening = false;
   OnTransactionSmsDetected? _onTransactionDetected;
@@ -88,9 +94,9 @@ class SmsService {
         if (sender.isEmpty || body.isEmpty) continue;
 
         // Only try parsing if sender looks financial
-        if (!SmsParser.isFinancialSender(sender)) continue;
+        if (!_parser.isFinancialSender(sender)) continue;
 
-        final parsed = SmsParser.parse(body, sender);
+        final parsed = _parser.parse(body, sender);
         if (parsed != null && parsed.confidence >= 0.40) {
           parsedList.add(parsed);
         }
@@ -113,9 +119,9 @@ class SmsService {
 
     debugPrint('SmsService: Incoming SMS from $sender');
 
-    if (!SmsParser.isFinancialSender(sender)) return;
+    if (!_parser.isFinancialSender(sender)) return;
 
-    final parsed = SmsParser.parse(body, sender);
+    final parsed = _parser.parse(body, sender);
     if (parsed != null && parsed.confidence >= 0.40) {
       debugPrint('SmsService: Detected transaction - ${parsed.amount} ${parsed.direction.label}');
       _onTransactionDetected?.call(parsed);

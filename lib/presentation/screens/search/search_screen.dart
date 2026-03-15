@@ -13,6 +13,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/loan.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/purchase_bill.dart';
+import '../../../data/models/quote.dart';
 import '../../../data/models/recurring_transaction.dart';
 import '../../../data/models/transaction.dart';
 import '../../../domain/repositories/transaction_repository.dart';
@@ -33,6 +34,7 @@ import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../parties/party_360_screen.dart';
 import '../bills/bills_and_payments_screen.dart';
+import '../invoices/quote_detail_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +55,7 @@ enum SearchFilter {
   all,
   transactions,
   invoices,
+  quotes,
   credits,
   bills,
   purchaseBills,
@@ -68,6 +71,7 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.all => 'All',
         SearchFilter.transactions => 'Transactions',
         SearchFilter.invoices => 'Invoices',
+        SearchFilter.quotes => 'Quotes',
         SearchFilter.credits => 'Credits',
         SearchFilter.bills => 'Bills',
         SearchFilter.purchaseBills => 'Purchase Bills',
@@ -82,6 +86,7 @@ extension SearchFilterExt on SearchFilter {
         SearchFilter.all => Icons.apps,
         SearchFilter.transactions => Icons.receipt_long_outlined,
         SearchFilter.invoices => Icons.description_outlined,
+        SearchFilter.quotes => Icons.request_quote_outlined,
         SearchFilter.credits => Icons.book_outlined,
         SearchFilter.bills => Icons.calendar_today_outlined,
         SearchFilter.purchaseBills => Icons.inventory_2_outlined,
@@ -139,6 +144,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         SearchFilter.all => 'Search everything…',
         SearchFilter.transactions => 'Search transactions…',
         SearchFilter.invoices => 'Search invoices…',
+        SearchFilter.quotes => 'Search quotes…',
         SearchFilter.credits => 'Search dues…',
         SearchFilter.bills => 'Search bills…',
         SearchFilter.purchaseBills => 'Search purchase bills…',
@@ -335,6 +341,13 @@ class _SearchResults extends ConsumerWidget {
       (inv.notes?.toLowerCase().contains(q) ?? false) ||
       CurrencyFormatter.format(inv.total).contains(q);
 
+  bool _matchQuote(Quote qt, String q) =>
+      qt.customerName.toLowerCase().contains(q) ||
+      qt.quoteNo.toLowerCase().contains(q) ||
+      qt.status.label.toLowerCase().contains(q) ||
+      (qt.notes?.toLowerCase().contains(q) ?? false) ||
+      CurrencyFormatter.format(qt.total).contains(q);
+
   bool _matchPurchaseBill(PurchaseBill b, String q) =>
       b.vendorName.toLowerCase().contains(q) ||
       b.billNo.toLowerCase().contains(q) ||
@@ -395,6 +408,12 @@ class _SearchResults extends ConsumerWidget {
             .toList()
         : <Invoice>[];
 
+    final quotes = _show(SearchFilter.quotes)
+        ? (ref.watch(quotesProvider).valueOrNull ?? <Quote>[])
+            .where((qt) => _matchQuote(qt, q))
+            .toList()
+        : <Quote>[];
+
     final credits = _show(SearchFilter.credits)
         ? (ref.watch(ledgerSummariesProvider).valueOrNull ?? <LedgerPartyEntry>[])
             .where((e) => e.partyName.toLowerCase().contains(q))
@@ -443,7 +462,7 @@ class _SearchResults extends ConsumerWidget {
             .toList()
         : <RecurringTransaction>[];
 
-    final total = txns.length + invoices.length + credits.length +
+    final total = txns.length + invoices.length + quotes.length + credits.length +
         bills.length + purchaseBills.length + bookings.length + parties.length +
         loans.length + challans.length + recurring.length;
 
@@ -476,6 +495,11 @@ class _SearchResults extends ConsumerWidget {
           _SectionHeader(title: 'Invoices', count: invoices.length, icon: Icons.description_outlined),
           ...invoices.take(10).map((inv) => _InvoiceTile(invoice: inv, query: query)),
           if (invoices.length > 10) _MoreRow(count: invoices.length - 10, label: 'invoices'),
+        ],
+        if (quotes.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
+          _SectionHeader(title: 'Quotes', count: quotes.length, icon: Icons.request_quote_outlined),
+          ...quotes.take(10).map((qt) => _QuoteTile(quote: qt, query: query)),
+          if (quotes.length > 10) _MoreRow(count: quotes.length - 10, label: 'quotes'),
         ],
         if (credits.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
           _SectionHeader(title: 'Credits', count: credits.length, icon: Icons.book),
@@ -1082,6 +1106,67 @@ class _RecurringTile extends StatelessWidget {
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()),
       ),
+    );
+  }
+}
+
+class _QuoteTile extends StatelessWidget {
+  const _QuoteTile({required this.quote, required this.query});
+  final Quote quote;
+  final String query;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = switch (quote.status) {
+      QuoteStatus.accepted => Colors.green,
+      QuoteStatus.rejected => context.colorScheme.error,
+      QuoteStatus.sent     => Colors.orange,
+      QuoteStatus.draft    => context.colorScheme.outline,
+    };
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+      leading: CircleAvatar(
+        backgroundColor: context.colorScheme.tertiaryContainer,
+        child: Icon(Icons.request_quote_outlined,
+            color: context.colorScheme.onTertiaryContainer,
+            size: AppSpacing.iconMd),
+      ),
+      title: _Highlight(text: quote.customerName, query: query),
+      subtitle: Text(
+        '${quote.quoteNo} · ${DateFormatter.format(quote.createdAt)}',
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            CurrencyFormatter.format(quote.total),
+            style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: statusColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Text(
+              quote.status.label,
+              style: context.textTheme.labelSmall
+                  ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+      onTap: () {
+        if (quote.id != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (_) => QuoteDetailScreen(quoteId: quote.id!)),
+          );
+        }
+      },
     );
   }
 }

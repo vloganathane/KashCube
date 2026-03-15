@@ -178,6 +178,10 @@ class HomeScreen extends ConsumerWidget {
           children.add(const _ReportsShortcutSection());
         case HomeWidgetId.recentTransactions:
           children.add(const _RecentTransactionsSection());
+        case HomeWidgetId.pendingSms:
+          // Rendered as a sliver banner outside _buildSectionWidgets;
+          // this case intentionally produces no list-section content.
+          break;
       }
     }
 
@@ -462,6 +466,15 @@ class _PendingSmsBannerSliver extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Only show when SMS auto-detect is on and the home widget is enabled.
+    final autoDetect = ref.watch(smsAutoDetectEnabledProvider);
+    if (!autoDetect) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final config = ref.watch(homeWidgetProvider);
+    final widgetEnabled = config
+        .any((c) => c.id == HomeWidgetId.pendingSms && c.enabled);
+    if (!widgetEnabled) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
     final pending = ref.watch(pendingSmsConfirmationsProvider);
     if (pending.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
 

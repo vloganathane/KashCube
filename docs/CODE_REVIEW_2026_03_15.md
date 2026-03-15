@@ -2,7 +2,7 @@
 **Date:** 15 March 2026  
 **DB Version at time of review:** 65  
 **Scope:** Full `lib/` tree — architecture, bugs, security, technical debt, roadmap  
-**Last updated:** 15 March 2026 — P0 + P1 + P1.5 (SMS UI) + P2 audit fixes + P3 fully complete (DB v66, query audit, unit tests 40/40, SMS permission onboarding screen), see §7
+**Last updated:** 15 March 2026 — P0 + P1 + P1.5 (SMS UI) + P2 audit fixes + P3 fully complete + P4 fully complete (domain use cases, SmsParserService injection, pendingSms widget, quotes search), see §7
 
 ---
 
@@ -175,12 +175,12 @@ P3 — Medium term (remaining technical debt)                              [DONE
   [x] Unit tests: 40 tests passing — SmsParser (27), CurrencyFormatter (12 → see currency_formatter_test.dart), GstCalculator (9)
   [x] SMS permission onboarding screen: SmsPermissionScreen with rationale text, Grant/Skip actions; wired to settings toggle
 
-P4 — Long term (architecture)
-  [ ] Add domain/usecases/ layer — extract business logic from repositories into use cases
-  [ ] Refactor _LockGate into GoRouter redirect guard
-  [ ] Refactor SmsParser to injectable singleton for testability
-  [ ] HomeWidgetId.pendingSms — optional, gated by smsAutoDetectEnabledProvider
-  [ ] Search: add SearchFilter.quotes distinct from invoices
+P4 — Long term (architecture)                                            [DONE ✅]
+  [x] Add domain/usecases/ layer — ProcessSmsUseCase, CreateTransactionUseCase, GenerateGstr1UseCase, RecordCreditPaymentUseCase
+  [-] Refactor _LockGate into GoRouter redirect guard — skipped: GoRouter not in pubspec; full nav overhaul out of scope
+  [x] Refactor SmsParser to injectable singleton — SmsParserService wrapper; smsParserProvider; SmsService now takes injected parser
+  [x] HomeWidgetId.pendingSms — added to HomeWidgetId (label, icon, default enabled); _PendingSmsBannerSliver gated on smsAutoDetectEnabledProvider + config
+  [x] Search: SearchFilter.quotes added — _matchQuote, _QuoteTile, quotesProvider wired; filter chip + icon + hint text
 ```
 
 ---

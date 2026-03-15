@@ -16,6 +16,7 @@ class HomeWidgetId {
   static const todayCashflow      = 'today_cashflow';
   static const upcoming           = 'upcoming';
   static const upcomingBookings   = 'upcoming_bookings';
+  static const pendingSms         = 'pending_sms';
   static const alerts             = 'alerts';
   static const budgets            = 'budgets';
   static const reportsShortcut    = 'reports_shortcut';
@@ -26,6 +27,7 @@ class HomeWidgetId {
     todayCashflow:      "Today's Activity",
     upcoming:           'Upcoming Payments',
     upcomingBookings:   'Upcoming Bookings',
+    pendingSms:         'Pending SMS Review',
     alerts:             'Alerts',
     budgets:            'Monthly Budgets',
     reportsShortcut:    'Reports Shortcut',
@@ -37,6 +39,7 @@ class HomeWidgetId {
     todayCashflow:      'today_cashflow',
     upcoming:           'upcoming',
     upcomingBookings:   'upcoming_bookings',
+    pendingSms:         'pending_sms',
     alerts:             'alerts',
     budgets:            'budgets',
     reportsShortcut:    'reports_shortcut',
@@ -45,13 +48,14 @@ class HomeWidgetId {
 
   /// Factory-default config — all widgets enabled and ordered.
   static const List<HomeWidgetConfig> defaults = [
-    HomeWidgetConfig(id: todayCashflow,      enabled: true, order: 0),
-    HomeWidgetConfig(id: upcoming,           enabled: true, order: 1),
-    HomeWidgetConfig(id: upcomingBookings,   enabled: true, order: 2),
-    HomeWidgetConfig(id: alerts,             enabled: true, order: 3),
-    HomeWidgetConfig(id: budgets,            enabled: true, order: 4),
-    HomeWidgetConfig(id: reportsShortcut,    enabled: true, order: 5),
-    HomeWidgetConfig(id: recentTransactions, enabled: true, order: 6),
+    HomeWidgetConfig(id: todayCashflow,      enabled: true,  order: 0),
+    HomeWidgetConfig(id: upcoming,           enabled: true,  order: 1),
+    HomeWidgetConfig(id: upcomingBookings,   enabled: true,  order: 2),
+    HomeWidgetConfig(id: pendingSms,         enabled: true,  order: 3),
+    HomeWidgetConfig(id: alerts,             enabled: true,  order: 4),
+    HomeWidgetConfig(id: budgets,            enabled: true,  order: 5),
+    HomeWidgetConfig(id: reportsShortcut,    enabled: true,  order: 6),
+    HomeWidgetConfig(id: recentTransactions, enabled: true,  order: 7),
   ];
 
   /// Canonical ordering of all widget IDs (for merge / migration).
@@ -59,6 +63,7 @@ class HomeWidgetId {
     todayCashflow,
     upcoming,
     upcomingBookings,
+    pendingSms,
     alerts,
     budgets,
     reportsShortcut,

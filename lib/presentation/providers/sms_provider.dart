@@ -3,12 +3,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/parsed_sms.dart';
 import '../../data/services/sms_parser.dart';
+import '../../data/services/sms_parser_service.dart';
 import '../../data/services/sms_service.dart';
 import '../providers/transaction_provider.dart';
 
+/// Provider for the injectable SMS parser service.
+///
+/// Inject this into [SmsService] rather than calling [SmsParser] statics
+/// directly — doing so allows mocking in unit tests.
+final smsParserProvider = Provider<SmsParserService>((_) => const SmsParserService());
+
 /// Provider for the SMS service instance.
 final smsServiceProvider = Provider<SmsService>((ref) {
-  return SmsService.instance;
+  return SmsService(parser: ref.read(smsParserProvider));
 });
 
 /// Provider for SMS permission status.

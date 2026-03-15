@@ -1189,6 +1189,7 @@ class _HeaderCard extends StatelessWidget {
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
       InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
+      InvoiceStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
     return Card(
       child: Padding(
@@ -1584,6 +1585,7 @@ class _LinkedQuoteCard extends ConsumerWidget {
       QuoteStatus.sent => Colors.blue,
       QuoteStatus.accepted => Theme.of(context).colorScheme.primary,
       QuoteStatus.rejected => Theme.of(context).colorScheme.error,
+      QuoteStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
 
     return Card(
@@ -1671,6 +1673,7 @@ class _LinkedChallanCard extends ConsumerWidget {
       ChallanStatus.dispatched => Colors.blue,
       ChallanStatus.returned => Theme.of(context).colorScheme.primary,
       ChallanStatus.converted => Theme.of(context).colorScheme.primary,
+      ChallanStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
 
     return Card(

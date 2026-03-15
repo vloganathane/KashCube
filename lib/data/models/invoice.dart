@@ -4,7 +4,7 @@ import 'package:equatable/equatable.dart';
 // Enums
 // ---------------------------------------------------------------------------
 
-enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid, cancelled }
+enum InvoiceStatus { draft, sent, paid, overdue, partiallyPaid, cancelled, pendingNumber }
 
 extension InvoiceStatusExt on InvoiceStatus {
   String get label {
@@ -21,6 +21,8 @@ extension InvoiceStatusExt on InvoiceStatus {
         return 'Partial';
       case InvoiceStatus.cancelled:
         return 'Cancelled';
+      case InvoiceStatus.pendingNumber:
+        return 'Awaiting No.';
     }
   }
 
@@ -28,6 +30,8 @@ extension InvoiceStatusExt on InvoiceStatus {
     switch (this) {
       case InvoiceStatus.partiallyPaid:
         return 'partially_paid';
+      case InvoiceStatus.pendingNumber:
+        return 'pending_number';
       default:
         return name;
     }
@@ -45,6 +49,8 @@ extension InvoiceStatusExt on InvoiceStatus {
         return InvoiceStatus.partiallyPaid;
       case 'cancelled':
         return InvoiceStatus.cancelled;
+      case 'pending_number':
+        return InvoiceStatus.pendingNumber;
       default:
         return InvoiceStatus.draft;
     }

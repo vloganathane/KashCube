@@ -2319,6 +2319,36 @@ class DatabaseHelper {
             'deprecate legacy tables',
       });
     }
+
+    if (oldVersion < 67) {
+      // Conflict-free multi-device invoice numbering (v67).
+      // Adds an atomic cursor table and pending_number_since columns so that
+      // secondary devices can save documents offline and receive real serial
+      // numbers when they reconnect and upload their deltas.
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS invoice_number_cursors (
+          doc_type   TEXT PRIMARY KEY,
+          prefix     TEXT NOT NULL,
+          last_seq   INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN pending_number_since TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE quotes ADD COLUMN pending_number_since TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE delivery_challans ADD COLUMN pending_number_since TEXT',
+      );
+      await db.insert('schema_version', {
+        'version': 67,
+        'description':
+            'Conflict-free numbering: invoice_number_cursors table + '
+            'pending_number_since columns on invoices/quotes/delivery_challans',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

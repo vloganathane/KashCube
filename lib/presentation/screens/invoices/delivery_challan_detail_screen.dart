@@ -472,6 +472,12 @@ class _StatusBanner extends StatelessWidget {
         icon = Icons.check_circle_outline;
         label = 'Converted to Invoice';
         break;
+      case ChallanStatus.pendingNumber:
+        bg = Colors.grey.shade100;
+        fg = Colors.grey.shade700;
+        icon = Icons.pending_outlined;
+        label = 'Awaiting Number';
+        break;
     }
 
     return Container(

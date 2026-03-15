@@ -274,6 +274,49 @@ class SyncClient implements SyncTransport {
     return rawList.length;
   }
 
+  // ── Number Reservation ───────────────────────────────────────────────────
+
+  /// Requests [count] sequential document numbers from the primary for
+  /// [docType] ('invoice', 'quote', 'dc', 'credit_note', 'debit_note').
+  ///
+  /// Call this BEFORE saving the document so the number is known at insert
+  /// time. If the device is offline, save with a `PENDING-<uuid>` placeholder
+  /// and status `pending_number`; the primary will assign real numbers during
+  /// the next delta-upload.
+  Future<List<String>> reserveNumber({
+    required DeviceSession session,
+    required String docType,
+    int count = 1,
+  }) async {
+    _assertConnected();
+
+    final deviceId = await identity.deviceId;
+    await _sendMessage(_socket!, {
+      'type':            'reserve_number',
+      'doc_type':        docType,
+      'count':           count,
+      'device_id':       deviceId,
+      'token_payload':   session.token.payload,
+      'token_signature': session.token.signatureBase64,
+    });
+
+    final resp = await _readMessage(_socket!);
+    if (resp == null) {
+      throw const SyncException('No response from primary');
+    }
+    if (resp['type'] == 'revocation') {
+      throw const SyncRevokedException('Device has been revoked by the primary');
+    }
+    if (resp['type'] != 'number_reserved') {
+      throw SyncException(
+        'reserve_number failed: ${resp['message'] ?? resp['type']}',
+      );
+    }
+
+    final numbers = (resp['numbers'] as List<dynamic>).cast<String>();
+    return numbers;
+  }
+
   // ── Apply rows ───────────────────────────────────────────────────────────
 
   Future<void> _applyDeltas(List<DeltaRow> rows) =>

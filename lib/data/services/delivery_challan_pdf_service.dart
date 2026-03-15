@@ -158,6 +158,8 @@ class DeliveryChallanPdfService {
         return PdfColors.green700;
       case ChallanStatus.draft:
         return PdfColors.grey600;
+      case ChallanStatus.pendingNumber:
+        return PdfColors.grey600;
     }
   }
 

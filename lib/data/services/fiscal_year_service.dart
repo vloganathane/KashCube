@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../domain/repositories/settings_repository.dart';
 import '../repositories/settings_repository_impl.dart';
 import 'database_helper.dart';
+import 'number_reservation_service.dart';
 
 // ---------------------------------------------------------------------------
 // FiscalYearService
@@ -127,121 +128,99 @@ class FiscalYearService {
     return actualStart.isAfter(stored);
   }
 
+  // ── Format Getters (for NumberReservationService) ──────────────────────
+
+  Future<String> get invoiceNoFormat async =>
+      await _settings.get('invoice_no_format') ?? 'INV-{YY}-{YY+1}-{SEQ}';
+
+  Future<String> get quoteNoFormat async =>
+      await _settings.get('quote_no_format') ?? 'QT-{YY}-{YY+1}-{SEQ}';
+
+  Future<String> get challanNoFormat async =>
+      await _settings.get('challan_no_format') ?? 'DC-{YY}-{YY+1}-{SEQ}';
+
+  /// Public version of [_fyPrefixFromRange] used by [NumberReservationService].
+  String computePrefix(String format, DateRange fy) =>
+      _fyPrefixFromRange(format, fy);
+
   // ── Invoice / Quote Numbering ───────────────────────────────────────────
 
   /// Generates the next invoice number for today's FY.
   ///
-  /// Example with default format 'INV-{YY}-{YY+1}-{SEQ}':
-  ///   → "INV-25-26-0001" on the first invoice of FY 2025-26.
+  /// Delegates to [NumberReservationService] which uses an atomic cursor in
+  /// the `invoice_number_cursors` table — conflict-safe across linked devices.
   Future<String> nextInvoiceNo() async {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
-    final format =
-        await _settings.get('invoice_no_format') ?? 'INV-{YY}-{YY+1}-{SEQ}';
+    final format = await invoiceNoFormat;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      'SELECT invoice_no FROM invoices WHERE invoice_no LIKE ? ORDER BY id DESC LIMIT 1',
-      ['$prefix%'],
+    final numbers = await NumberReservationService.instance.reserveNext(
+      db,
+      docType: 'invoice',
+      prefix: prefix,
     );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['invoice_no'] as String;
-      final seqStr = last.substring(prefix.length);
-      seq = (int.tryParse(seqStr) ?? 0) + 1;
-    }
-    return _applyTokens(format, fy, seq);
+    return numbers.first;
   }
 
   /// Generates the next quote number for today's FY.
-  ///
-  /// Example with default format 'QT-{YY}-{YY+1}-{SEQ}':
-  ///   → "QT-25-26-0001" on the first quote of FY 2025-26.
   Future<String> nextQuoteNo() async {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
-    final format =
-        await _settings.get('quote_no_format') ?? 'QT-{YY}-{YY+1}-{SEQ}';
+    final format = await quoteNoFormat;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      'SELECT quote_no FROM quotes WHERE quote_no LIKE ? ORDER BY id DESC LIMIT 1',
-      ['$prefix%'],
+    final numbers = await NumberReservationService.instance.reserveNext(
+      db,
+      docType: 'quote',
+      prefix: prefix,
     );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['quote_no'] as String;
-      final seqStr = last.substring(prefix.length);
-      seq = (int.tryParse(seqStr) ?? 0) + 1;
-    }
-    return _applyTokens(format, fy, seq);
+    return numbers.first;
   }
 
   /// Generates the next delivery challan number for today's FY.
-  ///
-  /// Default format: 'DC-{YY}-{YY+1}-{SEQ}' → "DC-25-26-0001"
   Future<String> nextChallanNo() async {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
-    final format =
-        await _settings.get('challan_no_format') ?? 'DC-{YY}-{YY+1}-{SEQ}';
+    final format = await challanNoFormat;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      'SELECT challan_no FROM delivery_challans WHERE challan_no LIKE ? ORDER BY id DESC LIMIT 1',
-      ['$prefix%'],
+    final numbers = await NumberReservationService.instance.reserveNext(
+      db,
+      docType: 'dc',
+      prefix: prefix,
     );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['challan_no'] as String;
-      final seqStr = last.substring(prefix.length);
-      seq = (int.tryParse(seqStr) ?? 0) + 1;
-    }
-    return _applyTokens(format, fy, seq);
+    return numbers.first;
   }
 
   /// Generates the next credit note number for today's FY.
-  ///
-  /// Default format: 'CN-{YY}-{YY+1}-{SEQ}' → "CN-25-26-0001"
   Future<String> nextCreditNoteNo() async {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
     const format = 'CN-{YY}-{YY+1}-{SEQ}';
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      "SELECT invoice_no FROM invoices WHERE invoice_no LIKE ? AND invoice_type = 'credit_note' ORDER BY id DESC LIMIT 1",
-      ['$prefix%'],
+    final numbers = await NumberReservationService.instance.reserveNext(
+      db,
+      docType: 'credit_note',
+      prefix: prefix,
     );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['invoice_no'] as String;
-      final seqStr = last.substring(prefix.length);
-      seq = (int.tryParse(seqStr) ?? 0) + 1;
-    }
-    return _applyTokens(format, fy, seq);
+    return numbers.first;
   }
 
   /// Generates the next debit note number for today's FY.
-  ///
-  /// Default format: 'DN-{YY}-{YY+1}-{SEQ}' → "DN-25-26-0001"
   Future<String> nextDebitNoteNo() async {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
     const format = 'DN-{YY}-{YY+1}-{SEQ}';
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
-    final result = await db.rawQuery(
-      "SELECT invoice_no FROM invoices WHERE invoice_no LIKE ? AND invoice_type = 'debit_note' ORDER BY id DESC LIMIT 1",
-      ['$prefix%'],
+    final numbers = await NumberReservationService.instance.reserveNext(
+      db,
+      docType: 'debit_note',
+      prefix: prefix,
     );
-    int seq = 1;
-    if (result.isNotEmpty) {
-      final last = result.first['invoice_no'] as String;
-      final seqStr = last.substring(prefix.length);
-      seq = (int.tryParse(seqStr) ?? 0) + 1;
-    }
-    return _applyTokens(format, fy, seq);
+    return numbers.first;
   }
 
   // ── Startup Hook ────────────────────────────────────────────────────────

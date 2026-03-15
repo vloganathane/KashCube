@@ -345,6 +345,7 @@ class _HeaderCard extends StatelessWidget {
       QuoteStatus.rejected => const Color(0xFFC62828),
       QuoteStatus.sent => cs.primary,
       QuoteStatus.draft => cs.outline,
+      QuoteStatus.pendingNumber => cs.outline,
     };
 
     return Card(
@@ -660,6 +661,7 @@ class _LinkedInvoiceCard extends ConsumerWidget {
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
       InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
+      InvoiceStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
 
     return Card(

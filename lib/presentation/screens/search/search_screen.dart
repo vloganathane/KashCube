@@ -687,6 +687,7 @@ class _InvoiceTile extends StatelessWidget {
       InvoiceStatus.partiallyPaid => Colors.blue,
       InvoiceStatus.cancelled => context.colorScheme.outline,
       InvoiceStatus.draft => context.colorScheme.outline,
+      InvoiceStatus.pendingNumber => context.colorScheme.outline,
     };
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
@@ -1018,6 +1019,7 @@ class _ChallanTile extends StatelessWidget {
       ChallanStatus.dispatched => Colors.orange,
       ChallanStatus.returned => context.colorScheme.primary,
       ChallanStatus.converted => Colors.blue,
+      ChallanStatus.pendingNumber => context.colorScheme.outline,
     };
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
@@ -1122,6 +1124,7 @@ class _QuoteTile extends StatelessWidget {
       QuoteStatus.rejected => context.colorScheme.error,
       QuoteStatus.sent     => Colors.orange,
       QuoteStatus.draft    => context.colorScheme.outline,
+      QuoteStatus.pendingNumber => context.colorScheme.outline,
     };
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),

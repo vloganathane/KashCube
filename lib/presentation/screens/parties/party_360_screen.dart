@@ -1837,6 +1837,7 @@ class _ChallanTile extends StatelessWidget {
       ChallanStatus.returned => colors.credit,
       ChallanStatus.converted => colors.income,
       ChallanStatus.draft => Theme.of(context).colorScheme.outline,
+      ChallanStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
 
     return ListTile(

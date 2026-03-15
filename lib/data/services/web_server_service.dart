@@ -18,7 +18,9 @@ import '../repositories/linked_device_repository_impl.dart';
 import '../../domain/models/permission.dart';
 import '../../domain/repositories/linked_device_repository.dart';
 import 'database_helper.dart';
+import 'fiscal_year_service.dart';
 import 'identity_service.dart';
+import 'number_reservation_service.dart';
 import 'token_service.dart';
 
 /// Runs on the phone. Serves the KashCube WebSocket endpoint over LAN.
@@ -283,6 +285,8 @@ class WebServerService {
         return _wsHandleDeltaRequest(msg);
       case 'delta_upload':
         return _wsHandleDeltaUpload(msg);
+      case 'reserve_number':
+        return _wsHandleReserveNumber(msg);
       default:
         return {'type': 'error', 'message': 'unknown_type'};
     }
@@ -494,9 +498,80 @@ class WebServerService {
         }
       });
 
+  // ── Reserve Number (WS) ───────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> _wsHandleReserveNumber(
+    Map<String, dynamic> msg,
+  ) async {
+    if (!await _wsVerifyToken(msg)) {
+      return {'type': 'error', 'message': 'invalid_token'};
+    }
+
+    final docType = msg['doc_type'] as String?;
+    final count   = (msg['count'] as num?)?.toInt() ?? 1;
+
+    if (docType == null || count < 1 || count > 100) {
+      return {
+        'type':    'error',
+        'message': 'reserve_number_failed',
+        'detail':  'invalid doc_type or count',
+      };
+    }
+
+    try {
+      final fyService = FiscalYearService.instance;
+      final now       = DateTime.now();
+      final fy        = await fyService.getFiscalYearFor(now);
+      final format    = await _formatForDocType(fyService, docType);
+      final prefix    = fyService.computePrefix(format, fy);
+
+      final numbers = await DatabaseHelper.instance.withDatabase(
+        (db) => NumberReservationService.instance.reserveNext(
+          db,
+          docType: docType,
+          prefix:  prefix,
+          count:   count,
+        ),
+      );
+
+      return {
+        'type':     'number_reserved',
+        'doc_type': docType,
+        'numbers':  numbers,
+      };
+    } catch (e) {
+      return {
+        'type':    'error',
+        'message': 'reserve_number_failed',
+        'detail':  e.toString(),
+      };
+    }
+  }
+
+  Future<String> _formatForDocType(
+    FiscalYearService fyService,
+    String docType,
+  ) async {
+    switch (docType) {
+      case 'invoice':
+        return fyService.invoiceNoFormat;
+      case 'quote':
+        return fyService.quoteNoFormat;
+      case 'dc':
+        return fyService.challanNoFormat;
+      case 'credit_note':
+        return 'CN-{YY}-{YY+1}-{SEQ}';
+      case 'debit_note':
+        return 'DN-{YY}-{YY+1}-{SEQ}';
+      default:
+        return 'DOC-{YY}-{YY+1}-{SEQ}';
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   Future<Map<String, dynamic>> _wsLoadPlanFeatures(Database db) async {
-    final subRows =
-        await db.query('subscription', limit: 1);
+    final subRows = await db.query('subscription', limit: 1);
     final plan = subRows.isNotEmpty
         ? (subRows.first['plan'] as String? ?? 'free')
         : 'free';

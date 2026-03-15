@@ -885,6 +885,17 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
       )
     ''');
+
+    // Atomic cursor table for conflict-free invoice/quote/DC numbering
+    // across linked devices (added to fresh-install schema at v67).
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS invoice_number_cursors (
+        doc_type   TEXT PRIMARY KEY,
+        prefix     TEXT NOT NULL,
+        last_seq   INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL
+      )
+    ''');
   }
 
   // ── 10. Inventory & HR ────────────────────────────────────────────────────

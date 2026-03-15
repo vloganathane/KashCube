@@ -9,7 +9,9 @@ import '../models/app_user.dart';
 import '../models/delta_row.dart';
 import '../models/linked_device.dart';
 import '../services/database_helper.dart';
+import '../services/fiscal_year_service.dart';
 import '../services/identity_service.dart';
+import '../services/number_reservation_service.dart';
 import '../services/token_service.dart';
 import '../../domain/models/permission.dart';
 import '../../domain/repositories/linked_device_repository.dart';
@@ -92,6 +94,8 @@ class SyncServer {
           await _handleDeltaUpload(socket, msg);
         case 'payroll_notification_request':
           await _handlePayrollNotificationRequest(socket, msg);
+        case 'reserve_number':
+          await _handleReserveNumber(socket, msg);
         default:
           await _sendMessage(socket, {'type': 'error', 'message': 'unknown_type'});
       }
@@ -334,6 +338,82 @@ class SyncServer {
       'type':          'payroll_notification_response',
       'notifications': events,
     });
+  }
+
+  // ── Reserve Number ────────────────────────────────────────────────────────
+
+  /// Atomically reserves one or more sequential document numbers on behalf of
+  /// a secondary device.  The secondary must supply its session token so the
+  /// primary can confirm it is still active before issuing a number.
+  Future<void> _handleReserveNumber(
+    Socket socket,
+    Map<String, dynamic> msg,
+  ) async {
+    if (!await _verifyDeviceToken(msg)) {
+      await _sendMessage(socket, {'type': 'error', 'message': 'invalid_token'});
+      return;
+    }
+
+    final docType = msg['doc_type'] as String?;
+    final count   = (msg['count'] as num?)?.toInt() ?? 1;
+
+    if (docType == null || count < 1 || count > 100) {
+      await _sendMessage(socket, {
+        'type':    'error',
+        'message': 'reserve_number_failed',
+        'detail':  'invalid doc_type or count',
+      });
+      return;
+    }
+
+    try {
+      final fyService = FiscalYearService.instance;
+      final now       = DateTime.now();
+      final fy        = await fyService.getFiscalYearFor(now);
+      final format    = await _formatForDocType(fyService, docType);
+      final prefix    = fyService.computePrefix(format, fy);
+
+      final numbers = await dbHelper.withDatabase(
+        (db) => NumberReservationService.instance.reserveNext(
+          db,
+          docType: docType,
+          prefix:  prefix,
+          count:   count,
+        ),
+      );
+
+      await _sendMessage(socket, {
+        'type':     'number_reserved',
+        'doc_type': docType,
+        'numbers':  numbers,
+      });
+    } catch (e) {
+      await _sendMessage(socket, {
+        'type':    'error',
+        'message': 'reserve_number_failed',
+        'detail':  e.toString(),
+      });
+    }
+  }
+
+  Future<String> _formatForDocType(
+    FiscalYearService fyService,
+    String docType,
+  ) async {
+    switch (docType) {
+      case 'invoice':
+        return fyService.invoiceNoFormat;
+      case 'quote':
+        return fyService.quoteNoFormat;
+      case 'dc':
+        return fyService.challanNoFormat;
+      case 'credit_note':
+        return 'CN-{YY}-{YY+1}-{SEQ}';
+      case 'debit_note':
+        return 'DN-{YY}-{YY+1}-{SEQ}';
+      default:
+        return 'DOC-{YY}-{YY+1}-{SEQ}';
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

@@ -335,6 +335,8 @@ class InvoicePdfService {
         return PdfColors.grey600;
       case InvoiceStatus.cancelled:
         return PdfColors.grey400;
+      case InvoiceStatus.pendingNumber:
+        return PdfColors.grey600;
     }
   }
 
@@ -347,6 +349,8 @@ class InvoicePdfService {
       case QuoteStatus.rejected:
         return PdfColors.red700;
       case QuoteStatus.draft:
+        return PdfColors.grey600;
+      case QuoteStatus.pendingNumber:
         return PdfColors.grey600;
     }
   }

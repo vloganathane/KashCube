@@ -378,6 +378,7 @@ class _InvoiceTile extends ConsumerWidget {
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
       InvoiceStatus.cancelled => cs.outline,
       InvoiceStatus.draft => cs.outline,
+      InvoiceStatus.pendingNumber => cs.outline,
     };
   }
 
@@ -416,6 +417,7 @@ class _StatusChip extends StatelessWidget {
       InvoiceStatus.partiallyPaid => const Color(0xFFE65100),
       InvoiceStatus.cancelled => Theme.of(context).colorScheme.outline,
       InvoiceStatus.draft => Theme.of(context).colorScheme.outline,
+      InvoiceStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
     return Container(
       padding:
@@ -480,6 +482,7 @@ class _QuoteTile extends ConsumerWidget {
       QuoteStatus.rejected => const Color(0xFFC62828),
       QuoteStatus.sent => cs.primary,
       QuoteStatus.draft => cs.outline,
+      QuoteStatus.pendingNumber => cs.outline,
     };
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),

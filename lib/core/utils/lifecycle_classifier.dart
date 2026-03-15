@@ -132,6 +132,15 @@ class LifecycleClassifier {
           lastActionLabel: 'Cancelled',
           nextActionHint: null,
         );
+
+      case InvoiceStatus.pendingNumber:
+        return LifecycleInfo(
+          stage: LifecycleStage.draft,
+          daysInStage: today.difference(_date(inv.updatedAt)).inDays.abs(),
+          lastActionAt: inv.updatedAt,
+          lastActionLabel: 'Awaiting number',
+          nextActionHint: 'Sync with primary device to assign a number',
+        );
     }
   }
 

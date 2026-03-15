@@ -6,7 +6,7 @@ import 'invoice.dart' show InvoiceType, InvoiceTypeExt;
 // Enums
 // ---------------------------------------------------------------------------
 
-enum QuoteStatus { draft, sent, accepted, rejected }
+enum QuoteStatus { draft, sent, accepted, rejected, pendingNumber }
 
 extension QuoteStatusExt on QuoteStatus {
   String get label {
@@ -19,10 +19,19 @@ extension QuoteStatusExt on QuoteStatus {
         return 'Accepted';
       case QuoteStatus.rejected:
         return 'Rejected';
+      case QuoteStatus.pendingNumber:
+        return 'Awaiting No.';
     }
   }
 
-  String get dbValue => name;
+  String get dbValue {
+    switch (this) {
+      case QuoteStatus.pendingNumber:
+        return 'pending_number';
+      default:
+        return name;
+    }
+  }
 
   static QuoteStatus fromDb(String? v) {
     switch (v) {
@@ -32,6 +41,8 @@ extension QuoteStatusExt on QuoteStatus {
         return QuoteStatus.accepted;
       case 'rejected':
         return QuoteStatus.rejected;
+      case 'pending_number':
+        return QuoteStatus.pendingNumber;
       default:
         return QuoteStatus.draft;
     }

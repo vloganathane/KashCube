@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
-enum ChallanStatus { draft, dispatched, returned, converted }
+enum ChallanStatus { draft, dispatched, returned, converted, pendingNumber }
 
 extension ChallanStatusExt on ChallanStatus {
   String get label => const {
@@ -10,6 +10,7 @@ extension ChallanStatusExt on ChallanStatus {
         ChallanStatus.dispatched: 'Dispatched',
         ChallanStatus.returned: 'Returned',
         ChallanStatus.converted: 'Converted',
+        ChallanStatus.pendingNumber: 'Awaiting No.',
       }[this]!;
 
   String get dbValue => const {
@@ -17,6 +18,7 @@ extension ChallanStatusExt on ChallanStatus {
         ChallanStatus.dispatched: 'dispatched',
         ChallanStatus.returned: 'returned',
         ChallanStatus.converted: 'converted',
+        ChallanStatus.pendingNumber: 'pending_number',
       }[this]!;
 
   static ChallanStatus fromDb(String? v) {
@@ -27,6 +29,8 @@ extension ChallanStatusExt on ChallanStatus {
         return ChallanStatus.returned;
       case 'converted':
         return ChallanStatus.converted;
+      case 'pending_number':
+        return ChallanStatus.pendingNumber;
       default:
         return ChallanStatus.draft;
     }

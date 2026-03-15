@@ -137,6 +137,8 @@ class _FilterChips extends StatelessWidget {
         return Icons.assignment_return_outlined;
       case ChallanStatus.converted:
         return Icons.receipt_outlined;
+      case ChallanStatus.pendingNumber:
+        return Icons.pending_outlined;
     }
   }
 }
@@ -247,6 +249,8 @@ class _ChallanCard extends ConsumerWidget {
         return Colors.orange.shade700;
       case ChallanStatus.converted:
         return Colors.green.shade700;
+      case ChallanStatus.pendingNumber:
+        return context.colorScheme.outline;
     }
   }
 }
@@ -299,6 +303,10 @@ class _StatusChip extends StatelessWidget {
       case ChallanStatus.converted:
         bg = Colors.green.shade50;
         fg = Colors.green.shade800;
+        break;
+      case ChallanStatus.pendingNumber:
+        bg = Colors.grey.shade100;
+        fg = Colors.grey.shade700;
         break;
     }
 

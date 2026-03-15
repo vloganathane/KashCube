@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../data/models/device_session_token.dart';
+import '../../data/models/discovered_primary.dart';
 import '../../data/models/linked_device.dart';
 import '../../data/models/my_identity.dart';
 import '../../data/models/payroll_notification.dart';
@@ -240,11 +241,29 @@ class LinkHostNotifier extends StateNotifier<AsyncValue<int>> {
 
   /// Starts the TCP server and registers the mDNS service.
   /// State becomes [AsyncValue.data(port)] on success.
+  ///
+  /// Loads the primary's identity to embed as TXT record attributes so
+  /// secondary devices can see the device name before pairing.
   Future<void> start() async {
     try {
       state = const AsyncValue.loading();
       final port = await _server.start();
-      await _discovery.startServer(port);
+
+      // Load identity for TXT record metadata (display_name + device_id).
+      final myIdentity = await DatabaseHelper.instance.withDatabase((db) async {
+        final rows = await db.query('my_identity', limit: 1);
+        if (rows.isEmpty) return null;
+        return MyIdentity.fromMap(rows.first);
+      });
+      final deviceId = IdentityService.instance.isInitialized
+          ? await IdentityService.instance.deviceId
+          : null;
+
+      await _discovery.startServer(
+        port,
+        displayName: myIdentity?.displayName,
+        deviceId:    deviceId,
+      );
       state = AsyncValue.data(port);
     } catch (e, s) {
       state = AsyncValue.error(e, s);
@@ -283,17 +302,18 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
   final LanDiscoveryService _discovery;
   final Ref                 _ref;
 
-  String? _foundIp;
-  int?    _foundPort;
+  DiscoveredPrimary? _foundPrimary;
+
+  /// The display label of the discovered primary, or null while scanning.
+  String? get foundPrimaryLabel => _foundPrimary?.label;
 
   /// Starts mDNS discovery; sets state to loading while scanning.
   Future<void> startScan() async {
     state = const AsyncValue.loading();
     await _discovery.startDiscovery(
-      onFound: (ip, port, _) {
-        _foundIp   = ip;
-        _foundPort = port;
-        state      = const AsyncValue.data(null); // scanning done, ready to pair
+      onFound: (primary) {
+        _foundPrimary = primary;
+        state         = const AsyncValue.data(null); // scanning done, ready to pair
         _discovery.stopDiscovery();
       },
     );
@@ -307,8 +327,8 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
     int?    port,
     String  preset  = 'owner_mirror',
   }) async {
-    final host = ip   ?? _foundIp;
-    final p    = port ?? _foundPort;
+    final host = ip   ?? _foundPrimary?.ipAddress;
+    final p    = port ?? _foundPrimary?.port;
     if (host == null || p == null) {
       state = AsyncValue.error('No host found', StackTrace.current);
       return;
@@ -597,9 +617,9 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
       int?    port;
       final found = Completer<void>();
       await _discovery.startDiscovery(
-        onFound: (ip, p, _) {
-          host = ip;
-          port = p;
+        onFound: (primary) {
+          host = primary.ipAddress;
+          port = primary.port;
           if (!found.isCompleted) found.complete();
         },
       );

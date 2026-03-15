@@ -78,30 +78,60 @@ class SyncServer {
 
   // ── Connection handler ───────────────────────────────────────────────────
 
+  /// Handles a client connection as a persistent message loop.
+  ///
+  /// A single TCP connection can carry N sequential operations
+  /// (pair → pull → push → reserve_number, etc.) rather than one message
+  /// per connect-disconnect cycle.
+  ///
+  /// Keepalive: after [_kPingInterval] of idle the server sends a `ping`
+  /// frame.  The client is expected to reply with `pong` (handled by
+  /// [SyncClient._readResponse]).  If no message arrives within
+  /// [_kReadTimeout] the connection is silently closed.
+  static const Duration _kPingInterval = Duration(seconds: 30);
+  static const Duration _kReadTimeout  = Duration(seconds: 60);
+
   Future<void> _handleConnection(Socket socket) async {
     _clients.add(socket);
-    try {
-      final msg = await _readMessage(socket);
-      if (msg == null) return;
+    Timer? pingTimer;
 
-      final type = msg['type'] as String?;
-      switch (type) {
-        case 'pair_request':
-          await _handlePairRequest(socket, msg);
-        case 'delta_request':
-          await _handleDeltaRequest(socket, msg);
-        case 'delta_upload':
-          await _handleDeltaUpload(socket, msg);
-        case 'payroll_notification_request':
-          await _handlePayrollNotificationRequest(socket, msg);
-        case 'reserve_number':
-          await _handleReserveNumber(socket, msg);
-        default:
-          await _sendMessage(socket, {'type': 'error', 'message': 'unknown_type'});
+    void resetPingTimer() {
+      pingTimer?.cancel();
+      pingTimer = Timer(_kPingInterval, () {
+        // Send a keepalive ping.  Errors mean the socket is already dead.
+        _sendMessage(socket, {'type': 'ping'}).catchError((_) {});
+      });
+    }
+
+    try {
+      resetPingTimer();
+      while (true) {
+        final msg = await _readMessage(socket);
+        if (msg == null) break; // connection closed or timed out
+        resetPingTimer();
+
+        final type = msg['type'] as String?;
+        switch (type) {
+          case 'pong':
+            break; // keepalive reply — timer already reset above, nothing else to do
+          case 'pair_request':
+            await _handlePairRequest(socket, msg);
+          case 'delta_request':
+            await _handleDeltaRequest(socket, msg);
+          case 'delta_upload':
+            await _handleDeltaUpload(socket, msg);
+          case 'payroll_notification_request':
+            await _handlePayrollNotificationRequest(socket, msg);
+          case 'reserve_number':
+            await _handleReserveNumber(socket, msg);
+          default:
+            await _sendMessage(socket, {'type': 'error', 'message': 'unknown_type'});
+        }
       }
     } catch (_) {
       // swallow per-connection errors
     } finally {
+      pingTimer?.cancel();
       _clients.remove(socket);
       await socket.close();
     }
@@ -565,7 +595,7 @@ class SyncServer {
     );
 
     return completer.future.timeout(
-      const Duration(seconds: 30),
+      _kReadTimeout,
       onTimeout: () { sub.cancel(); return null; },
     );
   }

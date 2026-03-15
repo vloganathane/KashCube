@@ -97,7 +97,7 @@ class SyncClient implements SyncTransport {
       'secondary_display_name': ?secondaryDisplayName,
     });
 
-    final resp = await _readMessage(_socket!);
+    final resp = await _readResponse();
     if (resp == null || resp['type'] != 'pair_response') {
       throw const SyncException('Invalid pair_response from primary');
     }
@@ -135,7 +135,7 @@ class SyncClient implements SyncTransport {
       'token_signature': session.token.signatureBase64,
     });
 
-    final resp = await _readMessage(_socket!);
+    final resp = await _readResponse();
     if (resp == null) {
       throw const SyncException('No response from primary');
     }
@@ -173,7 +173,7 @@ class SyncClient implements SyncTransport {
       'token_signature': session.token.signatureBase64,
     });
 
-    final resp = await _readMessage(_socket!);
+    final resp = await _readResponse();
     if (resp == null || resp['type'] != 'upload_ack') {
       throw const SyncException('Invalid upload_ack from primary');
     }
@@ -237,7 +237,7 @@ class SyncClient implements SyncTransport {
       'token_signature': session.token.signatureBase64,
     });
 
-    final resp = await _readMessage(_socket!);
+    final resp = await _readResponse();
     if (resp == null) {
       throw const SyncException('No response from primary');
     }
@@ -300,7 +300,7 @@ class SyncClient implements SyncTransport {
       'token_signature': session.token.signatureBase64,
     });
 
-    final resp = await _readMessage(_socket!);
+    final resp = await _readResponse();
     if (resp == null) {
       throw const SyncException('No response from primary');
     }
@@ -386,6 +386,25 @@ class SyncClient implements SyncTransport {
   void _assertConnected() {
     if (_socket == null) {
       throw const SyncException('SyncClient not connected — call connect() first');
+    }
+  }
+
+  /// Reads the next message but transparently handles server-side ping frames:
+  /// when the primary sends `{"type":"ping"}` (keepalive), this method replies
+  /// with `{"type":"pong"}` and waits for the actual response.
+  ///
+  /// Use this instead of [_readMessage] at every response-read site so that
+  /// server keepalive pings never interrupt normal operations.
+  Future<Map<String, dynamic>?> _readResponse() async {
+    while (true) {
+      final msg = await _readMessage(_socket!);
+      if (msg == null) return null;
+      if (msg['type'] == 'ping') {
+        // Auto-reply; ignore errors (socket may have closed).
+        _sendMessage(_socket!, {'type': 'pong'}).catchError((_) {});
+        continue; // wait for the real response
+      }
+      return msg;
     }
   }
 }

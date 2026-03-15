@@ -73,9 +73,10 @@ dependencies:
   # Pure Dart, no network calls, no platform channels
   cryptography: ^2.7.0
 
-  # mDNS service discovery for LAN sync (Android NsdManager / iOS NetServiceBrowser)
-  # Purely local — discovers peers on the same Wi-Fi; no internet required
-  nsd: ^4.1.0
+  # mDNS service discovery for LAN sync (Android NsdManager / iOS Bonjour)
+  # Supports TXT records (attributes) so secondaries can see the primary's
+  # display name before pairing. Purely local — no internet required.
+  bonsoir: ^5.1.2
 
   # Secure key-value storage (OS keystore) — used exclusively for optional
   # GSP API key when user explicitly opts into e-Way Bill auto-generation.

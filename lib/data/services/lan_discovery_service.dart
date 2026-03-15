@@ -1,23 +1,37 @@
-import 'dart:io';
+import 'dart:async';
 
-import 'package:nsd/nsd.dart' as nsd;
+import 'package:bonsoir/bonsoir.dart';
 
-/// Wraps the `nsd` package for mDNS service registration (primary device)
+import '../models/discovered_primary.dart';
+
+/// Wraps the `bonsoir` package for mDNS service advertisement (primary device)
 /// and discovery (secondary device).
 ///
 /// Service type: `_kashcube._tcp`
-/// Service name: `KashCube`
+///
+/// TXT record attributes embedded in the advertisement:
+///   `device_id`    — primary's permanent device UUID
+///   `display_name` — human-readable name (e.g. "Navneet's Galaxy Tab")
+///   `role`         — always "primary"
 ///
 /// Usage on primary:
 /// ```dart
-/// await LanDiscoveryService.instance.startServer(port);
-/// // ... sync server running ...
+/// await LanDiscoveryService.instance.startServer(
+///   port,
+///   displayName: 'Navneet\'s Tab',
+///   deviceId: deviceId,
+/// );
+/// // ...
 /// await LanDiscoveryService.instance.stopServer();
 /// ```
 ///
 /// Usage on secondary:
 /// ```dart
-/// await LanDiscoveryService.instance.startDiscovery(onFound: (ip, port) { ... });
+/// await LanDiscoveryService.instance.startDiscovery(
+///   onFound: (primary) {
+///     print('Found ${primary.label} at ${primary.ipAddress}:${primary.port}');
+///   },
+/// );
 /// // ...
 /// await LanDiscoveryService.instance.stopDiscovery();
 /// ```
@@ -26,53 +40,86 @@ class LanDiscoveryService {
   static final LanDiscoveryService instance = LanDiscoveryService._();
 
   static const String _serviceType = '_kashcube._tcp';
-  static const String _serviceName = 'KashCube';
 
-  nsd.Registration? _registration;
-  nsd.Discovery?    _discovery;
+  BonsoirBroadcast?   _broadcast;
+  BonsoirDiscovery?   _discovery;
+  StreamSubscription? _discoverySubscription;
 
-  // ── Primary: register ────────────────────────────────────────────────────
+  // ── Primary: advertise ───────────────────────────────────────────────────
 
   /// Registers the mDNS service so nearby secondaries can discover this device.
-  Future<void> startServer(int port) async {
-    if (_registration != null) return; // already registered
-    _registration = await nsd.register(
-      nsd.Service(name: _serviceName, type: _serviceType, port: port),
+  ///
+  /// [displayName] and [deviceId] are embedded in the TXT record so secondaries
+  /// can show the device name before pairing completes.
+  Future<void> startServer(
+    int port, {
+    String? displayName,
+    String? deviceId,
+  }) async {
+    if (_broadcast != null) return; // already registered
+
+    final attrs = <String, String>{
+      'role': 'primary',
+      if (deviceId    != null) 'device_id':    deviceId,
+      if (displayName != null) 'display_name': displayName,
+    };
+
+    final service = BonsoirService(
+      name:       displayName ?? 'KashCube',
+      type:       _serviceType,
+      port:       port,
+      attributes: attrs,
     );
+
+    _broadcast = BonsoirBroadcast(service: service);
+    await _broadcast!.ready;
+    await _broadcast!.start();
   }
 
   /// Unregisters the mDNS service.
   Future<void> stopServer() async {
-    if (_registration == null) return;
-    await nsd.unregister(_registration!);
-    _registration = null;
+    if (_broadcast == null) return;
+    await _broadcast!.stop();
+    _broadcast = null;
   }
 
   // ── Secondary: discover ──────────────────────────────────────────────────
 
-  /// Starts mDNS discovery.  [onFound] is called for each discovered instance.
-  /// [onLost] is called if a previously found service disappears.
+  /// Starts mDNS discovery.
+  ///
+  /// [onFound] is called with a [DiscoveredPrimary] for every resolved
+  /// `_kashcube._tcp` service, including the primary's display name and
+  /// device ID from its TXT record attributes.
+  ///
+  /// [onLost] is called with the service name if a previously found primary
+  /// goes offline.
   Future<void> startDiscovery({
-    required void Function(String ip, int port, String serviceName) onFound,
+    required void Function(DiscoveredPrimary device) onFound,
     void Function(String serviceName)? onLost,
   }) async {
     if (_discovery != null) return; // already discovering
-    _discovery = await nsd.startDiscovery(_serviceType);
-    _discovery!.addServiceListener((service, status) {
-      final name = service.name ?? _serviceName;
-      final port = service.port;
-      if (status == nsd.ServiceStatus.found) {
-        final addresses = service.addresses;
-        if (addresses != null && addresses.isNotEmpty && port != null) {
-          // Prefer IPv4
-          final addr = addresses.firstWhere(
-            (a) => a.type == InternetAddressType.IPv4,
-            orElse: () => addresses.first,
-          );
-          onFound(addr.address, port, name);
-        }
-      } else if (status == nsd.ServiceStatus.lost) {
-        onLost?.call(name);
+
+    _discovery = BonsoirDiscovery(type: _serviceType);
+    await _discovery!.ready;
+    await _discovery!.start();
+
+    _discoverySubscription = _discovery!.eventStream?.listen((event) {
+      if (event.type == BonsoirDiscoveryEventType.discoveryServiceResolved) {
+        final svc = event.service;
+        if (svc is! ResolvedBonsoirService) return;
+        final host  = svc.host;
+        if (host == null) return; // resolution failed — no IP address yet
+        final port  = svc.port;
+        final attrs = svc.attributes;
+        onFound(DiscoveredPrimary(
+          ipAddress:   host,
+          port:        port,
+          displayName: attrs['display_name'],
+          deviceId:    attrs['device_id'],
+          serviceName: svc.name,
+        ));
+      } else if (event.type == BonsoirDiscoveryEventType.discoveryServiceLost) {
+        onLost?.call(event.service?.name ?? '');
       }
     });
   }
@@ -80,10 +127,12 @@ class LanDiscoveryService {
   /// Stops mDNS discovery.
   Future<void> stopDiscovery() async {
     if (_discovery == null) return;
-    await nsd.stopDiscovery(_discovery!);
+    await _discoverySubscription?.cancel();
+    _discoverySubscription = null;
+    await _discovery!.stop();
     _discovery = null;
   }
 
-  bool get isRegistered  => _registration != null;
-  bool get isDiscovering => _discovery    != null;
+  bool get isRegistered  => _broadcast != null;
+  bool get isDiscovering => _discovery != null;
 }

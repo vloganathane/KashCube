@@ -1,11 +1,11 @@
 {
-    "name": "kash_cube",
-    "short_name": "kash_cube",
+    "name": "KashCube",
+    "short_name": "KashCube",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1B5E20",
+    "theme_color": "#1B5E20",
+    "description": "Privacy-first finance tracker for India. Track expenses, invoices, credits & UPI transactions — 100% offline.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

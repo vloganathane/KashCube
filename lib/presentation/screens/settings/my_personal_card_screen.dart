@@ -17,6 +17,8 @@ import 'package:world_countries/world_countries.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/services/pincode_lookup_service.dart';
+import '../../../data/repositories/identity_repository_impl.dart';
+import '../../providers/identity_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/country_picker_field.dart';
 import '../../widgets/indian_state_dropdown.dart';
@@ -174,6 +176,12 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
         _saveOrRemove(repo, SettingsKeys.personalInstagram,  _instagram.text.trim()),
         _saveOrRemove(repo, SettingsKeys.personalPhotoPath,  _photoPath ?? ''),
       ]);
+      // Keep identity display name in sync with personal card name
+      final newName = _name.text.trim();
+      if (newName.isNotEmpty) {
+        await IdentityRepositoryImpl().updateDisplayName(newName);
+        ref.invalidate(myIdentityProvider);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Personal card saved')),

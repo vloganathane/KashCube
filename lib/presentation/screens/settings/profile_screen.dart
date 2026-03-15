@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/repositories/identity_repository_impl.dart';
 import '../../../data/services/identity_service.dart';
 import '../../providers/identity_provider.dart';
+import '../../providers/settings_provider.dart';
 
 /// Settings → My Identity
 ///
@@ -31,6 +32,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return;
     await IdentityRepositoryImpl().updateDisplayName(trimmed);
+    // Keep personal card name in sync with identity display name
+    await ref.read(settingsRepositoryProvider).set(SettingsKeys.ownerName, trimmed);
     ref.invalidate(myIdentityProvider);
     if (mounted) setState(() => _editingName = false);
   }

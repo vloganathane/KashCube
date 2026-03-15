@@ -24,7 +24,6 @@ import 'notification_settings_screen.dart';
 import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'linked_devices_screen.dart';
-import 'linked_sessions_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
 import 'kashcube_web_screen.dart';
@@ -158,27 +157,14 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.devices_outlined),
-                title: const Text('Linked Devices'),
+                title: const Text('Devices & Sync'),
                 subtitle: const Text(
-                    'Pair a tablet or second phone for shared access over Wi-Fi'),
+                    'Manage linked devices and business connections over Wi-Fi'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const LinkedDevicesScreen(),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.business_center_outlined),
-                title: const Text('Linked Sessions'),
-                subtitle: const Text(
-                    'Manage your connections to primary business devices'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const LinkedSessionsScreen(),
+                    builder: (_) => const DevicesSyncScreen(),
                   ),
                 ),
               ),

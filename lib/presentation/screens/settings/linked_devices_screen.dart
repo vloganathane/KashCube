@@ -5,25 +5,36 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../data/models/device_session_token.dart';
 import '../../../data/models/linked_device.dart';
 import '../../providers/sync_provider.dart';
 import '../../widgets/qr_scanner_sheet.dart' show showQrScannerSheet;
 import 'device_detail_screen.dart';
 import 'link_device_screen.dart';
 
-/// Shows all non-revoked devices linked to this device.
-/// - PRIMARY (already has linked devices or confirmed host): FAB → [LinkDeviceScreen] (show QR).
-/// - SECONDARY (already paired): FAB → Sync; AppBar → Re-pair QR scanner.
-/// - UNPAIRED (neither role yet): FAB → role picker (host QR or scan QR).
-class LinkedDevicesScreen extends ConsumerWidget {
-  const LinkedDevicesScreen({super.key});
+/// Unified "Devices & Sync" screen — replaces the former separate
+/// "Linked Devices" and "Linked Sessions" screens.
+///
+/// Two sections, each shown only when populated:
+///   • "Devices I manage"  — primary side ([linked_devices] table)
+///   • "Businesses I'm connected to" — secondary side ([device_session] table)
+///
+/// When both are empty a unified empty state + role-picker FAB is shown.
+class DevicesSyncScreen extends ConsumerWidget {
+  const DevicesSyncScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final devicesAsync     = ref.watch(linkedDevicesProvider);
-    final isSecondaryAsync = ref.watch(isSecondaryDeviceProvider);
-    final isSecondary      = isSecondaryAsync.valueOrNull ?? false;
-    final syncState        = ref.watch(syncNowProvider);
+    final devicesAsync  = ref.watch(linkedDevicesProvider);
+    final sessionsAsync = ref.watch(linkedSessionsProvider);
+    final isSecondary   = ref.watch(isSecondaryDeviceProvider).valueOrNull ?? false;
+    final syncState     = ref.watch(syncNowProvider);
+
+    final devices           = devicesAsync.valueOrNull  ?? [];
+    final sessions          = sessionsAsync.valueOrNull ?? [];
+    final isLoading         = devicesAsync.isLoading || sessionsAsync.isLoading;
+    final hasManagedDevices = devices.isNotEmpty;
+    final hasSessions       = sessions.isNotEmpty;
 
     ref.listen<SyncNowState>(syncNowProvider, (_, next) {
       if (!context.mounted) return;
@@ -42,36 +53,48 @@ class LinkedDevicesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Linked Devices'),
+        title: const Text('Devices & Sync'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
-            onPressed: () => ref.read(linkedDevicesProvider.notifier).refresh(),
+            onPressed: () {
+              ref.read(linkedDevicesProvider.notifier).refresh();
+              ref.read(linkedSessionsProvider.notifier).refresh();
+            },
           ),
           if (isSecondary)
             IconButton(
               icon:    const Icon(Icons.qr_code_scanner_rounded),
-              tooltip: 'Re-pair (Scan QR)',
+              tooltip: 'Scan QR to link',
               onPressed: () => _scanAndJoin(context, ref),
+            ),
+          // Both roles: expose Link Device in AppBar so it's reachable
+          // alongside the Sync Now FAB
+          if (hasManagedDevices && isSecondary)
+            IconButton(
+              icon:    const Icon(Icons.add_link_rounded),
+              tooltip: 'Link Device',
+              onPressed: () => _showLinkRolePicker(context, ref),
             ),
         ],
       ),
-      body: devicesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error:   (e, _) => Center(child: Text('Error: $e')),
-        data:    (devices) {
-          if (devices.isEmpty) {
-            return _EmptyState(isSecondary: isSecondary);
-          }
-          return ListView.separated(
-            padding:          const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-            itemCount:        devices.length,
-            separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-            itemBuilder:      (_, i) => _DeviceTile(device: devices[i]),
-          );
-        },
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (!hasManagedDevices && !hasSessions)
+              ? const _UnifiedEmptyState()
+              : CustomScrollView(
+                  slivers: [
+                    if (hasManagedDevices) ..._managedDevicesSection(
+                        context, devices),
+                    if (hasSessions) ..._linkedSessionsSection(
+                        context, sessions,
+                        addTopPadding: hasManagedDevices),
+                    const SliverPadding(
+                      padding: EdgeInsets.only(bottom: AppSpacing.xxxl),
+                    ),
+                  ],
+                ),
       floatingActionButton: isSecondary
           ? FloatingActionButton.extended(
               onPressed: syncState.isRunning
@@ -79,7 +102,8 @@ class LinkedDevicesScreen extends ConsumerWidget {
                   : () => ref.read(syncNowProvider.notifier).syncNow(),
               icon: syncState.isRunning
                   ? const SizedBox(
-                      width: 18, height: 18,
+                      width: 18,
+                      height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Colors.white,
@@ -94,6 +118,41 @@ class LinkedDevicesScreen extends ConsumerWidget {
               label: const Text('Link Device'),
             ),
     );
+  }
+
+  List<Widget> _managedDevicesSection(
+      BuildContext context, List<LinkedDevice> devices) {
+    return [
+      _sliverSectionHeader(context, 'Devices I manage'),
+      SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (_, i) => i.isOdd
+              ? const Divider(height: 1, indent: 72)
+              : _DeviceTile(device: devices[i ~/ 2]),
+          childCount: devices.length * 2 - 1,
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _linkedSessionsSection(
+      BuildContext context, List<DeviceSession> sessions,
+      {bool addTopPadding = false}) {
+    return [
+      _sliverSectionHeader(
+        context,
+        "Businesses I'm connected to",
+        topPadding: addTopPadding ? AppSpacing.lg : AppSpacing.xs,
+      ),
+      SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (_, i) => i.isOdd
+              ? const Divider(height: 1, indent: 72)
+              : _SessionTile(session: sessions[i ~/ 2]),
+          childCount: sessions.length * 2 - 1,
+        ),
+      ),
+    ];
   }
 
   Future<void> _showLinkRolePicker(BuildContext context, WidgetRef ref) async {
@@ -349,12 +408,11 @@ class _DeviceTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Empty state
+// Unified empty state
 // ---------------------------------------------------------------------------
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.isSecondary});
-  final bool isSecondary;
+class _UnifiedEmptyState extends StatelessWidget {
+  const _UnifiedEmptyState();
 
   @override
   Widget build(BuildContext context) {
@@ -366,13 +424,13 @@ class _EmptyState extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.devices_other_rounded,
+              Icons.devices_rounded,
               size: 64,
               color: cs.onSurfaceVariant.withValues(alpha: 0.4),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              isSecondary ? 'Paired as secondary device' : 'No linked devices yet',
+              'No connections yet',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -381,9 +439,8 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              isSecondary
-                  ? 'Tap "Sync Now" to exchange changes with your primary device.'
-                  : 'Link a tablet or second phone to share your Kash Cube data over Wi-Fi. No internet needed.',
+              'Tap "Link Device" to manage another device from here, '
+              'or scan a QR code to connect to a primary device over Wi-Fi.',
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
@@ -395,6 +452,145 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Session tile (secondary side)
+// ---------------------------------------------------------------------------
+
+class _SessionTile extends ConsumerWidget {
+  const _SessionTile({required this.session});
+  final DeviceSession session;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cs       = Theme.of(context).colorScheme;
+    final lastSync = session.lastSyncAt;
+    final isRO     = session.isReadOnlyForced;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical:   AppSpacing.xs,
+      ),
+      leading: CircleAvatar(
+        backgroundColor: isRO ? cs.errorContainer : cs.primaryContainer,
+        child: Icon(
+          Icons.business_rounded,
+          color: isRO ? cs.onErrorContainer : cs.onPrimaryContainer,
+        ),
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              session.businessName,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyLarge
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (isRO)
+            Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.xs),
+              child: Icon(Icons.lock_outline_rounded,
+                  size: 16, color: cs.onSurfaceVariant),
+            ),
+        ],
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _presetLabel(session.token),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.primary),
+          ),
+          if (lastSync != null)
+            Text(
+              'Last sync: ${DateFormatter.format(lastSync)}',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+        ],
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.link_off_rounded),
+        tooltip: 'Unlink',
+        color: cs.error,
+        onPressed: () => _confirmUnlink(context, ref),
+      ),
+    );
+  }
+
+  String _presetLabel(DeviceSessionToken token) => switch (token.preset) {
+        'owner_mirror' => 'Owner Mirror',
+        'manager'      => 'Manager',
+        'cashier'      => 'Cashier',
+        'auditor'      => 'Auditor',
+        _              => 'Custom',
+      };
+
+  Future<void> _confirmUnlink(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Unlink session?'),
+        content: Text(
+          'This will remove the link to "${session.businessName}". '
+          'You can re-link by scanning a new QR code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton.tonal(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor:
+                  Theme.of(context).colorScheme.errorContainer,
+              foregroundColor:
+                  Theme.of(context).colorScheme.onErrorContainer,
+            ),
+            child: const Text('Unlink'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await ref
+          .read(linkedSessionsProvider.notifier)
+          .unlink(session.sessionId);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+SliverToBoxAdapter _sliverSectionHeader(
+  BuildContext context,
+  String label, {
+  double topPadding = AppSpacing.sm,
+}) {
+  return SliverToBoxAdapter(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+          AppSpacing.base, topPadding, AppSpacing.base, AppSpacing.xs),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------

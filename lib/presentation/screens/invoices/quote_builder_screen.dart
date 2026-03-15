@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,6 +25,7 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/party_address_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/sync_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
@@ -605,15 +605,35 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final status = _existingInvoice?.status ?? InvoiceStatus.draft;
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
+
+    // Resolve invoice number: secondary devices reserve from primary first;
+    // primaries generate the number locally.
+    String resolvedInvoiceNo;
+    InvoiceStatus resolvedStatus = status;
+    final rawNo = _documentNoCtrl.text.trim();
+    if (rawNo.isNotEmpty) {
+      resolvedInvoiceNo = rawNo;
+    } else if (_existingInvoice == null &&
+        (ref.read(isSecondaryDeviceProvider).valueOrNull ?? false)) {
+      // Secondary device: attempt to get a server-assigned number.
+      final reserved = await ref
+          .read(syncNowProvider.notifier)
+          .reserveDocNumber(_docTypeKey(widget.docType));
+      resolvedInvoiceNo = reserved;
+      if (reserved.startsWith('PENDING-')) {
+        resolvedStatus = InvoiceStatus.pendingNumber;
+      }
+    } else {
+      resolvedInvoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
+    }
+
     final invoice = Invoice(
       id: _existingInvoice?.id,
-      invoiceNo: _documentNoCtrl.text.trim().isEmpty
-          ? await InvoiceNumberService.instance.nextInvoiceNo()
-          : _documentNoCtrl.text.trim(),
+      invoiceNo: resolvedInvoiceNo,
       businessId: businessId,
       customerPartyId: _customerPartyId,
       customerName: _customerName,
-      status: status,
+      status: resolvedStatus,
       issueDate: _issueDate,
       dueDate: _dueDate,
       subtotal: _subtotal,
@@ -748,12 +768,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
+  /// Maps [DocumentType] to the server-side `doc_type` key used by
+  /// `reserve_number` messages (see [SyncNowNotifier.reserveDocNumber]).
+  static String _docTypeKey(DocumentType docType) => switch (docType) {
+        DocumentType.invoice         => 'invoice',
+        DocumentType.quote           => 'quote',
+        DocumentType.deliveryChallan => 'dc',
+        DocumentType.creditNote      => 'credit_note',
+        DocumentType.debitNote       => 'debit_note',
+      };
+
   /// Shows a bottom sheet with a message preview and a "Send PDF + Message"
   /// button. If the user confirms, delegates to [_generateAndShare].
   Future<void> _showSendPreviewSheet({
     required String subject,
     required String message,
-    required Future<File> Function() generatePdf,
+    required Future<XFile> Function() generatePdf,
     required Future<void> Function() onSent,
   }) async {
     if (!mounted) return;
@@ -888,7 +918,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   Future<void> _generateAndShare({
     required String subject,
     required String message,
-    required Future<File> Function() generatePdf,
+    required Future<XFile> Function() generatePdf,
     required Future<void> Function() onSent,
   }) async {
     if (!mounted) return;
@@ -902,7 +932,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       if (!mounted) return;
       Navigator.pop(context);
       await Share.shareXFiles(
-        [XFile(pdfFile.path)],
+        [pdfFile],
         subject: subject,
         text: message,
       );
@@ -1109,7 +1139,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           '\n\n— $businessName';
       
       await Share.shareXFiles(
-        [XFile(pdfFile.path)],
+        [pdfFile],
         subject: 'Invoice ${_existingInvoice!.invoiceNo}',
         text: message,
       );
@@ -1160,13 +1190,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      // Open PDF in system viewer
-      final result = await OpenFile.open(pdfFile.path);
-      
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open PDF: ${result.message}')),
-        );
+      // Open PDF in system viewer (not supported on web)
+      if (!kIsWeb) {
+        final result = await OpenFile.open(pdfFile.path);
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open PDF: ${result.message}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -1206,11 +1237,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      final result = await OpenFile.open(pdfFile.path);
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open PDF: ${result.message}')),
-        );
+      if (!kIsWeb) {
+        final result = await OpenFile.open(pdfFile.path);
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open PDF: ${result.message}')),
+          );
+        }
       }
     } catch (e) {
       if (!mounted) return;
@@ -1256,7 +1289,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           '(${_existingChallan!.items.length} item(s)).\n\n'
           '— $businessName';
       await Share.shareXFiles(
-        [XFile(pdfFile.path)],
+        [pdfFile],
         subject: 'Delivery Challan ${_existingChallan!.challanNo}',
         text: message,
       );

@@ -23,6 +23,15 @@ abstract class SyncTransport {
   Future<int> pullDeltas({required DeviceSession session, DateTime? lastSyncAt});
   Future<int> pushDeltas({required DeviceSession session, required List<DeltaRow> rows});
   Future<List<DeltaRow>> buildLocalDeltas({DateTime? since});
+
+  /// Ask the primary to atomically reserve [count] sequential document
+  /// numbers of [docType] ('invoice', 'quote', 'dc', 'credit_note',
+  /// 'debit_note').  The caller must be connected before calling.
+  Future<List<String>> reserveNumber({
+    required DeviceSession session,
+    required String docType,
+    int count = 1,
+  });
 }
 
 // ---------------------------------------------------------------------------

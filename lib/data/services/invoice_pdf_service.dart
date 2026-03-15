@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show Color;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/business.dart';
 import '../models/invoice.dart';
@@ -26,7 +27,7 @@ class InvoicePdfService {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  Future<File> generateInvoicePdf(
+  Future<XFile> generateInvoicePdf(
     Invoice invoice, {
     Business? business,
     Party? customerParty,
@@ -48,14 +49,14 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
     );
-    return PdfLayoutEngine.instance.generate(
+    return PdfLayoutEngine.instance.generateXFile(
       data,
       DocumentTemplate.active,
       'Invoice_${invoice.invoiceNo}.pdf',
     );
   }
 
-  Future<File> generateQuotePdf(
+  Future<XFile> generateQuotePdf(
     Quote quote, {
     Business? business,
     Party? customerParty,
@@ -77,7 +78,7 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
     );
-    return PdfLayoutEngine.instance.generate(
+    return PdfLayoutEngine.instance.generateXFile(
       data,
       DocumentTemplate.active,
       'Quote_${quote.quoteNo}.pdf',

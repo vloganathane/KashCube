@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -414,13 +415,14 @@ class _InvoiceDetailView extends ConsumerWidget {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      // Open PDF in system viewer
-      final result = await OpenFile.open(pdfFile.path);
-      
-      if (result.type != ResultType.done && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open PDF: ${result.message}')),
-        );
+      // Open PDF in system viewer (not supported on web)
+      if (!kIsWeb) {
+        final result = await OpenFile.open(pdfFile.path);
+        if (result.type != ResultType.done && context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not open PDF: ${result.message}')),
+          );
+        }
       }
     } catch (e) {
       if (!context.mounted) return;
@@ -1847,7 +1849,7 @@ class _ShareOptionsSheet extends StatelessWidget {
 
   final Invoice invoice;
   final String businessName;
-  final dynamic pdfFile; // File
+  final XFile pdfFile;
   /// Called after the share sheet is opened to mark the invoice as sent.
   final Future<void> Function() onSent;
 
@@ -1954,7 +1956,7 @@ class _ShareOptionsSheet extends StatelessWidget {
               onPressed: () async {
                 Navigator.pop(context);
                 await Share.shareXFiles(
-                  [XFile(pdfFile.path)],
+                  [pdfFile],
                   subject: 'Invoice ${invoice.invoiceNo}',
                   text: message,
                 );

@@ -150,6 +150,37 @@ class WsSyncTransport implements SyncTransport {
     return resp['received_count'] as int? ?? 0;
   }
 
+  // ── Reserve Number ────────────────────────────────────────────────────────
+
+  @override
+  Future<List<String>> reserveNumber({
+    required DeviceSession session,
+    required String docType,
+    int count = 1,
+  }) async {
+    _assertOpen();
+    final deviceId = await identity.deviceId;
+    _send({
+      'type':            'reserve_number',
+      'doc_type':        docType,
+      'count':           count,
+      'device_id':       deviceId,
+      'token_payload':   session.token.payload,
+      'token_signature': session.token.signatureBase64,
+    });
+
+    final resp = await _recv();
+    if (resp['type'] == 'revocation') {
+      throw const SyncRevokedException('Device has been revoked by the primary');
+    }
+    if (resp['type'] != 'number_reserved') {
+      throw SyncException(
+          'Expected number_reserved, got ${resp['type']}');
+    }
+    final raw = (resp['numbers'] as List<dynamic>?) ?? [];
+    return raw.cast<String>();
+  }
+
   @override
   Future<List<DeltaRow>> buildLocalDeltas({DateTime? since}) =>
       dbHelper.withDatabase((db) async {

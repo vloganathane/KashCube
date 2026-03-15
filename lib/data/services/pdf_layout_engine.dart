@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/constants/app_config.dart';
 import '../../core/utils/date_formatter.dart';
@@ -90,6 +92,25 @@ class PdfLayoutEngine {
     final file = File(path);
     await file.writeAsBytes(await pdf.save());
     return file;
+  }
+
+  /// Cross-platform PDF generation that returns an [XFile] suitable for
+  /// sharing via [share_plus] on both Android and web.
+  ///
+  /// On web: bytes are kept in memory (no disk write — `dart:io` unavailable).
+  /// On native: same as [generate] but wrapped in [XFile].
+  Future<XFile> generateXFile(
+    PdfDocumentData data,
+    DocumentTemplate template,
+    String filename,
+  ) async {
+    final bytes = await generateBytes(data, template);
+    if (kIsWeb) {
+      return XFile.fromData(bytes, name: filename, mimeType: 'application/pdf');
+    }
+    final path = await PdfCacheManager.instance.tempPath(filename);
+    await File(path).writeAsBytes(bytes);
+    return XFile(path, mimeType: 'application/pdf');
   }
 
   // ── Document assembly ─────────────────────────────────────────────────────

@@ -243,6 +243,20 @@ class WebServerService {
     });
   }
 
+  /// Notify connected browsers that data in [tables] has changed so they
+  /// trigger an auto-sync to pull the latest rows.
+  void notifyDataChanged(List<String> tables) {
+    if (!isRunning) return;
+    _push({'event': 'data_changed', 'tables': tables});
+  }
+
+  /// Push a payroll notification event to connected browsers so they can
+  /// surface an in-app alert without a full sync round-trip.
+  void pushPayrollEvent(Map<String, dynamic> notification) {
+    if (!isRunning) return;
+    _push({'event': 'payroll_notification', 'data': notification});
+  }
+
   // ── LAN IP ────────────────────────────────────────────────────────────────
 
   static Future<String?> _resolveLanIp() async {

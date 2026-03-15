@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
@@ -306,9 +307,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
           .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms);
-      // Open with system viewer
-      // ignore: use_build_context_synchronously
-      final result = await _openFile(file.path);
+      final result = await _openFile(file);
       if (!result && mounted) {
         _showError('Could not open PDF viewer');
       }
@@ -347,7 +346,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
       final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
       final file = await DeliveryChallanPdfService.instance
           .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms, showFreeWatermark: showWatermark);
-      await _shareFile(file.path, 'Delivery Challan ${challan.challanNo}');
+      await _shareFile(file, 'Delivery Challan ${challan.challanNo}');
     } catch (e) {
       _showError('Share failed: $e');
     } finally {
@@ -411,20 +410,21 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
         .showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  /// Opens a file with the device's default viewer.
-  Future<bool> _openFile(String path) async {
+  /// Opens a file with the device's default viewer (no-op on web).
+  Future<bool> _openFile(XFile xFile) async {
+    if (kIsWeb) return true;
     try {
-      final result = await OpenFile.open(path);
+      final result = await OpenFile.open(xFile.path);
       return result.type == ResultType.done;
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _shareFile(String path, String subject) async {
+  Future<void> _shareFile(XFile xFile, String subject) async {
     try {
       await Share.shareXFiles(
-        [XFile(path)],
+        [xFile],
         subject: subject,
       );
     } catch (_) {}

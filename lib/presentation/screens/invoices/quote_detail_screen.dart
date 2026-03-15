@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
@@ -199,7 +200,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
       );
       if (!mounted) return;
-      await OpenFile.open(pdfFile.path);
+      if (!kIsWeb) await OpenFile.open(pdfFile.path);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -249,7 +250,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
           '${due != null ? '\nValid till ${DateFormatter.formatFull(due)}' : ''}'
           '\n\n— ${business?.name ?? 'My Business'}';
       await Share.shareXFiles(
-        [XFile(pdfFile.path)],
+        [pdfFile],
         subject: 'Quote ${quote.quoteNo}',
         text: message,
       );

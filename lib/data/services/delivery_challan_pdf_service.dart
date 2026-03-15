@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 import '../models/business.dart';
 import '../models/delivery_challan.dart';
@@ -21,7 +22,7 @@ class DeliveryChallanPdfService {
 
   // ── Public API ─────────────────────────────────────────────────────────────
 
-  Future<File> generateChallanPdf(
+  Future<XFile> generateChallanPdf(
     DeliveryChallan challan, {
     Business? business,
     Party? customerParty,
@@ -37,7 +38,7 @@ class DeliveryChallanPdfService {
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
     );
-    return PdfLayoutEngine.instance.generate(
+    return PdfLayoutEngine.instance.generateXFile(
       data,
       DocumentTemplate.active,
       'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',

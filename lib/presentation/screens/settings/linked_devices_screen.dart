@@ -110,7 +110,7 @@ class DevicesSyncScreen extends ConsumerWidget {
                       ),
                     )
                   : const Icon(Icons.sync_rounded),
-              label: Text(_syncLabel(syncState.status)),
+              label: Text(_syncLabel(syncState)),
             )
           : FloatingActionButton.extended(
               onPressed: () => _showLinkRolePicker(context, ref),
@@ -595,10 +595,14 @@ SliverToBoxAdapter _sliverSectionHeader(
 
 // ---------------------------------------------------------------------------
 
-String _syncLabel(SyncStatus status) => switch (status) {
+String _syncLabel(SyncNowState state) => switch (state.status) {
       SyncStatus.scanning   => 'Scanning…',
-      SyncStatus.connecting => 'Connecting…',
-      SyncStatus.syncing    => 'Syncing…',
+      SyncStatus.connecting => state.foundLabel != null
+          ? 'Connecting to ${state.foundLabel}…'
+          : 'Connecting…',
+      SyncStatus.syncing    => state.foundLabel != null
+          ? 'Syncing with ${state.foundLabel}…'
+          : 'Syncing…',
       _                     => 'Sync Now',
     };
 

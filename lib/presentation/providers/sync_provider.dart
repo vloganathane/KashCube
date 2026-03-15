@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../data/models/device_session_token.dart';
 import '../../data/models/discovered_primary.dart';
@@ -543,6 +544,7 @@ class SyncNowState {
     this.pushed    = 0,
     this.error,
     this.lastSyncAt,
+    this.foundLabel,
   });
 
   final SyncStatus status;
@@ -550,6 +552,9 @@ class SyncNowState {
   final int        pushed;
   final String?    error;
   final DateTime?  lastSyncAt;
+  /// Display name of the discovered primary (e.g. "Suresh's Phone").
+  /// Populated once mDNS discovery resolves; null while scanning.
+  final String?    foundLabel;
 
   bool get isRunning =>
       status == SyncStatus.scanning ||
@@ -615,11 +620,13 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
       // Discover primary via mDNS.
       String? host;
       int?    port;
+      String? label;
       final found = Completer<void>();
       await _discovery.startDiscovery(
         onFound: (primary) {
-          host = primary.ipAddress;
-          port = primary.port;
+          host  = primary.ipAddress;
+          port  = primary.port;
+          label = primary.label;
           if (!found.isCompleted) found.complete();
         },
       );
@@ -638,7 +645,7 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
         return;
       }
 
-      state = const SyncNowState(status: SyncStatus.connecting);
+      state = SyncNowState(status: SyncStatus.connecting, foundLabel: label);
       try {
         await _transport.open(
             Uri(scheme: 'kashcube-tcp', host: host!, port: port!));
@@ -698,6 +705,89 @@ class SyncNowNotifier extends StateNotifier<SyncNowState> {
   }
 
   void reset() => state = const SyncNowState();
+
+  // ── Reserve a document number from the primary ───────────────────────────
+
+  /// Connects to the primary just long enough to reserve one document number.
+  ///
+  /// Returns the reserved number (e.g. `INV-25-26-0042`) or a
+  /// `PENDING-<token>` placeholder when offline, so the caller can save with
+  /// [InvoiceStatus.pendingNumber] and have the primary assign a real number
+  /// on the next successful sync.
+  ///
+  /// [docType] must be one of: `invoice`, `quote`, `dc`, `credit_note`,
+  /// `debit_note`.
+  Future<String> reserveDocNumber(String docType) async {
+    // If sync is currently running, fall back to PENDING to avoid port conflict.
+    if (state.isRunning) return _pendingPlaceholder();
+
+    final session = await _ref.read(activeDeviceSessionProvider.future);
+    if (session == null) return _pendingPlaceholder();
+
+    SyncTransport? transport;
+    try {
+      if (kIsWeb) {
+        // Web secondary: connect via the stored WS URL.
+        final wsUrl = await DatabaseHelper.instance.withDatabase((db) async {
+          final rows = await db.query(
+            'settings',
+            where:     'key = ?',
+            whereArgs: ['web_sync_url'],
+            limit:     1,
+          );
+          return rows.isNotEmpty ? rows.first['value'] as String? : null;
+        });
+        if (wsUrl == null) return _pendingPlaceholder();
+        transport = WsSyncTransport(
+          identity: IdentityService.instance,
+          dbHelper: DatabaseHelper.instance,
+        );
+        await transport.open(Uri.parse(wsUrl));
+      } else {
+        // Android secondary: discover primary via mDNS.
+        String? host;
+        int?    port;
+        final found = Completer<void>();
+        await _discovery.startDiscovery(
+          onFound: (primary) {
+            host = primary.ipAddress;
+            port = primary.port;
+            if (!found.isCompleted) found.complete();
+          },
+        );
+        try {
+          await found.future.timeout(const Duration(seconds: 5));
+        } on TimeoutException {
+          // primary not reachable — fall back to PENDING
+        }
+        await _discovery.stopDiscovery();
+
+        if (host == null || port == null) return _pendingPlaceholder();
+
+        // Use a fresh SyncClient so syncNow() is unaffected.
+        transport = SyncClient(
+          identity: IdentityService.instance,
+          dbHelper: DatabaseHelper.instance,
+        );
+        await transport.open(Uri(scheme: 'kashcube-tcp', host: host!, port: port!));
+      }
+
+      final numbers = await transport.reserveNumber(
+        session:  session,
+        docType:  docType,
+      );
+      return numbers.isNotEmpty ? numbers.first : _pendingPlaceholder();
+    } catch (_) {
+      return _pendingPlaceholder();
+    } finally {
+      await transport?.close();
+    }
+  }
+
+  static String _pendingPlaceholder() {
+    final token = DateTime.now().millisecondsSinceEpoch.toRadixString(36).toUpperCase();
+    return 'PENDING-$token';
+  }
 }
 
 final syncNowProvider =
@@ -710,5 +800,81 @@ final syncNowProvider =
     );
     if (!kIsWeb) ref.onDispose(LanDiscoveryService.instance.stopDiscovery);
     return notifier;
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Web live-sync listener (web only)
+// ---------------------------------------------------------------------------
+
+/// Keeps a persistent WebSocket connection open on the browser companion so
+/// `data_changed` events pushed by the phone trigger an automatic sync.
+///
+/// Activated by `ref.watch(webLiveSyncProvider)` in [AppShell].
+/// No-op on Android.
+class WebLiveSyncState {
+  const WebLiveSyncState({this.isConnected = false});
+  final bool isConnected;
+}
+
+class WebLiveSyncNotifier extends StateNotifier<WebLiveSyncState> {
+  WebLiveSyncNotifier(this._ref) : super(const WebLiveSyncState()) {
+    if (kIsWeb) _connect();
+  }
+
+  final Ref _ref;
+  bool _disposed = false;
+
+  Future<void> _connect() async {
+    while (!_disposed) {
+      final wsUrl = await DatabaseHelper.instance.withDatabase((db) async {
+        final rows = await db.query(
+          'settings',
+          where:     'key = ?',
+          whereArgs: ['web_sync_url'],
+          limit:     1,
+        );
+        return rows.isNotEmpty ? rows.first['value'] as String? : null;
+      });
+
+      if (wsUrl == null || _disposed) break;
+
+      try {
+        final channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+        await channel.ready;
+        if (!_disposed) state = const WebLiveSyncState(isConnected: true);
+
+        await for (final raw in channel.stream) {
+          if (_disposed) break;
+          try {
+            final msg = jsonDecode(raw as String) as Map<String, dynamic>;
+            if (msg['event'] == 'data_changed') {
+              // Trigger a background sync without blocking the listener.
+              _ref.read(syncNowProvider.notifier).syncNow();
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+
+      if (!_disposed) {
+        state = const WebLiveSyncState(isConnected: false);
+        // Back-off before reconnect.
+        await Future<void>.delayed(const Duration(seconds: 5));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+final webLiveSyncProvider =
+    StateNotifierProvider<WebLiveSyncNotifier, WebLiveSyncState>(
+  (ref) {
+    ref.keepAlive();
+    return WebLiveSyncNotifier(ref);
   },
 );

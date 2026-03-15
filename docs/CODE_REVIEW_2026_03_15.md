@@ -52,7 +52,7 @@
 | Encrypted backup IV | ✅ Confirmed safe | IV generated via `Random.secure()` per export — no reuse. Salt also random per export. PBKDF2-HMAC-SHA256 key derivation. |
 | LAN sync private key storage | ✅ Confirmed safe | Ed25519 seed stored in `FlutterSecureStorage` under `primary_signing_key` and `identity_private_key` — not SharedPreferences. |
 | Network calls | ℹ️ Accepted exception | `iap_service.dart` calls Google Play Billing — unavoidable for subscription verification. No other network calls exist. |
-| GSP connector | ⚠️ Unverified | `domain/repositories/gsp_connector.dart` defines optional HTTP POST for GST e-invoice IRN. Confirm UI gate (explicit user action) exists before invoking it. |
+| GSP connector | ✅ Confirmed safe | `MastersIndiaConnector` is never instantiated outside its own file — all 3 methods throw `UnimplementedError` (Phase D3 stub). Zero network calls occur today. Interface doc enforces 3 hard gates before activation: user must enable GSP in Settings + accept consent dialog + have API key in `FlutterSecureStorage`. |
 
 ---
 

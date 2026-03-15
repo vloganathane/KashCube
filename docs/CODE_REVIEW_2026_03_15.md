@@ -63,7 +63,7 @@
 | Hollow `domain/` layer — no use cases | Medium | Extract: `ProcessSmsUseCase`, `CreateTransactionUseCase`, `GenerateGstr1UseCase`, `RecordCreditPaymentUseCase` |
 | Deprecate `bills` table (DB v66) | ~~Medium~~ ✅ | Migrated: active `bills` rows copied to `scheduled_payments` (next_date computed from `due_day`); original rows soft-deleted. `BillsAndPaymentsScreen` already read from `scheduled_payments`. |
 | Deprecate `recurring_transactions` table (DB v66) | ~~Medium~~ ✅ | Migrated: active rows copied to `scheduled_payments` (`auto_create=1`); originals deactivated. `RecurringTransactionsScreen` nav redirected to `BillsAndPaymentsScreen` via `search_screen.dart`. |
-| Split `DatabaseHelper._onCreate` | Low | Extract per-domain schema builders: `_createTransactionTables()`, `_createGstTables()`, `_createSyncTables()`, etc. At v65 the method must be enormous |
+| Split `DatabaseHelper._onCreate` | ~~Low~~ ✅ | Extracted 11 private helpers via `extension _DatabaseTableCreators on DatabaseHelper` in `database_helper_tables.dart` (`part of`). `_onCreate` reduced from ~1200 lines to ~50-line orchestrator. `database_helper.dart` went from 4117 → 2980 lines. |
 | `_LockGate` routing god widget | Low | Extract into a `GoRouter` redirect guard — currently handles PIN, biometric, identity check, user selection, web session in one widget |
 | `SmsParser` as static class | Low | Refactor to injectable singleton (non-static) so it can be properly unit-tested with mocked dependencies |
 

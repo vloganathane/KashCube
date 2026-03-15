@@ -1,20 +1,54 @@
 # Kash Cube - Progress Report
-**Date:** 13 March 2026
-**Current Phase:** LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅
+**Date:** 15 March 2026
+**Current Phase:** LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review & Bug Fixes ✅
 
 ---
 
 ## Executive Summary
 
-Since the last report (10 March), three major features have shipped:
+Since the last report (13 March), a full code review audit was performed and all P0–P2 findings fixed:
 
-1. **Sprint 3 — Real IAP wiring** — `IapService`, `in_app_purchase` package, `UpgradeScreen` wired to live Play Store purchases, Restore button — **100% complete** (commit `d21081a`)
-2. **KashCube Web Sprint W1** — LAN HTTP server (WhatsApp Web model), QR pairing screen, REST API (`/api/v1/…`), bundled SPA web UI, Settings entry — **100% complete** (commit `0a16e9c`)
-3. **LAN Sync — Secondary Sync Now** — `SyncClient.buildLocalDeltas()`, `SyncNowNotifier`, "Sync Now" FAB on secondary with live status spinner, snackbar result, AppBar re-pair button — **100% complete** (commit `4950b40`)
+1. **P0 — Security hardening** — PIN upgraded to PBKDF2-HMAC-SHA256 (100k iterations, 16-byte random salt); legacy hashes silently re-hashed on next unlock — **done** (commit `8737651`)
+2. **P1 — SMS parser improvements** — sender registry expanded to 56 IDs (Fi/Slice/Jupiter/OneCard/IDFC First/Yes/RBL/Canara/Union/Bandhan added); GPay regex bounded + sender-gated; dedup hash now includes UPI ref no — **done**
+3. **P1.5 — SMS inbox scan UI** — Settings Automation section (auto-detect toggle + Scan Inbox), Home screen pending-SMS banner, `SmsBatchReviewSheet` (Save/Skip/Save All/Skip All/Edit per row) — **done**
+4. **P2 — Remaining audit gaps** — permission guard on SMS toggle-ON, recurring payment multi-period catchup, action center bill routing, batch save error surfacing, Edit button per SMS row, scan-inbox permission request — **done**
 
-**Database:** v65 — all sync columns present since v58 (`sync_id` ULID on all 10 tables, backfilled, unique indexes); `linked_devices` + `last_sync_at` watermark; `sync_peers` via `linked_devices` table
-**Flutter Analyze:** **3 pre-existing infos only** (0 errors, 0 warnings)
-**App Status:** Full LAN sync stack operational. IAP live. KashCube Web companion ready.
+**Database:** v65 (unchanged)
+**Flutter Analyze:** **11 pre-existing infos, 1 pre-existing warning** (0 errors — no regressions)
+**App Status:** All P0–P2 audit findings resolved. 15 files changed, 1149 insertions.
+
+---
+
+## What Shipped Since 13 March 2026 (commit `8737651`)
+
+### Full Code Review & Audit ✅ (docs/CODE_REVIEW_2026_03_15.md)
+- Full `lib/` tree reviewed across architecture, bugs, security, technical debt in one session
+- 15 gaps identified across P0 (security), P1 (user-visible bugs), P2 (logic & UX gaps)
+
+### P0 — Security ✅
+- `pin_hash.dart` — upgraded from bare SHA-256 (no salt) to **PBKDF2-HMAC-SHA256** (100k iterations, 16-byte random salt, `v2:` prefix); constant-time comparison; legacy `v1:` hashes accepted and silently re-hashed on next successful unlock
+- `pin_lock_screen.dart` — updated to new `PinHash` API
+
+### P1 — SMS Parser ✅
+- Sender registry expanded from 38 to **56 IDs**: added Fi Money (`FIMONY`, `FIMNBY`), Slice (`SLICEP`, `SLICEB`), Jupiter (`JUPBNK`, `JUPITE`), OneCard, IDFC First Bank, Yes Bank, RBL Bank, Central Bank, Canara Bank, Union Bank, Bandhan Bank
+- `_gpayReceivedAlt` regex bounded (max 40 chars named-person group) + gated to GPay senders only — eliminates false positives
+- `generateDedupeHash()` now includes `upiRefNo ?? referenceId` — two UPI transfers of same amount to same party in the same minute (different ref nos) are no longer collapsed as duplicates
+
+### P1.5 — SMS Inbox Scan UI ✅
+- `settings_screen.dart` — Automation section: auto-detect toggle (persisted) + "Scan inbox now" tile with last-scan timestamp subtitle
+- `sms_provider.dart` — `pendingSmsConfirmationsProvider`, `smsScanningProvider`, `smsLastScanProvider`, `scanSmsInbox()` use-case (reads up to 300 SMS, dedups via `existsByDedupeHash`, enqueues fresh)
+- `app_shell.dart` — `ref.listen` on toggle starts/stops real-time listener; Home nav tab badge shows pending count (capped at "9+")
+- `home_screen.dart` — `_PendingSmsBannerSliver` shown when pending count > 0 with "Review" CTA
+- `sms_batch_review_sheet.dart` *(new)* — `DraggableScrollableSheet`; per-item Save / Skip / Edit; bulk Save All / Skip All
+
+### P2 — Audit Gap Fixes ✅
+- **H1** `app_shell.dart` — toggle-ON now awaits `hasPermission` before calling `startListening()`; `_smsListenerStarted` flag NOT set if permission is missing
+- **H2** `scheduled_payment_provider.dart` — `processScheduledAutoCreations()` now has inner `while` loop per item, catching up all missed recurring periods in one cold start (was single-pass — missed 2nd+ periods)
+- **M1** `sms_parser.dart` — `generateDedupeHash` includes `refKey = upiRefNo ?? referenceId ?? ''`
+- **M2** `sms_batch_review_sheet.dart` — `_saveAll()` tracks `errorCount`; shows SnackBar `"N items could not be saved."` if any fail
+- **M3** `sms_batch_review_sheet.dart` — per-row `edit_outlined` icon button opens `AddEditTransactionScreen` pre-filled (type + amount + party); removes item from pending on return
+- **M4** `action_center_screen.dart` — `ActionItemType.bill` now routes to `BillsAndPaymentsScreen` in all three switch locations (was `LoansScreen` in two; one `_ActionButton.dest()` was already correct)
+- **L1** `settings_screen.dart` — `_scanInbox()` calls `smsService.requestPermission()` when permission is missing instead of showing SnackBar and exiting immediately
 
 ---
 
@@ -161,8 +195,12 @@ Since the last report (10 March), three major features have shipped:
 
 ---
 
-## What's NOT Done (Deferred as of 13 March 2026)
+## What's NOT Done (Deferred as of 15 March 2026)
 
+- ❌ **DB v66** — unify `bills` + `recurring_transactions` tables into `scheduled_payments`; drop legacy repos
+- ❌ **Parameterized query audit** — grep `rawQuery/rawInsert/rawUpdate` across all repositories to verify no string interpolation in SQL args
+- ❌ **Unit tests** — `SmsParser` (all regex patterns), `CurrencyFormatter`, `GstCalculator`, dedup hash
+- ❌ **SMS permission onboarding screen** — `/sms-permission` route with rationale text (H3 from audit)
 - ❌ **KashCube Web W2** — wire `notifyTransactionChange()` into create/edit flows (live push to browser); foreground notification while server active; auto-revoke session on app pause >30 min; invoice PDF generation (current 501 stub)
 - ❌ **Periodic background LAN sync** — `WorkManager` periodic task; auto-sync when primary found on same WiFi without user action
 - ❌ Widget tests for Unified Tracking System screens (Party360°, CashFlowScreen, ActionCenter)
@@ -175,22 +213,36 @@ Since the last report (10 March), three major features have shipped:
 
 ## Next Steps — Priority Order
 
-### 1. KashCube Web W2 (1 sprint)
+### 1. DB v66 — Table Consolidation (0.5 sprint)
+- Migrate `bills` and `recurring_transactions` into `scheduled_payments`
+- Drop legacy `bill_repository_impl.dart` and `recurring_transaction_repository_impl.dart`
+- Update `BillsAndPaymentsScreen` to read from `scheduled_payments` only
+- Validated by: all existing bill/recurring integration tests pass
+
+### 2. Parameterized Query Audit + Unit Tests (0.5 sprint)
+- `grep -rn "rawQuery\|rawInsert\|rawUpdate" lib/data/repositories/` — confirm no string-interpolated SQL
+- Add unit tests: `SmsParser` (all regex + dedup hash), `CurrencyFormatter` (Indian grouping), `GstCalculator`
+
+### 3. SMS Permission Onboarding Screen (0.5 sprint)
+- `/sms-permission` named route with rationale text + "Grant" / "Skip" buttons
+- Shown on first launch when `smsAutoDetectEnabledProvider` is true and permission not yet granted
+
+### 4. KashCube Web W2 (1 sprint)
 - Wire `WebServerService.notifyTransactionChange()` into transaction create/edit flows — browser auto-reloads on new transaction
 - Add `flutter_local_notifications` persistent notification while server active ("KashCube Web active on 192.168.x.x:8080")
 - Auto-revoke session when app goes to background >30 min
 - Invoice PDF generation for the W1 501 stub
 
-### 2. Periodic Background LAN Sync (0.5 sprint)
+### 5. Periodic Background LAN Sync (0.5 sprint)
 - `WorkManager` periodic task (~15 min interval)
 - Check mDNS for primary on same WiFi; if found, run full sync silently
 - Update sync badge on Settings tile with "Last synced X min ago"
 
-### 3. UPI Tip Jar (0.5 sprint)
+### 6. UPI Tip Jar (0.5 sprint)
 - Settings → About → "Support KashCube" → static UPI QR (₹50/₹100/₹200/custom)
 - Zero infrastructure; measures user appreciation
 
-### 4. Beta Preparation
+### 7. Beta Preparation
 - 3-screen first-launch flow (Welcome → SMS Permission → Profile)
 - App version bump to `1.0.0-beta.1+65`
 - Push to Play Store Internal Test track

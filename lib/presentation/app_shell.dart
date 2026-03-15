@@ -21,6 +21,7 @@ import 'providers/app_user_provider.dart';
 import 'providers/deep_link_provider.dart';
 import 'providers/party_provider.dart';
 import 'providers/scheduled_payment_provider.dart';
+import 'providers/settings_provider.dart';
 import 'providers/sms_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'screens/business/business_hub_screen.dart';
@@ -201,6 +202,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     final hasPermission = await smsService.hasPermission;
     if (!hasPermission) return;
 
+    // Only start real-time listening if auto-detect is enabled.
+    final autoDetect = ref.read(smsAutoDetectEnabledProvider);
+    if (!autoDetect) return;
+
     _smsListenerStarted = true;
     smsService.startListening(
       onTransactionDetected: _onSmsTransactionDetected,
@@ -334,6 +339,53 @@ class _AppShellState extends ConsumerState<AppShell> {
       }
     });
 
+    // Dynamically start/stop real-time SMS listener when the toggle changes.
+    ref.listen<bool>(smsAutoDetectEnabledProvider, (_, next) {
+      if (next) {
+        if (!_smsListenerStarted) {
+          final smsService = ref.read(smsServiceProvider);
+          smsService.hasPermission.then((granted) {
+            if (!granted) return; // permission not available — don't set flag
+            if (!mounted) return;
+            _smsListenerStarted = true;
+            smsService.startListening(
+              onTransactionDetected: _onSmsTransactionDetected,
+            );
+          });
+        }
+      } else {
+        _smsListenerStarted = false;
+        ref.read(smsServiceProvider).stopListening();
+      }
+    });
+
+    // Badge count for pending SMS confirmations.
+    final pendingCount = ref.watch(pendingSmsConfirmationsProvider).length;
+
+    // Overlay a badge on the Home destination when there are pending SMS.
+    final displayedTabs = pendingCount > 0
+        ? [
+            for (final tab in visibleTabs)
+              if (tab.screenIndex == 0)
+                _TabSpec(
+                  0,
+                  NavigationDestination(
+                    icon: Badge(
+                      label: Text(pendingCount > 9 ? '9+' : '$pendingCount'),
+                      child: const Icon(Icons.home_outlined),
+                    ),
+                    selectedIcon: Badge(
+                      label: Text(pendingCount > 9 ? '9+' : '$pendingCount'),
+                      child: const Icon(Icons.home),
+                    ),
+                    label: 'Home',
+                  ),
+                )
+              else
+                tab,
+          ]
+        : visibleTabs;
+
     return Scaffold(
       body: Column(
         children: [
@@ -357,7 +409,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         onDestinationSelected: (navIdx) {
           handleTabSelected(visibleTabs[navIdx].screenIndex);
         },
-        destinations: visibleTabs.map((t) => t.destination).toList(),
+        destinations: displayedTabs.map((t) => t.destination).toList(),
       ),
       floatingActionButton: showFab
           ? SpeedDialFab(

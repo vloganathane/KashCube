@@ -27,6 +27,7 @@ import '../../providers/party_provider.dart';
 import '../../widgets/lifecycle_tag.dart';
 import '../invoices/invoice_detail_screen.dart';
 import '../ledger/credits_screen.dart';
+import '../bills/bills_and_payments_screen.dart';
 import '../loans/loans_screen.dart';
 import '../parties/party_360_screen.dart';
 import '../search/search_screen.dart';
@@ -375,9 +376,11 @@ class _MultiSelectBar extends ConsumerWidget {
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const CreditsScreen()));
       case ActionItemType.loanEmi:
-      case ActionItemType.bill:
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const LoansScreen()));
+      case ActionItemType.bill:
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()));
       case ActionItemType.leakingChain:
         ref
             .read(partyRepositoryProvider)
@@ -690,9 +693,11 @@ class _ActionItemTile extends ConsumerWidget {
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const CreditsScreen()));
       case ActionItemType.loanEmi:
-      case ActionItemType.bill:
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const LoansScreen()));
+      case ActionItemType.bill:
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()));
       case ActionItemType.leakingChain:
         _navigateToParty360(context, ref, item.sourceId);
     }
@@ -764,7 +769,7 @@ class _ActionButton extends ConsumerWidget {
           ActionItemType.invoice =>
             InvoiceDetailScreen(invoiceId: item.sourceId),
           ActionItemType.dues        => const CreditsScreen(),
-          ActionItemType.bill        => const LoansScreen(),
+          ActionItemType.bill        => const BillsAndPaymentsScreen(),
           ActionItemType.loanEmi     => const LoansScreen(),
           ActionItemType.leakingChain => const SizedBox.shrink(), // async nav below
         };

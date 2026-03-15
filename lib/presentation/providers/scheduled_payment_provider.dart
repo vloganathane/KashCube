@@ -240,45 +240,59 @@ Future<int> processScheduledAutoCreations(WidgetRef ref) async {
   final due = await repo.getDueForAutoCreate();
   var generated = 0;
 
-  for (final item in due) {
-    try {
-      final txn = Transaction(
-        amount: item.amount,
-        date: item.nextDate,
-        type: item.type == 'income'
-            ? TransactionType.income
-            : TransactionType.expense,
-        category: item.category,
-        partyName: item.partyName,
-        paymentMethod: item.paymentMethod != null
-            ? PaymentMethod.fromDb(item.paymentMethod!)
-            : PaymentMethod.cash,
-        notes: '${item.notes ?? ''} [Auto: ${item.isOneTime ? 'one-time' : item.frequency?.label ?? ''}]'
-            .trim(),
-        autoDetected: false,
-      );
-      await txnRepo.insert(txn);
+  final now = DateTime.now();
 
-      // Advance or deactivate
-      final now = DateTime.now();
-      if (item.isOneTime) {
-        await repo.update(item.copyWith(
-          isActive: false,
-          lastGenerated: now,
-          updatedAt: now,
-        ));
-      } else {
-        final next = item.frequency?.nextOccurrence(item.nextDate) ??
-            item.nextDate;
-        await repo.update(item.copyWith(
-          nextDate: next,
-          lastGenerated: now,
-          updatedAt: now,
-        ));
+  for (final item in due) {
+    // Inner loop: catch up ALL missed periods (e.g. app not opened for 3 days).
+    var current = item;
+    while (current.isActive &&
+        (current.nextDate.isBefore(now) ||
+            current.nextDate.isAtSameMomentAs(now))) {
+      try {
+        final txn = Transaction(
+          amount: current.amount,
+          date: current.nextDate,
+          type: current.type == 'income'
+              ? TransactionType.income
+              : TransactionType.expense,
+          category: current.category,
+          partyName: current.partyName,
+          paymentMethod: current.paymentMethod != null
+              ? PaymentMethod.fromDb(current.paymentMethod!)
+              : PaymentMethod.cash,
+          notes:
+              '${current.notes ?? ''} [Auto: ${current.isOneTime ? 'one-time' : current.frequency?.label ?? ''}]'
+                  .trim(),
+          autoDetected: false,
+        );
+        await txnRepo.insert(txn);
+        generated++;
+
+        // Advance or deactivate.
+        if (current.isOneTime) {
+          final updated = current.copyWith(
+            isActive: false,
+            lastGenerated: now,
+            updatedAt: now,
+          );
+          await repo.update(updated);
+          current = updated; // isActive = false → loop exits
+        } else {
+          final next = current.frequency?.nextOccurrence(current.nextDate) ??
+              current.nextDate;
+          final updated = current.copyWith(
+            nextDate: next,
+            lastGenerated: now,
+            updatedAt: now,
+          );
+          await repo.update(updated);
+          current = updated;
+        }
+      } catch (e) {
+        debugPrint(
+            'Failed to auto-create txn for scheduled payment ${current.id}: $e');
+        break; // avoid infinite loop on persistent error
       }
-      generated++;
-    } catch (e) {
-      debugPrint('Failed to auto-create txn for scheduled payment ${item.id}: $e');
     }
   }
 

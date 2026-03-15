@@ -14,6 +14,7 @@ import '../../providers/backup_nudge_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/loan_provider.dart';
 import '../../providers/scheduled_payment_provider.dart';
+import '../../providers/sms_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../providers/upcoming_provider.dart';
 import '../../app_shell.dart';
@@ -36,6 +37,7 @@ import '../../providers/credit_provider.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../widgets/vcard_qr_dialog.dart';
+import '../../widgets/sms_batch_review_sheet.dart';
 import '../reports/budget_screen.dart';
 import '../reports/reports_screen.dart';
 import '../../../data/models/home_widget_config.dart';
@@ -121,6 +123,8 @@ class HomeScreen extends ConsumerWidget {
             const _BackupNudgeBannerSliver(),
             // Payroll salary notifications for secondary (employee) devices
             const _PayrollNotificationsBannerSliver(),
+            // Pending SMS transactions awaiting review
+            const _PendingSmsBannerSliver(),
             SliverPadding(
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
@@ -445,6 +449,69 @@ class _PayrollNotificationsBannerSliver extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Pending SMS banner sliver
+// ---------------------------------------------------------------------------
+
+class _PendingSmsBannerSliver extends ConsumerWidget {
+  const _PendingSmsBannerSliver();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pending = ref.watch(pendingSmsConfirmationsProvider);
+    if (pending.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+    final count = pending.length;
+    final scheme = Theme.of(context).colorScheme;
+    return SliverToBoxAdapter(
+      child: InkWell(
+        onTap: () => _showBatchReview(context, ref),
+        child: Container(
+          color: scheme.secondaryContainer.withValues(alpha: 0.80),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.base,
+            vertical: AppSpacing.sm,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.sms_outlined, size: 18, color: scheme.onSecondaryContainer),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  count == 1
+                      ? '1 SMS transaction pending review'
+                      : '$count SMS transactions pending review',
+                  style: context.textTheme.bodySmall
+                      ?.copyWith(color: scheme.onSecondaryContainer),
+                ),
+              ),
+              TextButton(
+                onPressed: () => _showBatchReview(context, ref),
+                style: TextButton.styleFrom(
+                  foregroundColor: scheme.onSecondaryContainer,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xs, vertical: 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Review'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showBatchReview(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) => SmsBatchReviewSheet(widgetRef: ref),
     );
   }
 }

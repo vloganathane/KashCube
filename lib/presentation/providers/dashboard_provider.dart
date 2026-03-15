@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/transaction.dart';
-import '../../data/repositories/settings_repository_impl.dart';
-import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import 'settings_provider.dart';
+import 'transaction_provider.dart';
 
 /// Summary data for the home dashboard.
 class DashboardSummary {
@@ -42,7 +42,7 @@ class DashboardSummary {
 /// Provider for this month's dashboard summary.
 final dashboardSummaryProvider =
     StateNotifierProvider<DashboardNotifier, AsyncValue<DashboardSummary>>(
-  (ref) => DashboardNotifier(TransactionRepositoryImpl()),
+  (ref) => DashboardNotifier(ref.watch(transactionRepositoryProvider)),
 );
 
 /// Computes dashboard summary from transaction data.
@@ -61,9 +61,8 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
 
       final income = await _transactionRepo.getTotalIncome(monthStart, monthEnd);
       final expense = await _transactionRepo.getTotalExpense(monthStart, monthEnd);
-      final impl = _transactionRepo as TransactionRepositoryImpl;
-      final invested = await impl.getTotalInvested(monthStart, monthEnd);
-      final redeemed = await impl.getTotalRedeemed(monthStart, monthEnd);
+      final invested = await _transactionRepo.getTotalInvested(monthStart, monthEnd);
+      final redeemed = await _transactionRepo.getTotalRedeemed(monthStart, monthEnd);
       final categorySummary = await _transactionRepo.getCategorySummary(monthStart, monthEnd);
 
       // Mode breakdown (run in parallel)
@@ -100,7 +99,7 @@ typedef TodayCashflow = ({double income, double expense});
 
 /// Provider for today's cashflow (income + expense totals for today only).
 final todayCashflowProvider = FutureProvider<TodayCashflow>((ref) async {
-  final repo = TransactionRepositoryImpl();
+  final repo = ref.watch(transactionRepositoryProvider);
   final now = DateTime.now();
   final dayStart = DateTime(now.year, now.month, now.day);
   final dayEnd   = DateTime(now.year, now.month, now.day, 23, 59, 59);
@@ -142,8 +141,8 @@ class AccountBalance {
 /// Reads opening balances from the settings table and combines with all-time
 /// transaction data grouped by [payment_method].
 final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async {
-  final repo = TransactionRepositoryImpl();
-  final settings = SettingsRepositoryImpl();
+  final repo = ref.watch(transactionRepositoryProvider);
+  final settings = ref.watch(settingsRepositoryProvider);
 
   final netsByMethod = await repo.getAllTimeByPaymentMethod();
 
@@ -184,7 +183,7 @@ void invalidateBalanceProviders(Ref ref) {
 /// Net invested = invested − redeemed = capital still in market/FD/etc.
 final allTimeInvestmentProvider =
     FutureProvider<({double invested, double redeemed, double net})>((ref) async {
-  final repo = TransactionRepositoryImpl();
+  final repo = ref.watch(transactionRepositoryProvider);
   final data = await repo.getAllTimeInvestments();
   return (
     invested: data.invested,

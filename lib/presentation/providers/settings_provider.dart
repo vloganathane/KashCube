@@ -89,6 +89,9 @@ class SettingsKeys {
   static const deviceId         = 'device_id';
   static const primaryPublicKey = 'primary_public_key';
   static const deviceName       = 'device_name';
+
+  // SMS automation
+  static const smsAutoDetectEnabled = 'sms_auto_detect_enabled';
 }
 
 // ---------------------------------------------------------------------------
@@ -381,4 +384,31 @@ final subscriptionTierProvider =
   (ref) => SubscriptionTierNotifier(ref.read(settingsRepositoryProvider)),
 );
 
+// ---------------------------------------------------------------------------
+// SMS Auto-Detect
+// ---------------------------------------------------------------------------
 
+/// Whether real-time SMS auto-detection is enabled (default: true).
+class SmsAutoDetectNotifier extends StateNotifier<bool> {
+  SmsAutoDetectNotifier(this._repo) : super(true) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    final v = await _repo.get(SettingsKeys.smsAutoDetectEnabled);
+    // Default to true when the key has never been set.
+    state = v == null || v == 'true';
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    await _repo.set(SettingsKeys.smsAutoDetectEnabled, enabled.toString());
+    state = enabled;
+  }
+}
+
+final smsAutoDetectEnabledProvider =
+    StateNotifierProvider<SmsAutoDetectNotifier, bool>(
+  (ref) => SmsAutoDetectNotifier(ref.read(settingsRepositoryProvider)),
+);

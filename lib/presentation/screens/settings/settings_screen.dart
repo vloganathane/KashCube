@@ -5,7 +5,9 @@ import 'package:local_auth/local_auth.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
+import '../../../core/utils/date_formatter.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
 import 'accounts_manage_screen.dart';
 import 'opening_balances_screen.dart';
@@ -331,6 +333,9 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+
+          // -- Automation (SMS) --
+          const _AutomationSection(),
 
           // -- Business Mode --
           _SettingsSection(
@@ -768,5 +773,85 @@ class _SettingsSection extends StatelessWidget {
         const Divider(height: 1),
       ],
     );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Automation section (SMS auto-detect + inbox scan)
+// ---------------------------------------------------------------------------
+
+class _AutomationSection extends ConsumerWidget {
+  const _AutomationSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final autoDetect = ref.watch(smsAutoDetectEnabledProvider);
+    final scanning   = ref.watch(smsScanningProvider);
+    final lastScan   = ref.watch(smsLastScanProvider);
+
+    String subtitleText;
+    if (lastScan == null) {
+      subtitleText = 'Never scanned';
+    } else {
+      subtitleText = 'Last scanned: ${DateFormatter.formatDateTime(lastScan)}';
+    }
+
+    return _SettingsSection(
+      title: 'Automation',
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.sms_outlined),
+          title: const Text('Auto-detect SMS transactions'),
+          subtitle: const Text('Detect bank & UPI transactions from incoming SMS'),
+          value: autoDetect,
+          onChanged: (v) =>
+              ref.read(smsAutoDetectEnabledProvider.notifier).setEnabled(v),
+        ),
+        ListTile(
+          leading: scanning
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.inbox_outlined),
+          title: const Text('Scan SMS inbox'),
+          subtitle: Text(subtitleText),
+          trailing: scanning
+              ? null
+              : const Icon(Icons.chevron_right),
+          onTap: scanning ? null : () => _scanInbox(context, ref),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _scanInbox(BuildContext context, WidgetRef ref) async {
+    final smsService = ref.read(smsServiceProvider);
+    final hasPermission = await smsService.hasPermission;
+
+    if (!hasPermission) {
+      final granted = await smsService.requestPermission();
+      if (!granted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('SMS permission is required to scan inbox.')),
+          );
+        }
+        return;
+      }
+    }
+
+    final count = await scanSmsInbox(ref);
+
+    if (context.mounted) {
+      final msg = count == 0
+          ? 'No new transactions found in SMS inbox.'
+          : 'Found $count new transaction${count == 1 ? '' : 's'} — review them on the Home screen.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    }
   }
 }

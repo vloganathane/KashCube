@@ -152,6 +152,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  @override
   Future<double> getTotalInvested(DateTime start, DateTime end) async {
     final db = await _db;
     final result = await db.rawQuery(
@@ -176,6 +177,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   /// All-time invested and redeemed totals (no date filter).
+  @override
   Future<({double invested, double redeemed})> getAllTimeInvestments() async {
     final db = await _db;
     final rows = await db.rawQuery(
@@ -514,6 +516,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   /// Outflows: expense, paid_back, lent
   ///
   /// Keys are [PaymentMethod.dbValue] strings (e.g. 'cash', 'upi').
+  @override
   Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod() async {
     final db = await _db;
     final rows = await db.rawQuery(

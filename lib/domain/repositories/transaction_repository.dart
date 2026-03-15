@@ -118,6 +118,12 @@ abstract class TransactionRepository {
     int? month,
     int? year,
   });
+
+  /// Gets all-time invested and redeemed totals (no date filter).
+  Future<({double invested, double redeemed})> getAllTimeInvestments();
+
+  /// Gets all-time income and expense totals grouped by payment_method.
+  Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod();
 }
 
 /// Daily income/expense totals.

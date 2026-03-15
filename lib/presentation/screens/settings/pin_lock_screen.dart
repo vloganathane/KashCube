@@ -110,9 +110,20 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
       case PinScreenMode.unlock:
       case PinScreenMode.remove:
         final storedHash = await settingsRepo.get(SettingsKeys.pinHash);
-        final enteredHash = hashPin(_enteredPin);
+        if (storedHash == null) {
+          // PIN was never set; treat as correct (shouldn't reach here in normal flow).
+          widget.onSuccess?.call();
+          if (mounted && Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(true);
+          }
+          return;
+        }
 
-        if (storedHash == enteredHash) {
+        if (verifyPin(_enteredPin, storedHash)) {
+          // Transparently upgrade legacy SHA-256 hash to PBKDF2 on first successful unlock.
+          if (pinHashNeedsUpgrade(storedHash)) {
+            await settingsRepo.set(SettingsKeys.pinHash, hashPin(_enteredPin));
+          }
           if (_currentMode == PinScreenMode.remove) {
             await settingsRepo.remove(SettingsKeys.pinHash);
             await settingsRepo.set(SettingsKeys.appLockEnabled, 'false');

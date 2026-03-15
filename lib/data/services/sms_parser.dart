@@ -57,6 +57,24 @@ class SmsParser {
     'PAYTMW': 'Paytm Wallet',
     'MOBIKW': 'MobiKwik',
     'FREPAY': 'Freecharge',
+    // Neo-banks & modern UPI apps
+    'FIMONY': 'Fi Money',
+    'FIMNBY': 'Fi Money',
+    'SLICEP': 'Slice',
+    'SLICEB': 'Slice',
+    'JUPBNK': 'Jupiter',
+    'JUPITE': 'Jupiter',
+    'ONECRD': 'OneCard',
+    'ONECRD1': 'OneCard',
+    'IDFCBK': 'IDFC First Bank',
+    'IDFCFB': 'IDFC First Bank',
+    'YESBNK': 'Yes Bank',
+    'YESBK': 'Yes Bank',
+    'RBLBNK': 'RBL Bank',
+    'CENTBK': 'Central Bank of India',
+    'CANBNK': 'Canara Bank',
+    'UNIONB': 'Union Bank',
+    'BANDAN': 'Bandhan Bank',
   };
 
   // ---------------------------------------------------------------------------
@@ -128,9 +146,11 @@ class SmsParser {
     caseSensitive: false,
   );
 
-  // Google Pay Received (alternate)
+  // Google Pay Received (alternate) — only matched when dispatched from a known
+  // Google Pay sender ID (GPAY / GOOGLEPAY). The pattern is intentionally NOT
+  // used in the generic fallback to avoid false positives on non-financial SMS.
   static final _gpayReceivedAlt = RegExp(
-    r'(?:You\s+)?received\s+Rs\.?\s*(\d+(?:,\d+)*(?:\.\d{1,2})?)\s*from\s+(.+?)(?:\s*(?:via|through)\s*Google\s*Pay)?$',
+    r'(?:You\s+)?received\s+Rs\.?\s*(\d+(?:,\d+)*(?:\.\d{1,2})?)\s*from\s+([A-Za-z][A-Za-z0-9 .&\-]{1,40}?)(?:\s*(?:via|through|on|\.|\n)|$)',
     caseSensitive: false,
   );
 
@@ -308,7 +328,10 @@ class SmsParser {
     final date = parsed.date ?? DateTime.now();
     final dateKey = '${date.year}-${date.month}-${date.day}-${date.hour}-${date.minute}';
     final merchantKey = parsed.partyName?.toLowerCase().replaceAll(RegExp(r'\W'), '') ?? '';
-    final key = '${parsed.amount}-$dateKey-$merchantKey-${parsed.direction.name}';
+    // Include UPI/bank reference numbers so two transactions with the same
+    // amount + party + minute but different refs are NOT treated as duplicates.
+    final refKey = parsed.upiRefNo ?? parsed.referenceId ?? '';
+    final key = '${parsed.amount}-$dateKey-$merchantKey-${parsed.direction.name}-$refKey';
     return sha256.convert(utf8.encode(key)).toString();
   }
 
@@ -381,20 +404,24 @@ class SmsParser {
       );
     }
 
-    // Google Pay Received (alternate)
-    match = _gpayReceivedAlt.firstMatch(sms);
-    if (match != null) {
-      return _buildParsed(
-        sms: sms,
-        sender: sender,
-        amount: _parseAmount(match.group(1)!),
-        partyName: _cleanPartyName(match.group(2)),
-        direction: TransactionDirection.received,
-        sourceType: SmsSourceType.upi,
-        upiApp: 'Google Pay',
-        upiRefNo: _extractUpiRef(sms),
-        date: _extractDate(sms),
-      );
+    // Google Pay Received (alternate) — only for known GPay sender IDs to prevent
+    // false positives on generic SMS containing "received" and "Rs."
+    final normalizedSender = _normalizeSender(sender);
+    if (normalizedSender == 'GPAY' || normalizedSender == 'GOOGLEPAY') {
+      match = _gpayReceivedAlt.firstMatch(sms);
+      if (match != null) {
+        return _buildParsed(
+          sms: sms,
+          sender: sender,
+          amount: _parseAmount(match.group(1)!),
+          partyName: _cleanPartyName(match.group(2)),
+          direction: TransactionDirection.received,
+          sourceType: SmsSourceType.upi,
+          upiApp: 'Google Pay',
+          upiRefNo: _extractUpiRef(sms),
+          date: _extractDate(sms),
+        );
+      }
     }
 
     // Paytm Sent
@@ -909,9 +936,12 @@ class SmsParser {
     return cleaned;
   }
 
-  /// Check if institution is a UPI app.
+  /// Check if institution is a UPI app (used to gate generic UPI pattern matching).
   static bool _isUpiApp(String institution) {
-    return ['PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'Amazon Pay'].contains(institution);
+    return const {
+      'PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'Amazon Pay',
+      'Fi Money', 'Slice', 'Jupiter',
+    }.contains(institution);
   }
 
   /// Calculate confidence score for a parsed result.

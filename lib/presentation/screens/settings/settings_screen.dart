@@ -21,6 +21,7 @@ import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
+import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'linked_devices_screen.dart';
 import 'linked_sessions_screen.dart';
@@ -804,8 +805,22 @@ class _AutomationSection extends ConsumerWidget {
           title: const Text('Auto-detect SMS transactions'),
           subtitle: const Text('Detect bank & UPI transactions from incoming SMS'),
           value: autoDetect,
-          onChanged: (v) =>
-              ref.read(smsAutoDetectEnabledProvider.notifier).setEnabled(v),
+          onChanged: (v) async {
+            if (!v) {
+              ref
+                  .read(smsAutoDetectEnabledProvider.notifier)
+                  .setEnabled(false);
+              return;
+            }
+            // Show rationale + OS permission request before enabling.
+            // SmsPermissionScreen calls setEnabled(true/false) internally.
+            if (!context.mounted) return;
+            await Navigator.of(context).push<bool>(
+              MaterialPageRoute(
+                builder: (_) => const SmsPermissionScreen(),
+              ),
+            );
+          },
         ),
         ListTile(
           leading: scanning

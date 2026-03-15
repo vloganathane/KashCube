@@ -32,7 +32,7 @@ import '../invoices/invoice_detail_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
 import '../parties/party_360_screen.dart';
-import '../recurring/recurring_transactions_screen.dart';
+import '../bills/bills_and_payments_screen.dart';
 import '../transactions/transaction_detail_screen.dart';
 
 // ---------------------------------------------------------------------------
@@ -1080,7 +1080,7 @@ class _RecurringTile extends StatelessWidget {
             color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
       ),
       onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const RecurringTransactionsScreen()),
+        MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()),
       ),
     );
   }

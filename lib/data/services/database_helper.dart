@@ -3393,6 +3393,69 @@ class DatabaseHelper {
             'Phase D4: payroll_notifications table + sync_outbox.target_identity_id',
       });
     }
+
+    if (oldVersion < 66) {
+      // Migrate active recurring_transactions → scheduled_payments
+      // auto_create=1 so the new engine picks them up going forward.
+      await db.execute('''
+        INSERT INTO scheduled_payments (
+          name, amount, type, category, is_one_time, frequency,
+          auto_create, is_active, next_date, last_generated,
+          party_name, payment_method, notes, created_at, updated_at,
+          bill_context
+        )
+        SELECT
+          COALESCE(NULLIF(party_name, ''), category),
+          amount, type, category, 0, frequency,
+          1, is_active, next_date, last_generated,
+          party_name, payment_method, notes,
+          COALESCE(created_at, datetime('now')), updated_at,
+          'personal'
+        FROM recurring_transactions
+        WHERE is_active = 1
+      ''');
+      // Deactivate migrated templates so they don't auto-generate twice.
+      await db.execute(
+          "UPDATE recurring_transactions SET is_active = 0, "
+          "updated_at = datetime('now') WHERE is_active = 1");
+
+      // Migrate active bills → scheduled_payments
+      // next_date is derived from due_day (first upcoming occurrence).
+      await db.execute('''
+        INSERT INTO scheduled_payments (
+          name, amount, type, category, is_one_time, frequency,
+          due_day, is_auto_pay, auto_create, is_active,
+          next_date, last_paid_date, payment_method, notes,
+          created_at, updated_at, bill_context
+        )
+        SELECT
+          name, amount, 'expense', category, 0, frequency,
+          due_day, is_auto_pay, 0, is_active,
+          CASE
+            WHEN CAST(strftime('%d', 'now') AS INTEGER) <= due_day
+              THEN strftime('%Y-%m-', 'now')
+                   || printf('%02d', due_day) || 'T00:00:00.000'
+            ELSE strftime('%Y-%m-', date('now', '+1 month'))
+                 || printf('%02d', due_day) || 'T00:00:00.000'
+          END,
+          last_paid_date, payment_method, notes,
+          COALESCE(created_at, datetime('now')), updated_at, 'personal'
+        FROM bills
+        WHERE is_active = 1 AND deleted_at IS NULL
+      ''');
+      // Soft-delete migrated bill rows.
+      await db.execute(
+          "UPDATE bills SET deleted_at = datetime('now'), "
+          "updated_at = datetime('now') "
+          "WHERE is_active = 1 AND deleted_at IS NULL");
+
+      await db.insert('schema_version', {
+        'version': 66,
+        'description':
+            'Migrate recurring_transactions + bills into scheduled_payments; '
+            'deprecate legacy tables',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

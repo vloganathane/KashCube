@@ -8,7 +8,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../data/services/database_helper.dart';
-import '../../../data/services/http_sync_transport.dart';
+import '../../../data/services/ws_sync_transport.dart';
 import '../../../data/services/identity_service.dart';
 import '../../providers/sync_provider.dart';
 
@@ -18,8 +18,8 @@ import '../../providers/sync_provider.dart';
 /// 1. User opens the app in a browser on the same LAN.
 /// 2. On phone: Settings → KashCube Web → tap Start → copy payload.
 /// 3. User pastes / scans the QR payload into this screen.
-/// 4. We POST pair_request to the phone over HTTP, persist the session.
-/// 5. Initial delta pull, then navigate to [AppShell].
+/// 4. We open a WebSocket to the phone, run pair_request + initial delta pull.
+/// 5. Navigate to [AppShell].
 class WebConnectScreen extends ConsumerStatefulWidget {
   const WebConnectScreen({super.key, required this.onConnected});
 
@@ -64,7 +64,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
       // Ensure IdentityService is initialized before use on web.
       await ref.read(identityServiceProvider.future);
 
-      String apiUrl;
+      String wsUrl;
       String? sessionToken;
 
       if (raw.startsWith('{')) {
@@ -72,21 +72,16 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
         if (payload['type'] != 'kashcube_web_v1') {
           throw const FormatException('Not a KashCube Web QR code.');
         }
-        // Prefer the explicit `api` field; derive from `ws` as fallback.
-        final ws = payload['ws'] as String;
-        apiUrl = (payload['api'] as String?) ??
-            ws
-                .replaceFirst('ws://', 'http://')
-                .replaceFirst('/ws', '/api/v1');
-        sessionToken = payload['token'] as String?;
+        wsUrl         = payload['ws'] as String;
+        sessionToken  = payload['token'] as String?;
       } else {
         // Plain URL: ws:// or http:// with optional ?token=
         final uri = Uri.parse(raw);
-        sessionToken = uri.queryParameters['token'];
+        sessionToken  = uri.queryParameters['token'];
         if (raw.startsWith('ws://') || raw.startsWith('wss://')) {
-          apiUrl = 'http://${uri.host}:${uri.port}/api/v1';
+          wsUrl = '${uri.scheme}://${uri.host}:${uri.port}${uri.path}';
         } else {
-          apiUrl = raw.split('?').first; // strip query string
+          wsUrl = 'ws://${uri.host}:${uri.port}/ws';
         }
       }
 
@@ -94,29 +89,27 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
         throw const FormatException('No session token found in payload.');
       }
 
-      // Persist API base URL and bearer token for future sync calls.
-      // Both are needed after a page refresh or cold-start.
+      // Build the full WS URL with the session token and persist it.
+      // sync_provider reads this on every subsequent Sync Now tap.
+      final wsUrlWithToken = Uri.parse(wsUrl)
+          .replace(queryParameters: {'token': sessionToken})
+          .toString();
+
       await DatabaseHelper.instance.withDatabase((db) async {
         await db.insert(
           'settings',
-          {'key': 'web_sync_url', 'value': apiUrl},
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
-        await db.insert(
-          'settings',
-          {'key': 'web_sync_token', 'value': sessionToken},
+          {'key': 'web_sync_url', 'value': wsUrlWithToken},
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       });
 
-      final transport = HttpSyncTransport(
-        identity:     IdentityService.instance,
-        dbHelper:     DatabaseHelper.instance,
-        apiBase:      apiUrl,
-        sessionToken: sessionToken,
+      final transport = WsSyncTransport(
+        identity: IdentityService.instance,
+        dbHelper: DatabaseHelper.instance,
       );
 
       try {
+        await transport.open(Uri.parse(wsUrlWithToken));
         final session = await transport.sendPairRequest(
           preset:     'owner_mirror',
           deviceOs:   'browser',

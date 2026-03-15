@@ -224,10 +224,10 @@ class DatabaseHelper {
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         deleted_at TEXT,
-        FOREIGN KEY (party_id) REFERENCES parties(id),
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        FOREIGN KEY (party_id) REFERENCES parties(id),
         FOREIGN KEY (account_id) REFERENCES accounts(id),
         FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),
         FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)
@@ -1229,12 +1229,11 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS plan_features (
-        plan          TEXT NOT NULL,
-        feature_key   TEXT NOT NULL,
-        int_value     INTEGER,
-        bool_value    INTEGER,
-        text_value    TEXT,
-        PRIMARY KEY (plan, feature_key)
+        plan         TEXT NOT NULL,
+        feature      TEXT NOT NULL,
+        enabled      INTEGER NOT NULL DEFAULT 1,
+        limit_value  INTEGER,
+        PRIMARY KEY (plan, feature)
       )
     ''');
     await _seedPlanFeatures(db);

@@ -129,7 +129,6 @@ flutter:
     - assets/data/in_pincodes.json
     - assets/hns_sac/HSN_SAC - HSN_MSTR.csv
     - assets/hns_sac/HSN_SAC - SAC_MSTR.csv
-    - assets/web_ui/
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:

@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/web_server_service.dart';
@@ -44,15 +43,7 @@ class WebServerNotifier extends StateNotifier<WebServerState> {
     if (state.isRunning) return;
     state = const WebServerState(); // clear previous error
     try {
-      // Load the bundled SPA so the server can serve it.
-      String? spaHtml;
-      try {
-        spaHtml = await rootBundle.loadString('assets/web_ui/index.html');
-      } catch (_) {
-        // Falls back to inline HTML in WebServerService
-      }
-
-      await _service.start(spaHtml: spaHtml);
+      await _service.start();
 
       state = WebServerState(
         isRunning: true,

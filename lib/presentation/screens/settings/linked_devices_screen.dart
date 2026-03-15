@@ -12,8 +12,9 @@ import 'device_detail_screen.dart';
 import 'link_device_screen.dart';
 
 /// Shows all non-revoked devices linked to this device.
-/// - PRIMARY: FAB → [LinkDeviceScreen] (show QR + start server).
-/// - SECONDARY: FAB → QR scanner to pair/re-sync.
+/// - PRIMARY (already has linked devices or confirmed host): FAB → [LinkDeviceScreen] (show QR).
+/// - SECONDARY (already paired): FAB → Sync; AppBar → Re-pair QR scanner.
+/// - UNPAIRED (neither role yet): FAB → role picker (host QR or scan QR).
 class LinkedDevicesScreen extends ConsumerWidget {
   const LinkedDevicesScreen({super.key});
 
@@ -88,13 +89,83 @@ class LinkedDevicesScreen extends ConsumerWidget {
               label: Text(_syncLabel(syncState.status)),
             )
           : FloatingActionButton.extended(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LinkDeviceScreen()),
-              ),
+              onPressed: () => _showLinkRolePicker(context, ref),
               icon:  const Icon(Icons.add_link_rounded),
               label: const Text('Link Device'),
             ),
+    );
+  }
+
+  Future<void> _showLinkRolePicker(BuildContext context, WidgetRef ref) async {
+    final cs = Theme.of(context).colorScheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: AppSpacing.lg,
+            horizontal: AppSpacing.base,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.xs,
+                  bottom: AppSpacing.md,
+                ),
+                child: Text(
+                  'How do you want to link?',
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.primaryContainer,
+                  child: Icon(
+                    Icons.qr_code_2_rounded,
+                    color: cs.onPrimaryContainer,
+                  ),
+                ),
+                title: const Text('Show QR — link another device to me'),
+                subtitle: const Text(
+                  'This device acts as the primary host',
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const LinkDeviceScreen()),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: cs.secondaryContainer,
+                  child: Icon(
+                    Icons.qr_code_scanner_rounded,
+                    color: cs.onSecondaryContainer,
+                  ),
+                ),
+                title: const Text('Scan QR — join another device'),
+                subtitle: const Text(
+                  'Scan the QR shown on the primary device',
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _scanAndJoin(context, ref);
+                },
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

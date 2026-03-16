@@ -4,6 +4,9 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- Camera access for QR code scanning -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
 	<!-- LAN sync: KashCube Web HTTP server + WebSocket server -->
 	<key>com.apple.security.network.server</key>
 	<true/>

@@ -31,6 +31,9 @@
 	<!-- Local auth (Touch ID / password fallback) -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>Kash Cube uses Touch ID to protect your financial data.</string>
+	<!-- Camera for QR code scanning (contact QR, pairing QR) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kash Cube uses the camera to scan QR codes for contact sharing and device pairing.</string>
 	<!-- mDNS / LAN service discovery for KashCube Web companion -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Kash Cube uses the local network to connect your devices for live sync — no data ever leaves your network.</string>

@@ -80,9 +80,16 @@ final syncTransportProvider = Provider<SyncTransport>((ref) {
 
 /// `true` when the local `device_session` table has at least one row.
 /// Primary devices never have a device_session row.
+/// `true` when the local `linked_business_sessions` table has at least one
+/// active (unlinked_at IS NULL) row — meaning this device is paired as secondary.
+/// Primary devices never have an active linked_business_sessions row.
 final isSecondaryDeviceProvider = FutureProvider<bool>((ref) async {
   return DatabaseHelper.instance.withDatabase((db) async {
-    final rows = await db.query('device_session', limit: 1);
+    final rows = await db.query(
+      'linked_business_sessions',
+      where: 'unlinked_at IS NULL',
+      limit: 1,
+    );
     return rows.isNotEmpty;
   });
 });

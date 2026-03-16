@@ -6,6 +6,9 @@
 	<true/>
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
+	<!-- Camera access for QR code scanning -->
+	<key>com.apple.security.device.camera</key>
+	<true/>
 	<!-- LAN sync: KashCube Web HTTP/WebSocket server -->
 	<key>com.apple.security.network.server</key>
 	<true/>

@@ -66,8 +66,8 @@ class DevicesSyncScreen extends ConsumerWidget {
           if (isSecondary)
             IconButton(
               icon:    const Icon(Icons.qr_code_scanner_rounded),
-              tooltip: 'Scan QR to link',
-              onPressed: () => _scanAndJoin(context, ref),
+              tooltip: 'Link Device',
+              onPressed: () => _showLinkRolePicker(context, ref),
             ),
           // Both roles: expose Link Device in AppBar so it's reachable
           // alongside the Sync Now FAB
@@ -96,22 +96,30 @@ class DevicesSyncScreen extends ConsumerWidget {
                   ],
                 ),
       floatingActionButton: isSecondary
-          ? FloatingActionButton.extended(
-              onPressed: syncState.isRunning
-                  ? null
-                  : () => ref.read(syncNowProvider.notifier).syncNow(),
-              icon: syncState.isRunning
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.sync_rounded),
-              label: Text(_syncLabel(syncState)),
-            )
+          // Secondary: Sync Now when connected, Scan to Join when not yet paired
+          ? (hasSessions
+              ? FloatingActionButton.extended(
+                  onPressed: syncState.isRunning
+                      ? null
+                      : () => ref.read(syncNowProvider.notifier).syncNow(),
+                  icon: syncState.isRunning
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.sync_rounded),
+                  label: Text(_syncLabel(syncState)),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: () => _showLinkRolePicker(context, ref),
+                  icon:  const Icon(Icons.add_link_rounded),
+                  label: const Text('Link Device'),
+                ))
+          // Primary: Link Device
           : FloatingActionButton.extended(
               onPressed: () => _showLinkRolePicker(context, ref),
               icon:  const Icon(Icons.add_link_rounded),

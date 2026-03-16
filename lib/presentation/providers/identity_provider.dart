@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/my_identity.dart';
@@ -31,13 +34,17 @@ final identityInitProvider = FutureProvider<void>((ref) async {
   // Ensure device signing key is loaded first
   await ref.watch(identityServiceProvider.future);
 
-  final rows = await DatabaseHelper.instance.withDatabase(
-    (db) => db.query('my_identity', limit: 1),
-  );
-  if (rows.isEmpty) return; // fresh install — wait for IdentitySetupScreen
-
+  // Auto-initialize on fresh install using device hostname.
+  // The user can update their display name later from Settings → My Identity.
+  String defaultName;
+  try {
+    defaultName = kIsWeb ? 'KashCube Web' : Platform.localHostname;
+  } catch (_) {
+    defaultName = 'Me';
+  }
   await DatabaseHelper.instance.withDatabase(
-    (db) => IdentityService.instance.ensureIdentityInitialized(db),
+    (db) => IdentityService.instance
+        .ensureIdentityInitialized(db, displayName: defaultName),
   );
 });
 

@@ -60,9 +60,16 @@ class NotificationService {
 
     const androidInit =
         AndroidInitializationSettings('@mipmap/ic_launcher');
+    // macOS (and iOS) share DarwinInitializationSettings.
+    // Request alert/badge/sound so notifications appear in Notification Center.
+    const darwinInit = DarwinInitializationSettings(
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
+    );
 
     await _plugin.initialize(
-      const InitializationSettings(android: androidInit),
+      const InitializationSettings(android: androidInit, macOS: darwinInit),
       onDidReceiveNotificationResponse: (_) {
         // Notifications are informational only — no deep-link needed yet.
       },

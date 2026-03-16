@@ -1083,59 +1083,75 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS linked_devices (
         id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_id            TEXT NOT NULL UNIQUE,
-        display_name         TEXT NOT NULL DEFAULT '',
-        role                 TEXT NOT NULL DEFAULT 'mirror',
-        public_key           TEXT NOT NULL,
-        secondary_public_key TEXT NOT NULL DEFAULT '',
-        pairing_code_hash    TEXT,
-        last_seen_at         TEXT,
-        status               TEXT NOT NULL DEFAULT 'pending',
-        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-        version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        sync_id              TEXT    UNIQUE NOT NULL DEFAULT (lower(hex(randomblob(16)))),
+        device_id            TEXT    NOT NULL UNIQUE,
+        device_name          TEXT    NOT NULL,
+        device_type          TEXT,
+        device_os            TEXT,
+        secondary_public_key TEXT    NOT NULL DEFAULT '',
+        user_id              INTEGER,
+        linked_party_id      INTEGER,
+        permission_scope     TEXT    NOT NULL DEFAULT '{}',
+        business_scope       TEXT    NOT NULL DEFAULT '[]',
+        offline_grace_days   INTEGER NOT NULL DEFAULT 7,
+        permission_preset    TEXT    NOT NULL DEFAULT 'owner_mirror',
+        last_sync_at         TEXT,
+        revoked_at           TEXT,
+        secondary_identity_id  TEXT,
         secondary_display_name TEXT,
-        created_at           TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at           TEXT,
-        deleted_at           TEXT
+        created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id)         REFERENCES app_users(id) ON DELETE SET NULL,
+        FOREIGN KEY (linked_party_id) REFERENCES parties(id)   ON DELETE SET NULL
       )
     ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_linked_devices_revoked ON linked_devices(revoked_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_linked_devices_party ON linked_devices(linked_party_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS device_recovery (
-        id                   INTEGER PRIMARY KEY DEFAULT 1,
-        recovery_phrase_hash TEXT,
-        argon2_params        TEXT,
-        encrypted_seed       TEXT,
-        last_updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        id               INTEGER PRIMARY KEY,
+        recovery_key_hash TEXT NOT NULL,
+        kdf_salt         TEXT NOT NULL,
+        created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+        last_rotated_at  TEXT
       )
     ''');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS pairing_history (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_id    TEXT NOT NULL,
-        event        TEXT NOT NULL,
-        metadata     TEXT,
-        occurred_at  TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS sync_outbox (
-        id              INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_name      TEXT NOT NULL,
-        row_sync_id     TEXT NOT NULL,
-        operation       TEXT NOT NULL,
-        payload         TEXT NOT NULL,
-        target_device   TEXT,
-        target_identity_id TEXT,
-        created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-        delivered_at    TEXT
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        device_id         TEXT NOT NULL,
+        device_name       TEXT NOT NULL,
+        permission_preset TEXT NOT NULL DEFAULT 'custom',
+        paired_at         TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_outbox_pending ON sync_outbox(created_at) WHERE delivered_at IS NULL');
+      'CREATE INDEX IF NOT EXISTS idx_pairing_history_time ON pairing_history(paired_at DESC)',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_outbox (
+        id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_device_id   TEXT,
+        target_identity_id TEXT,
+        event_type         TEXT NOT NULL,
+        payload            TEXT,
+        created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+        delivered_at       TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sync_outbox_pending ON sync_outbox(delivered_at) WHERE delivered_at IS NULL',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sync_outbox_target ON sync_outbox(target_device_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS device_session (

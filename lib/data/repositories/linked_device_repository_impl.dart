@@ -59,7 +59,7 @@ class LinkedDeviceRepositoryImpl implements LinkedDeviceRepository {
             'permission_scope':    device.permissionScope,
             'business_scope':      device.businessScope,
             'offline_grace_days':  device.offlineGraceDays,
-            'preset':              device.preset.dbValue,
+            'permission_preset':   device.preset.dbValue,
             'created_at':          DateTime.now().toIso8601String(),
           },
           conflictAlgorithm: ConflictAlgorithm.ignore,
@@ -77,7 +77,7 @@ class LinkedDeviceRepositoryImpl implements LinkedDeviceRepository {
             'permission_scope':     device.permissionScope,
             'business_scope':       device.businessScope,
             'offline_grace_days':   device.offlineGraceDays,
-            'preset':               device.preset.dbValue,
+            'permission_preset':    device.preset.dbValue,
             if (device.lastSyncAt  != null)
               'last_sync_at': device.lastSyncAt!.toIso8601String(),
             if (device.revokedAt   != null)

@@ -12,14 +12,12 @@ import 'data/services/pdf_cache_manager.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
-import 'presentation/providers/identity_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_provider.dart';
 import 'presentation/providers/terms_provider.dart';
 import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
-import 'presentation/screens/onboarding/identity_setup_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
 import 'presentation/screens/web_connect/web_connect_screen.dart';
 
@@ -222,19 +220,6 @@ class _LockGateState extends ConsumerState<_LockGate>
         onSuccess: () {
           setState(() => _isLocked = false);
         },
-      );
-    }
-
-    // After owner unlocks, check whether identity has been set up.
-    // Fresh installs need to enter a display name first.
-    final hasIdentity = ref.watch(hasIdentityProvider);
-    if (hasIdentity.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    final identityReady = hasIdentity.valueOrNull ?? false;
-    if (!identityReady) {
-      return IdentitySetupScreen(
-        onComplete: () => ref.invalidate(hasIdentityProvider),
       );
     }
 

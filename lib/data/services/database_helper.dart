@@ -218,13 +218,14 @@ class DatabaseHelper {
 
     await _createInventoryAndHrTables(db);
 
+    // ── v58: identity & sync tables (must come before seeding — categories FK
+    //    references linked_business_sessions) ─────────────────────────────────
+    await _createSyncAndIdentityTables(db);
+
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);
     await _seedFySettings(db);
-
-    // ── v58: identity & sync tables ──────────────────────────────────────────
-    await _createSyncAndIdentityTables(db);
 
     await db.insert('schema_version', {
       'version': 67,

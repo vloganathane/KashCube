@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
+import 'dart:io' show Platform, File, Directory;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -39,6 +40,38 @@ class IdentityService {
   final _algo    = Ed25519();
   final _storage = const FlutterSecureStorage();
 
+  // ── macOS: file-based key storage (keychain requires dev cert in sandbox) ─
+  //
+  // On macOS this writes to:
+  //   ~/Library/Containers/com.kashcube.kashCube/Data/Library/Application Support/.keys
+  // The macOS app sandbox prevents all other apps from reading this dir.
+
+  bool get _useMacOsFileStorage => !kIsWeb && Platform.isMacOS;
+
+  Future<String?> _readKey(String key) async {
+    if (_useMacOsFileStorage) {
+      final f = await _keyFile(key);
+      return f.existsSync() ? f.readAsStringSync().trim() : null;
+    }
+    return _storage.read(key: key);
+  }
+
+  Future<void> _writeKey(String key, String value) async {
+    if (_useMacOsFileStorage) {
+      final f = await _keyFile(key);
+      await f.parent.create(recursive: true);
+      await f.writeAsString(value);
+      return;
+    }
+    await _storage.write(key: key, value: value);
+  }
+
+  Future<File> _keyFile(String key) async {
+    final dir = await getApplicationSupportDirectory();
+    final keysDir = Directory('${dir.path}/.keys');
+    return File('${keysDir.path}/$key');
+  }
+
   // ── Device signing keypair (Sprint 3 / sync tokens) ─────────────────────
   SimpleKeyPair? _keyPair;
   String? _deviceId;
@@ -72,17 +105,14 @@ class IdentityService {
     }
 
     // ── Load or generate Ed25519 signing keypair ─────────────────────────────
-    final seedB64 = await _storage.read(key: _kPrivateKeyStorageKey);
+    final seedB64 = await _readKey(_kPrivateKeyStorageKey);
     if (seedB64 != null && seedB64.isNotEmpty) {
       final seed = base64.decode(seedB64);
       _keyPair = await _algo.newKeyPairFromSeed(seed);
     } else {
       _keyPair = await _algo.newKeyPair();
       final seed = await _keyPair!.extractPrivateKeyBytes();
-      await _storage.write(
-        key: _kPrivateKeyStorageKey,
-        value: base64.encode(seed),
-      );
+      await _writeKey(_kPrivateKeyStorageKey, base64.encode(seed));
     }
 
     // Persist / refresh public key in settings so secondary devices can verify
@@ -103,17 +133,14 @@ class IdentityService {
     if (_identityKeyPair != null) return;
 
     // ── Load or generate identity keypair ───────────────────────────────────
-    final seedB64 = await _storage.read(key: _kIdentityKeyStorageKey);
+    final seedB64 = await _readKey(_kIdentityKeyStorageKey);
     if (seedB64 != null && seedB64.isNotEmpty) {
       final seed = base64.decode(seedB64);
       _identityKeyPair = await _algo.newKeyPairFromSeed(seed);
     } else {
       _identityKeyPair = await _algo.newKeyPair();
       final seed = await _identityKeyPair!.extractPrivateKeyBytes();
-      await _storage.write(
-        key: _kIdentityKeyStorageKey,
-        value: base64.encode(seed),
-      );
+      await _writeKey(_kIdentityKeyStorageKey, base64.encode(seed));
     }
 
     final pubKey = await _identityKeyPair!.extractPublicKey();

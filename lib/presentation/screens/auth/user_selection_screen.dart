@@ -29,6 +29,11 @@ class UserSelectionScreen extends ConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: AppSpacing.xxl),
+            Image.asset(
+              'assets/logo-white.png',
+              height: 48,
+            ),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               'Who\'s using Kash Cube?',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(

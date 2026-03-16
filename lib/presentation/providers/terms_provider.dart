@@ -9,7 +9,8 @@ import 'settings_provider.dart';
 
 abstract final class AppTerms {
   /// Current T&C version. Bump (e.g. '1.1', '2.0') to re-prompt all users.
-  static const currentVersion = '1.0';
+  /// When bumped, all users must re-accept before using the app.
+  static const currentVersion = '2.2';
 }
 
 // ---------------------------------------------------------------------------

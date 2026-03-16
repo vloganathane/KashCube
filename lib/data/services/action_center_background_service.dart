@@ -333,7 +333,7 @@ Future<void> _showLowStockNotification(
 /// Uses [ExistingWorkPolicy.keep]: if the task is already scheduled, no-op.
 /// Call once from [main()] after [WidgetsFlutterBinding.ensureInitialized()].
 Future<void> registerActionCenterDailyTask() async {
-  if (kIsWeb) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
   try {
     await Workmanager().initialize(
       callbackDispatcher,
@@ -385,7 +385,7 @@ Duration _initialDelayUntil9am() {
 /// Always call after [registerActionCenterDailyTask] so WorkManager is
 /// already initialised.
 Future<void> registerAutoBackupTask(String interval) async {
-  if (kIsWeb) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
   try {
     await Workmanager().registerPeriodicTask(
       _autoBackupUniqueName,
@@ -408,7 +408,7 @@ Future<void> registerAutoBackupTask(String interval) async {
 
 /// Cancels the periodic auto-backup task.
 Future<void> cancelAutoBackupTask() async {
-  if (kIsWeb) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
   try {
     await Workmanager().cancelByUniqueName(_autoBackupUniqueName);
     debugPrint('[AutoBackup] Task cancelled');
@@ -422,7 +422,7 @@ Future<void> cancelAutoBackupTask() async {
 /// WorkManager tasks can be cleared by OS updates or app installs — calling
 /// this on every startup ensures the schedule stays active.
 Future<void> maybeRestoreAutoBackupTask() async {
-  if (kIsWeb) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
   try {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_kAutoBackupEnabled) ?? false;
@@ -457,7 +457,7 @@ Duration _intervalToDuration(String interval) {
 /// No-op if WorkManager is unavailable.  Call after
 /// [registerActionCenterDailyTask] so WorkManager is already initialised.
 Future<void> registerLowStockDailyTask() async {
-  if (kIsWeb) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
   try {
     await Workmanager().registerPeriodicTask(
       _lowStockUniqueName,

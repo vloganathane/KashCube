@@ -31,6 +31,10 @@ class SettingsKeys {
   static const businessModeEnabled = 'business_mode_enabled';
   static const businessName = 'business_name';
 
+  // Analytics
+  /// 'true' | 'false' | null (null = not yet asked)
+  static const analyticsConsent = 'analytics_consent';
+
   // Personal vCard / My Card fields
   static const ownerName        = 'owner_name';
   static const personalPhone    = 'personal_phone';

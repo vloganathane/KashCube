@@ -35,6 +35,13 @@ class SettingsKeys {
   /// 'true' | 'false' | null (null = not yet asked)
   static const analyticsConsent = 'analytics_consent';
 
+  // Terms & Conditions
+  /// Stores the T&C version the user accepted.
+  /// null = never accepted. Compare against [AppTerms.currentVersion].
+  static const termsAcceptedVersion = 'terms_accepted_version';
+  /// ISO-8601 timestamp of when the user accepted the current T&C.
+  static const termsAcceptedAt = 'terms_accepted_at';
+
   // Personal vCard / My Card fields
   static const ownerName        = 'owner_name';
   static const personalPhone    = 'personal_phone';

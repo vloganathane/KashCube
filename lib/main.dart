@@ -16,6 +16,8 @@ import 'presentation/providers/identity_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_provider.dart';
+import 'presentation/providers/terms_provider.dart';
+import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/onboarding/identity_setup_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
@@ -198,6 +200,19 @@ class _LockGateState extends ConsumerState<_LockGate>
       // Splash / loading while we check lock state
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    // ── Terms & Conditions gate ──────────────────────────────────────────────
+    // Must be accepted before any other screen is shown.
+    final termsState = ref.watch(termsAcceptedProvider);
+    if (termsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final termsAccepted = termsState.valueOrNull ?? false;
+    if (!termsAccepted) {
+      return TermsGateScreen(
+        onAccepted: () => ref.invalidate(termsAcceptedProvider),
       );
     }
 

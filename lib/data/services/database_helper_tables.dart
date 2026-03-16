@@ -51,6 +51,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (party_id) REFERENCES parties(id),
         FOREIGN KEY (account_id) REFERENCES accounts(id),
         FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id),
@@ -70,6 +71,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_context ON transactions(context_id)');
   }
 
   // ── 2. Credits & Loans ────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (customer_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
@@ -110,6 +113,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_credits_due_date ON credits(due_date)');
     await db.execute('CREATE INDEX idx_credits_pending ON credits(pending_amount DESC)');
     await db.execute('CREATE INDEX idx_credits_direction ON credits(direction)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_credits_context ON credits(context_id)');
 
     await db.execute('''
       CREATE TABLE credit_payments (
@@ -126,12 +130,14 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id)
       )
     ''');
     await db.execute('CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)');
     await db.execute('CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_context ON credit_payments(context_id)');
 
     await db.execute('''
       CREATE TABLE loans (
@@ -166,6 +172,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (lender_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
@@ -174,6 +181,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)');
     await db.execute('CREATE INDEX idx_loans_next_emi ON loans(next_emi_date)');
     await db.execute('CREATE INDEX idx_loans_direction ON loans(direction)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_context ON loans(context_id)');
 
     await db.execute('''
       CREATE TABLE loan_payments (
@@ -233,12 +241,14 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_parties_name ON parties(name)');
     await db.execute('CREATE INDEX idx_parties_phone ON parties(phone_number)');
     await db.execute('CREATE INDEX idx_parties_type ON parties(party_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_parties_context ON parties(context_id)');
 
     await db.execute('''
       CREATE TABLE accounts (
@@ -259,11 +269,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_accounts_type ON accounts(account_type)');
     await db.execute('CREATE INDEX idx_accounts_active ON accounts(is_active)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)');
 
     await db.execute('''
       CREATE TABLE categories (
@@ -283,9 +295,11 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_categories_context ON categories(context_id)');
 
     await db.execute('''
       CREATE TABLE budgets (
@@ -300,9 +314,11 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         UNIQUE(year, month, category)
       )
     ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_context ON budgets(context_id)');
   }
 
   // ── 4. Scheduling (recurring, settings, bills, scheduled_payments) ────────
@@ -395,13 +411,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         party_id INTEGER REFERENCES parties(id),
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)');
     await db.execute('CREATE INDEX idx_sp_next ON scheduled_payments(next_date)');
     await db.execute('CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_context ON scheduled_payments(context_id)');
   }
 
   // ── 5. Businesses & Item Catalog ──────────────────────────────────────────
@@ -432,10 +450,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_businesses_context ON businesses(context_id)');
 
     await db.execute('''
       CREATE TABLE item_catalog (
@@ -464,13 +484,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT
+        created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)');
     await db.execute('CREATE INDEX idx_item_catalog_category ON item_catalog(category)');
     await db.execute('CREATE INDEX idx_item_catalog_favorite ON item_catalog(is_favorite)');
     await db.execute('CREATE INDEX idx_item_catalog_last_used ON item_catalog(last_used_at)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_item_catalog_context ON item_catalog(context_id)');
   }
 
   // ── 6. Sales (Quotes, Invoices) ───────────────────────────────────────────
@@ -498,7 +520,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         insurance_amt REAL NOT NULL DEFAULT 0,
         packing_amt REAL NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        pending_number_since TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_quotes_status ON quotes(status)');
@@ -576,6 +599,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
+        pending_number_since TEXT,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
       )
     ''');
@@ -584,6 +609,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_invoices_business ON invoices(business_id)');
     await db.execute('CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
     await db.execute('CREATE INDEX idx_invoices_ewb ON invoices(ewb_no)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_invoices_context ON invoices(context_id)');
 
     await db.execute('''
       CREATE TABLE invoice_items (
@@ -736,6 +762,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         delivery_gstin TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
+        pending_number_since TEXT,
         FOREIGN KEY (customer_party_id) REFERENCES parties(id),
         FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
       )
@@ -856,6 +883,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
     ''');
@@ -863,6 +891,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_bill_date ON purchase_bills(bill_date)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_status ON purchase_bills(status)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_rc ON purchase_bills(reverse_charge)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_context ON purchase_bills(context_id)');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS purchase_bill_items (
@@ -1034,6 +1063,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         purchased_at    TEXT,
         expires_at      TEXT,
         receipt_data    TEXT,
+        shareable_plan_features TEXT,
         updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
@@ -1064,6 +1094,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
         created_by_device_id TEXT,
+        secondary_display_name TEXT,
         created_at           TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at           TEXT,
         deleted_at           TEXT
@@ -1098,6 +1129,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         operation       TEXT NOT NULL,
         payload         TEXT NOT NULL,
         target_device   TEXT,
+        target_identity_id TEXT,
         created_at      TEXT NOT NULL DEFAULT (datetime('now')),
         delivered_at    TEXT
       )
@@ -1172,6 +1204,23 @@ extension _DatabaseTableCreators on DatabaseHelper {
         display_order        INTEGER DEFAULT 0,
         unlinked_at          TEXT,
         created_at           TEXT    DEFAULT (datetime('now'))
+      )
+    ''');
+
+    // ── v65: payroll_notifications ─────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS payroll_notifications (
+        id                     INTEGER PRIMARY KEY AUTOINCREMENT,
+        notification_id        TEXT    NOT NULL UNIQUE,
+        source_identity_id     TEXT    NOT NULL,
+        business_name          TEXT    NOT NULL,
+        amount                 REAL    NOT NULL,
+        currency               TEXT    NOT NULL DEFAULT 'INR',
+        reference_label        TEXT,
+        paid_on                TEXT    NOT NULL,
+        received_at            TEXT    DEFAULT (datetime('now')),
+        status                 TEXT    NOT NULL DEFAULT 'pending',
+        created_transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL
       )
     ''');
   }

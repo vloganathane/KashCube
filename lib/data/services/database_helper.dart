@@ -227,8 +227,8 @@ class DatabaseHelper {
     await _createSyncAndIdentityTables(db);
 
     await db.insert('schema_version', {
-      'version': 62,
-      'description': 'Full v62 schema: sync foundation + Phase D1 my_identity + linked_business_sessions (fresh install)',
+      'version': 67,
+      'description': 'Full v67 schema (fresh install)',
       'applied_at': DateTime.now().toIso8601String(),
     });
 

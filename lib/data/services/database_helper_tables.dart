@@ -50,7 +50,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (party_id) REFERENCES parties(id),
         FOREIGN KEY (account_id) REFERENCES accounts(id),
@@ -102,7 +103,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (customer_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
@@ -129,7 +131,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id)
@@ -171,7 +174,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (lender_id) REFERENCES parties(id),
         FOREIGN KEY (business_id) REFERENCES businesses(id)
@@ -241,7 +245,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -269,7 +274,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -295,7 +301,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -313,7 +320,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         updated_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         UNIQUE(year, month, category)
       )
@@ -411,7 +419,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         party_id INTEGER REFERENCES parties(id),
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -450,7 +459,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -484,7 +494,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
@@ -521,7 +532,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         packing_amt REAL NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        pending_number_since TEXT
+        deleted_at TEXT,
+        pending_number_since TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
     await db.execute('CREATE INDEX idx_quotes_status ON quotes(status)');
@@ -598,7 +615,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         pending_number_since TEXT,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL
@@ -882,7 +900,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         deleted_at TEXT,
         sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
         version              INTEGER NOT NULL DEFAULT 0,
-        created_by_device_id TEXT,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
         FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
@@ -1239,5 +1258,48 @@ extension _DatabaseTableCreators on DatabaseHelper {
         created_transaction_id INTEGER REFERENCES transactions(id) ON DELETE SET NULL
       )
     ''');
+
+    // ── v69: P2P LAN sync tables ───────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS trusted_peers (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        peer_identity_id  TEXT NOT NULL UNIQUE,
+        peer_name         TEXT,
+        business_id       TEXT,
+        shared_secret_enc TEXT NOT NULL,
+        paired_at         TEXT NOT NULL,
+        last_seen_at      TEXT,
+        last_synced_at    TEXT,
+        is_active         INTEGER NOT NULL DEFAULT 1
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_trusted_peers_active ON trusted_peers(is_active)',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_watermarks (
+        peer_identity_id  TEXT NOT NULL,
+        table_name        TEXT NOT NULL,
+        last_synced_at    TEXT NOT NULL,
+        last_sync_cursor  TEXT,
+        PRIMARY KEY (peer_identity_id, table_name)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS invoice_events (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id  TEXT NOT NULL,
+        event_type  TEXT NOT NULL,
+        event_data  TEXT,
+        occurred_at TEXT NOT NULL,
+        device_id   TEXT NOT NULL,
+        sync_id     TEXT NOT NULL UNIQUE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_invoice_events_invoice ON invoice_events(invoice_id, occurred_at)',
+    );
   }
 }

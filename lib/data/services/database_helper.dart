@@ -228,8 +228,8 @@ class DatabaseHelper {
     await _seedFySettings(db);
 
     await db.insert('schema_version', {
-      'version': 67,
-      'description': 'Full v67 schema (fresh install)',
+      'version': 69,
+      'description': 'Full v69 schema (fresh install)',
       'applied_at': DateTime.now().toIso8601String(),
     });
 
@@ -2370,6 +2370,101 @@ class DatabaseHelper {
         'description':
             'Add missing permission_preset column to linked_devices '
             '(absent from v58 migration, present only in fresh-install schema)',
+      });
+    }
+
+    if (oldVersion < 69) {
+      // ── Step A: Add updated_by_device_id to all 14 syncable tables ────────
+      const syncTables = [
+        'transactions', 'credits', 'credit_payments', 'loans', 'parties',
+        'accounts', 'categories', 'budgets', 'item_catalog',
+        'scheduled_payments', 'businesses', 'invoices', 'purchase_bills',
+        'quotes',
+      ];
+      for (final tbl in syncTables) {
+        try {
+          await db.execute(
+            'ALTER TABLE $tbl ADD COLUMN updated_by_device_id TEXT',
+          );
+        } catch (e) {
+          debugPrint('[DB v69] updated_by_device_id on $tbl: $e');
+        }
+      }
+
+      // ── Step B: Bootstrap quotes sync columns (quotes was not in v58 P0) ──
+      for (final col in [
+        'ALTER TABLE quotes ADD COLUMN sync_id TEXT',
+        'ALTER TABLE quotes ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+        'ALTER TABLE quotes ADD COLUMN created_by_device_id TEXT',
+        'ALTER TABLE quotes ADD COLUMN deleted_at TEXT',
+        'ALTER TABLE quotes ADD COLUMN context_id INTEGER',
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (e) {
+          debugPrint('[DB v69] quotes column: $e');
+        }
+      }
+      // Backfill sync_id for existing quotes rows.
+      await db.execute(
+        "UPDATE quotes SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL",
+      );
+      try {
+        await db.execute(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_quotes_sync_id ON quotes(sync_id)',
+        );
+      } catch (e) {
+        debugPrint('[DB v69] idx_quotes_sync_id: $e');
+      }
+
+      // ── Step C: New P2P sync tables ────────────────────────────────────────
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS trusted_peers (
+          id                INTEGER PRIMARY KEY AUTOINCREMENT,
+          peer_identity_id  TEXT NOT NULL UNIQUE,
+          peer_name         TEXT,
+          business_id       TEXT,
+          shared_secret_enc TEXT NOT NULL,
+          paired_at         TEXT NOT NULL,
+          last_seen_at      TEXT,
+          last_synced_at    TEXT,
+          is_active         INTEGER NOT NULL DEFAULT 1
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_trusted_peers_active ON trusted_peers(is_active)',
+      );
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_watermarks (
+          peer_identity_id  TEXT NOT NULL,
+          table_name        TEXT NOT NULL,
+          last_synced_at    TEXT NOT NULL,
+          last_sync_cursor  TEXT,
+          PRIMARY KEY (peer_identity_id, table_name)
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS invoice_events (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          invoice_id  TEXT NOT NULL,
+          event_type  TEXT NOT NULL,
+          event_data  TEXT,
+          occurred_at TEXT NOT NULL,
+          device_id   TEXT NOT NULL,
+          sync_id     TEXT NOT NULL UNIQUE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_invoice_events_invoice ON invoice_events(invoice_id, occurred_at)',
+      );
+
+      await db.insert('schema_version', {
+        'version': 69,
+        'description':
+            'P2P LAN sync foundation: updated_by_device_id on 14 tables, '
+            'quotes sync columns, trusted_peers + sync_watermarks + invoice_events tables',
       });
     }
   }

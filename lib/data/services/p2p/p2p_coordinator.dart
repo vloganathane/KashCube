@@ -103,6 +103,10 @@ class P2pCoordinator {
   // Peer identity IDs currently in an active sync cycle.
   final _activeSyncs = <String>{};
 
+  // In-memory cache of trusted peer identity IDs — kept in sync with the
+  // trusted_peers table so _isTrustedPeer() can answer synchronously.
+  final _trustedPeerIds = <String>{};
+
   StreamSubscription<List<PeerDevice>>? _peerSub;
 
   final _statusController = StreamController<SyncStatus>.broadcast();
@@ -138,6 +142,9 @@ class P2pCoordinator {
     _deviceKeyBytes = seedB64 != null
         ? Uint8List.fromList(base64.decode(seedB64))
         : null;
+
+    // Pre-load trusted peer IDs for synchronous isTrusted checks.
+    await _refreshTrustedPeerCache(db);
 
     // Start the HTTP server — provides pull/push endpoints for remote peers.
     await P2pServer.instance.start(
@@ -187,6 +194,7 @@ class P2pCoordinator {
     await P2pServer.instance.stop();
 
     _activeSyncs.clear();
+    _trustedPeerIds.clear();
     _db = null;
     _deviceKeyBytes = null;
 
@@ -443,16 +451,21 @@ class P2pCoordinator {
   }
 
   /// Returns true if [identityId] has an active [TrustedPeer] row.
-  bool _isTrustedPeer(String identityId) {
-    // Synchronous check using cached peer list from discovery — trustednes is
-    // reflected on PeerDevice.isTrusted already; this callback is used when
-    // constructing PeerDevice objects during discovery.
-    final db = _db;
-    if (db == null) return false;
-    // Quick async check is not possible in a sync callback; return false for
-    // the initial scan and rely on _onPeersChanged to refresh after query.
-    // The coordinator's syncWithPeer() re-checks asynchronously.
-    return false;
+  bool _isTrustedPeer(String identityId) =>
+      _trustedPeerIds.contains(identityId);
+
+  /// Loads (or refreshes) the in-memory trusted peer ID cache from the DB.
+  Future<void> _refreshTrustedPeerCache(Database db) async {
+    try {
+      final rows = await db.rawQuery(
+        'SELECT peer_identity_id FROM trusted_peers WHERE is_active = 1',
+      );
+      _trustedPeerIds
+        ..clear()
+        ..addAll(rows.map((r) => r['peer_identity_id'] as String));
+    } catch (e) {
+      debugPrint('[P2pCoordinator] Failed to load trusted peers: $e');
+    }
   }
 
   // ── Server callbacks ──────────────────────────────────────────────────────
@@ -537,6 +550,8 @@ class P2pCoordinator {
       peer.toMap(),
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    // Update in-memory cache so subsequent discoveries mark this peer trusted.
+    _trustedPeerIds.add(peerIdentityId);
     debugPrint('[P2pCoordinator] Paired with $peerDisplayName ($peerIdentityId)');
     return peer;
   }

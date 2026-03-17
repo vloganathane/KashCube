@@ -25,6 +25,7 @@ import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
+import '../../p2p/devices_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -260,6 +261,18 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const EncryptedBackupScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.devices_outlined),
+                title: const Text('Devices & LAN Sync'),
+                subtitle: const Text('Pair devices and sync over Wi-Fi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DevicesScreen(),
                   ),
                 ),
               ),

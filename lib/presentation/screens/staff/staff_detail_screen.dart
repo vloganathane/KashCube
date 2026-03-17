@@ -1,20 +1,13 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
-
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/repositories/party_repository_impl.dart';
-import '../../../data/services/database_helper.dart';
-import '../../providers/identity_provider.dart';
 import '../../providers/party_provider.dart';
-import '../../providers/settings_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../transactions/add_edit_transaction_screen.dart';
 
@@ -86,17 +79,9 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen>
 
   Future<void> _paySalary(Party staff) async {
     final monthLabel = DateFormat('MMMM yyyy').format(_payPeriod);
-
-    // Ask employer whether to notify the staff member about this payment.
-    if (!mounted) return;
-    final notifyEnabled = await showDialog<bool>(
-      context: context,
-      builder: (_) => _PaySalaryDialog(staffName: staff.name),
-    );
-    if (notifyEnabled == null) return; // cancelled
     if (!mounted) return;
 
-    final saved = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => AddEditTransactionScreen(
           initialType: TransactionType.expense,
@@ -108,60 +93,8 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen>
       ),
     );
 
-    if (saved == true && notifyEnabled) {
-      await _queuePayrollNotification(
-        staff: staff,
-        amount: staff.staffSalary ?? 0,
-        monthLabel: monthLabel,
-      );
-    }
-
     // Invalidate payroll provider so the tab refreshes.
     setState(() {});
-  }
-
-  /// Inserts a [sync_outbox] event so the primary can deliver a payroll
-  /// notification to the staff member's secondary device.
-  Future<void> _queuePayrollNotification({
-    required Party staff,
-    required double amount,
-    required String monthLabel,
-  }) async {
-    final db = await DatabaseHelper.instance.database;
-
-    // Find the staff member's linked device identity.
-    final devices = await db.query(
-      'linked_devices',
-      columns: ['secondary_identity_id'],
-      where:     'linked_party_id = ? AND secondary_identity_id IS NOT NULL',
-      whereArgs: [staff.id],
-      limit: 1,
-    );
-    if (devices.isEmpty) return;
-    final targetIdentityId = devices.first['secondary_identity_id'] as String?;
-    if (targetIdentityId == null) return;
-
-    // Resolve source identity + business name for the notification payload.
-    final myIdentity =
-        await ref.read(myIdentityProvider.future).catchError((_) => null);
-    final businessName = ref.read(businessNameProvider);
-
-    final payload = jsonEncode({
-      'notification_id':    const Uuid().v4(),
-      'source_identity_id': myIdentity?.identityId ?? '',
-      'business_name':      businessName,
-      'amount':             amount,
-      'currency':           'INR',
-      'reference_label':    'Salary – $monthLabel',
-      'paid_on':            DateTime.now().toIso8601String(),
-    });
-
-    await db.insert('sync_outbox', {
-      'target_identity_id': targetIdentityId,
-      'event_type':         'payroll_notification',
-      'payload':            payload,
-      'created_at':         DateTime.now().toIso8601String(),
-    });
   }
 
   // ── build ──────────────────────────────────────────────────────────────────
@@ -692,55 +625,6 @@ class _PayrollTxnTile extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// _PaySalaryDialog — asks whether to notify the staff member
-// ---------------------------------------------------------------------------
-
-class _PaySalaryDialog extends StatefulWidget {
-  const _PaySalaryDialog({required this.staffName});
-
-  final String staffName;
-
-  @override
-  State<_PaySalaryDialog> createState() => _PaySalaryDialogState();
-}
-
-class _PaySalaryDialogState extends State<_PaySalaryDialog> {
-  bool _notify = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Pay Salary'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Record a salary payment and optionally notify the staff member.'),
-          const SizedBox(height: AppSpacing.md),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text('Notify ${widget.staffName}'),
-            subtitle: const Text('Sends a salary receipt to their KashCube app'),
-            value: _notify,
-            onChanged: (v) => setState(() => _notify = v),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(context, _notify),
-          child: const Text('Continue'),
-        ),
-      ],
     );
   }
 }

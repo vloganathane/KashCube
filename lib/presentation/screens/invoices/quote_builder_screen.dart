@@ -25,7 +25,6 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/party_address_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/sync_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
@@ -606,23 +605,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
 
-    // Resolve invoice number: secondary devices reserve from primary first;
-    // primaries generate the number locally.
+    // Resolve invoice number.
     String resolvedInvoiceNo;
     InvoiceStatus resolvedStatus = status;
     final rawNo = _documentNoCtrl.text.trim();
     if (rawNo.isNotEmpty) {
       resolvedInvoiceNo = rawNo;
-    } else if (_existingInvoice == null &&
-        (ref.read(isSecondaryDeviceProvider).valueOrNull ?? false)) {
-      // Secondary device: attempt to get a server-assigned number.
-      final reserved = await ref
-          .read(syncNowProvider.notifier)
-          .reserveDocNumber(_docTypeKey(widget.docType));
-      resolvedInvoiceNo = reserved;
-      if (reserved.startsWith('PENDING-')) {
-        resolvedStatus = InvoiceStatus.pendingNumber;
-      }
     } else {
       resolvedInvoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
     }

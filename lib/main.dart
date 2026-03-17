@@ -14,12 +14,10 @@ import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
-import 'presentation/providers/sync_provider.dart';
 import 'presentation/providers/terms_provider.dart';
 import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
-import 'presentation/screens/web_connect/web_connect_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -169,24 +167,6 @@ class _LockGateState extends ConsumerState<_LockGate>
 
   @override
   Widget build(BuildContext context) {
-    // ── Web entry point ───────────────────────────────────────────────────
-    // On web there is no lock screen, no on-device identity, and no mDNS.
-    // Instead we gate on whether the browser has an active paired session.
-    if (kIsWeb) {
-      final sessionAsync = ref.watch(activeDeviceSessionProvider);
-      return sessionAsync.when(
-        loading: () =>
-            const Scaffold(body: Center(child: CircularProgressIndicator())),
-        error: (_, __) => WebConnectScreen(
-          onConnected: () => ref.invalidate(activeDeviceSessionProvider),
-        ),
-        data: (session) => session == null
-            ? WebConnectScreen(
-                onConnected: () => ref.invalidate(activeDeviceSessionProvider),
-              )
-            : const AppShell(),
-      );
-    }
 
     // Listen for switch-user requests from anywhere in the app.
     ref.listen<int>(switchUserProvider, (_, __) {

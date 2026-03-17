@@ -8,7 +8,18 @@ import '../../data/repositories/identity_repository_impl.dart';
 import '../../data/services/database_helper.dart';
 import '../../data/services/identity_service.dart';
 import '../../domain/repositories/identity_repository.dart';
-import 'sync_provider.dart';
+import 'settings_provider.dart';
+
+// ---------------------------------------------------------------------------
+// Identity service provider (moved here from deleted sync_provider)
+// ---------------------------------------------------------------------------
+
+/// Initialises [IdentityService] on first access (async).
+final identityServiceProvider = FutureProvider<IdentityService>((ref) async {
+  final settings = ref.read(settingsRepositoryProvider);
+  await IdentityService.instance.ensureInitialized(settings);
+  return IdentityService.instance;
+});
 
 // ---------------------------------------------------------------------------
 // Repository provider

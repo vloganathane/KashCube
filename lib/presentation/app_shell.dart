@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models/permission.dart';
 import '../data/models/user_permission.dart';
-import 'providers/sync_provider.dart';
-import 'widgets/read_only_mode_banner.dart';
 import '../core/constants/app_config.dart';
 import '../core/utils/deep_link_vcard.dart';
 import '../core/utils/vcard_builder.dart' show parseVCard;
@@ -50,20 +47,15 @@ class _TabSpec {
   final NavigationDestination destination;
 }
 
-/// Returns the visible tab specs for the given device session [preset].
-/// Cashier devices only see Home, Transactions, and Business.
-List<_TabSpec> _computeVisibleTabs(String? preset) {
-  const tabs = [
+/// Returns the visible tab specs (all tabs — sync-based preset filtering removed).
+List<_TabSpec> _computeVisibleTabs() {
+  return const [
     _TabSpec(0, NavigationDestination(icon: Icon(Icons.home_outlined),         selectedIcon: Icon(Icons.home),         label: 'Home')),
     _TabSpec(1, NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions')),
     _TabSpec(2, NavigationDestination(icon: Icon(Icons.storefront_outlined),   selectedIcon: Icon(Icons.storefront),   label: 'Business')),
     _TabSpec(3, NavigationDestination(icon: Icon(Icons.people_outline),        selectedIcon: Icon(Icons.people),       label: 'Contacts')),
     _TabSpec(4, NavigationDestination(icon: Icon(Icons.settings_outlined),     selectedIcon: Icon(Icons.settings),     label: 'Settings')),
   ];
-  if (preset == 'cashier') {
-    return tabs.sublist(0, 3); // Home, Transactions, Business only
-  }
-  return tabs.toList();
 }
 
 /// App shell with bottom navigation bar, FAB, and SMS listener.
@@ -277,23 +269,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
     final activeUser = ref.watch(activeAppUserProvider);
 
-    // Web: activate the live-sync WS listener (no-op on Android).
-    final webLiveState = kIsWeb ? ref.watch(webLiveSyncProvider) : null;
-
-    // Device session: null = primary; non-null = secondary.
-    final sessionAsync   = ref.watch(activeDeviceSessionProvider);
-    final session        = sessionAsync.valueOrNull;
-    final sessionPreset  = session?.token.preset;
-    final isStaffTerminal = sessionPreset != null && sessionPreset != 'owner_mirror';
-
-    final visibleTabs = _computeVisibleTabs(sessionPreset);
-
-    // If the current screen index is hidden for this preset, reset to 0.
-    if (!visibleTabs.any((t) => t.screenIndex == currentIndex)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(currentTabIndexProvider.notifier).state = 0;
-      });
-    }
+    final visibleTabs = _computeVisibleTabs();
 
     // Map actual screen index -> nav bar index (clamp for safety).
     final navBarIndex = visibleTabs
@@ -393,13 +369,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       body: Column(
         children: [
-          // Read-only banner: shown when grace period exceeded on a secondary.
-          const ReadOnlyModeBanner(),
-          // Web: persistent banner when the live WS connection to the phone is down.
-          if (kIsWeb && webLiveState != null && !webLiveState.isConnected)
-            const _WebDisconnectedBanner(),
-          // Staff mode indicator: subtle top bar for non-owner-mirror secondaries.
-          if (isStaffTerminal) _StaffModeBanner(session: session!),
           // Context banner: shown when viewing a linked business session.
           const ContextBannerWidget(),
           Expanded(
@@ -428,77 +397,4 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-/// Thin banner shown below the status bar when the current device is a linked
-/// secondary (non-owner-mirror).  Reminds the user they are in staff mode.
-class _StaffModeBanner extends StatelessWidget {
-  const _StaffModeBanner({required this.session});
-
-  final dynamic session; // DeviceSessionToken host object
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Theme.of(context).colorScheme.secondary.withAlpha(26),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
-        child: Row(
-          children: [
-            Icon(
-              Icons.store_outlined,
-              size: 14,
-              color: Theme.of(context).colorScheme.secondary,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Staff Mode',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.secondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // Speed Dial FAB → see lib/presentation/widgets/speed_dial_fab.dart
-
-// ---------------------------------------------------------------------------
-// Web disconnected banner
-// ---------------------------------------------------------------------------
-
-/// Shown on the browser companion when the live WS connection to the phone
-/// has dropped.  Data is read-only and may be stale until reconnected.
-class _WebDisconnectedBanner extends StatelessWidget {
-  const _WebDisconnectedBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return ColoredBox(
-      color: cs.errorContainer,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-        child: Row(
-          children: [
-            Icon(Icons.wifi_off_rounded, size: 16, color: cs.onErrorContainer),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Disconnected from phone — showing last synced data.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: cs.onErrorContainer,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

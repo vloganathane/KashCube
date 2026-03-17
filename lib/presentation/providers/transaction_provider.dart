@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/transaction.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
-import '../../data/services/web_server_service.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import 'context_provider.dart';
 
@@ -49,7 +48,6 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
     try {
       final id = await _repository.insert(transaction);
       await loadTransactions();
-      WebServerService.instance.notifyDataChanged(['transactions']);
       return id;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -61,7 +59,6 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
     try {
       await _repository.update(transaction);
       await loadTransactions();
-      WebServerService.instance.notifyDataChanged(['transactions']);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -71,7 +68,6 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
     try {
       await _repository.delete(id);
       await loadTransactions();
-      WebServerService.instance.notifyDataChanged(['transactions']);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }

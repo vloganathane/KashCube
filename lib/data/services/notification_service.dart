@@ -339,6 +339,7 @@ class NotificationService {
   // ── Cancel ──────────────────────────────────────────────────────────────
 
   Future<void> cancelAll() async {
+    if (kIsWeb || !_initialized) return;
     await _plugin.cancelAll();
   }
 

@@ -9,7 +9,6 @@ import '../../data/repositories/invoice_repository_impl.dart';
 import '../../data/repositories/item_catalog_repository_impl.dart';
 import '../../data/services/inventory_service.dart';
 import '../../data/services/invoice_number_service.dart';
-import '../../data/services/web_server_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
 import 'business_provider.dart';
@@ -171,14 +170,12 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
   Future<int> add(Invoice invoice, List<InvoiceItem> items) async {
     final id = await _repo.insert(invoice, items);
     await load();
-    WebServerService.instance.notifyDataChanged(['invoices']);
     return id;
   }
 
   Future<void> edit(Invoice invoice, List<InvoiceItem> items) async {
     await _repo.update(invoice, items);
     await load();
-    WebServerService.instance.notifyDataChanged(['invoices']);
   }
 
   Future<void> remove(int id) async {
@@ -186,7 +183,6 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
     await InventoryService.instance.reverseMovementsFor('invoice', id);
     await _repo.delete(id);
     await load();
-    WebServerService.instance.notifyDataChanged(['invoices']);
   }
 
   /// Mark invoice as paid and automatically create transaction.

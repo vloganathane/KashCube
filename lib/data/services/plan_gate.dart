@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
-import '../models/device_session_token.dart';
 import 'database_helper.dart';
 
 /// Context-aware feature gate.
@@ -60,40 +59,6 @@ class PlanGate {
     final f = features[feature] as Map<String, dynamic>?;
     if (f == null) return false;
     return f['enabled'] == true || f['enabled'] == 1;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Linked session context — reads from token
-  // ---------------------------------------------------------------------------
-
-  /// Returns `true` if the [token]'s embedded `plan_features` enables [feature].
-  ///
-  /// Falls back to the _personal_ plan (via [canDo]) when the token was issued
-  /// before D3 (no `plan_features` field present — i.e. an older token).
-  Future<bool> canDoInSession(String feature, DeviceSessionToken token) async {
-    final planFeatures = token.planFeatures;
-    if (planFeatures == null) {
-      // Pre-D3 token: fall back to local plan
-      return canDo(feature);
-    }
-    final f = planFeatures[feature] as Map<String, dynamic>?;
-    if (f == null) return false;
-    return f['enabled'] == true || f['enabled'] == 1;
-  }
-
-  /// Returns the numeric limit for [feature] embedded in [token].
-  ///
-  /// Returns `0` when the feature is absent; falls back to [limitFor] when
-  /// the token predates D3.
-  Future<int> limitForInSession(
-    String feature,
-    DeviceSessionToken token,
-  ) async {
-    final planFeatures = token.planFeatures;
-    if (planFeatures == null) return limitFor(feature);
-    final f = planFeatures[feature] as Map<String, dynamic>?;
-    if (f == null) return 0;
-    return f['limit'] as int? ?? 0;
   }
 
   // ---------------------------------------------------------------------------

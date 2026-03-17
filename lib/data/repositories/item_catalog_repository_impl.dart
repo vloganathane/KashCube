@@ -79,7 +79,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
 
     // No business context — plain catalog list (no stock overlay).
     final rows = await db.rawQuery(
-      'SELECT * FROM item_catalog $where $orderBy',
+      'SELECT * FROM item_catalog ic $where $orderBy',
       args,
     );
     return rows.map(ItemCatalog.fromMap).toList();

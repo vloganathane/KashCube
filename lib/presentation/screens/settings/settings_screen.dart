@@ -23,10 +23,8 @@ import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
 import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
-import 'linked_devices_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
-import 'kashcube_web_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -146,39 +144,6 @@ class SettingsScreen extends ConsumerWidget {
                   leading: Icon(Icons.fingerprint),
                   title: Text('Biometric Unlock'),
                   subtitle: Text('Error loading'),
-                ),
-              ),
-            ],
-          ),
-
-          // -- Team --
-          _SettingsSection(
-            title: 'Sync',
-            children: [
-              ListTile(
-                leading: const Icon(Icons.devices_outlined),
-                title: const Text('Devices & Sync'),
-                subtitle: const Text(
-                    'Manage linked devices and business connections over Wi-Fi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const DevicesSyncScreen(),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.computer_outlined),
-                title: const Text('KashCube Web'),
-                subtitle: const Text(
-                    'Access data from any browser on the same Wi-Fi — no internet'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const KashCubeWebScreen(),
-                  ),
                 ),
               ),
             ],

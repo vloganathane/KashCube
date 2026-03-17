@@ -44,8 +44,6 @@ import '../../../data/models/home_widget_config.dart';
 import '../../providers/home_widget_provider.dart';
 import '../settings/encrypted_backup_screen.dart';
 import '../settings/fy_close_wizard_screen.dart';
-import '../notifications/payroll_notifications_sheet.dart';
-import '../../providers/sync_provider.dart';
 import 'customize_home_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
@@ -121,8 +119,6 @@ class HomeScreen extends ConsumerWidget {
             const _YearEndBannerSliver(),
             // Backup nudge (after 5 transactions, if no encrypted backup yet)
             const _BackupNudgeBannerSliver(),
-            // Payroll salary notifications for secondary (employee) devices
-            const _PayrollNotificationsBannerSliver(),
             // Pending SMS transactions awaiting review
             const _PendingSmsBannerSliver(),
             SliverPadding(
@@ -395,68 +391,6 @@ class _BackupNudgeBannerSliverState
 
 // ---------------------------------------------------------------------------
 // Payroll Notifications Banner Sliver
-// ---------------------------------------------------------------------------
-
-/// Shows an amber banner when there are pending payroll salary notifications.
-///
-/// Only visible on secondary (employee) devices where [payrollNotificationsNotifierProvider]
-/// has at least one pending notification.
-class _PayrollNotificationsBannerSliver extends ConsumerWidget {
-  const _PayrollNotificationsBannerSliver();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final notificationsAsync = ref.watch(payrollNotificationsNotifierProvider);
-    return notificationsAsync.when(
-      loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-      error: (_, _) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-      data: (notifications) {
-        if (notifications.isEmpty) {
-          return const SliverToBoxAdapter(child: SizedBox.shrink());
-        }
-        final count = notifications.length;
-        final scheme = Theme.of(context).colorScheme;
-        return SliverToBoxAdapter(
-          child: Container(
-            color: scheme.tertiaryContainer.withValues(alpha: 0.80),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.base,
-              vertical: AppSpacing.sm,
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.payments_outlined,
-                    size: 18, color: scheme.onTertiaryContainer),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    count == 1
-                        ? 'You have 1 new salary notification'
-                        : 'You have $count new salary notifications',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: scheme.onTertiaryContainer),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      showPayrollNotificationsSheet(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: scheme.onTertiaryContainer,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs, vertical: 0),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text('View'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Pending SMS banner sliver
 // ---------------------------------------------------------------------------

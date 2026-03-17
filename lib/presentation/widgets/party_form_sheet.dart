@@ -22,7 +22,6 @@ import '../providers/party_provider.dart';
 import '../providers/settings_provider.dart';
 import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
-import 'qr_scanner_sheet.dart';
 
 /// Unified add / edit party bottom sheet.
 ///
@@ -225,14 +224,6 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       onPressed: _pickFromContacts,
                       icon: const Icon(Icons.contacts_outlined, size: 18),
                       label: const Text('Contacts'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _scanQr,
-                      icon: const Icon(Icons.qr_code_scanner_outlined, size: 18),
-                      label: const Text('Scan QR'),
                     ),
                   ),
                 ],
@@ -677,35 +668,6 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       final compressed = await compressPickedImage(picked.path);
       setState(() => _businessCardImagePath = compressed);
     }
-  }
-
-  Future<void> _scanQr() async {
-    final parsed = await showQrScannerSheet(context);
-    if (parsed == null || !mounted) return;
-    setState(() {
-      if (parsed['name'] != null) _name.text = parsed['name']!;
-      if (parsed['phone'] != null) {
-        // Normalize phone using current dial code (strips leading country prefix)
-        _phone.text = PhoneUtils.normalize(parsed['phone'], dialCode: _dialCode) ?? parsed['phone']!;
-      }
-      if (parsed['email'] != null) _email.text = parsed['email']!;
-      if (parsed['address'] != null) _address.text = parsed['address']!;
-      if (parsed['city'] != null) _city.text = parsed['city']!;
-      if (parsed['state'] != null) _state.text = parsed['state']!;
-      if (parsed['pincode'] != null) _pincode.text = parsed['pincode']!;
-      if (parsed['gstin'] != null) _gstin.text = parsed['gstin']!;
-      if (parsed['website'] != null) _website.text = parsed['website']!;
-      if (parsed['whatsapp'] != null) _whatsapp.text = parsed['whatsapp']!;
-      if (parsed['linkedin'] != null) _linkedin.text = parsed['linkedin']!;
-      if (parsed['instagram'] != null) _instagram.text = parsed['instagram']!;
-      // Auto-expand online presence if any social field was populated
-      if ((parsed['website'] ?? '').isNotEmpty ||
-          (parsed['whatsapp'] ?? '').isNotEmpty ||
-          (parsed['linkedin'] ?? '').isNotEmpty ||
-          (parsed['instagram'] ?? '').isNotEmpty) {
-        _onlineExpanded = true;
-      }
-    });
   }
 
   Future<void> _pickFromContacts() async {

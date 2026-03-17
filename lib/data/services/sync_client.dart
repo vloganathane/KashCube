@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +11,7 @@ import '../models/delta_row.dart';
 import '../models/device_session_token.dart';
 import '../services/database_helper.dart';
 import '../services/identity_service.dart';
+import '../services/sync_framing.dart';
 import '../services/sync_transport.dart';
 
 /// TCP client that runs on the SECONDARY device.
@@ -26,6 +28,7 @@ class SyncClient implements SyncTransport {
   final DatabaseHelper  dbHelper;
 
   Socket? _socket;
+  FrameReader? _reader;
 
   bool get isConnected => _socket != null;
 
@@ -50,15 +53,20 @@ class SyncClient implements SyncTransport {
 
   /// Opens a TCP connection to the primary at [ip]:[port].
   Future<void> connect({required String ip, required int port}) async {
+    debugPrint('[DeviceLink] SyncClient.connect: attempting TCP → $ip:$port');
     _socket = await Socket.connect(
       ip,
       port,
       timeout: const Duration(seconds: 15),
     );
+    _reader = FrameReader(_socket!);
+    debugPrint('[DeviceLink] SyncClient.connect: socket opened (local ${_socket!.address.address}:${_socket!.port})');
   }
 
   /// Closes the active connection.
   Future<void> disconnect() async {
+    _reader?.dispose();
+    _reader = null;
     await _socket?.close();
     _socket = null;
   }
@@ -84,7 +92,8 @@ class SyncClient implements SyncTransport {
     _assertConnected();
     final deviceId  = await identity.deviceId;
     final pubKeyB64 = await identity.publicKeyBase64;
-
+    debugPrint('[DeviceLink] SyncClient.sendPairRequest: deviceId=$deviceId, preset=$preset, deviceName=$deviceName, os=$deviceOs/type=$deviceType, identityId=$secondaryIdentityId, displayName=$secondaryDisplayName')
+;
     await _sendMessage(_socket!, {
       'type':        'pair_request',
       'device_id':   deviceId,
@@ -97,9 +106,17 @@ class SyncClient implements SyncTransport {
       'secondary_display_name': ?secondaryDisplayName,
     });
 
+    debugPrint('[DeviceLink] SyncClient.sendPairRequest: message sent, awaiting response...');
     final resp = await _readResponse();
-    if (resp == null || resp['type'] != 'pair_response') {
-      throw const SyncException('Invalid pair_response from primary');
+    debugPrint('[DeviceLink] SyncClient.sendPairRequest: response type="${resp?['type']}"');
+    if (resp == null) {
+      throw const SyncException('No response from primary — server may have stopped');
+    }
+    if (resp['type'] == 'pair_error') {
+      throw SyncException('Primary rejected pair: ${resp['message'] ?? 'unknown error'}');
+    }
+    if (resp['type'] != 'pair_response') {
+      throw SyncException('Unexpected response from primary: ${resp['type']}');
     }
 
     final token = DeviceSessionToken(
@@ -350,38 +367,8 @@ class SyncClient implements SyncTransport {
     await socket.flush();
   }
 
-  Future<Map<String, dynamic>?> _readMessage(Socket socket) async {
-    final completer = Completer<Map<String, dynamic>?>();
-    final buf = BytesBuilder();
-    int? expectedLength;
-    late StreamSubscription<Uint8List> sub;
-
-    sub = socket.cast<Uint8List>().listen(
-      (chunk) {
-        buf.add(chunk);
-        final bytes = buf.toBytes();
-        if (expectedLength == null && bytes.length >= 4) {
-          expectedLength = ByteData.sublistView(bytes, 0, 4).getInt32(0);
-        }
-        if (expectedLength != null && bytes.length >= 4 + expectedLength!) {
-          sub.cancel();
-          try {
-            final json = utf8.decode(bytes.sublist(4, 4 + expectedLength!));
-            completer.complete(jsonDecode(json) as Map<String, dynamic>);
-          } catch (_) {
-            completer.complete(null);
-          }
-        }
-      },
-      onError: (_) => completer.complete(null),
-      onDone: () { if (!completer.isCompleted) completer.complete(null); },
-    );
-
-    return completer.future.timeout(
-      const Duration(seconds: 60),
-      onTimeout: () { sub.cancel(); return null; },
-    );
-  }
+  Future<Map<String, dynamic>?> _readMessage(Socket socket) =>
+      _reader!.readMessage();
 
   void _assertConnected() {
     if (_socket == null) {

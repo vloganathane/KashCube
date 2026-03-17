@@ -2350,6 +2350,28 @@ class DatabaseHelper {
             'pending_number_since columns on invoices/quotes/delivery_challans',
       });
     }
+
+    if (oldVersion < 68) {
+      // The v58 migration that created linked_devices omitted the
+      // permission_preset column that was only present in the fresh-install
+      // _onCreate schema.  Any device that migrated (rather than fresh-installed)
+      // from v58 will be missing the column, causing pairing to fail with
+      // "table linked_devices has no column named permission_preset".
+      try {
+        await db.execute(
+          "ALTER TABLE linked_devices ADD COLUMN permission_preset TEXT NOT NULL DEFAULT 'owner_mirror'",
+        );
+      } catch (e) {
+        // Column already exists on fresh installs — safe to ignore.
+        debugPrint('[DB v68] permission_preset already exists: $e');
+      }
+      await db.insert('schema_version', {
+        'version': 68,
+        'description':
+            'Add missing permission_preset column to linked_devices '
+            '(absent from v58 migration, present only in fresh-install schema)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

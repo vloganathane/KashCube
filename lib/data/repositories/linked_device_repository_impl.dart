@@ -60,6 +60,8 @@ class LinkedDeviceRepositoryImpl implements LinkedDeviceRepository {
             'business_scope':      device.businessScope,
             'offline_grace_days':  device.offlineGraceDays,
             'permission_preset':   device.preset.dbValue,
+            if (device.secondaryIdentityId  != null) 'secondary_identity_id':  device.secondaryIdentityId,
+            if (device.secondaryDisplayName != null) 'secondary_display_name': device.secondaryDisplayName,
             'created_at':          DateTime.now().toIso8601String(),
           },
           conflictAlgorithm: ConflictAlgorithm.ignore,

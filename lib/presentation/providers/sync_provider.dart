@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
@@ -255,7 +255,9 @@ class LinkHostNotifier extends StateNotifier<AsyncValue<int>> {
   Future<void> start() async {
     try {
       state = const AsyncValue.loading();
+      debugPrint('[DeviceLink] LinkHostNotifier.start: starting TCP server...');
       final port = await _server.start();
+      debugPrint('[DeviceLink] LinkHostNotifier.start: TCP server listening on port $port');
 
       // Load identity for TXT record metadata (display_name + device_id).
       final myIdentity = await DatabaseHelper.instance.withDatabase((db) async {
@@ -272,6 +274,7 @@ class LinkHostNotifier extends StateNotifier<AsyncValue<int>> {
         displayName: myIdentity?.displayName,
         deviceId:    deviceId,
       );
+      debugPrint('[DeviceLink] LinkHostNotifier.start: ready — port=$port, displayName=${myIdentity?.displayName}, deviceId=$deviceId');
       state = AsyncValue.data(port);
     } catch (e, s) {
       state = AsyncValue.error(e, s);
@@ -282,7 +285,10 @@ class LinkHostNotifier extends StateNotifier<AsyncValue<int>> {
   Future<void> stop() async {
     await _discovery.stopServer();
     await _server.stop();
-    state = const AsyncValue.loading();
+    // Guard against being called from onDispose after the notifier is already
+    // disposed (e.g. when the LinkDeviceScreen is popped immediately after a
+    // successful pair).
+    if (mounted) state = const AsyncValue.loading();
   }
 }
 
@@ -337,7 +343,9 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
   }) async {
     final host = ip   ?? _foundPrimary?.ipAddress;
     final p    = port ?? _foundPrimary?.port;
+    debugPrint('[DeviceLink] LinkJoinNotifier.pair: called — host=$host, port=$p, preset=$preset');
     if (host == null || p == null) {
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: ERROR — no host/port (foundPrimary=$_foundPrimary)');
       state = AsyncValue.error('No host found', StackTrace.current);
       return;
     }
@@ -347,6 +355,7 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
 
     try {
       await _client.connect(ip: host, port: p);
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: TCP connected to $host:$p');
       _ref.read(syncStatusProvider.notifier).syncing();
 
       // Load THIS device's identity to send to the primary (identity-first pairing).
@@ -364,6 +373,7 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
         secondaryIdentityId:   myIdentity?.identityId,
         secondaryDisplayName:  myIdentity?.displayName,
       );
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: pair_response received — sessionId=${session.sessionId}, primaryId=${session.primaryIdentityId}');
 
       // Persist session row; also update in-memory provider so the UI reacts immediately.
       await DatabaseHelper.instance.withDatabase((db) async {
@@ -373,31 +383,39 @@ class LinkJoinNotifier extends StateNotifier<AsyncValue<DeviceSession?>> {
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
       });
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: session persisted to DB');
 
       // Initial full pull — handle revocation gracefully.
       try {
+        debugPrint('[DeviceLink] LinkJoinNotifier.pair: starting initial delta pull...');
         await _client.pullDeltas(session: session);
+        debugPrint('[DeviceLink] LinkJoinNotifier.pair: initial pull complete');
       } on SyncRevokedException {
         // Primary revoked us during the very first pull; wipe the session we
         // just stored and surface the error.
         await DeviceSessionService.instance.wipeSession(DatabaseHelper.instance);
         await _client.disconnect();
-        _ref.read(syncStatusProvider.notifier).error();
-        state = AsyncValue.error(
-          'Device was revoked by the primary.',
-          StackTrace.current,
-        );
-        return;
+        try { _ref.read(syncStatusProvider.notifier).error(); } catch (_) {}
+        if (mounted) {
+          state = AsyncValue.error(
+            'Device was revoked by the primary.',
+            StackTrace.current,
+          );
+        }
+        throw const SyncRevokedException('Device was revoked by the primary.');
       }
 
       await _client.disconnect();
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: pairing complete ✔ sessionId=${session.sessionId}');
       _ref.read(syncStatusProvider.notifier).done();
       _ref.read(deviceSessionProvider.notifier).state = session;
-      state = AsyncValue.data(session);
+      if (mounted) state = AsyncValue.data(session);
     } catch (e, s) {
-      await _client.disconnect();
-      _ref.read(syncStatusProvider.notifier).error();
-      state = AsyncValue.error(e, s);
+      debugPrint('[DeviceLink] LinkJoinNotifier.pair: FAILED — $e');
+      try { await _client.disconnect(); } catch (_) {}
+      try { _ref.read(syncStatusProvider.notifier).error(); } catch (_) {}
+      if (mounted) state = AsyncValue.error(e, s);
+      rethrow;
     }
   }
 }

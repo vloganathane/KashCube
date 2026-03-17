@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bonsoir/bonsoir.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/discovered_primary.dart';
 
@@ -57,6 +58,7 @@ class LanDiscoveryService {
     String? deviceId,
   }) async {
     if (_broadcast != null) return; // already registered
+    debugPrint('[DeviceLink] LanDiscovery.startServer: port=$port, displayName=$displayName, deviceId=$deviceId');
 
     final attrs = <String, String>{
       'role': 'primary',
@@ -74,6 +76,7 @@ class LanDiscoveryService {
     _broadcast = BonsoirBroadcast(service: service);
     await _broadcast!.ready;
     await _broadcast!.start();
+    debugPrint('[DeviceLink] LanDiscovery.startServer: mDNS broadcast started OK');
   }
 
   /// Unregisters the mDNS service.
@@ -81,6 +84,7 @@ class LanDiscoveryService {
     if (_broadcast == null) return;
     await _broadcast!.stop();
     _broadcast = null;
+    debugPrint('[DeviceLink] LanDiscovery.stopServer: mDNS broadcast stopped');
   }
 
   // ── Secondary: discover ──────────────────────────────────────────────────
@@ -98,10 +102,12 @@ class LanDiscoveryService {
     void Function(String serviceName)? onLost,
   }) async {
     if (_discovery != null) return; // already discovering
+    debugPrint('[DeviceLink] LanDiscovery.startDiscovery: starting mDNS discovery...');
 
     _discovery = BonsoirDiscovery(type: _serviceType);
     await _discovery!.ready;
     await _discovery!.start();
+    debugPrint('[DeviceLink] LanDiscovery.startDiscovery: mDNS discovery started, listening for _kashcube._tcp services');
 
     _discoverySubscription = _discovery!.eventStream?.listen((event) {
       if (event.type == BonsoirDiscoveryEventType.discoveryServiceResolved) {
@@ -111,6 +117,7 @@ class LanDiscoveryService {
         if (host == null) return; // resolution failed — no IP address yet
         final port  = svc.port;
         final attrs = svc.attributes;
+        debugPrint('[DeviceLink] LanDiscovery: service resolved — "${svc.name}" at $host:$port attrs=$attrs');
         onFound(DiscoveredPrimary(
           ipAddress:   host,
           port:        port,
@@ -119,6 +126,7 @@ class LanDiscoveryService {
           serviceName: svc.name,
         ));
       } else if (event.type == BonsoirDiscoveryEventType.discoveryServiceLost) {
+        debugPrint('[DeviceLink] LanDiscovery: service lost — ${event.service?.name}');
         onLost?.call(event.service?.name ?? '');
       }
     });

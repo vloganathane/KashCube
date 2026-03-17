@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -227,6 +228,12 @@ class _LinkDeviceScreenState extends ConsumerState<LinkDeviceScreen> {
                   step: '3',
                   text: 'Tap "Link Device" and scan this QR code',
                 ),
+
+                // ── macOS firewall hint ──────────────────────────────────
+                if (!kIsWeb && Platform.isMacOS) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  _MacOsFirewallHint(),
+                ],
               ],
             ),
           );
@@ -250,6 +257,57 @@ class _LinkDeviceScreenState extends ConsumerState<LinkDeviceScreen> {
         'primary_display_name': identity.displayName,
       },
     });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// macOS firewall hint widget
+// ---------------------------------------------------------------------------
+
+class _MacOsFirewallHint extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color:        cs.tertiaryContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border:       Border.all(color: cs.tertiary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.security_rounded, color: cs.tertiary, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'macOS Firewall',
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(color: cs.tertiary),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'If the other device gets a "Connection timed out" error, '
+                  'macOS is blocking incoming connections.\n\n'
+                  'Fix: System Settings → Privacy & Security → Firewall '
+                  '→ Options → allow KashCube.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

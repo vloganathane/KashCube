@@ -163,6 +163,27 @@ class DevicesSyncScreen extends ConsumerWidget {
     ];
   }
 
+  /// Converts a pairing exception into a user-friendly description.
+  String _pairingErrorMessage(Object e) {
+    final s = e.toString();
+    if (s.contains('revoked')) {
+      return 'This device was revoked by the primary.';
+    }
+    if (s.contains('timed out') || s.contains('errno = 110') || s.contains('ETIMEDOUT')) {
+      return 'Connection timed out.\n\n'
+          'Make sure both devices are on the same Wi-Fi.\n'
+          'If the primary is a Mac, go to System Settings → Privacy & Security → Firewall → Options and allow KashCube.';
+    }
+    if (s.contains('Connection refused') || s.contains('errno = 111') || s.contains('ECONNREFUSED')) {
+      return 'Connection refused — the host is not accepting connections.\n'
+          'Go back on the primary device and show the QR again to restart the server.';
+    }
+    if (s.contains('Network is unreachable') || s.contains('errno = 101')) {
+      return 'Network unreachable — make sure both devices are on the same Wi-Fi network.';
+    }
+    return 'Pairing failed: $s';
+  }
+
   Future<void> _showLinkRolePicker(BuildContext context, WidgetRef ref) async {
     final cs = Theme.of(context).colorScheme;
     await showModalBottomSheet<void>(
@@ -238,10 +259,13 @@ class DevicesSyncScreen extends ConsumerWidget {
 
   Future<void> _scanAndJoin(BuildContext context, WidgetRef ref) async {
     final result = await showQrScannerSheet(context);
+    debugPrint('[DeviceLink] _scanAndJoin: QR scan returned result=$result');
     if (result == null || !context.mounted) return;
 
     final rawQr = result['name'];
+    debugPrint('[DeviceLink] _scanAndJoin: rawQr="$rawQr"');
     if (rawQr == null || !rawQr.startsWith('{')) {
+      debugPrint('[DeviceLink] _scanAndJoin: not a JSON QR — aborting');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Not a KashCube pairing QR.')),
       );
@@ -250,6 +274,7 @@ class DevicesSyncScreen extends ConsumerWidget {
 
     try {
       final payload = jsonDecode(rawQr) as Map<String, dynamic>;
+      debugPrint('[DeviceLink] _scanAndJoin: decoded payload type="${payload['type']}"');
       if (payload['type'] != 'kashcube_pair_v1') {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unrecognised QR type.')),
@@ -259,32 +284,42 @@ class DevicesSyncScreen extends ConsumerWidget {
       final ip     = payload['ip']     as String;
       final port   = payload['port']   as int;
       final preset = payload['preset'] as String? ?? 'owner_mirror';
+      debugPrint('[DeviceLink] _scanAndJoin: ip=$ip, port=$port, preset=$preset');
 
       // D3: identity-first pairing — confirm who we are linking with.
       final primaryDisplayName = payload['primary_display_name'] as String?;
+      debugPrint('[DeviceLink] _scanAndJoin: primaryDisplayName=$primaryDisplayName');
       if (primaryDisplayName != null && context.mounted) {
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (_) => _LinkConfirmDialog(primaryName: primaryDisplayName),
         );
+        debugPrint('[DeviceLink] _scanAndJoin: link confirm dialog result=$confirmed');
         if (confirmed != true || !context.mounted) return;
       }
 
+      debugPrint('[DeviceLink] _scanAndJoin: calling pair(ip=$ip, port=$port, preset=$preset)');
       await ref.read(linkJoinProvider.notifier).pair(
             ip:     ip,
             port:   port,
             preset: preset,
           );
 
+      debugPrint('[DeviceLink] _scanAndJoin: pair() completed ✔');
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Paired successfully!')),
       );
       ref.read(linkedDevicesProvider.notifier).refresh();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[DeviceLink] _scanAndJoin: EXCEPTION — $e');
       if (context.mounted) {
+        final msg = _pairingErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pairing failed. Please try again.')),
+          SnackBar(
+            content: Text(msg),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
         );
       }
     }

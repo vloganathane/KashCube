@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'sync_framing.dart';
 
 import '../models/app_user.dart';
 import '../models/delta_row.dart';
@@ -93,6 +96,8 @@ class SyncServer {
 
   Future<void> _handleConnection(Socket socket) async {
     _clients.add(socket);
+    debugPrint('[DeviceLink] SyncServer: new connection from ${socket.remoteAddress.address}:${socket.remotePort}');
+    final reader = FrameReader(socket);
     Timer? pingTimer;
 
     void resetPingTimer() {
@@ -106,16 +111,28 @@ class SyncServer {
     try {
       resetPingTimer();
       while (true) {
-        final msg = await _readMessage(socket);
+        final msg = await reader.readMessage(timeout: _kReadTimeout);
         if (msg == null) break; // connection closed or timed out
         resetPingTimer();
 
         final type = msg['type'] as String?;
+        debugPrint('[DeviceLink] SyncServer: received message type="$type" from ${socket.remoteAddress.address}');
         switch (type) {
           case 'pong':
             break; // keepalive reply — timer already reset above, nothing else to do
           case 'pair_request':
-            await _handlePairRequest(socket, msg);
+            try {
+              await _handlePairRequest(socket, msg);
+            } catch (e) {
+              // Send an error response so the secondary doesn't wait for a timeout.
+              try {
+                await _sendMessage(socket, {
+                  'type':    'pair_error',
+                  'message': e.toString(),
+                });
+              } catch (_) {}
+              rethrow;
+            }
           case 'delta_request':
             await _handleDeltaRequest(socket, msg);
           case 'delta_upload':
@@ -128,11 +145,13 @@ class SyncServer {
             await _sendMessage(socket, {'type': 'error', 'message': 'unknown_type'});
         }
       }
-    } catch (_) {
-      // swallow per-connection errors
+    } catch (e) {
+      debugPrint('[DeviceLink] SyncServer: connection error: $e');
     } finally {
       pingTimer?.cancel();
+      reader.dispose();
       _clients.remove(socket);
+      debugPrint('[DeviceLink] SyncServer: connection closed (${socket.remoteAddress.address}:${socket.remotePort})');
       await socket.close();
     }
   }
@@ -152,6 +171,8 @@ class SyncServer {
     // D3: identity-first pairing — secondary sends its identity info
     final secondaryIdentityId   = msg['secondary_identity_id']   as String?;
     final secondaryDisplayName  = msg['secondary_display_name']  as String?;
+
+    debugPrint('[DeviceLink] SyncServer._handlePairRequest: deviceId=$secondaryDeviceId, name=$secondaryDeviceName, os=$deviceOs, preset=$presetStr, identityId=$secondaryIdentityId, displayName=$secondaryDisplayName');
 
     final preset = DevicePreset.fromDb(presetStr);
 
@@ -174,6 +195,7 @@ class SyncServer {
     );
 
     await linkedDeviceRepo.insert(device);
+    debugPrint('[DeviceLink] SyncServer: linked_device row inserted (syncId=${device.syncId})');
 
     // Load primary's plan features to embed in the token.
     final planFeatures = await dbHelper.withDatabase(_loadPlanFeaturesForToken);
@@ -183,6 +205,7 @@ class SyncServer {
     final primaryKeyB64  = await identity.publicKeyBase64;
     final primaryDeviceId = await identity.deviceId;
 
+    debugPrint('[DeviceLink] SyncServer: sending pair_response to $secondaryDeviceName');
     await _sendMessage(socket, {
       'type':               'pair_response',
       'token_payload':      token.payload,
@@ -190,6 +213,7 @@ class SyncServer {
       'primary_public_key': primaryKeyB64,
       'primary_device_id':  primaryDeviceId,
     });
+    debugPrint('[DeviceLink] SyncServer: pair_response sent successfully');
   }
 
   /// Queries the local subscription + plan_features tables and returns a
@@ -566,39 +590,6 @@ class SyncServer {
       });
 
   // ── Framing ──────────────────────────────────────────────────────────────
-
-  Future<Map<String, dynamic>?> _readMessage(Socket socket) async {
-    final completer = Completer<Map<String, dynamic>?>();
-    final buf = BytesBuilder();
-    int? expectedLength;
-    late StreamSubscription<Uint8List> sub;
-
-    sub = socket.cast<Uint8List>().listen(
-      (chunk) {
-        buf.add(chunk);
-        final bytes = buf.toBytes();
-        if (expectedLength == null && bytes.length >= 4) {
-          expectedLength = ByteData.sublistView(bytes, 0, 4).getInt32(0);
-        }
-        if (expectedLength != null && bytes.length >= 4 + expectedLength!) {
-          sub.cancel();
-          try {
-            final json = utf8.decode(bytes.sublist(4, 4 + expectedLength!));
-            completer.complete(jsonDecode(json) as Map<String, dynamic>);
-          } catch (_) {
-            completer.complete(null);
-          }
-        }
-      },
-      onError: (_) => completer.complete(null),
-      onDone: () { if (!completer.isCompleted) completer.complete(null); },
-    );
-
-    return completer.future.timeout(
-      _kReadTimeout,
-      onTimeout: () { sub.cancel(); return null; },
-    );
-  }
 
   Future<void> _sendMessage(Socket socket, Map<String, dynamic> msg) async {
     final payload = utf8.encode(jsonEncode(msg));

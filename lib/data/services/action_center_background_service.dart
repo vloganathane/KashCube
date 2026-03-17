@@ -54,6 +54,10 @@ const _lowStockChannelName    = 'Low Stock Alerts';
 const _lowStockChannelDesc    = 'Daily check for products that are running low on inventory';
 const _lowStockNotifId        = 60002;
 
+// P2P sync probe task constants
+const _p2pSyncTaskName   = 'com.kashcube.p2p_sync_probe';
+const _p2pSyncUniqueName = 'kash_cube_p2p_sync';
+
 // ────────────────────────────────────────────────────────────────────────────
 // Callback dispatcher — MUST be a top-level function
 // ────────────────────────────────────────────────────────────────────────────
@@ -83,6 +87,13 @@ void callbackDispatcher() {
       } catch (e) {
         debugPrint('[LowStock] Task error: $e');
       }
+    } else if (taskName == _p2pSyncTaskName) {
+      // Background P2P sync requires stored peer addresses (future: add
+      // last_known_base_url to trusted_peers in a v70 migration).  For now
+      // mDNS cannot reliably resolve in a background isolate, so this probe
+      // task is a placeholder — real sync happens in the foreground via
+      // P2pCoordinator.
+      debugPrint('[P2pSync] Background probe task fired — foreground sync preferred');
     }
     return Future.value(true);
   });
@@ -476,5 +487,45 @@ Future<void> registerLowStockDailyTask() async {
     debugPrint('[LowStock] Daily task registered');
   } catch (e) {
     debugPrint('[LowStock] Registration failed (non-fatal): $e');
+  }
+}
+
+/// Registers a 15-minute WorkManager probe task for P2P sync awareness.
+///
+/// The task is a lightweight probe: actual peer discovery and data sync are
+/// performed in the foreground by [P2pCoordinator] via mDNS (Bonsoir).
+/// WorkManager handles re-scheduling after device reboots.
+///
+/// No-op on non-mobile platforms.
+Future<void> registerP2pSyncTask() async {
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  try {
+    await Workmanager().registerPeriodicTask(
+      _p2pSyncUniqueName,
+      _p2pSyncTaskName,
+      frequency: const Duration(minutes: 15),
+      constraints: Constraints(
+        networkType:          NetworkType.connected,
+        requiresBatteryNotLow: false,
+        requiresCharging:      false,
+        requiresDeviceIdle:   false,
+        requiresStorageNotLow: false,
+      ),
+      existingWorkPolicy: ExistingWorkPolicy.keep,
+    );
+    debugPrint('[P2pSync] Background probe task registered');
+  } catch (e) {
+    debugPrint('[P2pSync] Registration failed (non-fatal): $e');
+  }
+}
+
+/// Cancels the P2P sync probe task.
+Future<void> cancelP2pSyncTask() async {
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  try {
+    await Workmanager().cancelByUniqueName(_p2pSyncUniqueName);
+    debugPrint('[P2pSync] Background probe task cancelled');
+  } catch (e) {
+    debugPrint('[P2pSync] Cancel failed (non-fatal): $e');
   }
 }

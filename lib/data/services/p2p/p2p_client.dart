@@ -51,7 +51,7 @@ class P2pClient {
   Future<bool> hello() async {
     try {
       final resp = await _get('/hello');
-      if (resp == null) return false;
+      if (resp == null || resp.statusCode >= 400) return false;
       final body = await _readJson(resp);
       return body['app'] == 'kashcube';
     } catch (e) {
@@ -73,7 +73,7 @@ class P2pClient {
         '/sync/pull',
         body: {'table': table, 'after_version': afterVersion},
       );
-      if (resp == null) return null;
+      if (resp == null || resp.statusCode >= 400) return null;
       return await _readJson(resp);
     } catch (e) {
       debugPrint('[P2P] pull($table) failed: $e');
@@ -93,7 +93,7 @@ class P2pClient {
         '/sync/push',
         body: {'table': table, 'rows': rows},
       );
-      if (resp == null) return false;
+      if (resp == null || resp.statusCode >= 400) return false;
       final result = await _readJson(resp);
       return result['ok'] == true;
     } catch (e) {

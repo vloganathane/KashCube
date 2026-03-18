@@ -50,7 +50,11 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
   Future<void> enable() async {
     if (state) return;
     try {
-      final db       = await DatabaseHelper.instance.database;
+      final db = await DatabaseHelper.instance.database;
+      // Wait for both the signing keypair AND the identity keypair to be
+      // loaded — identityInitProvider runs ensureIdentityInitialized which
+      // populates identityId used by P2pCoordinator.start().
+      await _ref.read(identityInitProvider.future);
       final identity = await _ref.read(identityServiceProvider.future);
       final settings = _ref.read(settingsRepositoryProvider);
       final name     = await settings.get(SettingsKeys.ownerName);

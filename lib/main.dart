@@ -19,6 +19,7 @@ import 'presentation/providers/terms_provider.dart';
 import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
+import 'presentation/web/web_connect_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -188,6 +189,9 @@ class _LockGateState extends ConsumerState<_LockGate>
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    // ── Web platform: bypass all lock/user gates — auth via session token ───
+    if (kIsWeb) return const WebConnectScreen();
 
     // ── Terms & Conditions gate ──────────────────────────────────────────────
     // Must be accepted before any other screen is shown.

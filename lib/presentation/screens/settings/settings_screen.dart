@@ -26,6 +26,7 @@ import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
 import '../../p2p/devices_screen.dart';
+import 'open_on_laptop_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -273,6 +274,18 @@ class SettingsScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const DevicesScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.laptop_outlined),
+                title: const Text('Open on Laptop'),
+                subtitle: const Text('View KashCube in your browser over Wi-Fi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const OpenOnLaptopScreen(),
                   ),
                 ),
               ),

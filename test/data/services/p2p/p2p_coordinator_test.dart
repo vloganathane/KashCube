@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/p2p/p2p_coordinator.dart';
+import 'package:kash_cube/data/services/p2p/p2p_discovery_service.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -77,7 +78,7 @@ void main() {
     });
 
     test('discoveredPeers is empty before start()', () {
-      expect(P2pCoordinator.instance.discoveredPeers, isEmpty);
+      expect(P2pDiscoveryService.instance.currentPeers, isEmpty);
     });
 
     test('statusStream is a broadcast stream', () {

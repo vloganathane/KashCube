@@ -23,6 +23,7 @@ void main() {
       onPush: (table, rows) async {
         // accept silently
       },
+      onPairRequest: (id, publicKey, displayName, proof) async => false,
     );
 
     client = P2pClient(

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +33,7 @@ import 'widgets/context_banner_widget.dart';
 import 'widgets/party_form_sheet.dart';
 import 'widgets/speed_dial_fab.dart';
 import 'widgets/sms_confirmation_sheet.dart';
+import 'web/web_connection_banner.dart';
 
 /// Provider for the current bottom navigation tab index.
 final currentTabIndexProvider = StateProvider<int>((ref) => 0);
@@ -371,12 +373,23 @@ class _AppShellState extends ConsumerState<AppShell> {
         children: [
           // Context banner: shown when viewing a linked business session.
           const ContextBannerWidget(),
-          Expanded(
-            child: IndexedStack(
-              index: currentIndex,
-              children: _screens,
+          // Web connection lost banner (kIsWeb only).
+          if (kIsWeb)
+            Expanded(
+              child: WebConnectionBanner(
+                child: IndexedStack(
+                  index: currentIndex,
+                  children: _screens,
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: IndexedStack(
+                index: currentIndex,
+                children: _screens,
+              ),
             ),
-          ),
         ],
       ),
       bottomNavigationBar: NavigationBar(

@@ -6,8 +6,10 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../models/peer_device.dart';
 import '../../models/trusted_peer.dart';
+import '../../../core/constants/app_constants.dart';
 import '../database_helper.dart';
 import '../identity_service.dart';
+import '../web/web_session_service.dart';
 import 'p2p_auth_service.dart';
 import 'p2p_client.dart';
 import 'p2p_discovery_service.dart';
@@ -149,7 +151,14 @@ class P2pCoordinator {
     required String displayName,
     String? businessName,
   }) async {
-    if (_running) return;
+    if (_running) {
+      // Happy path: coordinator is already fully running.
+      if (P2pServer.instance.port != null) return;
+      // A previous start() set _running=true but the server never bound
+      // (e.g. mDNS threw before shelf_io.serve completed).  Reset so
+      // this call can attempt a full restart.
+      _running = false;
+    }
     _running = true;
     _db = db;
     _identityId  = identity.identityId;
@@ -199,6 +208,14 @@ class P2pCoordinator {
       phase:   SyncPhase.idle,
       message: 'Listening on port $port',
     ));
+
+    // Enable web companion on the shared server.
+    P2pServer.instance.enableWebCompanion(
+      deviceName:    displayName,
+      schemaVersion: AppConstants.dbVersion,
+      onWrite:       _handleWebWrite,
+    );
+
     debugPrint('[P2pCoordinator] Started on port $port');
   }
 
@@ -579,9 +596,34 @@ class P2pCoordinator {
   }
   // ── Public utility ────────────────────────────────────────────────────────
 
-  /// Returns a read-only list of all currently discovered peers.
-  List<PeerDevice> get discoveredPeers =>
-      P2pDiscoveryService.instance.currentPeers;
+  /// Enables web companion on the shared server (idempotent — can be called
+  /// after [start] if the display name changes).
+  void enableWebCompanion({required String deviceName, required int schemaVersion}) {
+    P2pServer.instance.enableWebCompanion(
+      deviceName:    deviceName,
+      schemaVersion: schemaVersion,
+      onWrite:       _handleWebWrite,
+    );
+  }
+
+  /// Disconnects the active browser WebSocket session.
+  void disconnectBrowser() => P2pServer.instance.disconnectBrowser();
+
+  bool get hasBrowserConnected => P2pServer.instance.hasBrowserConnected;
+
+  // Handles WRITE messages from the browser — merges directly into local DB.
+  Future<void> _handleWebWrite(String table, Map<String, dynamic> row) async {
+    final db = _db;
+    if (db == null) return;
+    await P2pMergeService.instance.mergeTable(
+      db:         db,
+      table:      table,
+      remoteRows: [row],
+      deviceId:   _identityId!,
+    );
+    // Push the merged row back to the browser session if active.
+    WebSessionService.instance.activeSession?.pushRows(table, [row]);
+  }
 
   /// Trigger an immediate sync with all currently visible trusted peers.
   /// No-op if not running.

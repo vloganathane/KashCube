@@ -5,7 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_static/shelf_static.dart';
+import 'package:shelf_web_socket/shelf_web_socket.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../web/web_browser_session.dart';
+import '../web/web_session_service.dart';
+import '../web/web_ui_extractor.dart';
 import 'p2p_auth_service.dart';
 
 /// Lightweight HTTP server for P2P LAN sync.
@@ -39,6 +45,38 @@ class P2pServer {
   Future<bool> Function(String identityId, String publicKeyBase64,
       String displayName, String proof)? _pairHandler;
 
+  // ── Web companion ─────────────────────────────────────────────────────────
+
+  String? _webDeviceName;
+  int?    _webSchemaVersion;
+  Future<void> Function(String table, Map<String, dynamic> row)? _webOnWrite;
+  WebBrowserSession? _activeSession;
+
+  /// Call this (after [start]) to enable the browser web companion routes.
+  ///
+  /// [deviceName]    — phone's display name shown in the browser AUTH_OK.
+  /// [schemaVersion] — current DB schema version (for client compatibility).
+  /// [onWrite]       — called when the browser submits a WRITE message.
+  void enableWebCompanion({
+    required String deviceName,
+    required int    schemaVersion,
+    required Future<void> Function(String table, Map<String, dynamic> row) onWrite,
+  }) {
+    _webDeviceName    = deviceName;
+    _webSchemaVersion = schemaVersion;
+    _webOnWrite       = onWrite;
+    debugPrint('[P2P] Web companion enabled for $deviceName');
+  }
+
+  /// Disconnects the active browser session (e.g., user taps "Disconnect browser").
+  void disconnectBrowser() {
+    _activeSession?.dispose();
+    _activeSession = null;
+    WebSessionService.instance.clearToken();
+  }
+
+  bool get hasBrowserConnected => _activeSession != null;
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Starts the HTTP server on a random OS-assigned port.
@@ -67,14 +105,43 @@ class P2pServer {
     _pushHandler   = onPush;
     _pairHandler   = onPairRequest;
 
-    final router = _buildRouter();
+    // ── Route groups ──────────────────────────────────────────────────────
+    //
+    // Traffic is handled in cascade order:
+    //   1. Unauthenticated routes: /hello, /pair, /ws (WebSocket)
+    //   2. HMAC-authenticated P2P sync routes: /sync/*
+    //   3. Static web UI file serving: GET /*
+    //
+    // The HMAC middleware is only applied to layer 2 — WebSocket and static
+    // serving bypass it entirely.
 
-    final handler = const Pipeline()
+    // Layer 1 — open routes (no HMAC)
+    final openRouter = Router()
+      ..get('/hello', _helloHandler)
+      ..post('/pair', _pairHandlerRoute)
+      ..get('/ws',    _wsHandler());
+
+    // Layer 2 — HMAC-gated P2P sync routes
+    final syncRouter = Router()
+      ..post('/sync/pull', _pullHandlerRoute)
+      ..post('/sync/push', _pushHandlerRoute);
+
+    final syncHandler = const Pipeline()
         .addMiddleware(_hmacMiddleware())
-        .addHandler(router.call);
+        .addHandler(syncRouter.call);
+
+    // Layer 3 — static web UI (lazy extracted from assets/web_ui/)
+    final staticHandler = _buildStaticHandler();
+
+    // Combined cascade
+    final combined = Cascade()
+        .add(openRouter.call)
+        .add(syncHandler)
+        .add(staticHandler)
+        .handler;
 
     _server = await shelf_io.serve(
-      handler,
+      combined,
       InternetAddress.anyIPv4,
       0, // OS assigns a random free port
       shared: false,
@@ -88,26 +155,63 @@ class P2pServer {
     debugPrint('[P2P] Server stopped');
   }
 
-  // ── Routes ────────────────────────────────────────────────────────────────
+  // ── Route handlers ────────────────────────────────────────────────────────
 
-  Router _buildRouter() {
-    final router = Router();
+  /// WebSocket upgrade handler for `/ws`.
+  /// Browser sends AUTH message with session token; token validated via
+  /// [WebSessionService]. No HMAC required — token possession = auth.
+  Handler _wsHandler() => webSocketHandler(
+        (WebSocketChannel channel, String? _) {
+          if (_webDeviceName == null || _webSchemaVersion == null) {
+            channel.sink.close();
+            return;
+          }
+          // Dispose any existing session (one browser at a time).
+          _activeSession?.dispose();
+          final session = WebBrowserSession(
+            channel:       channel,
+            validateToken: WebSessionService.instance.validateAndConsume,
+            onWrite:       _webOnWrite ?? (_, _p) async {},
+            schemaVersion: _webSchemaVersion!,
+            deviceName:    _webDeviceName!,
+          );
+          _activeSession = session;
+          session.attach();
+          WebSessionService.instance.activeSession = session;
+        },
+        allowedOrigins: const ['*'],
+      );
 
-    /// Handshake — no auth required. Returns a JSON object so the caller can
-    /// verify this is a KashCube node before attempting to pair.
-    router.get('/hello', _helloHandler);
-
-    /// Back-pair notification — no HMAC auth (peer is not yet in our DB).
-    /// Caller proves knowledge of the shared secret via a proof field.
-    router.post('/pair', _pairHandlerRoute);
-
-    /// Pull: requester asks for all rows in [table] after [afterVersion].
-    router.post('/sync/pull', _pullHandlerRoute);
-
-    /// Push: requester sends rows for [table] that the server should merge.
-    router.post('/sync/push', _pushHandlerRoute);
-
-    return router;
+  /// Returns a shelf handler that lazily extracts `assets/web_ui/` to a temp
+  /// directory and serves it with `shelf_static`.
+  ///
+  /// CORS header is added so same-origin WebSocket handshake works correctly
+  /// even on strict browser security policies.
+  Handler _buildStaticHandler() {
+    Handler? cached;
+    return (Request request) async {
+      if (cached == null) {
+        try {
+          final path = await WebUiExtractor.instance.getExtractedPath();
+          cached = createStaticHandler(
+            path,
+            defaultDocument: 'index.html',
+            serveFilesOutsidePath: false,
+          );
+        } catch (e) {
+          debugPrint('[P2P] Static handler init error: $e');
+          return Response.internalServerError(
+            body: 'Web UI not available: $e',
+          );
+        }
+      }
+      final response = await cached!(request);
+      // Add CORS for the static web UI (browser same-origin allows /ws).
+      return response.change(headers: {
+        ...response.headers,
+        'Access-Control-Allow-Origin': '*',
+      });
+    };
   }
 
   Response _helloHandler(Request request) {
@@ -170,13 +274,10 @@ class P2pServer {
   // ── HMAC middleware ───────────────────────────────────────────────────────
 
   /// Rejects requests that are missing or have invalid HMAC signatures.
-  /// The /hello route is exempt (no shared secret needed for discovery).
+  /// Only applied to the sync router — open and static routes bypass it.
   Middleware _hmacMiddleware() {
     return (Handler inner) {
       return (Request request) async {
-        if (request.url.path == 'hello') return inner(request);
-        if (request.url.path == 'pair')  return inner(request);
-
         final identityId = request.headers['x-kash-id'];
         final signature  = request.headers['x-kash-sig'];
         final timestamp  = request.headers['x-kash-ts'];

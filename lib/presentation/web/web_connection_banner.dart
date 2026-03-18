@@ -57,7 +57,7 @@ class _DisconnectedBanner extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                'Disconnected from phone. Showing last synced data.',
+                'Disconnected. Open KashCube on your phone, then reconnect.',
                 style: context.textTheme.bodySmall?.copyWith(
                   color: context.colorScheme.onErrorContainer,
                 ),

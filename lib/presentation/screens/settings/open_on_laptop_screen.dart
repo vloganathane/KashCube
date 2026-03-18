@@ -126,6 +126,10 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
             const SizedBox(height: AppSpacing.xl),
             _InfoRow(
+              icon: Icons.phone_android_outlined,
+              label: 'Keep KashCube open on your phone while using the browser view',
+            ),
+            _InfoRow(
               icon: Icons.timer_outlined,
               label: 'QR expires in 5 minutes — tap ↻ to refresh',
             ),

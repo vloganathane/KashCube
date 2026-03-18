@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/peer_device.dart';
@@ -60,8 +61,13 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
       );
       await registerP2pSyncTask();
       if (mounted) state = true;
-    } catch (e) {
-      // Non-fatal — coordinator may already be running or mDNS unavailable.
+    } catch (e, s) {
+      debugPrint('[P2P] enable() failed: $e\n$s');
+      // If the HTTP server is actually bound, mark as enabled despite the
+      // error (e.g. mDNS registration failure after server started).
+      if (mounted && P2pCoordinator.instance.serverPort != null) {
+        state = true;
+      }
     }
   }
 

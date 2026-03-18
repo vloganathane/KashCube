@@ -186,17 +186,29 @@ class P2pCoordinator {
     final port = P2pServer.instance.port!;
 
     // Broadcast presence and start scanning for peers.
-    await P2pDiscoveryService.instance.startBroadcast(
-      identityId:   _identityId!,
-      displayName:  displayName,
-      port:         port,
-      businessName: businessName,
-    );
+    // mDNS is best-effort: on some platforms (macOS sandbox, restricted
+    // networks) Bonjour multicast may be unavailable.  A failure here
+    // must not prevent the HTTP server from being used — e.g. for the
+    // Web Companion or manual-IP pairing.
+    try {
+      await P2pDiscoveryService.instance.startBroadcast(
+        identityId:   _identityId!,
+        displayName:  displayName,
+        port:         port,
+        businessName: businessName,
+      );
+    } catch (e) {
+      debugPrint('[P2pCoordinator] mDNS broadcast unavailable (non-fatal): $e');
+    }
 
-    await P2pDiscoveryService.instance.startDiscovery(
-      localIdentityId: _identityId!,
-      onTrusted:       _isTrustedPeer,
-    );
+    try {
+      await P2pDiscoveryService.instance.startDiscovery(
+        localIdentityId: _identityId!,
+        onTrusted:       _isTrustedPeer,
+      );
+    } catch (e) {
+      debugPrint('[P2pCoordinator] mDNS discovery unavailable (non-fatal): $e');
+    }
 
     // React when the peer list changes.
     _peerSub = P2pDiscoveryService.instance.peersStream.listen(

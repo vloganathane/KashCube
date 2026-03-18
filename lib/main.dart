@@ -69,9 +69,11 @@ class KashCubeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Activate the scheduler so notifications stay in sync with upcoming items.
-    ref.watch(notificationSchedulerProvider);
+    // Skip on web — flutter_local_notifications and timezone db are mobile-only.
+    if (!kIsWeb) ref.watch(notificationSchedulerProvider);
     // Initialise Play Billing so the subscription listener is live from startup.
-    ref.watch(iapServiceProvider);
+    // Skip on web — in_app_purchase is Android/iOS only.
+    if (!kIsWeb) ref.watch(iapServiceProvider);
 
     return MaterialApp(
       title: 'Kash Cube',

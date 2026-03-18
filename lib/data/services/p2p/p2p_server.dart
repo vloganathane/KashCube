@@ -278,6 +278,13 @@ class P2pServer {
   Middleware _hmacMiddleware() {
     return (Handler inner) {
       return (Request request) async {
+        // Only enforce HMAC for /sync/* — let everything else fall through so
+        // that Cascade can continue to the static web-UI handler.
+        final path = '/${request.url.path}';
+        if (!path.startsWith('/sync/')) {
+          return inner(request);
+        }
+
         final identityId = request.headers['x-kash-id'];
         final signature  = request.headers['x-kash-sig'];
         final timestamp  = request.headers['x-kash-ts'];

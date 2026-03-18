@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -344,34 +344,43 @@ class _YourQrTabState extends State<_YourQrTab> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xl),
-          Container(
-            decoration: BoxDecoration(
-              color:        Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.base),
-              boxShadow: [
-                BoxShadow(
-                  color:      Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final qrSize = (constraints.maxWidth - AppSpacing.base * 2)
+                  .clamp(200.0, 320.0);
+              return Container(
+                decoration: BoxDecoration(
+                  color:        Colors.white,
+                  borderRadius: BorderRadius.circular(AppSpacing.base),
+                  boxShadow: [
+                    BoxShadow(
+                      color:      Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.all(AppSpacing.base),
-            child: QrImageView(
-              data:            payload,
-              version:         QrVersions.auto,
-              size:            220,
-              backgroundColor: Colors.white,
-              eyeStyle: QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color:    context.colorScheme.primary,
-              ),
-              dataModuleStyle: QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color:           Colors.black87,
-              ),
-            ),
+                padding: const EdgeInsets.all(AppSpacing.base),
+                child: QrImageView(
+                  data:                 payload,
+                  version:              QrVersions.auto,
+                  size:                 qrSize,
+                  errorCorrectionLevel: QrErrorCorrectLevel.L,
+                  backgroundColor:      Colors.white,
+                  eyeStyle: QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color:    context.colorScheme.primary,
+                  ),
+                  dataModuleStyle: QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color:           Colors.black87,
+                  ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.md),
+          _QrUrlRow(url: payload),
+          const SizedBox(height: AppSpacing.base),
           _InfoRow(
             icon:  Icons.privacy_tip_outlined,
             label: 'Data never leaves your local network',
@@ -603,6 +612,73 @@ class _ErrorStep extends StatelessWidget {
           child: const Text('Try Again'),
         ),
       ],
+    );
+  }
+}
+
+// ── QR URL row ────────────────────────────────────────────────────────────
+
+/// Shows the raw QR payload URL with a copy button.
+/// Helps verify QR data and acts as a manual fallback if scanning fails.
+class _QrUrlRow extends StatefulWidget {
+  const _QrUrlRow({required this.url});
+  final String url;
+  @override
+  State<_QrUrlRow> createState() => _QrUrlRowState();
+}
+
+class _QrUrlRowState extends State<_QrUrlRow> {
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: widget.url));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (mounted) setState(() => _copied = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color:        context.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(AppSpacing.sm),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical:   AppSpacing.xs,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              widget.url,
+              style: context.textTheme.labelSmall?.copyWith(
+                fontFamily: 'monospace',
+                color:      context.colorScheme.onSurfaceVariant,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          IconButton(
+            icon: Icon(
+              _copied ? Icons.check : Icons.copy_outlined,
+              size: 16,
+              color: _copied
+                  ? context.colorScheme.primary
+                  : context.colorScheme.onSurfaceVariant,
+            ),
+            tooltip:  'Copy QR URL',
+            onPressed: _copy,
+            visualDensity: VisualDensity.compact,
+            padding:       EdgeInsets.zero,
+            constraints:   const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
     );
   }
 }

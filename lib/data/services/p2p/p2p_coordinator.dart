@@ -650,4 +650,22 @@ class P2pCoordinator {
 
     return peer;
   }
+
+  /// Revokes trust for [peerIdentityId]:
+  ///   - Sets `is_active = 0` in `trusted_peers`
+  ///   - Removes from the in-memory cache (stops future syncs immediately)
+  ///   - Deletes all `sync_watermarks` so a fresh full-sync runs if re-paired
+  Future<void> revokePeer(String peerIdentityId) async {
+    final db = _db ?? await DatabaseHelper.instance.database;
+    await db.rawUpdate(
+      'UPDATE trusted_peers SET is_active = 0 WHERE peer_identity_id = ?',
+      [peerIdentityId],
+    );
+    await db.rawDelete(
+      'DELETE FROM sync_watermarks WHERE peer_identity_id = ?',
+      [peerIdentityId],
+    );
+    _trustedPeerIds.remove(peerIdentityId);
+    debugPrint('[P2pCoordinator] Revoked trust for $peerIdentityId');
+  }
 }

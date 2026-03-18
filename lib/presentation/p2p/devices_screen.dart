@@ -153,7 +153,7 @@ class DevicesScreen extends ConsumerWidget {
 
 // ── Trusted peer tile ──────────────────────────────────────────────────
 
-class _TrustedPeerTile extends StatelessWidget {
+class _TrustedPeerTile extends ConsumerWidget {
   const _TrustedPeerTile({required this.peer});
 
   final TrustedPeer peer;
@@ -168,8 +168,46 @@ class _TrustedPeerTile extends StatelessWidget {
     return 'Synced ${DateFormat('d MMM').format(dt)}';
   }
 
+  Future<void> _confirmRevoke(BuildContext context, WidgetRef ref) async {
+    final name = peer.peerName ?? 'this device';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove device?'),
+        content: Text(
+          '$name will no longer be able to sync with this device. '
+          'Your existing data is not affected.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: ctx.colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await P2pCoordinator.instance.revokePeer(peer.peerIdentityId);
+    ref.invalidate(trustedPeersProvider);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$name removed'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.kashColors;
     return ListTile(
       leading: CircleAvatar(
@@ -185,11 +223,43 @@ class _TrustedPeerTile extends StatelessWidget {
               : context.colorScheme.onSurfaceVariant,
         ),
       ),
-      trailing: Text(
-        'Paired ${DateFormat('d MMM').format(peer.pairedAt)}',
-        style: context.textTheme.bodySmall?.copyWith(
-          color: context.colorScheme.onSurfaceVariant,
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Paired ${DateFormat('d MMM').format(peer.pairedAt)}',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              size: 18,
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+            tooltip: 'Device options',
+            onSelected: (v) {
+              if (v == 'revoke') _confirmRevoke(context, ref);
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'revoke',
+                child: Row(
+                  children: [
+                    Icon(Icons.link_off,
+                        size: 18, color: context.colorScheme.error),
+                    const SizedBox(width: AppSpacing.sm),
+                    Text(
+                      'Revoke access',
+                      style: TextStyle(color: context.colorScheme.error),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -364,7 +434,7 @@ class _DiagnosticsPanel extends ConsumerWidget {
     final ip   = ipAsync.valueOrNull;
     final port = P2pCoordinator.instance.serverPort;
     final addressLine = [
-      if (ip   != null) ip,
+      ?ip,
       if (port != null) 'port $port',
     ].join('  ');
 

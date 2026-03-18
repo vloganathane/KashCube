@@ -256,11 +256,13 @@ class EncryptedBackupService {
 
     debugPrint('[EncBackup] Assembled file: $totalLen bytes');
 
-    // 8. Write to documents dir
+    // 8. Write to exports/ subdir (excluded from Android Auto Backup)
     final appDir = await getApplicationDocumentsDirectory();
+    final exportsDir = Directory(p.join(appDir.path, 'exports'));
+    await exportsDir.create(recursive: true);
     final timestamp =
         DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
-    final outFile = File(p.join(appDir.path, 'kash_cube_$timestamp.kashcube'));
+    final outFile = File(p.join(exportsDir.path, 'kash_cube_$timestamp.kashcube'));
     await outFile.writeAsBytes(output.takeBytes());
 
     // Record last backup date

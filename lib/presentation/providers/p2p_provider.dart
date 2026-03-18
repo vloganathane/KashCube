@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/peer_device.dart';
+import '../../data/models/trusted_peer.dart';
 import '../../data/services/action_center_background_service.dart';
 import '../../data/services/database_helper.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
@@ -15,8 +16,24 @@ final p2pPeersProvider = StreamProvider<List<PeerDevice>>((ref) =>
     P2pDiscoveryService.instance.peersStream);
 
 /// Current coordinator status (phase, peer name, progress message).
-final p2pSyncStatusProvider = StreamProvider<SyncStatus>((ref) =>
-    P2pCoordinator.instance.statusStream);
+/// Immediately yields [P2pCoordinator.currentStatus] so the UI never
+/// stays in the loading state when the screen is (re-)opened after a sync.
+final p2pSyncStatusProvider = StreamProvider<SyncStatus>((ref) async* {
+  yield P2pCoordinator.instance.currentStatus;
+  yield* P2pCoordinator.instance.statusStream;
+});
+
+/// All active trusted (paired) peers, ordered newest-first.
+/// Invalidate with [ref.invalidate(trustedPeersProvider)] after pairing.
+final trustedPeersProvider = FutureProvider<List<TrustedPeer>>((ref) async {
+  final db = await DatabaseHelper.instance.database;
+  final rows = await db.query(
+    'trusted_peers',
+    where: 'is_active = 1',
+    orderBy: 'paired_at DESC',
+  );
+  return rows.map(TrustedPeer.fromMap).toList();
+});
 
 // ── Enabled toggle (starts / stops the coordinator) ────────────────────────
 

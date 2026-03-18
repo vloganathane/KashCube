@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../data/models/peer_device.dart';
+import '../../data/models/trusted_peer.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../providers/p2p_provider.dart';
 import 'pair_screen.dart';
@@ -17,9 +18,10 @@ class DevicesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final enabled       = ref.watch(p2pEnabledProvider);
-    final peersAsync    = ref.watch(p2pPeersProvider);
-    final statusAsync   = ref.watch(p2pSyncStatusProvider);
+    final enabled          = ref.watch(p2pEnabledProvider);
+    final peersAsync        = ref.watch(p2pPeersProvider);
+    final statusAsync       = ref.watch(p2pSyncStatusProvider);
+    final trustedPeersAsync = ref.watch(trustedPeersProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -64,6 +66,35 @@ class DevicesScreen extends ConsumerWidget {
             data:    (s) => _SyncStatusBanner(status: s),
             loading: () => const SizedBox.shrink(),
             error:   (_, _) => const SizedBox.shrink(),
+          ),
+
+          // ── Paired devices ─────────────────────────────────────────────
+          trustedPeersAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error:   (_, _) => const SizedBox.shrink(),
+            data: (peers) {
+              if (peers.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.base, AppSpacing.lg,
+                      AppSpacing.base, AppSpacing.sm,
+                    ),
+                    child: Text(
+                      'PAIRED DEVICES',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  ...peers.map((p) => _TrustedPeerTile(peer: p)),
+                  const Divider(height: 1),
+                ],
+              );
+            },
           ),
 
           // ── Peer list ──────────────────────────────────────────────────
@@ -111,6 +142,50 @@ class DevicesScreen extends ConsumerWidget {
         ),
         icon:  const Icon(Icons.qr_code_scanner),
         label: const Text('Pair Device'),
+      ),
+    );
+  }
+}
+
+// ── Trusted peer tile ──────────────────────────────────────────────────
+
+class _TrustedPeerTile extends StatelessWidget {
+  const _TrustedPeerTile({required this.peer});
+
+  final TrustedPeer peer;
+
+  String _ago(DateTime? dt) {
+    if (dt == null) return 'Never synced';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inSeconds < 60)  return 'Synced just now';
+    if (diff.inMinutes < 60)  return 'Synced ${diff.inMinutes}m ago';
+    if (diff.inHours   < 24)  return 'Synced ${diff.inHours}h ago';
+    if (diff.inDays    < 30)  return 'Synced ${diff.inDays}d ago';
+    return 'Synced ${DateFormat('d MMM').format(dt)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.kashColors;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: colors.incomeBackground,
+        child: Icon(Icons.devices, color: colors.income, size: 20),
+      ),
+      title: Text(peer.peerName ?? 'Unknown Device'),
+      subtitle: Text(
+        _ago(peer.lastSyncedAt),
+        style: TextStyle(
+          color: peer.lastSyncedAt != null
+              ? colors.income
+              : context.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      trailing: Text(
+        'Paired ${DateFormat('d MMM').format(peer.pairedAt)}',
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }

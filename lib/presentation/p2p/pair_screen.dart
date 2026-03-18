@@ -8,9 +8,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
+import '../../data/services/identity_service.dart';
 import '../../data/services/p2p/p2p_auth_service.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../providers/identity_provider.dart';
+import '../providers/p2p_provider.dart';
 import '../providers/settings_provider.dart';
 import 'pairing_state.dart';
 
@@ -122,8 +124,8 @@ class _PairScreenState extends ConsumerState<PairScreen>
     _setPhase(const PairingState(phase: PairingPhase.validating));
 
     try {
-      final identity = await ref.read(identityServiceProvider.future);
-      final localPubKeyBytes = base64.decode(identity.identityPublicKeyBase64);
+      await ref.read(identityInitProvider.future);
+      final localPubKeyBytes = base64.decode(IdentityService.instance.identityPublicKeyBase64);
       final remotePubKeyBytes = base64.decode(peerPublicKeyBase64);
 
       final sharedSecret = await P2pAuthService.instance.deriveSharedSecret(
@@ -151,7 +153,11 @@ class _PairScreenState extends ConsumerState<PairScreen>
 
       // Auto-pop after a short celebration pause.
       await Future<void>.delayed(const Duration(seconds: 2));
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        // Refresh the paired devices list on the Devices screen.
+        ref.invalidate(trustedPeersProvider);
+        Navigator.pop(context);
+      }
     } catch (e) {
       _setPhase(PairingState(
         phase:        PairingPhase.error,
@@ -175,7 +181,7 @@ class _PairScreenState extends ConsumerState<PairScreen>
 
   @override
   Widget build(BuildContext context) {
-    final identityAsync = ref.watch(identityServiceProvider);
+    final identityAsync = ref.watch(identityInitProvider);
     final settingsRepo  = ref.read(settingsRepositoryProvider);
 
     return Scaffold(
@@ -198,8 +204,8 @@ class _PairScreenState extends ConsumerState<PairScreen>
               identityAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error:   (e, _) => Center(child: Text('$e')),
-                data:    (identity) => _YourQrTab(
-                  identity:    identity,
+                data:    (_) => _YourQrTab(
+                  identity:    IdentityService.instance,
                   settingsRepo: settingsRepo,
                 ),
               ),

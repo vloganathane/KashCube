@@ -5,6 +5,7 @@ import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
 import 'data/services/action_center_background_service.dart';
+import 'data/services/database_helper.dart';
 import 'data/services/db_factory.dart';
 import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
@@ -111,6 +112,13 @@ class _LockGateState extends ConsumerState<_LockGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused && !kIsWeb) {
+      // Checkpoint WAL before the app is backgrounded so Android Auto Backup
+      // always captures a fully-consistent main DB file (not a partial WAL).
+      DatabaseHelper.instance.withDatabase(
+        (db) => db.rawQuery('PRAGMA wal_checkpoint(PASSIVE)'),
+      );
+    }
     if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
       // Evict stale/excess PDFs whenever the app comes back to foreground.
       // PdfCacheManager uses getTemporaryDirectory() — unavailable on web.

@@ -106,6 +106,9 @@ class P2pDiscoveryService {
     );
 
     await _discovery!.start();
+    // Immediately emit the current (empty) peer list so StreamProvider
+    // subscribers exit the loading state even when no peers are nearby yet.
+    _emit();
     debugPrint('[P2P] Discovery started');
   }
 

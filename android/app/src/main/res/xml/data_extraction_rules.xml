@@ -15,13 +15,23 @@
     <cloud-backup>
         <exclude domain="file" path="images/" />
         <exclude domain="file" path="pdfs/" />
+        <exclude domain="file" path="backups/" />
+        <exclude domain="file" path="exports/" />
         <exclude domain="database" path="kash_cube_prev.db" />
         <exclude domain="database" path="kash_cube_before_restore.db" />
+        <exclude domain="database" path="kash_cube.db-wal" />
+        <exclude domain="database" path="kash_cube.db-shm" />
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="images/" />
         <exclude domain="file" path="pdfs/" />
+        <exclude domain="file" path="backups/" />
+        <exclude domain="file" path="exports/" />
         <exclude domain="database" path="kash_cube_prev.db" />
         <exclude domain="database" path="kash_cube_before_restore.db" />
+        <exclude domain="database" path="kash_cube.db-wal" />
+        <exclude domain="database" path="kash_cube.db-shm" />
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
     </device-transfer>
 </data-extraction-rules>

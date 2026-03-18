@@ -10,12 +10,24 @@
     - kash_cube_archive_FY*.db  (year-end archives created by closing wizard)
 
   EXCLUDED (to stay under the 25 MB Android Auto Backup limit):
-    - images/                   — user-importable; can be large
-    - pdfs/                     — ephemeral PDFs; always re-generatable from DB
-    - kash_cube_prev.db         — rolling daily snapshot; not needed in backup
-    - kash_cube_before_restore.db — pre-restore safety copy; temporary
+    - images/                      — user-importable; can be large
+    - pdfs/                        — ephemeral PDFs; always re-generatable from DB
+    - kash_cube_prev.db            — rolling daily snapshot; not needed in backup
+    - kash_cube_before_restore.db  — pre-restore safety copy; temporary
+    - backups/                     — manual .db backups (1–5 MB each); would exhaust
+                                     the 25 MB quota and silently disable Auto Backup
+    - exports/                     — encrypted .kashcube export files; user shares
+                                     these manually, no need to include in cloud backup
+    - kash_cube.db-wal             — WAL shadow file; backed up non-atomically with the
+                                     main DB → exclude so only the checkpointed main
+                                     file is restored (SQLite starts clean on restore)
+    - kash_cube.db-shm             — shared-memory index; meaningless without the WAL
+    - FlutterSecureStorage.xml     — AES keys are hardware-bound (Android Keystore);
+                                     they are NOT backed up, so restoring the encrypted
+                                     prefs file produces an unreadable blob and causes
+                                     identity/key regeneration on first launch
 
-  Typical sizes:
+  Typical sizes (excluding the above):
     kash_cube.db            1–5 MB
     archive_FY*.db          1–5 MB each (one per year)
     Total (5-year history)  ~25 MB — within Android's limit
@@ -23,6 +35,11 @@
 <full-backup-content>
     <exclude domain="file" path="images/" />
     <exclude domain="file" path="pdfs/" />
+    <exclude domain="file" path="backups/" />
+    <exclude domain="file" path="exports/" />
     <exclude domain="database" path="kash_cube_prev.db" />
     <exclude domain="database" path="kash_cube_before_restore.db" />
+    <exclude domain="database" path="kash_cube.db-wal" />
+    <exclude domain="database" path="kash_cube.db-shm" />
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
 </full-backup-content>

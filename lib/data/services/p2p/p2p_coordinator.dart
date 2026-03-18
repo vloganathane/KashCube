@@ -114,7 +114,22 @@ class P2pCoordinator {
   /// Live stream of coordinator status for the Devices UI screen.
   Stream<SyncStatus> get statusStream => _statusController.stream;
 
+  /// The most recently emitted [SyncStatus] — replayed to new subscribers
+  /// so the UI shows the correct state when the screen is (re-)opened.
+  SyncStatus _currentStatus = const SyncStatus(phase: SyncPhase.idle);
+  SyncStatus get currentStatus => _currentStatus;
+
   bool get isRunning => _running;
+
+  /// Loads the Ed25519 private key seed from [IdentityService] — used as a
+  /// fallback in [pairWithPeer] when the coordinator has not been started yet.
+  Future<Uint8List> _loadDeviceKeyBytes() async {
+    final seedB64 = await IdentityService.instance.exportIdentityPrivateKeySeed();
+    if (seedB64 == null) {
+      throw StateError('[P2pCoordinator] Identity key not found — ensure identity is initialized before pairing.');
+    }
+    return Uint8List.fromList(base64.decode(seedB64));
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -497,6 +512,7 @@ class P2pCoordinator {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   void _emit(SyncStatus status) {
+    _currentStatus = status;
     if (!_statusController.isClosed) {
       _statusController.add(status);
     }
@@ -533,9 +549,14 @@ class P2pCoordinator {
     String? businessId,
   }) async {
     final db = _db ?? await DatabaseHelper.instance.database;
+
+    // Load key bytes lazily — coordinator may not have been start()ed yet
+    // (e.g., user pairs with LAN Sync toggled off).
+    final keyBytes = _deviceKeyBytes ?? await _loadDeviceKeyBytes();
+
     final enc = await P2pAuthService.instance.encryptSecret(
       rawSecret: sharedSecret,
-      deviceKey: _deviceKeyBytes!,
+      deviceKey: keyBytes,
     );
     final peer = TrustedPeer(
       peerIdentityId:  peerIdentityId,

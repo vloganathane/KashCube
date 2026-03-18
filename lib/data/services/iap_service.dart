@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -78,6 +79,14 @@ class IapService {
     if (_initialised) return;
     _initialised = true;
     _tierNotifier = tierNotifier;
+
+    // IAP uses Google Play Billing — only available on Android.
+    // On macOS/iOS/web, StoreKit would fire storekit_no_response because
+    // products are not registered in App Store Connect.
+    if (!kIsWeb && !Platform.isAndroid) {
+      debugPrint('[IAP] Skipping IAP init — Google Play only (current platform: ${Platform.operatingSystem})');
+      return;
+    }
 
     _isAvailable = await _iap.isAvailable();
     if (!_isAvailable) {

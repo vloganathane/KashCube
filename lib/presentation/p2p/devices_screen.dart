@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -96,6 +97,9 @@ class DevicesScreen extends ConsumerWidget {
               );
             },
           ),
+
+          // ── Diagnostics (tap to expand) ──────────────────────────────────
+          if (enabled) const _DiagnosticsPanel(),
 
           // ── Peer list ──────────────────────────────────────────────────
           Padding(
@@ -342,4 +346,105 @@ class _PeerTile extends StatelessWidget {
 String _fmtTs(DateTime? dt) {
   if (dt == null) return 'Never';
   return DateFormat('d MMM, h:mm a').format(dt.toLocal());
+}
+
+// ── Diagnostics panel ──────────────────────────────────────────────────────
+
+/// Collapsible section showing the local server address and a live mDNS
+/// event log.  Tap "Diagnostics" to expand, tap the copy icon to copy the
+/// full log to the clipboard for sharing.
+class _DiagnosticsPanel extends ConsumerWidget {
+  const _DiagnosticsPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logAsync = ref.watch(p2pDiscoveryLogProvider);
+    final ipAsync  = ref.watch(p2pLocalIpProvider);
+
+    final ip   = ipAsync.valueOrNull;
+    final port = P2pCoordinator.instance.serverPort;
+    final addressLine = [
+      if (ip   != null) ip,
+      if (port != null) 'port $port',
+    ].join('  ');
+
+    final log = logAsync.valueOrNull ?? const [];
+
+    return ExpansionTile(
+      leading: Icon(
+        Icons.bug_report_outlined,
+        color: context.colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        'Diagnostics',
+        style: context.textTheme.bodyMedium,
+      ),
+      subtitle: Text(
+        addressLine.isEmpty ? 'Starting…' : addressLine,
+        style: context.textTheme.bodySmall?.copyWith(
+          fontFamily: 'monospace',
+          color: context.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+      childrenPadding: const EdgeInsets.fromLTRB(
+        AppSpacing.base, 0, AppSpacing.base, AppSpacing.base,
+      ),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                log.isEmpty ? 'No events yet' : '${log.length} event(s)',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy_outlined, size: 18),
+              tooltip: 'Copy log',
+              onPressed: () {
+                final text = log.reversed.join('\n');
+                Clipboard.setData(ClipboardData(
+                  text: '--- KashCube P2P Log ---\n'
+                      'Server: $addressLine\n\n$text',
+                ));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Log copied to clipboard'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        if (log.isNotEmpty) ...[
+          const Divider(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: context.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: log.reversed.take(25).map(
+                (e) => Text(
+                  e,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    fontFamily: 'monospace',
+                    color: context.colorScheme.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ).toList(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

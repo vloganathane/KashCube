@@ -122,6 +122,9 @@ class P2pCoordinator {
 
   bool get isRunning => _running;
 
+  /// Port the embedded HTTP server is listening on (null when not running).
+  int? get serverPort => P2pServer.instance.port;
+
   /// Loads the Ed25519 private key seed from [IdentityService] — used as a
   /// fallback in [pairWithPeer] when the coordinator has not been started yet.
   Future<Uint8List> _loadDeviceKeyBytes() async {

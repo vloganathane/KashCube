@@ -35,6 +35,17 @@ class P2pDiscoveryService {
   final _peers = <String, PeerDevice>{};
   final _peersController = StreamController<List<PeerDevice>>.broadcast();
 
+  // Diagnostic event log — last 50 entries, newest at end.
+  static const _kMaxLogEntries = 50;
+  final _logEntries = <String>[];
+  final _logController = StreamController<List<String>>.broadcast();
+
+  /// Live stream of discovery/broadcast events for the diagnostics panel.
+  Stream<List<String>> get logStream => _logController.stream;
+
+  /// Current snapshot of the event log (newest at end).
+  List<String> get currentLog => List.unmodifiable(_logEntries);
+
   /// Live stream of currently visible peers on the LAN.
   Stream<List<PeerDevice>> get peersStream => _peersController.stream;
 
@@ -73,14 +84,14 @@ class P2pDiscoveryService {
     _broadcast = BonsoirBroadcast(service: service);
     await _broadcast!.ready;
     await _broadcast!.start();
-    debugPrint('[P2P] Broadcasting on port $port as "$displayName"');
+    _logEvent('BROADCAST started  name="$displayName"  port=$port');
   }
 
   Future<void> stopBroadcast() async {
     if (_broadcast != null) {
       await _broadcast!.stop();
       _broadcast = null;
-      debugPrint('[P2P] Broadcast stopped');
+      _logEvent('BROADCAST stopped');
     }
   }
 
@@ -109,7 +120,7 @@ class P2pDiscoveryService {
     // Immediately emit the current (empty) peer list so StreamProvider
     // subscribers exit the loading state even when no peers are nearby yet.
     _emit();
-    debugPrint('[P2P] Discovery started');
+    _logEvent('DISCOVERY started  type=$_kServiceType');
   }
 
   Future<void> stopDiscovery() async {
@@ -118,7 +129,7 @@ class P2pDiscoveryService {
       _discovery = null;
       _peers.clear();
       _emit();
-      debugPrint('[P2P] Discovery stopped');
+      _logEvent('DISCOVERY stopped');
     }
   }
 
@@ -132,6 +143,7 @@ class P2pDiscoveryService {
     switch (event.type) {
       case BonsoirDiscoveryEventType.discoveryServiceFound:
         // Trigger resolution to get IP + TXT records.
+        _logEvent('FOUND  name="${event.service?.name}"  (resolving…)');
         event.service?.resolve(_discovery!.serviceResolver);
 
       case BonsoirDiscoveryEventType.discoveryServiceResolved:
@@ -147,7 +159,7 @@ class P2pDiscoveryService {
         final id = event.service?.attributes[_kKeyIdentityId];
         if (id != null && _peers.remove(id) != null) {
           _emit();
-          debugPrint('[P2P] Peer lost: $id');
+          _logEvent('LOST  id=$id');
         }
 
       default:
@@ -163,7 +175,10 @@ class P2pDiscoveryService {
     final attrs      = service.attributes;
     final identityId = attrs[_kKeyIdentityId];
     if (identityId == null) return;        // malformed record
-    if (identityId == localIdentityId) return; // our own broadcast
+    if (identityId == localIdentityId) {
+      _logEvent('SKIPPED self  id=$identityId');
+      return;
+    }
 
     final host = service.host ?? '';
     if (host.isEmpty) return; // not yet resolved
@@ -180,7 +195,7 @@ class P2pDiscoveryService {
 
     _peers[identityId] = peer;
     _emit();
-    debugPrint('[P2P] Peer found/updated: $identityId @ $host:${service.port}');
+    _logEvent('RESOLVED  id=$identityId  name="${peer.displayName}"  addr=$host:${service.port}  trusted=${peer.isTrusted}');
   }
 
   void _emit() {
@@ -190,6 +205,37 @@ class P2pDiscoveryService {
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
+
+  /// Records a diagnostic log entry, forwards it to [logStream], and
+  /// calls [debugPrint] so it also appears in the IDE / adb logcat.
+  void _logEvent(String message) {
+    final n  = DateTime.now();
+    final ts = '${n.hour.toString().padLeft(2, '0')}:'
+        '${n.minute.toString().padLeft(2, '0')}:'
+        '${n.second.toString().padLeft(2, '0')}';
+    final entry = '$ts  $message';
+    _logEntries.add(entry);
+    if (_logEntries.length > _kMaxLogEntries) _logEntries.removeAt(0);
+    if (!_logController.isClosed) {
+      _logController.add(List.unmodifiable(_logEntries));
+    }
+    debugPrint('[P2P] $message');
+  }
+
+  /// Returns the first non-loopback IPv4 address of this device, or null.
+  static Future<String?> getLocalIp() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+      );
+      for (final iface in interfaces) {
+        for (final addr in iface.addresses) {
+          if (!addr.isLoopback) return addr.address;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 
   /// Returns the OS-level device name using device_info_plus.
   static Future<String> getDeviceName() async {
@@ -213,5 +259,6 @@ class P2pDiscoveryService {
     stopBroadcast();
     stopDiscovery();
     _peersController.close();
+    _logController.close();
   }
 }

@@ -77,3 +77,15 @@ final p2pEnabledProvider =
     StateNotifierProvider<P2pEnabledNotifier, bool>(
   (ref) => P2pEnabledNotifier(ref),
 );
+
+// ── Diagnostics ─────────────────────────────────────────────────────────────
+
+/// Live mDNS event log — replays current entries then streams updates.
+final p2pDiscoveryLogProvider = StreamProvider<List<String>>((ref) async* {
+  yield P2pDiscoveryService.instance.currentLog;
+  yield* P2pDiscoveryService.instance.logStream;
+});
+
+/// Local IPv4 address of this device (null if unavailable).
+final p2pLocalIpProvider = FutureProvider<String?>((ref) =>
+    P2pDiscoveryService.getLocalIp());

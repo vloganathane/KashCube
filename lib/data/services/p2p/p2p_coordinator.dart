@@ -229,8 +229,11 @@ class P2pCoordinator {
 
   void _onPeersChanged(List<PeerDevice> peers) {
     for (final peer in peers) {
-      if (!peer.isTrusted)      continue;
-      if (!peer.isReachable)    continue;
+      // Use the live in-memory set, not the stale flag set at discovery time.
+      // This ensures newly-paired peers sync immediately without waiting for
+      // the next mDNS event to re-resolve and re-set isTrusted.
+      if (!_isTrustedPeer(peer.identityId)) continue;
+      if (!peer.isReachable)                continue;
       if (_activeSyncs.contains(peer.identityId)) continue;
       _syncWithPeer(peer); // fire and forget — errors caught internally
     }
@@ -582,7 +585,7 @@ class P2pCoordinator {
   Future<void> syncNow() async {
     if (!_running) return;
     final peers = P2pDiscoveryService.instance.currentPeers
-        .where((p) => p.isTrusted && p.isReachable)
+        .where((p) => _isTrustedPeer(p.identityId) && p.isReachable)
         .toList();
     for (final p in peers) {
       if (!_activeSyncs.contains(p.identityId)) {
@@ -627,6 +630,21 @@ class P2pCoordinator {
     // Update in-memory cache so subsequent discoveries mark this peer trusted.
     _trustedPeerIds.add(peerIdentityId);
     debugPrint('[P2pCoordinator] Paired with $peerDisplayName ($peerIdentityId)');
+
+    // If the coordinator is already running and this peer is visible on the
+    // LAN right now, kick off an immediate sync cycle.  This sends the
+    // back-pair notification without waiting for the next mDNS event.
+    if (_running) {
+      for (final p in P2pDiscoveryService.instance.currentPeers) {
+        if (p.identityId == peerIdentityId &&
+            p.isReachable &&
+            !_activeSyncs.contains(peerIdentityId)) {
+          _syncWithPeer(p);
+          break;
+        }
+      }
+    }
+
     return peer;
   }
 }

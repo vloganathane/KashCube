@@ -96,6 +96,7 @@ class P2pCoordinator {
 
   Database? _db;
   String?   _identityId;
+  String?   _displayName;
   Uint8List? _deviceKeyBytes; // Ed25519 seed — used to decrypt stored peer secrets
 
   bool _running = false;
@@ -148,7 +149,8 @@ class P2pCoordinator {
     if (_running) return;
     _running = true;
     _db = db;
-    _identityId = identity.identityId;
+    _identityId  = identity.identityId;
+    _displayName = displayName;
 
     _emit(const SyncStatus(phase: SyncPhase.starting, message: 'Starting P2P sync…'));
 
@@ -163,9 +165,10 @@ class P2pCoordinator {
 
     // Start the HTTP server — provides pull/push endpoints for remote peers.
     await P2pServer.instance.start(
-      secretForPeer: _secretForPeer,
-      onPull:        _handlePull,
-      onPush:        _handlePush,
+      secretForPeer:  _secretForPeer,
+      onPull:         _handlePull,
+      onPush:         _handlePush,
+      onPairRequest:  _handlePairRequest,
     );
 
     final port = P2pServer.instance.port!;
@@ -260,6 +263,14 @@ class P2pCoordinator {
         baseUrl:      peer.baseUrl,
         identityId:   _identityId!,
         sharedSecret: secret,
+      );
+
+      // Send a back-pair notification so the peer stores us as a trusted
+      // device if it hasn't already (makes pairing bidirectional).
+      await client.pair(
+        myIdentityId:      _identityId!,
+        myPublicKeyBase64: IdentityService.instance.identityPublicKeyBase64,
+        myDisplayName:     _displayName ?? 'KashCube',
       );
 
       // Confirm it's still a KashCube server.
@@ -517,7 +528,49 @@ class P2pCoordinator {
       _statusController.add(status);
     }
   }
+  /// Handles a back-pair request from [identityId].
+  ///
+  /// Derives the shared secret from our own pubkey + their pubkey, verifies
+  /// the HMAC proof, then stores them as a trusted peer.
+  /// Idempotent: returns true immediately if we already trust this peer.
+  Future<bool> _handlePairRequest(
+    String identityId,
+    String peerPublicKeyBase64,
+    String displayName,
+    String proof,
+  ) async {
+    // Already trusted — idempotent.
+    if (_isTrustedPeer(identityId)) return true;
 
+    try {
+      final myPubKeyBytes     = base64.decode(IdentityService.instance.identityPublicKeyBase64);
+      final peerPubKeyBytes   = base64.decode(peerPublicKeyBase64);
+      final sharedSecret      = await P2pAuthService.instance.deriveSharedSecret(
+        localPubKey:  Uint8List.fromList(myPubKeyBytes),
+        remotePubKey: Uint8List.fromList(peerPubKeyBytes),
+      );
+
+      final expectedProof = P2pAuthService.instance.signPairProof(
+        sharedSecret:     sharedSecret,
+        senderIdentityId: identityId,
+      );
+      if (expectedProof != proof) {
+        debugPrint('[P2pCoordinator] Back-pair rejected — invalid proof from $identityId');
+        return false;
+      }
+
+      await pairWithPeer(
+        peerIdentityId:  identityId,
+        peerDisplayName: displayName,
+        sharedSecret:    sharedSecret,
+      );
+      debugPrint('[P2pCoordinator] Back-paired with $displayName ($identityId)');
+      return true;
+    } catch (e) {
+      debugPrint('[P2pCoordinator] Back-pair error from $identityId: $e');
+      return false;
+    }
+  }
   // ── Public utility ────────────────────────────────────────────────────────
 
   /// Returns a read-only list of all currently discovered peers.

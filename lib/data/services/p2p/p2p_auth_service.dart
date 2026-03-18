@@ -114,6 +114,19 @@ class P2pAuthService {
 
   // ── 3. Request signing (HMAC-SHA256) ─────────────────────────────────────
 
+  /// Creates a proof that the caller knows [sharedSecret].
+  /// Used in the back-pair notification so the receiver can verify the sender
+  /// is legitimate before storing them as a trusted peer.
+  ///
+  /// proof = HMAC-SHA256(sharedSecret, "kc-pair:" + senderIdentityId)
+  String signPairProof({
+    required Uint8List sharedSecret,
+    required String senderIdentityId,
+  }) {
+    final hmac = pkg_crypto.Hmac(pkg_crypto.sha256, sharedSecret);
+    return hmac.convert(utf8.encode('kc-pair:$senderIdentityId')).toString();
+  }
+
   /// Computes the `X-Kash-Sig` header value for an outgoing request.
   ///
   /// Signed string: `"$method\n$path\n$timestampIso\n$bodyHash"`

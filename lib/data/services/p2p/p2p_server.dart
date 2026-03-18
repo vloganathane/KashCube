@@ -36,6 +36,8 @@ class P2pServer {
       _pullHandler;
   Future<void> Function(String table, List<Map<String, dynamic>> rows)?
       _pushHandler;
+  Future<bool> Function(String identityId, String publicKeyBase64,
+      String displayName, String proof)? _pairHandler;
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -54,12 +56,16 @@ class P2pServer {
     required Future<void> Function(
             String table, List<Map<String, dynamic>> rows)
         onPush,
+    required Future<bool> Function(String identityId, String publicKeyBase64,
+            String displayName, String proof)
+        onPairRequest,
   }) async {
     if (_server != null) return;
 
     _secretForPeer = secretForPeer;
     _pullHandler   = onPull;
     _pushHandler   = onPush;
+    _pairHandler   = onPairRequest;
 
     final router = _buildRouter();
 
@@ -91,6 +97,10 @@ class P2pServer {
     /// verify this is a KashCube node before attempting to pair.
     router.get('/hello', _helloHandler);
 
+    /// Back-pair notification — no HMAC auth (peer is not yet in our DB).
+    /// Caller proves knowledge of the shared secret via a proof field.
+    router.post('/pair', _pairHandlerRoute);
+
     /// Pull: requester asks for all rows in [table] after [afterVersion].
     router.post('/sync/pull', _pullHandlerRoute);
 
@@ -103,6 +113,27 @@ class P2pServer {
   Response _helloHandler(Request request) {
     return Response.ok(
       jsonEncode({'app': 'kashcube', 'proto': 1}),
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  Future<Response> _pairHandlerRoute(Request request) async {
+    final body        = await _readBody(request);
+    final identityId  = body['identity_id']  as String?;
+    final publicKey   = body['public_key']   as String?;
+    final displayName = body['display_name'] as String? ?? 'Unknown Device';
+    final proof       = body['proof']        as String?;
+
+    if (identityId == null || publicKey == null || proof == null) {
+      return Response(400, body: jsonEncode({'error': 'missing fields'}));
+    }
+
+    final accepted = await _pairHandler!(identityId, publicKey, displayName, proof);
+    if (!accepted) {
+      return Response(403, body: jsonEncode({'error': 'invalid proof'}));
+    }
+    return Response.ok(
+      jsonEncode({'ok': true}),
       headers: {'content-type': 'application/json'},
     );
   }
@@ -144,6 +175,7 @@ class P2pServer {
     return (Handler inner) {
       return (Request request) async {
         if (request.url.path == 'hello') return inner(request);
+        if (request.url.path == 'pair')  return inner(request);
 
         final identityId = request.headers['x-kash-id'];
         final signature  = request.headers['x-kash-sig'];

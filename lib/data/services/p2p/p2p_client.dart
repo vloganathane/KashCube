@@ -102,6 +102,43 @@ class P2pClient {
     }
   }
 
+  /// Sends a back-pair notification to the peer so the peer also stores us
+  /// as a trusted device (making pairing bidirectional).
+  ///
+  /// [myIdentityId]     This device's identity UUID.
+  /// [myPublicKeyBase64] This device's Ed25519 public key (base64).
+  /// [myDisplayName]    Human-readable name to show on the peer's device.
+  ///
+  /// Returns true if the peer accepted (200) or already knew us (200/already).
+  Future<bool> pair({
+    required String myIdentityId,
+    required String myPublicKeyBase64,
+    required String myDisplayName,
+  }) async {
+    final proof = P2pAuthService.instance.signPairProof(
+      sharedSecret:     _sharedSecret,
+      senderIdentityId: myIdentityId,
+    );
+    try {
+      final uri     = Uri.parse('$baseUrl/pair');
+      final bodyMap = {
+        'identity_id':  myIdentityId,
+        'public_key':   myPublicKeyBase64,
+        'display_name': myDisplayName,
+        'proof':        proof,
+      };
+      final bodyBytes   = utf8.encode(jsonEncode(bodyMap));
+      final req         = await _httpClient.postUrl(uri);
+      req.headers.contentType = ContentType.json;
+      req.add(bodyBytes);
+      final resp = await req.close();
+      return resp.statusCode == 200;
+    } catch (e) {
+      debugPrint('[P2P] pair() notification failed: $e');
+      return false;
+    }
+  }
+
   /// Frees the underlying [HttpClient].
   void dispose() => _httpClient.close(force: true);
 

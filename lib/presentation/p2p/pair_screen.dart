@@ -10,7 +10,9 @@ import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../data/services/identity_service.dart';
 import '../../data/services/p2p/p2p_auth_service.dart';
+import '../../data/services/p2p/p2p_client.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
+import '../../data/services/p2p/p2p_discovery_service.dart';
 import '../providers/identity_provider.dart';
 import '../providers/p2p_provider.dart';
 import '../providers/settings_provider.dart';
@@ -18,39 +20,53 @@ import 'pairing_state.dart';
 
 // ── QR payload helpers ─────────────────────────────────────────────────────
 
-/// Builds the JSON string that this device broadcasts as its pairing QR.
+/// Builds the URI string embedded in the pairing QR code.
 ///
-/// Fields consumed by the peer:
-///  - `app`  — "kashcube" (guard against foreign QR codes)
-///  - `v`    — payload version (currently 1)
-///  - `id`   — identity_id UUID
-///  - `pk`   — base64 Ed25519 public key
-///  - `name` — display name shown to the peer
+/// Format:  `kashcube://<ip>:<port>?id=<uuid>&pk=<base64>&name=<display>`
+///
+/// Example:
+///   kashcube://192.168.1.5:54321?id=67b5f0fe-...&pk=VzRqWl...&name=Loganathane+V
+///
+/// If [ip]/[port] are unavailable (LAN Sync not yet started), falls back to
+///   `kashcube://0.0.0.0:0?id=...`  — peer will skip direct back-pair and
+/// wait for mDNS resolution instead.
 String _buildQrPayload({
   required String identityId,
   required String publicKeyBase64,
   required String displayName,
-}) =>
-    jsonEncode({
-      'app':  'kashcube',
-      'v':    1,
+  String? ip,
+  int?    port,
+}) {
+  final uri = Uri(
+    scheme: 'kashcube',
+    host:   ip   ?? '0.0.0.0',
+    port:   port ?? 0,
+    queryParameters: {
       'id':   identityId,
       'pk':   publicKeyBase64,
       'name': displayName,
-    });
+    },
+  );
+  return uri.toString();
+}
 
-/// Parses a raw QR string produced by [_buildQrPayload].
+/// Parses a QR string produced by [_buildQrPayload].
 ///
-/// Returns null if the string is not a valid KashCube pairing QR.
-({String id, String pk, String name})? _parseQrPayload(String raw) {
+/// Accepts the current `kashcube://` URI scheme.
+/// Returns null for any unrecognised QR code.
+/// [ip] and [port] are null when the host is `0.0.0.0` / port is `0`
+/// (LAN Sync was off when the QR was generated — mDNS fallback applies).
+({String id, String pk, String name, String? ip, int? port})? _parseQrPayload(String raw) {
   try {
-    final m = jsonDecode(raw) as Map<String, dynamic>;
-    if (m['app'] != 'kashcube') return null;
-    final id   = m['id']   as String?;
-    final pk   = m['pk']   as String?;
-    final name = (m['name'] as String?) ?? 'Unknown Device';
+    final uri = Uri.parse(raw.trim());
+    if (uri.scheme != 'kashcube') return null;
+    final id   = uri.queryParameters['id'];
+    final pk   = uri.queryParameters['pk'];
+    final name = uri.queryParameters['name'] ?? 'Unknown Device';
     if (id == null || pk == null) return null;
-    return (id: id, pk: pk, name: name);
+    final ip   = (uri.host.isNotEmpty && uri.host != '0.0.0.0') ? uri.host : null;
+    final port = (uri.port > 0) ? uri.port : null;
+    return (id: id, pk: pk, name: name, ip: ip, port: port);
   } catch (_) {
     return null;
   }
@@ -110,7 +126,8 @@ class _PairScreenState extends ConsumerState<PairScreen>
     if (parsed == null) return; // ignore non-KashCube QR
     _scanHandled = true;
     _scannerController.stop();
-    _performPairing(parsed.id, parsed.pk, parsed.name);
+    _performPairing(parsed.id, parsed.pk, parsed.name,
+        peerIp: parsed.ip, peerPort: parsed.port);
   }
 
   // ── Pairing flow ──────────────────────────────────────────────────────
@@ -118,14 +135,16 @@ class _PairScreenState extends ConsumerState<PairScreen>
   Future<void> _performPairing(
     String peerIdentityId,
     String peerPublicKeyBase64,
-    String peerDisplayName,
-  ) async {
+    String peerDisplayName, {
+    String? peerIp,
+    int?    peerPort,
+  }) async {
     // Step 1 — Validate
     _setPhase(const PairingState(phase: PairingPhase.validating));
 
     try {
       await ref.read(identityInitProvider.future);
-      final localPubKeyBytes = base64.decode(IdentityService.instance.identityPublicKeyBase64);
+      final localPubKeyBytes  = base64.decode(IdentityService.instance.identityPublicKeyBase64);
       final remotePubKeyBytes = base64.decode(peerPublicKeyBase64);
 
       final sharedSecret = await P2pAuthService.instance.deriveSharedSecret(
@@ -145,7 +164,34 @@ class _PairScreenState extends ConsumerState<PairScreen>
         sharedSecret:    sharedSecret,
       );
 
-      // Step 3 — Success
+      // Step 3 — If the QR contained a direct address, immediately notify
+      // the peer so it stores us as trusted (back-pair over direct IP).
+      // This works even when mDNS discovery hasn't resolved the peer yet.
+      if (peerIp != null && peerPort != null) {
+        final client = P2pClient(
+          baseUrl:      'http://$peerIp:$peerPort',
+          identityId:   IdentityService.instance.identityId,
+          sharedSecret: sharedSecret,
+        );
+        try {
+          // Read our own display name so the peer shows it correctly.
+          final myName = await ref.read(settingsRepositoryProvider)
+              .get(SettingsKeys.ownerName);
+          await client.pair(
+            myIdentityId:      IdentityService.instance.identityId,
+            myPublicKeyBase64: IdentityService.instance.identityPublicKeyBase64,
+            myDisplayName: (myName == null || myName.trim().isEmpty)
+                ? 'KashCube'
+                : myName.trim(),
+          );
+        } catch (_) {
+          // Non-fatal — back-pair will retry when mDNS resolves the peer.
+        } finally {
+          client.dispose();
+        }
+      }
+
+      // Step 4 — Success
       _setPhase(PairingState(
         phase:    PairingPhase.success,
         peerName: peerDisplayName,
@@ -256,6 +302,8 @@ class _YourQrTabState extends State<_YourQrTab> {
 
   Future<void> _buildPayload() async {
     final name = await (widget.settingsRepo.get(SettingsKeys.ownerName) as Future<String?>);
+    final ip   = await P2pDiscoveryService.getLocalIp();
+    final port = P2pCoordinator.instance.serverPort;
     if (!mounted) return;
     setState(() {
       _qrPayload = _buildQrPayload(
@@ -264,6 +312,8 @@ class _YourQrTabState extends State<_YourQrTab> {
         displayName:     (name == null || name.trim().isEmpty)
             ? 'KashCube'
             : name.trim(),
+        ip:   ip,
+        port: port,
       );
     });
   }

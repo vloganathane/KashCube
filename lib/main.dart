@@ -177,7 +177,7 @@ class _LockGateState extends ConsumerState<_LockGate>
   Widget build(BuildContext context) {
 
     // Listen for switch-user requests from anywhere in the app.
-    ref.listen<int>(switchUserProvider, (_, __) {
+    ref.listen<int>(switchUserProvider, (_, _) {
       ref.read(activeAppUserProvider.notifier).state = null;
       setState(() => _ownerChosen = false);
     });

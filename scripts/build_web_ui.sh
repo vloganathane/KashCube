@@ -24,6 +24,11 @@ echo "▶ Copying to assets/web_ui/…"
 rm -rf assets/web_ui
 cp -r build/web assets/web_ui
 
+# The Flutter web build bundles assets/web_ui/ itself (because it's registered
+# in pubspec.yaml), creating a nested assets/assets/web_ui/ copy inside the
+# output. Remove it to break the recursion and keep the bundle lean.
+rm -rf assets/web_ui/assets/assets/web_ui
+
 echo "▶ Generating file manifest…"
 find assets/web_ui -type f \
   | sed "s|assets/web_ui/||" \

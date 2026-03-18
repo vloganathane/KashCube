@@ -86,9 +86,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.initState();
     // Kick off SMS listener after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initSmsListener();
+      if (!kIsWeb) {
+        _initSmsListener();
+        _initDeepLinks();
+      }
       _processRecurringTransactions();
-      _initDeepLinks();
     });
   }
 

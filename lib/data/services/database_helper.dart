@@ -112,6 +112,7 @@ class DatabaseHelper {
   /// Copies the database to a `_prev.db` file once per calendar day,
   /// after a passed integrity check. Used as a last-resort recovery snapshot.
   Future<void> _maybeSnapshot(Database db, String dbPath) async {
+    if (kIsWeb) return; // No file system access on web.
     try {
       final stem = dbPath.substring(0, dbPath.lastIndexOf('.'));
       final prevPath = '${stem}_prev.db';

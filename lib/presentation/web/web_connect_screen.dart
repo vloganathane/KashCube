@@ -44,36 +44,15 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
   void _tryAutoConnect() {
     if (_triedAutoConnect) return;
     _triedAutoConnect = true;
-    final token = url_reader.getInitialToken();
-    if (token == null || !kIsWeb) return;
+    if (!kIsWeb) return;
 
-    // Build ws:// from the current browser location.
-    try {
-      final params = url_reader.getUrlParams();
-      final wsUrl  = _buildWsUrl(params);
-      if (wsUrl != null) {
-        ref.read(webSyncProvider.notifier).connect(wsUrl, token);
-      }
-    } catch (_) {}
-  }
+    final token  = url_reader.getInitialToken();
+    final origin = url_reader.getOrigin(); // 'http://192.168.1.8:60567'
+    if (token == null || origin == null) return;
 
-  String? _buildWsUrl(Map<String, String> params) {
-    // This only runs on web — window.location.host gives us ip:port.
-    // Parsed via conditional import.
-    try {
-      final token = params['token'];
-      if (token == null) return null;
-      // window.location.host is available via web_url_reader_web.dart
-      // but since we need the raw value we re-parse the href.
-      final params2 = url_reader.getUrlParams();
-      if (params2.isEmpty) return null;
-      // Flutter Web: window.location is something like http://192.168.x.x:port
-      // We replace http with ws.
-      // dart:html is only available on web — we use the web package here.
-      return null; // fallback: user enters URL manually
-    } catch (_) {
-      return null;
-    }
+    // Replace http(s) with ws(s) and append /ws path.
+    final wsUrl = origin.replaceFirst(RegExp(r'^http'), 'ws') + '/ws';
+    ref.read(webSyncProvider.notifier).connect(wsUrl, token);
   }
 
   Future<void> _connectManual() async {

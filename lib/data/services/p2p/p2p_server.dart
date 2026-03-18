@@ -179,7 +179,7 @@ class P2pServer {
           session.attach();
           WebSessionService.instance.activeSession = session;
         },
-        allowedOrigins: const ['*'],
+        allowedOrigins: null, // allow all origins — server is local-only
       );
 
   /// Returns a shelf handler that lazily extracts `assets/web_ui/` to a temp

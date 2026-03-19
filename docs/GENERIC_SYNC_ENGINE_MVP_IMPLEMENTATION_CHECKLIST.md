@@ -4,9 +4,13 @@
 Build a generic web-companion sync engine so browser state becomes an exact mirror of phone data (subject to local-only safety exclusions), without hardcoded per-table sync lists.
 
 Current baseline:
-- DB version: `69`
+- DB version: `70`
 - Existing sync foundation: `sync_outbox`, `sync_watermarks`, `trusted_peers`
 - Current implementation uses hardcoded table arrays and provider invalidation lists.
+
+Progress snapshot:
+- Phase 0 scaffolding: in place
+- Startup discovery logs: in place (phone + web)
 
 ---
 
@@ -117,17 +121,17 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 ## Exact Task Breakdown Per File
 
 ## 1) `lib/core/constants/app_constants.dart`
-- [ ] Bump `dbVersion` from `69` to `70`.
+- [x] Bump `dbVersion` from `69` to `70`.
 
 ## 2) `lib/data/services/database_helper.dart`
-- [ ] Add `if (oldVersion < 70)` migration block.
-- [ ] Execute the v70 SQL for `sync_table_state` + indexes.
-- [ ] Insert `schema_version` row for version `70`.
-- [ ] Keep migration idempotent (`IF NOT EXISTS` + guarded inserts).
+- [x] Add `if (oldVersion < 70)` migration block.
+- [x] Execute the v70 SQL for `sync_table_state` + indexes.
+- [x] Insert `schema_version` row for version `70`.
+- [x] Keep migration idempotent (`IF NOT EXISTS` + guarded inserts).
 
 ## 3) `lib/data/services/database_helper_tables.dart`
-- [ ] Add `sync_table_state` creation SQL inside `_createSyncAndIdentityTables`.
-- [ ] Add both indexes for `sync_table_state`.
+- [x] Add `sync_table_state` creation SQL inside `_createSyncAndIdentityTables`.
+- [x] Add both indexes for `sync_table_state`.
 
 ## 4) `lib/data/services/p2p/p2p_coordinator.dart`
 - [ ] Remove hardcoded `_webMirrorTables` usage.
@@ -161,17 +165,17 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [ ] Keep current behavior for existing p0/p2p tables unchanged where equivalent.
 
 ## 9) New file: `lib/data/services/sync/sync_table_registry.dart`
-- [ ] Discover table names via `sqlite_master`.
-- [ ] Cache table columns via `PRAGMA table_info`.
-- [ ] Apply denylist + mode/key policy.
-- [ ] Generate `schema_fingerprint` per table.
-- [ ] Expose read API used by phone and browser sync code.
+- [x] Discover table names via `sqlite_master`.
+- [x] Cache table columns via `PRAGMA table_info`.
+- [x] Apply denylist + mode/key policy.
+- [x] Generate `schema_fingerprint` per table.
+- [x] Expose read API used by phone and browser sync code.
 
 ## 10) New file: `lib/data/services/sync/sync_table_state_store.dart`
-- [ ] Read/write `sync_table_state` rows.
-- [ ] Upsert state atomically.
-- [ ] Reset state if schema fingerprint changes.
-- [ ] Provide helper APIs for watermark/cursor updates.
+- [x] Read/write `sync_table_state` rows.
+- [x] Upsert state atomically.
+- [x] Reset state if schema fingerprint changes.
+- [x] Provide helper APIs for watermark/cursor updates.
 
 ## 11) Optional new file: `lib/data/services/sync/generic_sync_query_builder.dart`
 - [ ] Build mode-specific SQL for outbound/inbound selection.
@@ -198,12 +202,12 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 ## Rollout Plan (Low Risk)
 
 ## Phase 0 — Instrument only
-- [ ] Build registry and state-store, no behavior change.
-- [ ] Log discovered table plan once at startup.
+- [x] Build registry and state-store, no behavior change.
+- [x] Log discovered table plan once at startup.
 
 ## Phase 1 — Dual read comparison
-- [ ] Generic engine computes candidate rows in parallel with current engine.
-- [ ] Compare counts and first/last keys in debug logs.
+- [ ] Generic engine computes candidate rows in parallel with current engine. *(next)*
+- [ ] Compare counts and first/last keys in debug logs. *(next)*
 
 ## Phase 2 — Generic outbound behind feature flag
 - [ ] Enable phone→web generic path via local flag.
@@ -231,3 +235,10 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [ ] Final denylist confirmation (security-sensitive tables).
 - [ ] Snapshot mode frequency for huge tables (event-driven only vs periodic).
 - [ ] Whether to include `my_identity` in mirror (business requirement vs security).
+
+---
+
+## Completed Commits
+- `9fd02e0` — feat(sync): stabilize web companion sync and add generic engine MVP checklist
+- `5fd783a` — feat(sync): add v70 generic sync discovery/state scaffolding
+- `02bfe9e` — chore(sync): log discovered generic sync plans at startup

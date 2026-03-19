@@ -19,52 +19,6 @@ import 'p2p_discovery_service.dart';
 import 'p2p_merge_service.dart';
 import 'p2p_server.dart';
 
-// ── Syncable tables — ordered by FK dependency tree ──────────────────────────
-
-/// Tables that participate in P2P LAN sync, in the order they must be synced.
-///
-/// Parent tables appear before child tables to respect FK constraints.
-/// Note: integer FK columns (e.g. `invoices.quote_id`) reference the remote
-/// device's local PK — this is a known limitation of integer-PK-based FK sync.
-/// FK violations are caught per-row and retried on the next sync cycle.
-const _syncableTables = [
-  // Root tables (no FK deps on other syncable tables)
-  'businesses',
-  'parties',
-  'accounts',
-  'categories',
-  'item_catalog',
-  'budgets',
-  // Mid-level tables
-  'transactions',
-  'credits',
-  'loans',
-  'scheduled_payments',
-  'purchase_bills',
-  'credit_payments',
-  // Quotes before invoices (invoices.quote_id → quotes.id)
-  'quotes',
-  'invoices',
-];
-
-// Tables mirrored to active Web Companion session.
-const _webMirrorTables = [
-  'transactions',
-  'credits',
-  'loans',
-  'parties',
-  'accounts',
-  'categories',
-  'budgets',
-  'invoices',
-  'quotes',
-  'businesses',
-  'purchase_bills',
-  'item_catalog',
-  'scheduled_payments',
-  'credit_payments',
-];
-
 const _genericOutboundEnabled = bool.fromEnvironment(
   'KASHCUBE_SYNC_GENERIC_OUTBOUND',
   defaultValue: false,
@@ -399,7 +353,13 @@ class P2pCoordinator {
 
       final allResults = <MergeResult>[];
 
-      for (final table in _syncableTables) {
+      var syncTables = _peerSyncTables();
+      if (syncTables.isEmpty) {
+        await _logDiscoveredSyncPlans(db);
+        syncTables = _peerSyncTables();
+      }
+
+      for (final table in syncTables) {
         try {
           final result = await _syncTable(
             db:         db,
@@ -499,17 +459,56 @@ class P2pCoordinator {
     int afterEpochMs,
   ) async {
     try {
-      if (afterEpochMs == 0) {
-        // First sync — send everything that isn't deleted.
-        return await db.rawQuery(
-          'SELECT * FROM $table WHERE deleted_at IS NULL LIMIT 500',
-        );
+      final columns = await _getTableColumns(db, table);
+      final hasUpdatedAt = columns.contains('updated_at');
+      final hasCreatedAt = columns.contains('created_at');
+      final hasDeletedAt = columns.contains('deleted_at');
+
+      String sqlUtcExpr(String expr) {
+        return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
       }
+
+      if (afterEpochMs == 0) {
+        final where = hasDeletedAt ? ' WHERE deleted_at IS NULL' : '';
+        return await db.rawQuery('SELECT * FROM $table$where LIMIT 500');
+      }
+
+      if (!hasUpdatedAt && !hasCreatedAt) {
+        return [];
+      }
+
       final cutoff = DateTime.fromMillisecondsSinceEpoch(afterEpochMs, isUtc: true)
           .toIso8601String();
+      final where = <String>[];
+      final args = <Object?>[];
+
+      if (hasUpdatedAt && hasCreatedAt) {
+        where.add("${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
+        args.add(cutoff);
+      } else if (hasUpdatedAt) {
+        where.add("${sqlUtcExpr('updated_at')} > julianday(?)");
+        args.add(cutoff);
+      } else if (hasCreatedAt) {
+        where.add("${sqlUtcExpr('created_at')} > julianday(?)");
+        args.add(cutoff);
+      }
+
+      if (hasDeletedAt) {
+        where.add('deleted_at IS NULL');
+      }
+
+      final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
+      final orderBy = hasUpdatedAt && hasCreatedAt
+          ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
+          : hasUpdatedAt
+              ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
+              : hasCreatedAt
+                  ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
+                  : '';
+
       return await db.rawQuery(
-        'SELECT * FROM $table WHERE updated_at > ? LIMIT 500',
-        [cutoff],
+        'SELECT * FROM $table$whereSql$orderBy LIMIT 500',
+        args,
       );
     } catch (e) {
       debugPrint('[P2pCoordinator] queryLocalChanges($table): $e');
@@ -736,7 +735,7 @@ class P2pCoordinator {
         return;
       }
 
-      for (final table in _webMirrorTables) {
+      for (final table in _webMirrorTables()) {
         try {
           final lastPushedAt = _webLastPushedAt[table];
           final legacyRows = await _queryWebDeltaRows(
@@ -846,6 +845,24 @@ class P2pCoordinator {
     final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
 
     return db.rawQuery(sql, args);
+  }
+
+  List<String> _peerSyncTables() {
+    final tables = _webSyncPlans.values
+        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .map((plan) => plan.tableName)
+        .toList()
+      ..sort();
+    return tables;
+  }
+
+  List<String> _webMirrorTables() {
+    final tables = _webSyncPlans.values
+        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .map((plan) => plan.tableName)
+        .toList()
+      ..sort();
+    return tables;
   }
 
   Future<void> _compareLegacyAndGenericWebDelta({

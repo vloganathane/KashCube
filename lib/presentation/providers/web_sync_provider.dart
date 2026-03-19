@@ -11,15 +11,6 @@ import '../../data/services/database_helper.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync_event_bus.dart';
 
-// ── Tables synced from phone on connect ───────────────────────────────────
-// Must match the whitelist in WebBrowserSession._queryRows().
-const _pullTables = [
-  'transactions', 'credits', 'loans', 'parties', 'accounts',
-  'categories', 'budgets', 'invoices', 'quotes', 'businesses',
-  'purchase_bills', 'item_catalog', 'scheduled_payments',
-  'credit_payments',
-];
-
 const _genericOutboundEnabled = bool.fromEnvironment(
   'KASHCUBE_SYNC_GENERIC_OUTBOUND',
   defaultValue: false,
@@ -44,7 +35,7 @@ class WebSyncState {
   /// Tables that have received their final ROWS frame from the phone.
   final Set<String> syncedTables;
 
-  /// True once every table in [_pullTables] has received is_final: true.
+  /// True once every discovered pull table has received is_final: true.
   final bool syncComplete;
 
   WebSyncState copyWith({
@@ -88,6 +79,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Set<String> _genericMissingPlanLogged = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, Set<String>> _tableColumnsCache = {};
+  Set<String> _pullTables = const <String>{};
 
   Future<void> connect(String wsUrl, String token) async {
     if (state.state == WsConnState.connecting ||
@@ -122,20 +114,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
         case 'AUTH_OK':
-          final now = DateTime.now().toUtc();
-          for (final table in _pullTables) {
-            _outboundLastSentAt[table] = now;
-          }
-          state = state.copyWith(
-            state:        WsConnState.connected,
-            deviceName:   msg['device_name'] as String?,
-            syncedTables: {},
-            syncComplete: false,
-            errorMsg:     '',
-          );
-          unawaited(_logDiscoveredSyncPlans());
-          _pullAllTables();
-          _startWriteLoop();
+          unawaited(_handleAuthOk(msg));
           break;
         case 'AUTH_FAIL':
           state = state.copyWith(
@@ -166,6 +145,27 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
   }
 
+  Future<void> _handleAuthOk(Map<String, dynamic> msg) async {
+    await _logDiscoveredSyncPlans();
+
+    final now = DateTime.now().toUtc();
+    _outboundLastSentAt.clear();
+    for (final table in _outboundTables()) {
+      _outboundLastSentAt[table] = now;
+    }
+
+    state = state.copyWith(
+      state:        WsConnState.connected,
+      deviceName:   msg['device_name'] as String?,
+      syncedTables: {},
+      syncComplete: _pullTables.isEmpty,
+      errorMsg:     '',
+    );
+
+    _pullAllTables();
+    _startWriteLoop();
+  }
+
   /// Sends PULL requests for all whitelisted tables after AUTH_OK.
   /// No `since` filter — in-memory DB starts empty on every browser load.
   void _pullAllTables() {
@@ -183,6 +183,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       _syncPlans
         ..clear()
         ..addEntries(plans.map((p) => MapEntry(p.tableName, p)));
+      _pullTables = plans.map((p) => p.tableName).toSet();
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
       final deltaVersion =
           plans.where((p) => p.mode == SyncMode.deltaVersion).length;
@@ -214,7 +215,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     if (isFinal) {
       final updated = {...state.syncedTables, table};
-      final done    = _pullTables.every(updated.contains);
+      final done = _pullTables.every(updated.contains);
       state = state.copyWith(
         syncedTables: updated,
         syncComplete: done,
@@ -257,7 +258,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     try {
       final db = await DatabaseHelper.instance.database;
-      for (final table in _pullTables) {
+      for (final table in _outboundTables()) {
         final legacyRows = await _queryOutboundRows(
           db: db,
           table: table,
@@ -323,6 +324,15 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     } finally {
       _writeLoopInFlight = false;
     }
+  }
+
+  List<String> _outboundTables() {
+    final tables = _syncPlans.values
+        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .map((plan) => plan.tableName)
+        .toList()
+      ..sort();
+    return tables;
   }
 
   Future<List<Map<String, dynamic>>> _queryOutboundRows({
@@ -546,6 +556,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _syncEventSub?.cancel();
     _syncEventSub = null;
     _syncPlans.clear();
+    _pullTables = const <String>{};
     _comparisonModeSkipped.clear();
     _genericModeFallbackLogged.clear();
     _genericMissingPlanLogged.clear();

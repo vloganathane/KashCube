@@ -218,7 +218,7 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Keep fallback for legacy merge route.
 
 ## Phase 4 — Remove hardcoded lists
-- [ ] Delete static table arrays from coordinator/provider/session once parity confirmed.
+- [x] Delete static table arrays from coordinator/provider/session once parity confirmed.
 
 ---
 

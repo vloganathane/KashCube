@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../database_helper.dart';
+import '../sync/sync_table_registry.dart';
 
 /// Manages a single browser's WebSocket session.
 ///
@@ -40,6 +41,7 @@ class WebBrowserSession {
   StreamSubscription<dynamic>? _sub;
   bool _disposed = false;
   final Map<String, Set<String>> _tableColumnsCache = {};
+  final Map<String, SyncTablePlan> _syncPlans = {};
 
   static const _pingInterval = Duration(seconds: 25);
   Timer? _pingTimer;
@@ -190,14 +192,8 @@ class WebBrowserSession {
     String table,
     String? since,
   ) async {
-    // Whitelist allowed tables — never allow arbitrary table names from browser.
-    const allowed = {
-      'transactions', 'credits', 'loans', 'parties', 'accounts',
-      'categories', 'budgets', 'invoices', 'quotes', 'businesses',
-      'purchase_bills', 'item_catalog', 'scheduled_payments',
-      'credit_payments',
-    };
-    if (!allowed.contains(table)) {
+    await _ensureSyncPlans(db);
+    if (!_syncPlans.containsKey(table)) {
       debugPrint('[WebSession] Pull rejected for disallowed table: $table');
       return [];
     }
@@ -231,6 +227,19 @@ class WebBrowserSession {
     } catch (e) {
       debugPrint('[WebSession] Query error on $table: $e');
       return [];
+    }
+  }
+
+  Future<void> _ensureSyncPlans(Database db) async {
+    if (_syncPlans.isNotEmpty) return;
+
+    try {
+      final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
+      _syncPlans
+        ..clear()
+        ..addEntries(plans.map((p) => MapEntry(p.tableName, p)));
+    } catch (e) {
+      debugPrint('[WebSession] Failed to discover sync plans: $e');
     }
   }
 

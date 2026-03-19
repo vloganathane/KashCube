@@ -65,6 +65,11 @@ const _webMirrorTables = [
   'credit_payments',
 ];
 
+const _genericOutboundEnabled = bool.fromEnvironment(
+  'KASHCUBE_SYNC_GENERIC_OUTBOUND',
+  defaultValue: false,
+);
+
 // ── SyncStatus ────────────────────────────────────────────────────────────────
 
 /// Phase of the sync coordinator lifecycle.
@@ -131,6 +136,8 @@ class P2pCoordinator {
   final Map<String, DateTime> _webLastPushedAt = {};
   final Map<String, SyncTablePlan> _webSyncPlans = {};
   final Set<String> _webComparisonModeSkipped = {};
+  final Set<String> _webGenericModeFallbackLogged = {};
+  final Set<String> _webGenericMissingPlanLogged = {};
 
   // Cache table columns for schema-aware web delta queries.
   final Map<String, Set<String>> _tableColumnsCache = {};
@@ -298,6 +305,8 @@ class P2pCoordinator {
     _webLastPushedAt.clear();
     _webSyncPlans.clear();
     _webComparisonModeSkipped.clear();
+    _webGenericModeFallbackLogged.clear();
+    _webGenericMissingPlanLogged.clear();
     _tableColumnsCache.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
@@ -721,7 +730,7 @@ class P2pCoordinator {
       for (final table in _webMirrorTables) {
         try {
           final lastPushedAt = _webLastPushedAt[table];
-          final rows = await _queryWebDeltaRows(
+          final legacyRows = await _queryWebDeltaRows(
             db: db,
             table: table,
             since: lastPushedAt,
@@ -730,8 +739,39 @@ class P2pCoordinator {
             db: db,
             table: table,
             since: lastPushedAt,
-            legacyRows: rows,
+            legacyRows: legacyRows,
           );
+
+          var rows = legacyRows;
+          if (_genericOutboundEnabled) {
+            final plan = _webSyncPlans[table];
+            if (plan == null) {
+              if (_webGenericMissingPlanLogged.add(table)) {
+                debugPrint(
+                  '[SyncSwitch][Phone] table=$table generic=off reason=missing_plan fallback=legacy',
+                );
+              }
+            } else if (plan.mode == SyncMode.deltaTs) {
+              rows = await _queryGenericDeltaTsRows(
+                db: db,
+                table: table,
+                plan: plan,
+                since: lastPushedAt,
+              );
+              if (rows.length != legacyRows.length) {
+                debugPrint(
+                  '[SyncSwitch][Phone] table=$table generic_rows=${rows.length} legacy_rows=${legacyRows.length}',
+                );
+              }
+            } else {
+              if (_webGenericModeFallbackLogged.add(table)) {
+                debugPrint(
+                  '[SyncSwitch][Phone] table=$table generic=off reason=mode_${plan.mode.name} fallback=legacy',
+                );
+              }
+            }
+          }
+
           if (rows.isEmpty) {
             continue;
           }

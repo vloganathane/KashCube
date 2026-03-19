@@ -20,6 +20,11 @@ const _pullTables = [
   'credit_payments',
 ];
 
+const _genericOutboundEnabled = bool.fromEnvironment(
+  'KASHCUBE_SYNC_GENERIC_OUTBOUND',
+  defaultValue: false,
+);
+
 // ── WebSocket connection state ─────────────────────────────────────────────
 
 enum WsConnState { disconnected, connecting, connected }
@@ -79,6 +84,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   bool _registrySnapshotLogged = false;
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Set<String> _comparisonModeSkipped = {};
+  final Set<String> _genericModeFallbackLogged = {};
+  final Set<String> _genericMissingPlanLogged = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, Set<String>> _tableColumnsCache = {};
 
@@ -251,7 +258,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     try {
       final db = await DatabaseHelper.instance.database;
       for (final table in _pullTables) {
-        final rows = await _queryOutboundRows(
+        final legacyRows = await _queryOutboundRows(
           db: db,
           table: table,
           since: _outboundLastSentAt[table],
@@ -260,8 +267,39 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           db: db,
           table: table,
           since: _outboundLastSentAt[table],
-          legacyRows: rows,
+          legacyRows: legacyRows,
         );
+
+        var rows = legacyRows;
+        if (_genericOutboundEnabled) {
+          final plan = _syncPlans[table];
+          if (plan == null) {
+            if (_genericMissingPlanLogged.add(table)) {
+              debugPrint(
+                '[SyncSwitch][Web] table=$table generic=off reason=missing_plan fallback=legacy',
+              );
+            }
+          } else if (plan.mode == SyncMode.deltaTs) {
+            rows = await _queryGenericDeltaTsRows(
+              db: db,
+              table: table,
+              plan: plan,
+              since: _outboundLastSentAt[table],
+            );
+            if (rows.length != legacyRows.length) {
+              debugPrint(
+                '[SyncSwitch][Web] table=$table generic_rows=${rows.length} legacy_rows=${legacyRows.length}',
+              );
+            }
+          } else {
+            if (_genericModeFallbackLogged.add(table)) {
+              debugPrint(
+                '[SyncSwitch][Web] table=$table generic=off reason=mode_${plan.mode.name} fallback=legacy',
+              );
+            }
+          }
+        }
+
         if (rows.isEmpty) {
           continue;
         }
@@ -509,6 +547,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _syncEventSub = null;
     _syncPlans.clear();
     _comparisonModeSkipped.clear();
+    _genericModeFallbackLogged.clear();
+    _genericMissingPlanLogged.clear();
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;

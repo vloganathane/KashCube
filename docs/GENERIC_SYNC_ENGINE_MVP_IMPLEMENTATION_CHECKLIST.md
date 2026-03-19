@@ -210,8 +210,8 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Compare counts and first/last keys in debug logs. *(phone + web outbound loops)*
 
 ## Phase 2 — Generic outbound behind feature flag
-- [ ] Enable phone→web generic path via local flag.
-- [ ] Keep legacy path available for immediate rollback.
+- [x] Enable phone→web generic path via local flag.
+- [x] Keep legacy path available for immediate rollback.
 
 ## Phase 3 — Generic inbound + merge
 - [ ] Enable browser→phone generic path.

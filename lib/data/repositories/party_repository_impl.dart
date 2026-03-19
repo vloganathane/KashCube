@@ -21,7 +21,9 @@ class PartyRepositoryImpl implements PartyRepository {
     final db = await _db.database;
     final map = party.toMap();
     map['context_id'] = contextId;
-    return db.insert('parties', map);
+    final id = await db.insert('parties', map);
+    _db.notifyChange('parties');
+    return id;
   }
 
   @override
@@ -33,6 +35,7 @@ class PartyRepositoryImpl implements PartyRepository {
       where: 'id = ?',
       whereArgs: [party.id],
     );
+    _db.notifyChange('parties');
   }
 
   @override
@@ -47,6 +50,7 @@ class PartyRepositoryImpl implements PartyRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _db.notifyChange('parties');
   }
 
   @override

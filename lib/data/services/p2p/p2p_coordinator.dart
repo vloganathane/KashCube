@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
@@ -9,6 +10,7 @@ import '../../models/trusted_peer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../database_helper.dart';
 import '../identity_service.dart';
+import '../sync_event_bus.dart';
 import '../web/web_session_service.dart';
 import 'p2p_auth_service.dart';
 import 'p2p_client.dart';
@@ -42,6 +44,24 @@ const _syncableTables = [
   // Quotes before invoices (invoices.quote_id → quotes.id)
   'quotes',
   'invoices',
+];
+
+// Tables mirrored to active Web Companion session.
+const _webMirrorTables = [
+  'transactions',
+  'credits',
+  'loans',
+  'parties',
+  'accounts',
+  'categories',
+  'budgets',
+  'invoices',
+  'quotes',
+  'businesses',
+  'purchase_bills',
+  'item_catalog',
+  'scheduled_payments',
+  'credit_payments',
 ];
 
 // ── SyncStatus ────────────────────────────────────────────────────────────────
@@ -102,6 +122,15 @@ class P2pCoordinator {
   Uint8List? _deviceKeyBytes; // Ed25519 seed — used to decrypt stored peer secrets
 
   bool _running = false;
+  Timer? _webPushTimer;
+  StreamSubscription<String>? _syncEventSub;
+  bool _webPushInFlight = false;
+
+  // Per-table high-watermark for incremental phone -> browser PUSH.
+  final Map<String, DateTime> _webLastPushedAt = {};
+
+  // Cache table columns for schema-aware web delta queries.
+  final Map<String, Set<String>> _tableColumnsCache = {};
 
   // Peer identity IDs currently in an active sync cycle.
   final _activeSyncs = <String>{};
@@ -216,6 +245,8 @@ class P2pCoordinator {
       onError: (e) => debugPrint('[P2pCoordinator] Discovery error: $e'),
     );
 
+    _startWebPushLoop();
+
     _emit(SyncStatus(
       phase:   SyncPhase.idle,
       message: 'Listening on port $port',
@@ -238,6 +269,13 @@ class P2pCoordinator {
 
     await _peerSub?.cancel();
     _peerSub = null;
+
+    _webPushTimer?.cancel();
+    _webPushTimer = null;
+    _webLastPushedAt.clear();
+    _tableColumnsCache.clear();
+    await _syncEventSub?.cancel();
+    _syncEventSub = null;
 
     await P2pDiscoveryService.instance.stopDiscovery();
     await P2pDiscoveryService.instance.stopBroadcast();
@@ -623,18 +661,189 @@ class P2pCoordinator {
 
   bool get hasBrowserConnected => P2pServer.instance.hasBrowserConnected;
 
+  void _startWebPushLoop() {
+    _webPushTimer?.cancel();
+    _webPushTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _pushLocalDeltasToWeb();
+    });
+    // Trigger immediately whenever a local table changes.
+    _syncEventSub?.cancel();
+    _syncEventSub = SyncEventBus.instance.stream.listen((_) {
+      _pushLocalDeltasToWeb();
+    });
+  }
+
+  Future<void> _pushLocalDeltasToWeb() async {
+    if (!_running) {
+      return;
+    }
+    if (_webPushInFlight) {
+      return;
+    }
+    _webPushInFlight = true;
+
+    try {
+      final session = WebSessionService.instance.activeSession;
+      if (session == null) {
+        return;
+      }
+
+      final db = _db;
+      if (db == null) {
+        return;
+      }
+
+      for (final table in _webMirrorTables) {
+        try {
+          final lastPushedAt = _webLastPushedAt[table];
+          final rows = await _queryWebDeltaRows(
+            db: db,
+            table: table,
+            since: lastPushedAt,
+          );
+          if (rows.isEmpty) {
+            continue;
+          }
+
+          session.pushRows(table, rows);
+          final maxTs = _maxRowTimestamp(rows);
+          _webLastPushedAt[table] = maxTs;
+        } catch (e) {
+          debugPrint('[P2pCoordinator] Web delta push failed for $table: $e');
+        }
+      }
+    } finally {
+      _webPushInFlight = false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _queryWebDeltaRows({
+    required Database db,
+    required String table,
+    required DateTime? since,
+  }) async {
+    final columns = await _getTableColumns(db, table);
+    final hasUpdatedAt = columns.contains('updated_at');
+    final hasCreatedAt = columns.contains('created_at');
+    final hasDeletedAt = columns.contains('deleted_at');
+
+    final where = <String>[];
+    final args = <Object?>[];
+
+    String sqlUtcExpr(String expr) {
+      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
+    }
+
+    if (since != null) {
+      final sinceIso = since.toUtc().toIso8601String();
+      if (hasUpdatedAt && hasCreatedAt) {
+        final tsExpr = sqlUtcExpr('COALESCE(updated_at, created_at)');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      } else if (hasUpdatedAt) {
+        final tsExpr = sqlUtcExpr('updated_at');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      } else if (hasCreatedAt) {
+        final tsExpr = sqlUtcExpr('created_at');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      }
+    }
+
+    if (hasDeletedAt) {
+      where.add('deleted_at IS NULL');
+    }
+
+    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
+    final orderBy = hasUpdatedAt && hasCreatedAt
+      ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
+        : hasUpdatedAt
+        ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
+            : hasCreatedAt
+          ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
+                : '';
+    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
+
+    return db.rawQuery(sql, args);
+  }
+
+  Future<Set<String>> _getTableColumns(Database db, String table) async {
+    final cached = _tableColumnsCache[table];
+    if (cached != null) return cached;
+
+    final rows = await db.rawQuery('PRAGMA table_info($table)');
+    final columns = rows
+        .map((r) => (r['name'] as String?)?.toLowerCase())
+        .whereType<String>()
+        .toSet();
+    _tableColumnsCache[table] = columns;
+    return columns;
+  }
+
+  DateTime _maxRowTimestamp(List<Map<String, dynamic>> rows) {
+    var max = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    for (final row in rows) {
+      final updatedRaw = row['updated_at']?.toString();
+      final createdRaw = row['created_at']?.toString();
+      final ts = DateTime.tryParse(updatedRaw ?? '') ??
+          DateTime.tryParse(createdRaw ?? '') ??
+          DateTime.now().toUtc();
+      if (ts.isAfter(max)) {
+        max = ts.toUtc();
+      }
+    }
+    return max;
+  }
+
   // Handles WRITE messages from the browser — merges directly into local DB.
   Future<void> _handleWebWrite(String table, Map<String, dynamic> row) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null) {
+      return;
+    }
+
+    final normalized = await _normalizeIncomingWebRow(db, table, row);
     await P2pMergeService.instance.mergeTable(
       db:         db,
       table:      table,
-      remoteRows: [row],
+      remoteRows: [normalized],
       deviceId:   _identityId!,
     );
+    DatabaseHelper.instance.notifyChange(table);
     // Push the merged row back to the browser session if active.
-    WebSessionService.instance.activeSession?.pushRows(table, [row]);
+    WebSessionService.instance.activeSession?.pushRows(table, [normalized]);
+  }
+
+  Future<Map<String, dynamic>> _normalizeIncomingWebRow(
+    Database db,
+    String table,
+    Map<String, dynamic> row,
+  ) async {
+    final normalized = Map<String, dynamic>.from(row);
+    final columns = await _getTableColumns(db, table);
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    if (columns.contains('sync_id')) {
+      normalized['sync_id'] ??= _newSyncId();
+    }
+    if (columns.contains('updated_at')) {
+      normalized['updated_at'] ??= now;
+    }
+    if (columns.contains('created_at')) {
+      normalized['created_at'] ??= now;
+    }
+    if (columns.contains('version')) {
+      normalized['version'] ??= 0;
+    }
+
+    return normalized;
+  }
+
+  String _newSyncId() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final rand = Random().nextInt(1 << 32).toRadixString(16);
+    return '${now.toRadixString(16)}$rand';
   }
 
   /// Trigger an immediate sync with all currently visible trusted peers.

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../data/services/database_helper.dart';
+import '../../data/services/sync_event_bus.dart';
 
 // ── Tables synced from phone on connect ───────────────────────────────────
 // Must match the whitelist in WebBrowserSession._queryRows().
@@ -70,6 +72,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _sub;
+  StreamSubscription<String>? _syncEventSub;
+  Timer? _writeTimer;
+  bool _writeLoopInFlight = false;
+  final Map<String, DateTime> _outboundLastSentAt = {};
+  final Map<String, Set<String>> _tableColumnsCache = {};
 
   Future<void> connect(String wsUrl, String token) async {
     if (state.state == WsConnState.connecting ||
@@ -104,6 +111,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
         case 'AUTH_OK':
+          final now = DateTime.now().toUtc();
+          for (final table in _pullTables) {
+            _outboundLastSentAt[table] = now;
+          }
           state = state.copyWith(
             state:        WsConnState.connected,
             deviceName:   msg['device_name'] as String?,
@@ -112,18 +123,29 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
             errorMsg:     '',
           );
           _pullAllTables();
+          _startWriteLoop();
+          break;
         case 'AUTH_FAIL':
           state = state.copyWith(
             state:    WsConnState.disconnected,
             errorMsg: 'Authentication failed — scan a new QR code',
           );
           disconnect();
+          break;
         case 'PING':
           _channel?.sink.add(jsonEncode({'type': 'PONG'}));
+          break;
+        case 'PONG':
+          // Keepalive acknowledgment for browser-initiated ping (if enabled).
+          break;
         case 'ROWS':
           _handleRows(msg);
+          break;
         case 'PUSH':
           _handlePush(msg);
+          break;
+        case 'WRITE_OK':
+          break;
         default:
           break;
       }
@@ -152,6 +174,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     if (rows.isNotEmpty) {
       await _upsertRows(table, rows);
+      _markOutboundWatermarkFromRows(table, rows);
+      DatabaseHelper.instance.notifyChange(table);
     }
 
     if (isFinal) {
@@ -171,7 +195,152 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     final rows  = msg['rows']  as List<dynamic>?;
     if (table == null || rows == null || rows.isEmpty) return;
     await _upsertRows(table, rows);
+    _markOutboundWatermarkFromRows(table, rows);
+    DatabaseHelper.instance.notifyChange(table);
     debugPrint('[WebSync] PUSH: $table (${rows.length} row(s))');
+  }
+
+  void _startWriteLoop() {
+    _writeTimer?.cancel();
+    _writeTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _flushLocalWritesToPhone();
+    });
+    // Trigger immediately whenever a local table changes.
+    _syncEventSub?.cancel();
+    _syncEventSub = SyncEventBus.instance.stream.listen((table) {
+      _flushLocalWritesToPhone();
+    });
+  }
+
+  Future<void> _flushLocalWritesToPhone() async {
+    if (_writeLoopInFlight) {
+      return;
+    }
+    if (state.state != WsConnState.connected || _channel == null) {
+      return;
+    }
+    _writeLoopInFlight = true;
+
+    try {
+      final db = await DatabaseHelper.instance.database;
+      for (final table in _pullTables) {
+        final rows = await _queryOutboundRows(
+          db: db,
+          table: table,
+          since: _outboundLastSentAt[table],
+        );
+        if (rows.isEmpty) {
+          continue;
+        }
+
+        final normalizedRows = <Map<String, dynamic>>[];
+        for (final row in rows) {
+          final normalized = Map<String, dynamic>.from(row);
+          normalized['sync_id'] ??= _newSyncId();
+          _channel?.sink.add(jsonEncode({
+            'type': 'WRITE',
+            'table': table,
+            'sync_id': normalized['sync_id'],
+            'row': normalized,
+          }));
+          normalizedRows.add(normalized);
+        }
+        _markOutboundWatermarkFromRows(table, normalizedRows);
+      }
+    } catch (e) {
+      debugPrint('[WebSync] Outbound WRITE loop error: $e');
+    } finally {
+      _writeLoopInFlight = false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _queryOutboundRows({
+    required Database db,
+    required String table,
+    required DateTime? since,
+  }) async {
+    final columns = await _getTableColumns(db, table);
+    final hasUpdatedAt = columns.contains('updated_at');
+    final hasCreatedAt = columns.contains('created_at');
+    final hasDeletedAt = columns.contains('deleted_at');
+
+    final where = <String>[];
+    final args = <Object?>[];
+
+    String sqlUtcExpr(String expr) {
+      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
+    }
+
+    if (since != null) {
+      final sinceIso = since.toUtc().toIso8601String();
+      if (hasUpdatedAt && hasCreatedAt) {
+        final tsExpr = sqlUtcExpr('COALESCE(updated_at, created_at)');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      } else if (hasUpdatedAt) {
+        final tsExpr = sqlUtcExpr('updated_at');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      } else if (hasCreatedAt) {
+        final tsExpr = sqlUtcExpr('created_at');
+        where.add('$tsExpr > julianday(?)');
+        args.add(sinceIso);
+      }
+    }
+
+    if (hasDeletedAt) {
+      where.add('deleted_at IS NULL');
+    }
+
+    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
+    final orderBy = hasUpdatedAt && hasCreatedAt
+      ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
+        : hasUpdatedAt
+        ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
+            : hasCreatedAt
+          ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
+                : '';
+    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
+    return db.rawQuery(sql, args);
+  }
+
+  Future<Set<String>> _getTableColumns(Database db, String table) async {
+    final cached = _tableColumnsCache[table];
+    if (cached != null) return cached;
+
+    final rows = await db.rawQuery('PRAGMA table_info($table)');
+    final columns = rows
+        .map((r) => (r['name'] as String?)?.toLowerCase())
+        .whereType<String>()
+        .toSet();
+    _tableColumnsCache[table] = columns;
+    return columns;
+  }
+
+  void _markOutboundWatermarkFromRows(String table, List<dynamic> rows) {
+    if (rows.isEmpty) return;
+    var maxTs = _outboundLastSentAt[table] ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+
+    for (final row in rows) {
+      if (row is! Map) continue;
+      final map = row;
+      final updatedRaw = map['updated_at']?.toString();
+      final createdRaw = map['created_at']?.toString();
+      final ts = DateTime.tryParse(updatedRaw ?? '') ??
+          DateTime.tryParse(createdRaw ?? '');
+      if (ts != null && ts.toUtc().isAfter(maxTs)) {
+        maxTs = ts.toUtc();
+      }
+    }
+
+    _outboundLastSentAt[table] = maxTs;
+  }
+
+  String _newSyncId() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final rand = Random().nextInt(1 << 32).toRadixString(16);
+    return '${now.toRadixString(16)}$rand';
   }
 
   /// Bulk-upserts [rows] into the in-memory SQLite using INSERT OR REPLACE.
@@ -202,6 +371,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   void disconnect() {
+    _writeTimer?.cancel();
+    _writeTimer = null;
+    _syncEventSub?.cancel();
+    _syncEventSub = null;
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;

@@ -102,7 +102,9 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final map = payment.toMap();
     map['context_id'] = contextId;
-    return db.insert(_table, map);
+    final id = await db.insert(_table, map);
+    _db.notifyChange(_table);
+    return id;
   }
 
   @override
@@ -110,6 +112,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final map = payment.copyWith(updatedAt: DateTime.now()).toMap();
     await db.update(_table, map, where: 'id = ?', whereArgs: [payment.id]);
+    _db.notifyChange(_table);
   }
 
   @override
@@ -124,6 +127,7 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _db.notifyChange(_table);
   }
 
   // ── Aggregates ────────────────────────────────────────────────────────────

@@ -47,7 +47,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   Future<int> insert(Business business, {bool setActive = false}) async {
     final db = await _db.database;
     final now = DateTime.now().toIso8601String();
-    return db.transaction((txn) async {
+    final id = await db.transaction((txn) async {
       if (setActive) {
         await txn.update('businesses', {'is_active': 0},
             where: _ctx);
@@ -60,6 +60,8 @@ class BusinessRepositoryImpl implements BusinessRepository {
         'updated_at': now,
       });
     });
+    _db.notifyChange('businesses');
+    return id;
   }
 
   @override
@@ -74,12 +76,14 @@ class BusinessRepositoryImpl implements BusinessRepository {
       where: 'id = ?',
       whereArgs: [business.id],
     );
+    _db.notifyChange('businesses');
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete('businesses', where: 'id = ?', whereArgs: [id]);
+    _db.notifyChange('businesses');
   }
 
   @override
@@ -95,5 +99,6 @@ class BusinessRepositoryImpl implements BusinessRepository {
         whereArgs: [id],
       );
     });
+    _db.notifyChange('businesses');
   }
 }

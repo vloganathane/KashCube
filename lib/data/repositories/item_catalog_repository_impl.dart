@@ -112,6 +112,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
         lowStockThreshold: item.lowStockThreshold,
       );
     }
+    _dbHelper.notifyChange('item_catalog');
     return id;
   }
 
@@ -129,6 +130,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
         lowStockThreshold: item.lowStockThreshold,
       );
     }
+    _dbHelper.notifyChange('item_catalog');
   }
 
   @override
@@ -137,6 +139,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
     // Soft-delete: mark inactive
     await db.update('item_catalog', {'is_active': 0},
         where: 'id = ?', whereArgs: [id]);
+    _dbHelper.notifyChange('item_catalog');
   }
 
   @override

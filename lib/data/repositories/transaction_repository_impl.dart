@@ -27,7 +27,9 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final db = await _db;
     final map = transaction.toMap();
     map['context_id'] = contextId;
-    return db.insert('transactions', map);
+    final id = await db.insert('transactions', map);
+    _dbHelper.notifyChange('transactions');
+    return id;
   }
 
   @override
@@ -41,6 +43,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       where: 'id = ?',
       whereArgs: [transaction.id],
     );
+    _dbHelper.notifyChange('transactions');
   }
 
   @override
@@ -52,6 +55,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _dbHelper.notifyChange('transactions');
   }
 
   @override

@@ -43,7 +43,9 @@ class AccountRepositoryImpl implements AccountRepository {
     final db = await _db;
     final map = account.toMap();
     map['context_id'] = contextId;
-    return db.insert('accounts', map);
+    final id = await db.insert('accounts', map);
+    _dbHelper.notifyChange('accounts');
+    return id;
   }
 
   @override
@@ -55,6 +57,7 @@ class AccountRepositoryImpl implements AccountRepository {
       where: 'id = ?',
       whereArgs: [account.id],
     );
+    _dbHelper.notifyChange('accounts');
   }
 
   @override
@@ -66,5 +69,6 @@ class AccountRepositoryImpl implements AccountRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _dbHelper.notifyChange('accounts');
   }
 }

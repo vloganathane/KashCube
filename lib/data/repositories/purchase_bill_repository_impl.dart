@@ -35,7 +35,7 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
   @override
   Future<int> insert(PurchaseBill bill, List<PurchaseBillItem> items) async {
     final db = await _db.database;
-    return db.transaction((txn) async {
+    final id = await db.transaction((txn) async {
       final now = DateTime.now();
       final map = bill.copyWith(createdAt: now, updatedAt: now).toMap();
       map['context_id'] = contextId;
@@ -48,6 +48,8 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
       }
       return id;
     });
+    _db.notifyChange('purchase_bills');
+    return id;
   }
 
   @override
@@ -72,12 +74,14 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
         );
       }
     });
+    _db.notifyChange('purchase_bills');
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete('purchase_bills', where: 'id = ?', whereArgs: [id]);
+    _db.notifyChange('purchase_bills');
   }
 
   @override

@@ -166,6 +166,8 @@ class LoanRepositoryImpl implements LoanRepository {
       }
     }
 
+    _dbHelper.notifyChange('loans');
+    _dbHelper.notifyChange('transactions');
     return loanId;
   }
 
@@ -197,6 +199,9 @@ class LoanRepositoryImpl implements LoanRepository {
         whereArgs: [loan.id, tx.TransactionType.lent.dbValue, tx.TransactionType.borrowed.dbValue],
       );
     }
+
+    _dbHelper.notifyChange('loans');
+    _dbHelper.notifyChange('transactions');
   }
 
   @override
@@ -216,6 +221,8 @@ class LoanRepositoryImpl implements LoanRepository {
       where: 'loan_id = ? AND deleted_at IS NULL',
       whereArgs: [id],
     );
+    _dbHelper.notifyChange('loans');
+    _dbHelper.notifyChange('transactions');
   }
 
   @override

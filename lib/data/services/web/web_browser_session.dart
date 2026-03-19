@@ -39,6 +39,7 @@ class WebBrowserSession {
   bool _authenticated = false;
   StreamSubscription<dynamic>? _sub;
   bool _disposed = false;
+  final Map<String, Set<String>> _tableColumnsCache = {};
 
   static const _pingInterval = Duration(seconds: 25);
   Timer? _pingTimer;
@@ -66,12 +67,19 @@ class WebBrowserSession {
       switch (type) {
         case 'AUTH':
           _handleAuth(msg);
+          break;
         case 'PULL':
           _handlePull(msg);
+          break;
         case 'WRITE':
           _handleWrite(msg);
+          break;
         case 'PING':
           _sendRaw({'type': 'PONG'});
+          break;
+        case 'PONG':
+          // Browser keepalive acknowledgment for server-initiated ping.
+          break;
         default:
           debugPrint('[WebSession] Unknown message type: $type');
       }
@@ -193,19 +201,54 @@ class WebBrowserSession {
       debugPrint('[WebSession] Pull rejected for disallowed table: $table');
       return [];
     }
+
+    final columns = await _getTableColumns(db, table);
+    final hasUpdatedAt = columns.contains('updated_at');
+    final hasDeletedAt = columns.contains('deleted_at');
+
+    final where = <String>[];
+    final args = <Object?>[];
+
+    String sqlUtcExpr(String expr) {
+      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
+    }
+
+    if (since != null && hasUpdatedAt) {
+      final tsExpr = sqlUtcExpr('updated_at');
+      where.add('$tsExpr > julianday(?)');
+      args.add(since);
+    }
+    if (hasDeletedAt) {
+      where.add('deleted_at IS NULL');
+    }
+
+    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
+    final orderBy = hasUpdatedAt ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC' : '';
+    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 1000';
+
     try {
-      if (since == null) {
-        return await db.rawQuery(
-          'SELECT * FROM $table WHERE deleted_at IS NULL LIMIT 1000',
-        );
-      }
-      return await db.rawQuery(
-        'SELECT * FROM $table WHERE updated_at > ? AND deleted_at IS NULL LIMIT 1000',
-        [since],
-      );
+      return await db.rawQuery(sql, args);
     } catch (e) {
       debugPrint('[WebSession] Query error on $table: $e');
       return [];
+    }
+  }
+
+  Future<Set<String>> _getTableColumns(Database db, String table) async {
+    final cached = _tableColumnsCache[table];
+    if (cached != null) return cached;
+
+    try {
+      final rows = await db.rawQuery('PRAGMA table_info($table)');
+      final columns = rows
+          .map((r) => (r['name'] as String?)?.toLowerCase())
+          .whereType<String>()
+          .toSet();
+      _tableColumnsCache[table] = columns;
+      return columns;
+    } catch (e) {
+      debugPrint('[WebSession] Failed to inspect schema for $table: $e');
+      return const <String>{};
     }
   }
 }

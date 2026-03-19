@@ -103,6 +103,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
         budget.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
+      _db.notifyChange(_table);
     } catch (e) {
       debugPrint('BudgetRepo.upsert error: $e');
       rethrow;
@@ -113,5 +114,6 @@ class BudgetRepositoryImpl implements BudgetRepository {
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete(_table, where: 'id = ?', whereArgs: [id]);
+    _db.notifyChange(_table);
   }
 }

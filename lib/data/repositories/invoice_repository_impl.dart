@@ -43,7 +43,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
   @override
   Future<int> insert(Quote quote, List<QuoteItem> items) async {
     final db = await _db.database;
-    return db.transaction((txn) async {
+    final id = await db.transaction((txn) async {
       final id = await txn.insert('quotes', quote.toMap());
       for (final item in items) {
         await txn.insert(
@@ -51,6 +51,8 @@ class QuoteRepositoryImpl implements QuoteRepository {
       }
       return id;
     });
+    _db.notifyChange('quotes');
+    return id;
   }
 
   @override
@@ -66,12 +68,14 @@ class QuoteRepositoryImpl implements QuoteRepository {
             'quote_items', item.copyWith(quoteId: quote.id!).toMap());
       }
     });
+    _db.notifyChange('quotes');
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete('quotes', where: 'id = ?', whereArgs: [id]);
+    _db.notifyChange('quotes');
   }
 
   @override
@@ -101,6 +105,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
       where: 'id = ? AND status = ?',
       whereArgs: [id, QuoteStatus.draft.dbValue],
     );
+    _db.notifyChange('quotes');
   }
 
   @override
@@ -147,6 +152,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
           where: 'id = ?', whereArgs: [quoteId]);
       return id;
     });
+
+    _db.notifyChange('quotes');
+    _db.notifyChange('invoices');
 
     return invoice.copyWith(id: invoiceId);
   }
@@ -242,7 +250,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   @override
   Future<int> insert(Invoice invoice, List<InvoiceItem> items) async {
     final db = await _db.database;
-    return db.transaction((txn) async {
+    final id = await db.transaction((txn) async {
       final map = invoice.toMap();
       map['context_id'] = contextId;
       final id = await txn.insert('invoices', map);
@@ -252,6 +260,8 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       }
       return id;
     });
+    _db.notifyChange('invoices');
+    return id;
   }
 
   @override
@@ -270,12 +280,14 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
             'invoice_items', item.copyWith(invoiceId: invoice.id!).toMap());
       }
     });
+    _db.notifyChange('invoices');
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db.database;
     await db.delete('invoices', where: 'id = ?', whereArgs: [id]);
+    _db.notifyChange('invoices');
   }
 
   @override
@@ -299,7 +311,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     }
 
     // Execute atomic update: invoice + transaction in one database transaction
-    return await db.transaction((txn) async {
+    final transactionId = await db.transaction((txn) async {
       // 1. Calculate new paid amount and status
       final newPaidAmount = invoice.paidAmount + amountToRecord;
       final isFullyPaid = newPaidAmount >= invoice.total;
@@ -347,6 +359,9 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       
       return transactionId;
     });
+    _db.notifyChange('invoices');
+    _db.notifyChange('transactions');
+    return transactionId;
   }
 
   @override
@@ -358,6 +373,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       where: 'id = ?',
       whereArgs: [invoiceId],
     );
+    _db.notifyChange('invoices');
   }
 
   @override
@@ -370,6 +386,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       where: 'id = ? AND status = ?',
       whereArgs: [id, InvoiceStatus.draft.dbValue],
     );
+    _db.notifyChange('invoices');
   }
 
   @override

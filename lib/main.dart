@@ -15,6 +15,7 @@ import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
+import 'presentation/providers/sync_auto_refresh_provider.dart';
 import 'presentation/providers/terms_provider.dart';
 import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
@@ -68,6 +69,9 @@ class KashCubeApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep UI providers in sync with DB rows merged from P2P/WebSocket writes.
+    ref.watch(syncAutoRefreshInstallerProvider);
+
     // Activate the scheduler so notifications stay in sync with upcoming items.
     // Skip on web — flutter_local_notifications and timezone db are mobile-only.
     if (!kIsWeb) ref.watch(notificationSchedulerProvider);

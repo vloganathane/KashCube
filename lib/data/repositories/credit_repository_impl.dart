@@ -178,7 +178,9 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final map = credit.toMap();
     map['context_id'] = contextId;
-    return db.insert(_table, map);
+    final id = await db.insert(_table, map);
+    _db.notifyChange(_table);
+    return id;
   }
 
   @override
@@ -190,6 +192,7 @@ class CreditRepositoryImpl implements CreditRepository {
       where: 'id = ?',
       whereArgs: [credit.id],
     );
+    _db.notifyChange(_table);
   }
 
   @override
@@ -201,6 +204,7 @@ class CreditRepositoryImpl implements CreditRepository {
       where: 'id = ?',
       whereArgs: [id],
     );
+    _db.notifyChange(_table);
   }
 
   @override
@@ -236,6 +240,7 @@ class CreditRepositoryImpl implements CreditRepository {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     });
+    _db.notifyChange(_table);
   }
 
   @override

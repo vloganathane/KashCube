@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/constants/app_constants.dart';
+import 'sync_event_bus.dart';
 
 part 'database_helper_tables.dart';
 
@@ -57,6 +58,13 @@ class DatabaseHelper {
       rethrow;
     }
   }
+
+  /// Notifies [SyncEventBus] that [table] has been written.
+  ///
+  /// Repositories should call this after any insert/update/delete so that
+  /// the sync coordinator and web-companion notifier can push the change
+  /// immediately instead of waiting for the 30-second fallback timer.
+  void notifyChange(String table) => SyncEventBus.instance.emit(table);
 
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
@@ -2856,12 +2864,14 @@ class DatabaseHelper {
   /// Soft-deletes a user-created category by name. Returns rows affected.
   Future<int> deleteCustomCategory(String name) async {
     final db = await database;
-    return db.update(
+    final affected = await db.update(
       'categories',
       {'is_active': 0},
       where: 'name = ? AND is_system = 0',
       whereArgs: [name],
     );
+    if (affected > 0) notifyChange('categories');
+    return affected;
   }
 
   /// Returns the number of transactions using [category].
@@ -2881,7 +2891,7 @@ class DatabaseHelper {
   }) async {
     final db = await database;
     try {
-      return await db.insert('categories', {
+      final id = await db.insert('categories', {
         'name': name,
         'category_type': categoryType,
         'mode': 'both',
@@ -2891,6 +2901,8 @@ class DatabaseHelper {
         'is_system': 0,
         'is_active': 1,
       });
+      notifyChange('categories');
+      return id;
     } on Exception {
       return -1; // duplicate name — UNIQUE constraint
     }
@@ -3012,11 +3024,13 @@ class DatabaseHelper {
   Future<int> insertUnitType(String label) async {
     final db = await database;
     try {
-      return await db.insert('unit_types', {
+      final id = await db.insert('unit_types', {
         'label': label.trim(),
         'is_system': 0,
         'sort_order': 999,
       });
+      notifyChange('unit_types');
+      return id;
     } on Exception {
       return -1;
     }
@@ -3031,6 +3045,7 @@ class DatabaseHelper {
       where: 'id = ? AND is_system = 0',
       whereArgs: [id],
     );
+    notifyChange('unit_types');
   }
 
   // ── e-Way Bill ──────────────────────────────────────────────────────────────

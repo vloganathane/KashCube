@@ -206,8 +206,8 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Log discovered table plan once at startup.
 
 ## Phase 1 — Dual read comparison
-- [ ] Generic engine computes candidate rows in parallel with current engine. *(next)*
-- [ ] Compare counts and first/last keys in debug logs. *(next)*
+- [x] Generic engine computes candidate rows in parallel with current engine. *(read-only compare mode)*
+- [x] Compare counts and first/last keys in debug logs. *(phone + web outbound loops)*
 
 ## Phase 2 — Generic outbound behind feature flag
 - [ ] Enable phone→web generic path via local flag.

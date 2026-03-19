@@ -129,6 +129,8 @@ class P2pCoordinator {
 
   // Per-table high-watermark for incremental phone -> browser PUSH.
   final Map<String, DateTime> _webLastPushedAt = {};
+  final Map<String, SyncTablePlan> _webSyncPlans = {};
+  final Set<String> _webComparisonModeSkipped = {};
 
   // Cache table columns for schema-aware web delta queries.
   final Map<String, Set<String>> _tableColumnsCache = {};
@@ -267,6 +269,9 @@ class P2pCoordinator {
   Future<void> _logDiscoveredSyncPlans(Database db) async {
     try {
       final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
+      _webSyncPlans
+        ..clear()
+        ..addEntries(plans.map((p) => MapEntry(p.tableName, p)));
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
       final deltaVersion =
           plans.where((p) => p.mode == SyncMode.deltaVersion).length;
@@ -291,6 +296,8 @@ class P2pCoordinator {
     _webPushTimer?.cancel();
     _webPushTimer = null;
     _webLastPushedAt.clear();
+    _webSyncPlans.clear();
+    _webComparisonModeSkipped.clear();
     _tableColumnsCache.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
@@ -719,6 +726,12 @@ class P2pCoordinator {
             table: table,
             since: lastPushedAt,
           );
+          await _compareLegacyAndGenericWebDelta(
+            db: db,
+            table: table,
+            since: lastPushedAt,
+            legacyRows: rows,
+          );
           if (rows.isEmpty) {
             continue;
           }
@@ -784,6 +797,104 @@ class P2pCoordinator {
     final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
 
     return db.rawQuery(sql, args);
+  }
+
+  Future<void> _compareLegacyAndGenericWebDelta({
+    required Database db,
+    required String table,
+    required DateTime? since,
+    required List<Map<String, dynamic>> legacyRows,
+  }) async {
+    final plan = _webSyncPlans[table];
+    if (plan == null) return;
+
+    if (plan.mode != SyncMode.deltaTs) {
+      if (_webComparisonModeSkipped.add(table)) {
+        debugPrint(
+          '[SyncCompare][Phone] table=$table skipped mode=${plan.mode.name}',
+        );
+      }
+      return;
+    }
+
+    try {
+      final genericRows = await _queryGenericDeltaTsRows(
+        db: db,
+        table: table,
+        plan: plan,
+        since: since,
+      );
+      if (legacyRows.length == genericRows.length && legacyRows.isEmpty) {
+        return;
+      }
+
+      final key = plan.keyColumn ?? 'sync_id';
+      final legacyFirst = _rowKey(legacyRows, key, true);
+      final legacyLast = _rowKey(legacyRows, key, false);
+      final genericFirst = _rowKey(genericRows, key, true);
+      final genericLast = _rowKey(genericRows, key, false);
+
+      debugPrint(
+        '[SyncCompare][Phone] table=$table mode=${plan.mode.name} legacy=${legacyRows.length} generic=${genericRows.length} '
+        'legacy_first=$legacyFirst legacy_last=$legacyLast generic_first=$genericFirst generic_last=$genericLast',
+      );
+    } catch (e) {
+      debugPrint('[SyncCompare][Phone] compare failed table=$table error=$e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _queryGenericDeltaTsRows({
+    required Database db,
+    required String table,
+    required SyncTablePlan plan,
+    required DateTime? since,
+  }) async {
+    final where = <String>[];
+    final args = <Object?>[];
+
+    String sqlUtcExpr(String expr) {
+      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
+    }
+
+    if (since != null) {
+      final sinceIso = since.toUtc().toIso8601String();
+      if (plan.hasUpdatedAt && plan.hasCreatedAt) {
+        where.add("${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
+        args.add(sinceIso);
+      } else if (plan.hasUpdatedAt) {
+        where.add("${sqlUtcExpr('updated_at')} > julianday(?)");
+        args.add(sinceIso);
+      } else if (plan.hasCreatedAt) {
+        where.add("${sqlUtcExpr('created_at')} > julianday(?)");
+        args.add(sinceIso);
+      }
+    }
+
+    if (plan.hasDeletedAt) {
+      where.add('deleted_at IS NULL');
+    }
+
+    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
+    final orderBy = plan.hasUpdatedAt && plan.hasCreatedAt
+        ? " ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC"
+        : plan.hasUpdatedAt
+            ? " ORDER BY ${sqlUtcExpr('updated_at')} ASC"
+            : plan.hasCreatedAt
+                ? " ORDER BY ${sqlUtcExpr('created_at')} ASC"
+                : '';
+
+    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
+    return db.rawQuery(sql, args);
+  }
+
+  String _rowKey(
+    List<Map<String, dynamic>> rows,
+    String preferredKey,
+    bool first,
+  ) {
+    if (rows.isEmpty) return 'null';
+    final row = first ? rows.first : rows.last;
+    return (row[preferredKey] ?? row['sync_id'] ?? row['id'] ?? 'null').toString();
   }
 
   Future<Set<String>> _getTableColumns(Database db, String table) async {

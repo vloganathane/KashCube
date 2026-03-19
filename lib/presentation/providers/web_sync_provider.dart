@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../data/services/database_helper.dart';
+import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync_event_bus.dart';
 
 // ── Tables synced from phone on connect ───────────────────────────────────
@@ -75,6 +76,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   StreamSubscription<String>? _syncEventSub;
   Timer? _writeTimer;
   bool _writeLoopInFlight = false;
+  bool _registrySnapshotLogged = false;
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, Set<String>> _tableColumnsCache = {};
 
@@ -122,6 +124,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
             syncComplete: false,
             errorMsg:     '',
           );
+          unawaited(_logDiscoveredSyncPlans());
           _pullAllTables();
           _startWriteLoop();
           break;
@@ -159,6 +162,25 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   void _pullAllTables() {
     for (final table in _pullTables) {
       _channel?.sink.add(jsonEncode({'type': 'PULL', 'table': table}));
+    }
+  }
+
+  Future<void> _logDiscoveredSyncPlans() async {
+    if (_registrySnapshotLogged) return;
+    _registrySnapshotLogged = true;
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
+      final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
+      final deltaVersion =
+          plans.where((p) => p.mode == SyncMode.deltaVersion).length;
+      final snapshot = plans.where((p) => p.mode == SyncMode.snapshot).length;
+
+      debugPrint(
+        '[SyncRegistry][Web] discovered=${plans.length} delta_ts=$deltaTs delta_version=$deltaVersion snapshot=$snapshot',
+      );
+    } catch (e) {
+      debugPrint('[SyncRegistry][Web] discovery failed: $e');
     }
   }
 

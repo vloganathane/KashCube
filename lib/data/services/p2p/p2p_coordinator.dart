@@ -10,6 +10,7 @@ import '../../models/trusted_peer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../database_helper.dart';
 import '../identity_service.dart';
+import '../sync/sync_table_registry.dart';
 import '../sync_event_bus.dart';
 import '../web/web_session_service.dart';
 import 'p2p_auth_service.dart';
@@ -203,6 +204,7 @@ class P2pCoordinator {
 
     // Pre-load trusted peer IDs for synchronous isTrusted checks.
     await _refreshTrustedPeerCache(db);
+    await _logDiscoveredSyncPlans(db);
 
     // Start the HTTP server — provides pull/push endpoints for remote peers.
     await P2pServer.instance.start(
@@ -260,6 +262,22 @@ class P2pCoordinator {
     );
 
     debugPrint('[P2pCoordinator] Started on port $port');
+  }
+
+  Future<void> _logDiscoveredSyncPlans(Database db) async {
+    try {
+      final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
+      final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
+      final deltaVersion =
+          plans.where((p) => p.mode == SyncMode.deltaVersion).length;
+      final snapshot = plans.where((p) => p.mode == SyncMode.snapshot).length;
+
+      debugPrint(
+        '[SyncRegistry][Phone] discovered=${plans.length} delta_ts=$deltaTs delta_version=$deltaVersion snapshot=$snapshot',
+      );
+    } catch (e) {
+      debugPrint('[SyncRegistry][Phone] discovery failed: $e');
+    }
   }
 
   /// Stops the coordinator and releases all resources.

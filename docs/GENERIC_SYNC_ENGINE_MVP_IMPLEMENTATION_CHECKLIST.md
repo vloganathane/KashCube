@@ -214,8 +214,8 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Keep legacy path available for immediate rollback.
 
 ## Phase 3 — Generic inbound + merge
-- [ ] Enable browser→phone generic path.
-- [ ] Keep fallback for legacy merge route.
+- [x] Enable browser→phone generic path.
+- [x] Keep fallback for legacy merge route.
 
 ## Phase 4 — Remove hardcoded lists
 - [ ] Delete static table arrays from coordinator/provider/session once parity confirmed.

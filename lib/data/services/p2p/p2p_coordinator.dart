@@ -70,6 +70,11 @@ const _genericOutboundEnabled = bool.fromEnvironment(
   defaultValue: false,
 );
 
+const _genericInboundEnabled = bool.fromEnvironment(
+  'KASHCUBE_SYNC_GENERIC_INBOUND',
+  defaultValue: false,
+);
+
 // ── SyncStatus ────────────────────────────────────────────────────────────────
 
 /// Phase of the sync coordinator lifecycle.
@@ -138,6 +143,8 @@ class P2pCoordinator {
   final Set<String> _webComparisonModeSkipped = {};
   final Set<String> _webGenericModeFallbackLogged = {};
   final Set<String> _webGenericMissingPlanLogged = {};
+  final Set<String> _webInboundGenericModeFallbackLogged = {};
+  final Set<String> _webInboundGenericMissingPlanLogged = {};
 
   // Cache table columns for schema-aware web delta queries.
   final Map<String, Set<String>> _tableColumnsCache = {};
@@ -307,6 +314,8 @@ class P2pCoordinator {
     _webComparisonModeSkipped.clear();
     _webGenericModeFallbackLogged.clear();
     _webGenericMissingPlanLogged.clear();
+    _webInboundGenericModeFallbackLogged.clear();
+    _webInboundGenericMissingPlanLogged.clear();
     _tableColumnsCache.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
@@ -973,12 +982,50 @@ class P2pCoordinator {
     }
 
     final normalized = await _normalizeIncomingWebRow(db, table, row);
-    await P2pMergeService.instance.mergeTable(
-      db:         db,
-      table:      table,
-      remoteRows: [normalized],
-      deviceId:   _identityId!,
-    );
+    if (_genericInboundEnabled) {
+      final plan = _webSyncPlans[table];
+      if (plan == null) {
+        if (_webInboundGenericMissingPlanLogged.add(table)) {
+          debugPrint(
+            '[SyncSwitch][Phone][Inbound] table=$table generic=off reason=missing_plan fallback=legacy',
+          );
+        }
+        await P2pMergeService.instance.mergeTable(
+          db:         db,
+          table:      table,
+          remoteRows: [normalized],
+          deviceId:   _identityId!,
+        );
+      } else if (plan.keyColumn == null) {
+        if (_webInboundGenericModeFallbackLogged.add(table)) {
+          debugPrint(
+            '[SyncSwitch][Phone][Inbound] table=$table generic=off reason=missing_key fallback=legacy',
+          );
+        }
+        await P2pMergeService.instance.mergeTable(
+          db:         db,
+          table:      table,
+          remoteRows: [normalized],
+          deviceId:   _identityId!,
+        );
+      } else {
+        await P2pMergeService.instance.mergeTable(
+          db:         db,
+          table:      table,
+          remoteRows: [normalized],
+          deviceId:   _identityId!,
+          keyColumn:  plan.keyColumn!,
+          mode:       plan.mode,
+        );
+      }
+    } else {
+      await P2pMergeService.instance.mergeTable(
+        db:         db,
+        table:      table,
+        remoteRows: [normalized],
+        deviceId:   _identityId!,
+      );
+    }
     DatabaseHelper.instance.notifyChange(table);
     // Push the merged row back to the browser session if active.
     WebSessionService.instance.activeSession?.pushRows(table, [normalized]);

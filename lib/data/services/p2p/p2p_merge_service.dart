@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../sync/sync_table_registry.dart';
+
 /// Tables that participate in P2P LAN sync.
 ///
 /// The merge service is table-agnostic for most operations; [_invoiceTable] is
@@ -57,32 +59,53 @@ class P2pMergeService {
     required String table,
     required List<Map<String, dynamic>> remoteRows,
     required String deviceId,
+    String keyColumn = 'sync_id',
+    SyncMode mode = SyncMode.deltaTs,
   }) async {
     var inserted = 0;
     var updated  = 0;
     var skipped  = 0;
 
     for (final remote in remoteRows) {
-      final syncId = remote['sync_id'] as String?;
-      if (syncId == null) {
-        debugPrint('[Merge] Skipping row with no sync_id in $table');
+      final keyValue = remote[keyColumn];
+      if (keyValue == null) {
+        debugPrint('[Merge] Skipping row with no $keyColumn in $table');
         skipped++;
         continue;
       }
 
-      final existing = await _fetchBySyncId(db, table, syncId);
+      final existing = await _fetchByKey(
+        db,
+        table,
+        keyColumn,
+        keyValue,
+      );
       if (existing == null) {
         // New row — insert it.
-        await _insertRow(db, table, remote, deviceId);
+        await _insertRow(
+          db,
+          table,
+          remote,
+          deviceId,
+          preserveId: keyColumn == 'id',
+        );
         inserted++;
       } else {
         final shouldApply = _shouldApplyRemote(
           table:    table,
           local:    existing,
           remote:   remote,
+          mode:     mode,
         );
         if (shouldApply) {
-          await _updateRow(db, table, remote, existing['id'] as int, deviceId);
+          await _updateRow(
+            db,
+            table,
+            remote,
+            existing['id'] as int,
+            deviceId,
+            keyColumn: keyColumn,
+          );
           updated++;
         } else {
           skipped++;
@@ -114,6 +137,7 @@ class P2pMergeService {
     required String table,
     required Map<String, dynamic> local,
     required Map<String, dynamic> remote,
+    required SyncMode mode,
   }) {
     final localTs  = _parseTs(local['updated_at']);
     final remoteTs = _parseTs(remote['updated_at']);
@@ -135,10 +159,29 @@ class P2pMergeService {
       // _StatusDecision.useLww → fall through to rule 3.
     }
 
+    if (mode == SyncMode.deltaVersion) {
+      return _remoteVersionIsNewer(local: local, remote: remote);
+    }
+
+    if (mode == SyncMode.snapshot) {
+      return true;
+    }
+
     // Rule 3 — LWW.
     if (remoteTs == null) return false;
     if (localTs  == null) return true;
     return remoteTs.isAfter(localTs);
+  }
+
+  bool _remoteVersionIsNewer({
+    required Map<String, dynamic> local,
+    required Map<String, dynamic> remote,
+  }) {
+    final localVersion = _parseInt(local['version']);
+    final remoteVersion = _parseInt(remote['version']);
+    if (remoteVersion == null) return false;
+    if (localVersion == null) return true;
+    return remoteVersion > localVersion;
   }
 
   /// Resolves invoice status conflict.
@@ -162,15 +205,16 @@ class P2pMergeService {
 
   // ── DB helpers ────────────────────────────────────────────────────────────
 
-  Future<Map<String, dynamic>?> _fetchBySyncId(
+  Future<Map<String, dynamic>?> _fetchByKey(
     Database db,
     String table,
-    String syncId,
+    String keyColumn,
+    Object keyValue,
   ) async {
     final rows = await db.query(
       table,
-      where: 'sync_id = ?',
-      whereArgs: [syncId],
+      where: '$keyColumn = ?',
+      whereArgs: [keyValue],
       limit: 1,
     );
     return rows.isEmpty ? null : rows.first;
@@ -180,11 +224,15 @@ class P2pMergeService {
     Database db,
     String table,
     Map<String, dynamic> remote,
-    String deviceId,
+    String deviceId, {
+    required bool preserveId,
+  }
   ) async {
     final row = _prepareRow(remote, deviceId);
-    // Remove integer PK so SQLite assigns its own.
-    row.remove('id');
+    if (!preserveId) {
+      // Remove integer PK so SQLite assigns its own.
+      row.remove('id');
+    }
     await db.insert(
       table,
       row,
@@ -197,11 +245,13 @@ class P2pMergeService {
     String table,
     Map<String, dynamic> remote,
     int localId,
-    String deviceId,
+    String deviceId, {
+    required String keyColumn,
+  }
   ) async {
     final row = _prepareRow(remote, deviceId);
     row.remove('id');      // don't overwrite PK
-    row.remove('sync_id'); // immutable after creation
+    row.remove(keyColumn); // immutable after creation
     await db.update(
       table,
       row,
@@ -235,6 +285,13 @@ class P2pMergeService {
     } catch (_) {
       return null;
     }
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 }
 

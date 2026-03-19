@@ -41,7 +41,13 @@ class SyncTableRegistry {
 
   final Map<String, Set<String>> _columnsCache = {};
 
+  /// Tables that must NEVER leave this device.
+  ///
+  /// Includes engine metadata, device-specific identity/auth state, sequential
+  /// number state (invoice cursors), local subscription flags, and reference
+  /// data seeded from assets rather than user input.
   static const Set<String> _engineLocalDenylist = {
+    // ── Engine / sync infrastructure ────────────────────────────────────
     'device_session',
     'device_recovery',
     'pairing_history',
@@ -49,6 +55,25 @@ class SyncTableRegistry {
     'sync_outbox',
     'sync_watermarks',
     'sync_table_state',
+    'schema_version',
+    // ── Device-local identity & auth ────────────────────────────────────
+    // Contains Ed25519 key material — absolutely must not leave the device.
+    'my_identity',
+    'linked_devices',
+    'linked_business_sessions',
+    // ── Local access control ─────────────────────────────────────────────
+    'app_users',
+    'user_permissions',
+    // ── Sequential counters (per-device state) ───────────────────────────
+    // Syncing cursor rows would break invoice numbering on both sides.
+    'invoice_number_cursors',
+    // ── Subscription / feature flags (server-controlled) ────────────────
+    'subscription',
+    'plan_features',
+    // ── Device-local notification state ─────────────────────────────────
+    'payroll_notifications',
+    // ── Reference / seed data (read-only, seeded from assets) ───────────
+    'hsn_master',
   };
 
   Future<List<SyncTablePlan>> discoverSyncPlans(

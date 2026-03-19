@@ -153,9 +153,9 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [ ] Route PULL/WRITE through generic planner and generic merge helpers.
 
 ## 7) `lib/presentation/providers/sync_auto_refresh_provider.dart`
-- [ ] Replace static switch-based invalidation with registry map.
-- [ ] Add fallback invalidation strategy for newly discovered tables (safe broad refresh).
-- [ ] Ensure future schema additions do not require code edits here.
+- [x] Replace static switch-based invalidation with registry map.
+- [x] Add fallback invalidation strategy for newly discovered tables (safe broad refresh).
+- [x] Ensure future schema additions do not require code edits here.
 
 ## 8) `lib/data/services/p2p/p2p_merge_service.dart`
 - [ ] Add generic conflict resolver by sync mode:

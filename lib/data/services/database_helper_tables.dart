@@ -1288,6 +1288,26 @@ extension _DatabaseTableCreators on DatabaseHelper {
     ''');
 
     await db.execute('''
+      CREATE TABLE IF NOT EXISTS sync_table_state (
+        peer_identity_id   TEXT NOT NULL,
+        table_name         TEXT NOT NULL,
+        sync_mode          TEXT NOT NULL,
+        last_synced_at     TEXT,
+        last_version       INTEGER,
+        last_pk            TEXT,
+        schema_fingerprint TEXT NOT NULL,
+        updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (peer_identity_id, table_name)
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sync_table_state_table ON sync_table_state(table_name)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sync_table_state_updated ON sync_table_state(updated_at)',
+    );
+
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS invoice_events (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         invoice_id  TEXT NOT NULL,

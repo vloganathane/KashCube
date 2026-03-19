@@ -2476,6 +2476,35 @@ class DatabaseHelper {
             'quotes sync columns, trusted_peers + sync_watermarks + invoice_events tables',
       });
     }
+
+    if (oldVersion < 70) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS sync_table_state (
+          peer_identity_id   TEXT NOT NULL,
+          table_name         TEXT NOT NULL,
+          sync_mode          TEXT NOT NULL,
+          last_synced_at     TEXT,
+          last_version       INTEGER,
+          last_pk            TEXT,
+          schema_fingerprint TEXT NOT NULL,
+          updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+          PRIMARY KEY (peer_identity_id, table_name)
+        )
+      ''');
+
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_table_state_table ON sync_table_state(table_name)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sync_table_state_updated ON sync_table_state(updated_at)',
+      );
+
+      await db.insert('schema_version', {
+        'version': 70,
+        'description':
+            'Generic sync engine metadata: sync_table_state table + indexes',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

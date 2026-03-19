@@ -18,7 +18,8 @@
 7. [Web App Bundle Pipeline](#7-web-app-bundle-pipeline)
 8. [WebSocket Sync Protocol](#8-websocket-sync-protocol)
 9. [Platform Fork Map](#9-platform-fork-map)
-10. [QR Connect Flow](#10-qr-connect-flow)
+10. [QR Connect Flow (V1 — Phone → Browser)](#10-qr-connect-flow-v1--phone--browser)
+10b. [Reverse QR Flow (V2 — Browser → Phone)](#10b-reverse-qr-flow-v2--browser--phone)
 11. [Session Auth (Browser)](#11-session-auth-browser)
 12. [Web-Only Screens](#12-web-only-screens)
 13. [What Is NOT Different on Web](#13-what-is-not-different-on-web)
@@ -288,7 +289,9 @@ The browser does not replicate the phone's full SQLite DB. It caches the current
 
 ---
 
-## 10. QR Connect Flow
+## 10. QR Connect Flow (V1 — Phone → Browser)
+
+**Primary flow. Implemented.**
 
 ```
 Phone (QR screen):
@@ -299,11 +302,80 @@ Phone (QR screen):
   5. Token valid for 5 minutes, single use
 
 Browser:
-  1. User scans QR with phone/laptop camera
+  1. User scans QR with phone/laptop camera (or laptop camera via OS QR feature)
   2. Browser opens URL → phone serves Flutter web app
   3. Flutter web boot: reads `window.location.search` → extracts token
   4. Connects ws://<ip>:<port>/ws with AUTH message
 ```
+
+**Limitation:** Requires the user to initiate from the phone every session. No persistent bookmark flow.
+
+---
+
+## 10b. Reverse QR Flow (V2 — Browser → Phone)
+
+**Enhancement for returning users. Not yet implemented. Target: V2.**
+
+This is the WhatsApp Web pattern applied locally: the browser shows a QR, the phone scans it to authorise the session. Once a user has bookmarked `http://ip:port`, they never need to touch the phone to initiate.
+
+### Why it's possible
+
+Because the browser already loaded from `http://ip:port` (served by the phone), it already knows the phone's full address and can poll a challenge endpoint on it. The chicken-and-egg problem that afflicts cloud-hosted QR auth does not exist here.
+
+### Flow
+
+```
+1. User opens bookmark: http://<ip>:<port>  (no token)
+2. WebConnectScreen detects no token in URL
+3. Browser generates challenge_id = random 16 bytes → base64url
+4. Browser shows QR encoding:
+     kashcube://auth?challenge=<challenge_id>&origin=http://<ip>:<port>
+5. Browser begins polling:  GET /auth/challenge/<challenge_id>  (every 2s)
+   → 202 Accepted  (pending)
+   → 200 OK { token: "..." }  (resolved)
+   → 410 Gone  (expired after 5 min)
+
+6. User opens KashCube on phone → taps "Scan browser QR"
+7. Camera scans QR → deep link fires:
+     kashcube://auth?challenge=<id>&origin=http://<ip>:<port>
+8. App validates origin matches own server address
+9. Phone mints a fresh session_token (same 32 bytes, same TTL)
+10. Phone stores:  challenge_id → session_token  (in-memory, 5 min TTL)
+11. Next browser poll resolves → receives token
+12. Browser connects ws://<ip>:<port>/ws with AUTH message
+13. Normal AUTH_OK flow proceeds
+```
+
+### Server routes required (V2 only)
+
+```
+GET  /auth/challenge/:id   → 202 (pending) | 200 {token} (resolved) | 410 (expired)
+```
+
+No POST needed — the phone resolves the challenge via deep link, writing directly to the in-memory map on the same process.
+
+### New phone entry point
+
+A "Scan browser QR" action added to the LAN Sync / web companion settings area. Launches `mobile_scanner` pointed at `kashcube://auth?challenge=...` QR codes only.
+
+### Implementation components
+
+| Component | Location | Notes |
+|---|---|---|
+| `PendingChallengeService` | `lib/data/services/web/pending_challenge_service.dart` | In-memory `Map<String, _Entry>` with 5 min TTL; `resolve(id, token)` and `poll(id)` methods |
+| `GET /auth/challenge/:id` route | `p2p_sync_server.dart` | No auth guard — challenge ID is unguessable (128-bit); return 202/200/410 |
+| Deep link scheme entry | `AndroidManifest.xml` | `kashcube://auth` intent filter |
+| Deep link handler | `app_shell.dart` | Parse `origin`, validate matches own IP+port, mint token, call `PendingChallengeService.resolve()` |
+| Browser polling loop | `web_connect_screen.dart` | `Timer.periodic(2s)` hits `GET /auth/challenge/:id`; cancel on 200 or 410 |
+| "Scan browser QR" button | `open_on_laptop_screen.dart` or settings tile | Launches scanner; scoped to `kashcube://auth` scheme |
+
+### Security notes
+
+- `challenge_id` is 128-bit random — not enumerable
+- Origin validation on phone: reject if `origin` host ≠ own IP (prevents a malicious QR on a different network from hijacking the token mint)
+- Token TTL and single-use behaviour are identical to V1
+- No token ever appears in browser history (it arrives via JSON poll response, not in the URL)
+- This is **strictly better** than V1 for browser history privacy: V1 token appears in history as `http://ip:port?token=...`; V2 token never touches the URL bar
 
 ### Conditional import for URL parsing
 

@@ -41,17 +41,28 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
   }
 
   /// If URL contains a token, extract it and build ws:// URL automatically.
+  /// On page refresh, prefer a saved session token from sessionStorage so
+  /// the user doesn't need to scan a new QR code.
   void _tryAutoConnect() {
     if (_triedAutoConnect) return;
     _triedAutoConnect = true;
     if (!kIsWeb) return;
 
+    // 1. Try session token from sessionStorage (survives page refresh).
+    final savedSession = url_reader.getSavedSessionId();
+    final savedWsUrl   = url_reader.getSavedWsUrl();
+    if (savedSession != null && savedWsUrl != null) {
+      ref.read(webSyncProvider.notifier)
+          .connect(savedWsUrl, savedSession, isSession: true);
+      return;
+    }
+
+    // 2. Fall back to QR token from the URL (first load).
     final token  = url_reader.getInitialToken();
     final origin = url_reader.getOrigin(); // 'http://192.168.1.8:60567'
     if (token == null || origin == null) return;
 
-    // Replace http(s) with ws(s) and append /ws path.
-    final wsUrl = origin.replaceFirst(RegExp(r'^http'), 'ws') + '/ws';
+    final wsUrl = '${origin.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
     ref.read(webSyncProvider.notifier).connect(wsUrl, token);
   }
 

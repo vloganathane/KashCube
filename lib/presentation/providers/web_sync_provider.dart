@@ -11,6 +11,9 @@ import '../../data/services/database_helper.dart';
 import '../../data/services/sync/generic_sync_query_builder.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync_event_bus.dart';
+import '../web/web_url_reader_stub.dart'
+    if (dart.library.js_interop) '../web/web_url_reader_web.dart'
+    as url_reader;
 
 // ── WebSocket connection state ─────────────────────────────────────────────
 
@@ -69,17 +72,24 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   Timer? _writeTimer;
   bool _writeLoopInFlight = false;
   bool _registrySnapshotLogged = false;
+  String? _wsUrl; // remembered for session reconnect logging
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
   final Set<String>           _snapshotSentTables = {};
   Set<String> _pullTables = const <String>{};
 
-  Future<void> connect(String wsUrl, String token) async {
+  /// Connect with a QR token (first load) or a session token (page refresh).
+  ///
+  /// Set [isSession] to true when passing a session token instead of a QR
+  /// token — the phone will verify it with [SESSION_AUTH] handling.
+  Future<void> connect(String wsUrl, String token,
+      {bool isSession = false}) async {
     if (state.state == WsConnState.connecting ||
         state.state == WsConnState.connected) { return; }
 
     state = state.copyWith(state: WsConnState.connecting);
+    _wsUrl = wsUrl;
 
     try {
       final uri = Uri.parse(wsUrl);
@@ -92,8 +102,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         onError: (_) => _onDisconnected(),
       );
 
-      // Send AUTH immediately.
-      _channel!.sink.add(jsonEncode({'type': 'AUTH', 'token': token}));
+      // Send AUTH or SESSION_AUTH depending on credential type.
+      _channel!.sink.add(jsonEncode({
+        'type':  isSession ? 'SESSION_AUTH' : 'AUTH',
+        'token': token,
+      }));
     } catch (e) {
       state = state.copyWith(
         state:    WsConnState.disconnected,
@@ -111,6 +124,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           unawaited(_handleAuthOk(msg));
           break;
         case 'AUTH_FAIL':
+          // Clear saved session so the user is prompted to scan a new QR.
+          url_reader.clearSession();
           state = state.copyWith(
             state:    WsConnState.disconnected,
             errorMsg: 'Authentication failed — scan a new QR code',
@@ -143,6 +158,14 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   Future<void> _handleAuthOk(Map<String, dynamic> msg) async {
+    // Persist session token so a page refresh can re-authenticate without
+    // requiring a new QR scan.  The phone rotates the session_id on every
+    // successful auth, so we always save the freshest value.
+    final sessionId = msg['session_id'] as String?;
+    if (sessionId != null && _wsUrl != null) {
+      url_reader.saveSession(sessionId, _wsUrl!);
+    }
+
     await _logDiscoveredSyncPlans();
 
     _outboundLastSentAt.clear();

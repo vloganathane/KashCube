@@ -9,62 +9,96 @@ import 'web_browser_session.dart';
 /// connecting to the web companion over LAN.
 ///
 /// Security model:
-///   - Token is 32 random bytes → 256-bit entropy — not guessable
-///   - Single-use: consumed on first successful WebSocket AUTH
-///   - Expires 5 minutes after generation if never used
-///   - On WS disconnect → token is cleared; new QR scan required
-///   - Token is stored in-memory only, never persisted
+///   - QR token: 43-char base64url SHA-256; single-use; 5-minute TTL.
+///   - Session token: issued after successful QR auth; multi-use; 30-minute TTL.
+///     Stored by the browser in sessionStorage so page refreshes can
+///     re-authenticate without requiring a new QR scan.
+///   - All tokens are in-memory on the phone, never persisted to disk.
+///   - On coordinator stop → both tokens cleared; new QR required.
 class WebSessionService {
   WebSessionService._();
   static final WebSessionService instance = WebSessionService._();
 
+  // ── QR token (single-use, 5 min) ─────────────────────────────────────────
   String? _activeToken;
   DateTime? _expiresAt;
+
+  // ── Session token (multi-use, 30 min, reset on every reconnect) ──────────
+  String? _sessionToken;
+  DateTime? _sessionExpiry;
 
   // Called whenever a browser session is live.
   WebBrowserSession? activeSession;
 
-  static const _tokenTtl = Duration(minutes: 5);
+  static const _tokenTtl   = Duration(minutes: 5);
+  static const _sessionTtl = Duration(minutes: 30);
 
-  /// Generates a new session token, invalidating any previous one.
-  /// Returns a base64url-encoded 32-byte random string.
+  /// Generates a new QR token, invalidating any previous one.
+  /// Returns a base64url-encoded SHA-256 hash (43 chars).
   String generateToken() {
-    // Use SHA-256(uuid + timestamp + random) as a simple CSPRNG fallback.
-    // crypto package's Hmac + random bytes via dart:math is sufficient here
-    // since the token never leaves the LAN and expires in 5 minutes.
     final seed = '${DateTime.now().microsecondsSinceEpoch}'
         '${_pseudoRandom()}';
     final bytes = sha256.convert(utf8.encode(seed)).bytes;
     _activeToken = base64Url.encode(bytes).replaceAll('=', '');
     _expiresAt   = DateTime.now().add(_tokenTtl);
-    debugPrint('[WebSession] Token generated, expires at $_expiresAt');
+    debugPrint('[WebSession] QR token generated, expires at $_expiresAt');
     return _activeToken!;
   }
 
-  /// Validates [token]. Consumes (invalidates) it on success.
-  /// Returns true once — subsequent calls with the same token return false.
+  /// Validates the QR [token]. Consumes (invalidates) it on success so it
+  /// cannot be reused for a second browser. On success also generates a
+  /// fresh session token valid for 30 minutes (returned via [sessionToken]).
   bool validateAndConsume(String token) {
     final stored  = _activeToken;
     final expires = _expiresAt;
     if (stored == null || expires == null) return false;
     if (DateTime.now().isAfter(expires))  return false;
     if (!_constantTimeEquals(token, stored)) return false;
-    // Consume — single use.
+    // Consume QR token — single use.
     _activeToken = null;
     _expiresAt   = null;
+    // Issue a session token for refresh re-auth.
+    _issueSessionToken();
     return true;
   }
 
-  /// Returns whether there is an unused, unexpired token available.
+  /// Validates a session token (used on page refresh when the QR token is gone).
+  /// Re-extends the TTL on each successful validation (rolling window).
+  bool validateSession(String token) {
+    final stored  = _sessionToken;
+    final expires = _sessionExpiry;
+    if (stored == null || expires == null) return false;
+    if (DateTime.now().isAfter(expires))  return false;
+    if (!_constantTimeEquals(token, stored)) return false;
+    // Roll the 30-minute window forward.
+    _sessionExpiry = DateTime.now().add(_sessionTtl);
+    return true;
+  }
+
+  /// The current session token to include in AUTH_OK — null before first auth.
+  String? get sessionToken => _sessionToken;
+
+  /// Returns whether there is an unused, unexpired QR token available.
   bool get hasValidToken =>
       _activeToken != null &&
       _expiresAt != null &&
       DateTime.now().isBefore(_expiresAt!);
 
-  /// Clears the active token (e.g., on session close or user revoke).
+  /// Clears both tokens (e.g., on coordinator stop or user revoke).
   void clearToken() {
-    _activeToken = null;
-    _expiresAt   = null;
+    _activeToken   = null;
+    _expiresAt     = null;
+    _sessionToken  = null;
+    _sessionExpiry = null;
+  }
+
+  void _issueSessionToken() {
+    final seed = 'session${DateTime.now().microsecondsSinceEpoch}'
+        '${_pseudoRandom()}';
+    final bytes = sha256.convert(utf8.encode(seed)).bytes;
+    _sessionToken  = base64Url.encode(bytes).replaceAll('=', '');
+    _sessionExpiry = DateTime.now().add(_sessionTtl);
+    debugPrint('[WebSession] Session token issued, expires at $_sessionExpiry');
   }
 
   // Constant-time string comparison to avoid timing attacks.

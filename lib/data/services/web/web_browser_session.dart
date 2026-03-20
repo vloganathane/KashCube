@@ -22,6 +22,8 @@ class WebBrowserSession {
   WebBrowserSession({
     required this.channel,
     required this.validateToken,
+    required this.validateSession,
+    required this.getSessionToken,
     required this.onWrite,
     required this.schemaVersion,
     required this.deviceName,
@@ -29,8 +31,14 @@ class WebBrowserSession {
 
   final WebSocketChannel channel;
 
-  /// Validates and consumes the token — returns true if accepted.
+  /// Validates and consumes the QR token — returns true if accepted.
   final bool Function(String token) validateToken;
+
+  /// Validates a session token issued after QR auth (for page refresh re-auth).
+  final bool Function(String token) validateSession;
+
+  /// Returns the current session token to embed in AUTH_OK.
+  final String? Function() getSessionToken;
 
   /// Called when browser writes a row — phone persists it.
   final Future<void> Function(String table, Map<String, dynamic> row) onWrite;
@@ -68,7 +76,8 @@ class WebBrowserSession {
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
         case 'AUTH':
-          _handleAuth(msg);
+        case 'SESSION_AUTH':
+          _handleAuth(msg, isSession: type == 'SESSION_AUTH');
           break;
         case 'PULL':
           _handlePull(msg);
@@ -90,22 +99,26 @@ class WebBrowserSession {
     }
   }
 
-  void _handleAuth(Map<String, dynamic> msg) {
+  void _handleAuth(Map<String, dynamic> msg, {bool isSession = false}) {
     final token = msg['token'] as String?;
-    if (token == null || !validateToken(token)) {
+    final valid = token != null &&
+        (isSession ? validateSession(token) : validateToken(token));
+    if (!valid) {
       _sendRaw({'type': 'AUTH_FAIL', 'reason': 'invalid_token'});
       dispose();
       return;
     }
     _authenticated = true;
+    final sessionId = getSessionToken();
     _sendRaw({
       'type':           'AUTH_OK',
       'device_name':    deviceName,
       'schema_version': schemaVersion,
+      if (sessionId != null) 'session_id': sessionId,
     });
     _startPing();
     unawaited(_sendSyncPlan());
-    debugPrint('[WebSession] Browser authenticated');
+    debugPrint('[WebSession] Browser authenticated (${isSession ? 'session' : 'QR'})');
   }
 
   Future<void> _sendSyncPlan() async {

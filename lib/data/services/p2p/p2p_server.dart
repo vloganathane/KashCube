@@ -169,11 +169,13 @@ class P2pServer {
           // Dispose any existing session (one browser at a time).
           _activeSession?.dispose();
           final session = WebBrowserSession(
-            channel:       channel,
-            validateToken: WebSessionService.instance.validateAndConsume,
-            onWrite:       _webOnWrite ?? (_, _p) async {},
-            schemaVersion: _webSchemaVersion!,
-            deviceName:    _webDeviceName!,
+            channel:         channel,
+            validateToken:   WebSessionService.instance.validateAndConsume,
+            validateSession: WebSessionService.instance.validateSession,
+            getSessionToken: () => WebSessionService.instance.sessionToken,
+            onWrite:         _webOnWrite ?? (_, p2) async {},
+            schemaVersion:   _webSchemaVersion!,
+            deviceName:      _webDeviceName!,
           );
           _activeSession = session;
           session.attach();

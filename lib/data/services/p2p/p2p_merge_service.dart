@@ -102,7 +102,7 @@ class P2pMergeService {
             db,
             table,
             remote,
-            existing['id'] as int,
+            remote[keyColumn],
             deviceId,
             keyColumn: keyColumn,
           );
@@ -244,19 +244,18 @@ class P2pMergeService {
     Database db,
     String table,
     Map<String, dynamic> remote,
-    int localId,
+    Object? keyValue,
     String deviceId, {
     required String keyColumn,
-  }
-  ) async {
+  }) async {
     final row = _prepareRow(remote, deviceId);
-    row.remove('id');      // don't overwrite PK
+    row.remove('id');      // don't overwrite integer PK if present
     row.remove(keyColumn); // immutable after creation
     await db.update(
       table,
       row,
-      where: 'id = ?',
-      whereArgs: [localId],
+      where: '$keyColumn = ?',
+      whereArgs: [keyValue],
     );
   }
 

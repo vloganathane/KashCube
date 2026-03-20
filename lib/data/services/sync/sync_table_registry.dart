@@ -40,6 +40,8 @@ class SyncTableRegistry {
   static final SyncTableRegistry instance = SyncTableRegistry._();
 
   final Map<String, Set<String>> _columnsCache = {};
+  // SQLite single-column PK detected from PRAGMA table_info (null for composite PKs).
+  final Map<String, String?> _pkColumnCache = {};
 
   /// Tables that must NEVER leave this device.
   ///
@@ -99,7 +101,8 @@ class SyncTableRegistry {
       final columns = await _getTableColumns(db, tableName);
       if (columns.isEmpty) continue;
 
-      plans.add(_buildPlan(tableName, columns));
+      final pkColumn = _getPkColumn(tableName);
+      plans.add(_buildPlan(tableName, columns, pkColumn));
     }
 
     plans.sort((a, b) => a.tableName.compareTo(b.tableName));
@@ -116,21 +119,37 @@ class SyncTableRegistry {
         .whereType<String>()
         .toSet();
 
+    // Detect single-column primary key (pk > 0 marks PK columns).
+    // Composite PKs are excluded (pkRows.length > 1) since no reliable generic merge.
+    final pkRows = rows
+        .where((r) => ((r['pk'] as num?)?.toInt() ?? 0) > 0)
+        .toList()
+      ..sort((a, b) =>
+          ((a['pk'] as num).toInt()).compareTo((b['pk'] as num).toInt()));
+    _pkColumnCache[tableName] = pkRows.length == 1
+        ? (pkRows.first['name'] as String?)?.toLowerCase()
+        : null;
+
     _columnsCache[tableName] = columns;
     return columns;
   }
 
-  SyncTablePlan _buildPlan(String tableName, Set<String> columns) {
+  /// Returns the detected single-column primary key for [tableName],
+  /// or null if the table has a composite PK or the cache is cold.
+  String? _getPkColumn(String tableName) => _pkColumnCache[tableName];
+
+  SyncTablePlan _buildPlan(String tableName, Set<String> columns, String? sqlitePkColumn) {
     final hasUpdatedAt = columns.contains('updated_at');
     final hasCreatedAt = columns.contains('created_at');
     final hasDeletedAt = columns.contains('deleted_at');
     final hasVersion = columns.contains('version');
 
+    // Prefer explicit sync columns, then fall back to the actual SQLite PK.
     final keyColumn = columns.contains('sync_id')
         ? 'sync_id'
         : columns.contains('id')
             ? 'id'
-            : null;
+            : sqlitePkColumn;
 
     final mode = (hasUpdatedAt || hasCreatedAt)
         ? SyncMode.deltaTs
@@ -158,5 +177,8 @@ class SyncTableRegistry {
     return '$tableName|${sortedColumns.join(',')}';
   }
 
-  void clearCache() => _columnsCache.clear();
+  void clearCache() {
+    _columnsCache.clear();
+    _pkColumnCache.clear();
+  }
 }

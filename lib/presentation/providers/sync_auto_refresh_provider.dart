@@ -11,6 +11,7 @@ import 'dashboard_provider.dart';
 import 'delivery_challan_provider.dart';
 import 'document_template_provider.dart';
 import 'inventory_provider.dart';
+import 'settings_provider.dart';
 import 'invoice_provider.dart';
 import 'loan_provider.dart';
 import 'party_provider.dart';
@@ -110,6 +111,14 @@ final syncAutoRefreshInstallerProvider = Provider<void>((ref) {
       case 'scheduled_payments':
         ref.invalidate(scheduledPaymentsProvider);
         ref.invalidate(totalMonthlyScheduledExpenseProvider);
+        break;
+      case 'settings':
+        ref.invalidate(themeModeProvider);
+        ref.invalidate(businessModeProvider);
+        ref.invalidate(businessNameProvider);
+        ref.invalidate(notificationSettingsProvider);
+        ref.invalidate(smsAutoDetectEnabledProvider);
+        ref.invalidate(defaultAccountIdProvider);
         break;
       case 'document_templates':
         ref.invalidate(documentTemplatesProvider);

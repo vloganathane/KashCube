@@ -352,7 +352,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
         is_active INTEGER DEFAULT 1,
         notes TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT
+        updated_at TEXT,
+        deleted_at            TEXT,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT
       )
     ''');
 
@@ -399,7 +404,11 @@ extension _DatabaseTableCreators on DatabaseHelper {
         last_paid_date TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
-        deleted_at TEXT
+        deleted_at TEXT,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT
       )
     ''');
     await db.execute('CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)');
@@ -863,15 +872,22 @@ extension _DatabaseTableCreators on DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS party_reminders (
-        id                INTEGER PRIMARY KEY AUTOINCREMENT,
-        party_name        TEXT NOT NULL,
-        channel           TEXT NOT NULL DEFAULT 'whatsapp',
-        message           TEXT NOT NULL,
-        invoice_refs      TEXT,
-        invoice_count     INTEGER NOT NULL DEFAULT 0,
-        total_outstanding REAL,
-        business_id       INTEGER,
-        sent_at           TEXT NOT NULL DEFAULT (datetime('now')),
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_name            TEXT NOT NULL,
+        channel               TEXT NOT NULL DEFAULT 'whatsapp',
+        message               TEXT NOT NULL,
+        invoice_refs          TEXT,
+        invoice_count         INTEGER NOT NULL DEFAULT 0,
+        total_outstanding     REAL,
+        business_id           INTEGER,
+        sent_at               TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');

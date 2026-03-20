@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_tables.dart';
 import '../../data/services/sync_event_bus.dart';
 import 'account_provider.dart';
+import 'bill_schedule_provider.dart';
 import 'booking_provider.dart';
 import 'budget_provider.dart';
 import 'business_provider.dart';
@@ -18,6 +19,7 @@ import 'loan_provider.dart';
 import 'party_provider.dart';
 import 'party_reminder_provider.dart';
 import 'purchase_bill_provider.dart';
+import 'recurring_provider.dart';
 import 'scheduled_payment_provider.dart';
 import 'staff_provider.dart';
 import 'transaction_provider.dart';
@@ -72,7 +74,7 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
   ],
   AppTables.parties:         [partiesProvider],
   AppTables.partyAddresses:  [partiesProvider],
-  AppTables.partyReminders:  [partyRemindersProvider],
+  AppTables.partyReminders:  [partyRemindersProvider, recentRemindersProvider],
   AppTables.accounts:        [accountsProvider, accountBalancesProvider, totalBalanceProvider],
   AppTables.categories:      [customCategoriesProvider],
   AppTables.budgets:         [currentMonthBudgetsProvider],
@@ -105,6 +107,16 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
   AppTables.bookingItems:   [bookingsProvider],
   AppTables.staff:          [staffProvider],
   AppTables.salaryPayments: [staffProvider],
+  AppTables.recurringTransactions: [
+    recurringTransactionsProvider,
+    recurringMonthlySummaryProvider,
+  ],
+  AppTables.bills: [
+    scheduledBillsProvider,
+    overdueBillsProvider,
+    upcomingBillsProvider,
+    totalMonthlyBillsProvider,
+  ],
 };
 
 /// Broad refresh applied when a table is not in [_tableInvalidators].

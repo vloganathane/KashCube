@@ -2666,6 +2666,102 @@ class DatabaseHelper {
             'booking_items, delivery_challan_items, purchase_bill_items, item_stock',
       });
     }
+
+    // ── v73: Sync columns on 3 missed tables ─────────────────────────────────
+    // recurring_transactions, bills — never had any sync columns.
+    // party_reminders — had no sync_id/version/timestamps beyond sent_at.
+    if (oldVersion < 73) {
+      // recurring_transactions: needs all 6 sync columns + deleted_at
+      // bills: already has deleted_at; needs sync_id/version/device_id cols
+      // party_reminders: needs all 6 sync columns + created_at/updated_at/deleted_at
+      const fullSyncTables = [
+        'recurring_transactions',
+        'party_reminders',
+      ];
+      for (final tbl in fullSyncTables) {
+        for (final col in [
+          'ALTER TABLE $tbl ADD COLUMN sync_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN updated_at TEXT',
+          'ALTER TABLE $tbl ADD COLUMN deleted_at TEXT',
+          'ALTER TABLE $tbl ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+          'ALTER TABLE $tbl ADD COLUMN created_by_device_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN updated_by_device_id TEXT',
+        ]) {
+          try {
+            await db.execute(col);
+          } catch (e) {
+            debugPrint('[DB v73] $tbl column: $e');
+          }
+        }
+      }
+
+      // party_reminders: also needs created_at (sent_at exists but isn't created_at)
+      try {
+        await db.execute(
+          "ALTER TABLE party_reminders ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+        );
+      } catch (e) {
+        debugPrint('[DB v73] party_reminders created_at: $e');
+      }
+
+      // bills: already has updated_at + deleted_at — only needs sync cols
+      for (final col in [
+        'ALTER TABLE bills ADD COLUMN sync_id TEXT',
+        'ALTER TABLE bills ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+        'ALTER TABLE bills ADD COLUMN created_by_device_id TEXT',
+        'ALTER TABLE bills ADD COLUMN updated_by_device_id TEXT',
+      ]) {
+        try {
+          await db.execute(col);
+        } catch (e) {
+          debugPrint('[DB v73] bills column: $e');
+        }
+      }
+
+      // Backfill sync_id for all existing rows
+      for (final tbl in [...fullSyncTables, 'bills']) {
+        await db.execute(
+          "UPDATE $tbl SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL",
+        );
+      }
+
+      // Create unique indexes on sync_id
+      for (final tbl in [...fullSyncTables, 'bills']) {
+        try {
+          await db.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)',
+          );
+        } catch (e) {
+          debugPrint('[DB v73] idx_${tbl}_sync_id: $e');
+        }
+      }
+
+      // Create UPDATE triggers (updated_at + version)
+      for (final tbl in [...fullSyncTables, 'bills']) {
+        try {
+          await db.execute('''
+            CREATE TRIGGER IF NOT EXISTS trg_${tbl}_sync_updated
+              AFTER UPDATE ON $tbl
+              FOR EACH ROW
+              WHEN NEW.updated_at = OLD.updated_at OR OLD.updated_at IS NULL
+              BEGIN
+                UPDATE $tbl SET
+                  updated_at = datetime('now'),
+                  version    = COALESCE(OLD.version, 0) + 1
+                WHERE id = OLD.id;
+              END
+          ''');
+        } catch (e) {
+          debugPrint('[DB v73] trigger $tbl: $e');
+        }
+      }
+
+      await db.insert('schema_version', {
+        'version': 73,
+        'description':
+            'Sync columns on 3 missed tables: recurring_transactions, bills, party_reminders',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

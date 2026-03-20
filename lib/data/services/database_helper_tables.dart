@@ -1161,11 +1161,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
       CREATE TABLE IF NOT EXISTS subscription (
         id              INTEGER PRIMARY KEY DEFAULT 1,
         plan            TEXT NOT NULL DEFAULT 'free',
-        purchased_at    TEXT,
-        expires_at      TEXT,
-        receipt_data    TEXT,
-        shareable_plan_features TEXT,
-        updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+        source          TEXT DEFAULT 'none',
+        purchase_token  TEXT,
+        plan_started_at TEXT,
+        plan_expires_at TEXT,
+        is_trial        INTEGER NOT NULL DEFAULT 0,
+        trial_ends_at   TEXT,
+        shareable_plan_features TEXT
       )
     ''');
     await db.execute("INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')");

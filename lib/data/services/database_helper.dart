@@ -2505,6 +2505,167 @@ class DatabaseHelper {
             'Generic sync engine metadata: sync_table_state table + indexes',
       });
     }
+
+    if (oldVersion < 71) {
+      // ── Step A: Add ALL sync columns to tables that only have created_at ──
+      const fullSyncTables = [
+        'loan_payments',
+        'salary_payments',
+        'party_addresses',
+        'bill_attachments',
+        'stock_movements',
+        'document_templates',
+      ];
+      for (final tbl in fullSyncTables) {
+        for (final col in [
+          'ALTER TABLE $tbl ADD COLUMN sync_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN updated_at TEXT',
+          'ALTER TABLE $tbl ADD COLUMN deleted_at TEXT',
+          'ALTER TABLE $tbl ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+          'ALTER TABLE $tbl ADD COLUMN created_by_device_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN updated_by_device_id TEXT',
+        ]) {
+          try {
+            await db.execute(col);
+          } catch (e) {
+            debugPrint('[DB v71] $tbl column: $e');
+          }
+        }
+      }
+
+      // ── Step B: Add partial sync columns to tables that already have updated_at
+      const partialSyncTables = [
+        'staff',
+        'bookings',
+        'delivery_challans',
+      ];
+      for (final tbl in partialSyncTables) {
+        for (final col in [
+          'ALTER TABLE $tbl ADD COLUMN sync_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN deleted_at TEXT',
+          'ALTER TABLE $tbl ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+          'ALTER TABLE $tbl ADD COLUMN created_by_device_id TEXT',
+          'ALTER TABLE $tbl ADD COLUMN updated_by_device_id TEXT',
+        ]) {
+          try {
+            await db.execute(col);
+          } catch (e) {
+            debugPrint('[DB v71] $tbl column: $e');
+          }
+        }
+      }
+
+      // ── Step C: Backfill sync_id for all existing rows ─────────────────────
+      const allV71Tables = [
+        ...fullSyncTables,
+        ...partialSyncTables,
+      ];
+      for (final tbl in allV71Tables) {
+        await db.execute(
+          "UPDATE $tbl SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL",
+        );
+      }
+
+      // ── Step D: Create unique indexes on sync_id ───────────────────────────
+      for (final tbl in allV71Tables) {
+        try {
+          await db.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)",
+          );
+        } catch (e) {
+          debugPrint('[DB v71] idx_${tbl}_sync_id: $e');
+        }
+      }
+
+      // ── Step E: Create UPDATE triggers (updated_at + version) ──────────────
+      for (final tbl in allV71Tables) {
+        try {
+          await db.execute('''
+            CREATE TRIGGER IF NOT EXISTS trg_${tbl}_sync_updated
+              AFTER UPDATE ON $tbl
+              FOR EACH ROW
+              WHEN NEW.updated_at = OLD.updated_at OR OLD.updated_at IS NULL
+              BEGIN
+                UPDATE $tbl SET
+                  updated_at = datetime('now'),
+                  version    = COALESCE(OLD.version, 0) + 1
+                WHERE id = OLD.id;
+              END
+          ''');
+        } catch (e) {
+          debugPrint('[DB v71] trigger $tbl: $e');
+        }
+      }
+
+      await db.insert('schema_version', {
+        'version': 71,
+        'description':
+            'Sync columns on 9 remaining tables: loan_payments, salary_payments, '
+            'party_addresses, bill_attachments, stock_movements, document_templates, '
+            'staff, bookings, delivery_challans',
+      });
+    }
+
+    if (oldVersion < 72) {
+      // Add created_at + updated_at to child/item tables that had no timestamps.
+      // This enables deltaTs sync mode instead of full-snapshot every pull.
+      const childTables = [
+        'quote_items',
+        'invoice_items',
+        'booking_items',
+        'delivery_challan_items',
+        'purchase_bill_items',
+        'item_stock',
+      ];
+      for (final tbl in childTables) {
+        for (final col in [
+          "ALTER TABLE $tbl ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+          'ALTER TABLE $tbl ADD COLUMN updated_at TEXT',
+        ]) {
+          try {
+            await db.execute(col);
+          } catch (e) {
+            debugPrint('[DB v72] $tbl column: $e');
+          }
+        }
+      }
+
+      // Backfill created_at for existing rows (SQLite DEFAULT only applies to INSERT).
+      for (final tbl in childTables) {
+        await db.execute(
+          "UPDATE $tbl SET created_at = datetime('now') WHERE created_at IS NULL",
+        );
+      }
+
+      // Create UPDATE triggers for updated_at on child tables.
+      for (final tbl in childTables) {
+        // item_stock has composite PK (business_id, item_id) — different WHERE clause.
+        final whereClause = tbl == 'item_stock'
+            ? 'WHERE business_id = OLD.business_id AND item_id = OLD.item_id'
+            : 'WHERE id = OLD.id';
+        try {
+          await db.execute('''
+            CREATE TRIGGER IF NOT EXISTS trg_${tbl}_sync_updated
+              AFTER UPDATE ON $tbl
+              FOR EACH ROW
+              WHEN NEW.updated_at = OLD.updated_at OR OLD.updated_at IS NULL
+              BEGIN
+                UPDATE $tbl SET updated_at = datetime('now')
+                $whereClause;
+              END
+          ''');
+        } catch (e) {
+          debugPrint('[DB v72] trigger $tbl: $e');
+        }
+      }
+
+      await db.insert('schema_version', {
+        'version': 72,
+        'description':
+            'Timestamps on 6 child tables: quote_items, invoice_items, '
+            'booking_items, delivery_challan_items, purchase_bill_items, item_stock',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

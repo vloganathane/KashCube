@@ -66,6 +66,14 @@ final syncAutoRefreshInstallerProvider = Provider<void>((ref) {
         ref.invalidate(overdueLoansProvider);
         ref.invalidate(partySummariesProvider);
         break;
+      case 'loan_payments':
+        ref.invalidate(activeLoansProvider);
+        ref.invalidate(totalPendingLoanProvider);
+        ref.invalidate(totalPendingLentProvider);
+        ref.invalidate(totalPendingBorrowedProvider);
+        ref.invalidate(clearedLoansProvider);
+        ref.invalidate(overdueLoansProvider);
+        break;
       case 'parties':
         ref.invalidate(partiesProvider);
         break;
@@ -87,9 +95,11 @@ final syncAutoRefreshInstallerProvider = Provider<void>((ref) {
         ref.invalidate(currentMonthBudgetsProvider);
         break;
       case 'invoices':
+      case 'invoice_items':
         ref.invalidate(invoicesProvider);
         break;
       case 'quotes':
+      case 'quote_items':
         ref.invalidate(quotesProvider);
         break;
       case 'businesses':
@@ -128,6 +138,7 @@ final syncAutoRefreshInstallerProvider = Provider<void>((ref) {
         ref.invalidate(challansProvider);
         break;
       case 'bookings':
+      case 'booking_items':
         ref.invalidate(bookingsProvider);
         break;
       case 'staff':

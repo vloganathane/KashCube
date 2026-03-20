@@ -131,6 +131,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           break;
         case 'WRITE_OK':
           break;
+        case 'SYNC_PLAN':
+          _handleSyncPlan(msg);
+          break;
         default:
           break;
       }
@@ -242,6 +245,20 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _markOutboundWatermarkFromRows(table, rows);
     DatabaseHelper.instance.notifyChange(table);
     debugPrint('[WebSync] PUSH: $table (${rows.length} row(s))');
+  }
+
+  /// Handles the phone's SYNC_PLAN message: logs the advertised tables so
+  /// we can verify alignment with the browser's own discovery.
+  void _handleSyncPlan(Map<String, dynamic> msg) {
+    final tables = msg['tables'] as List<dynamic>? ?? [];
+    debugPrint('[WebSync] Phone SYNC_PLAN: ${tables.length} table(s)');
+    for (final entry in tables) {
+      if (entry is Map<String, dynamic>) {
+        final name = entry['name'] as String? ?? '?';
+        final mode = entry['mode'] as String? ?? '?';
+        debugPrint('[WebSync]   ↳ $name ($mode)');
+      }
+    }
   }
 
   void _startWriteLoop() {

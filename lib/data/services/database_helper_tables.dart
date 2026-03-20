@@ -198,7 +198,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         is_paid INTEGER DEFAULT 0,
         paid_date TEXT,
         notes TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
       )
     ''');
@@ -366,7 +372,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         file_name TEXT NOT NULL,
         file_type TEXT NOT NULL DEFAULT 'image',
         file_size INTEGER,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
       )
     ''');
@@ -558,6 +570,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         hsn_code TEXT,
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
       )
     ''');
@@ -644,6 +658,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
         catalog_item_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
       )
     ''');
@@ -674,8 +690,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         business_id INTEGER,
         booking_ref TEXT,
         reminder_sent_at TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (customer_party_id) REFERENCES parties(id),
         FOREIGN KEY (service_item_id) REFERENCES item_catalog(id),
         FOREIGN KEY (invoice_id) REFERENCES invoices(id),
@@ -704,6 +725,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         sac_code        TEXT,
         sort_order      INTEGER DEFAULT 0,
         service_item_id INTEGER,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at      TEXT,
         FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
         FOREIGN KEY (service_item_id) REFERENCES item_catalog(id)
       )
@@ -778,8 +801,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         delivery_state TEXT,
         delivery_pincode TEXT,
         delivery_gstin TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL,
+        updated_at            TEXT NOT NULL,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         pending_number_since TEXT,
         FOREIGN KEY (customer_party_id) REFERENCES parties(id),
         FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
@@ -803,6 +831,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         hsn_code TEXT,
         hsn_or_sac TEXT DEFAULT 'HSN',
         catalog_item_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
       )
     ''');
@@ -820,7 +850,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         page_size             TEXT NOT NULL DEFAULT 'a4',
         is_active             INTEGER NOT NULL DEFAULT 0,
         is_preset             INTEGER NOT NULL DEFAULT 0,
-        created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT
       )
     ''');
     await _seedDocumentTemplatePresets(db);
@@ -848,17 +884,23 @@ extension _DatabaseTableCreators on DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS party_addresses (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        party_id    INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
-        label       TEXT    NOT NULL DEFAULT 'Address',
-        address     TEXT,
-        city        TEXT,
-        state       TEXT,
-        pincode     TEXT,
-        country     TEXT DEFAULT 'India',
-        gstin       TEXT,
-        is_default  INTEGER NOT NULL DEFAULT 0,
-        created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        party_id              INTEGER NOT NULL REFERENCES parties(id) ON DELETE CASCADE,
+        label                 TEXT    NOT NULL DEFAULT 'Address',
+        address               TEXT,
+        city                  TEXT,
+        state                 TEXT,
+        pincode               TEXT,
+        country               TEXT DEFAULT 'India',
+        gstin                 TEXT,
+        is_default            INTEGER NOT NULL DEFAULT 0,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT    NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT
       )
     ''');
     await db.execute(
@@ -930,6 +972,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
         catalog_item_id INTEGER,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
       )
     ''');
@@ -960,7 +1004,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         reference_id INTEGER,
         reference_type TEXT,
         notes TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (item_id) REFERENCES item_catalog(id) ON DELETE CASCADE
       )
     ''');
@@ -977,6 +1027,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         track_inventory     INTEGER NOT NULL DEFAULT 0,
         last_counted_qty    REAL,
         last_counted_at     TEXT,
+        created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at          TEXT,
         PRIMARY KEY (business_id, item_id)
       )
     ''');
@@ -1004,8 +1056,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         notes TEXT,
         business_id INTEGER,
         party_id INTEGER REFERENCES parties(id),
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');
@@ -1028,7 +1085,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         paid_date TEXT,
         status TEXT NOT NULL DEFAULT 'pending',
         notes TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT,
         FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
       )
     ''');

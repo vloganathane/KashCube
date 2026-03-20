@@ -42100,7 +42100,7 @@ return A.l($async$pB,r)},
 wZ(a,b){var s=0,r=A.m(t.H)
 var $async$wZ=A.i(function(c,d){if(c===1)return A.j(d,r)
 for(;;)switch(s){case 0:s=2
-return A.c(b.H("      CREATE TABLE businesses (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        name TEXT NOT NULL,\n        address TEXT,\n        city TEXT,\n        state TEXT,\n        pincode TEXT,\n        phone TEXT,\n        email TEXT,\n        gst_no TEXT,\n        logo_path TEXT,\n        is_active INTEGER NOT NULL DEFAULT 0,\n        owner_name TEXT,\n        website TEXT,\n        whatsapp TEXT,\n        linkedin TEXT,\n        instagram TEXT,\n        country TEXT,\n        dial_code TEXT,\n        created_at TEXT NOT NULL DEFAULT (datetime('now')),\n        updated_at TEXT NOT NULL DEFAULT (datetime('now')),\n        deleted_at TEXT,\n        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),\n        version              INTEGER NOT NULL DEFAULT 0,\n        created_by_device_id  TEXT,\n        updated_by_device_id  TEXT,\n        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE\n      )\n    "),$async$wZ)
+return A.c(b.H("      CREATE TABLE businesses (\n        id INTEGER PRIMARY KEY AUTOINCREMENT,\n        name TEXT NOT NULL,\n        address TEXT,\n        city TEXT,\n        state TEXT,\n        pincode TEXT,\n        phone TEXT,\n        email TEXT,\n        gst_no TEXT,\n        logo_path TEXT,\n        is_active INTEGER NOT NULL DEFAULT 0,\n        owner_name TEXT,\n        website TEXT,\n        whatsapp TEXT,\n        linkedin TEXT,\n        instagram TEXT,\n        upi_id TEXT,\n        country TEXT,\n        dial_code TEXT,\n        created_at TEXT NOT NULL DEFAULT (datetime('now')),\n        updated_at TEXT NOT NULL DEFAULT (datetime('now')),\n        deleted_at TEXT,\n        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),\n        version              INTEGER NOT NULL DEFAULT 0,\n        created_by_device_id  TEXT,\n        updated_by_device_id  TEXT,\n        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE\n      )\n    "),$async$wZ)
 case 2:s=3
 return A.c(b.H("CREATE INDEX idx_businesses_active ON businesses(is_active)"),$async$wZ)
 case 3:s=4
@@ -42284,7 +42284,7 @@ return A.c(b.H("      CREATE TABLE IF NOT EXISTS user_permissions (\n        id 
 case 5:s=6
 return A.c(b.H(u.cC),$async$hi)
 case 6:s=7
-return A.c(b.H("      CREATE TABLE IF NOT EXISTS subscription (\n        id              INTEGER PRIMARY KEY DEFAULT 1,\n        plan            TEXT NOT NULL DEFAULT 'free',\n        purchased_at    TEXT,\n        expires_at      TEXT,\n        receipt_data    TEXT,\n        shareable_plan_features TEXT,\n        updated_at      TEXT NOT NULL DEFAULT (datetime('now'))\n      )\n    "),$async$hi)
+return A.c(b.H("      CREATE TABLE IF NOT EXISTS subscription (\n        id              INTEGER PRIMARY KEY DEFAULT 1,\n        plan            TEXT NOT NULL DEFAULT 'free',\n        source          TEXT DEFAULT 'none',\n        purchase_token  TEXT,\n        plan_started_at TEXT,\n        plan_expires_at TEXT,\n        is_trial        INTEGER NOT NULL DEFAULT 0,\n        trial_ends_at   TEXT,\n        shareable_plan_features TEXT\n      )\n    "),$async$hi)
 case 7:s=8
 return A.c(b.H(u.gu),$async$hi)
 case 8:s=9

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
@@ -67,7 +68,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     final name     = await settings.get(SettingsKeys.ownerName);
     P2pCoordinator.instance.enableWebCompanion(
       deviceName:    (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
-      schemaVersion: 69, // keep in sync with DatabaseHelper.dbVersion
+      schemaVersion: AppConstants.dbVersion,
     );
 
     final token = WebSessionService.instance.generateToken();

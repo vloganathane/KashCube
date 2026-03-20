@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../data/models/peer_device.dart';
 import '../../data/models/trusted_peer.dart';
@@ -38,14 +39,36 @@ final trustedPeersProvider = FutureProvider<List<TrustedPeer>>((ref) async {
 
 // ── Enabled toggle (starts / stops the coordinator) ────────────────────────
 
+/// SharedPreferences key that persists the user's LAN sync on/off choice
+/// across app restarts.
+const _kLanSyncEnabled = 'p2p_sync_enabled';
+
 /// Manages whether LAN sync is active.
+///
+/// The enabled state is persisted in [SharedPreferences] under
+/// [_kLanSyncEnabled] so the coordinator auto-restarts after an app relaunch
+/// if the user had previously enabled it.
 ///
 /// Calling [P2pEnabledNotifier.enable] starts [P2pCoordinator] and registers
 /// the WorkManager probe task.  [disable] reverses both.
 class P2pEnabledNotifier extends StateNotifier<bool> {
-  P2pEnabledNotifier(this._ref) : super(false);
+  P2pEnabledNotifier(this._ref) : super(false) {
+    _restore();
+  }
 
   final Ref _ref;
+
+  /// Reads the persisted preference and re-enables LAN sync if the user had
+  /// it turned on before the app was last closed.
+  Future<void> _restore() async {
+    try {
+      final prefs   = await SharedPreferences.getInstance();
+      final wasOn   = prefs.getBool(_kLanSyncEnabled) ?? false;
+      if (wasOn && mounted) await enable();
+    } catch (e) {
+      debugPrint('[P2P] restore() failed: $e');
+    }
+  }
 
   Future<void> enable() async {
     if (state) return;
@@ -64,13 +87,19 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
         displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
       );
       await registerP2pSyncTask();
-      if (mounted) state = true;
+      if (mounted) {
+        state = true;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_kLanSyncEnabled, true);
+      }
     } catch (e, s) {
       debugPrint('[P2P] enable() failed: $e\n$s');
       // If the HTTP server is actually bound, mark as enabled despite the
       // error (e.g. mDNS registration failure after server started).
       if (mounted && P2pCoordinator.instance.serverPort != null) {
         state = true;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool(_kLanSyncEnabled, true);
       }
     }
   }
@@ -79,7 +108,11 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
     if (!state) return;
     await P2pCoordinator.instance.stop();
     await cancelP2pSyncTask();
-    if (mounted) state = false;
+    if (mounted) {
+      state = false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kLanSyncEnabled, false);
+    }
   }
 }
 

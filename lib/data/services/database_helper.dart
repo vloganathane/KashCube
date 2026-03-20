@@ -2762,6 +2762,28 @@ class DatabaseHelper {
             'Sync columns on 3 missed tables: recurring_transactions, bills, party_reminders',
       });
     }
+
+    if (oldVersion < 74) {
+      // ── v74: Device-id columns on settings ───────────────────────────────
+      // settings uses key-based LWW merge via P2pMergeService, which always
+      // stamps updated_by_device_id into the row map before db.insert/update.
+      // Missing columns caused a silent "no such column" failure whenever the
+      // web companion wrote a setting back to the phone.
+      for (final col in const ['created_by_device_id', 'updated_by_device_id']) {
+        try {
+          await db.execute(
+              'ALTER TABLE settings ADD COLUMN $col TEXT');
+        } catch (e) {
+          debugPrint('[DB v74] settings.$col: $e');
+        }
+      }
+
+      await db.insert('schema_version', {
+        'version': 74,
+        'description':
+            'Device-id columns on settings (created_by/updated_by_device_id)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

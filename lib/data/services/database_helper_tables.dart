@@ -365,7 +365,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
       CREATE TABLE settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        created_by_device_id TEXT,
+        updated_by_device_id TEXT
       )
     ''');
 

@@ -6,6 +6,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../database_helper.dart';
+import '../sync/generic_sync_query_builder.dart';
 import '../sync/sync_table_registry.dart';
 
 /// Manages a single browser's WebSocket session.
@@ -40,7 +41,6 @@ class WebBrowserSession {
   bool _authenticated = false;
   StreamSubscription<dynamic>? _sub;
   bool _disposed = false;
-  final Map<String, Set<String>> _tableColumnsCache = {};
   final Map<String, SyncTablePlan> _syncPlans = {};
 
   static const _pingInterval = Duration(seconds: 25);
@@ -104,7 +104,26 @@ class WebBrowserSession {
       'schema_version': schemaVersion,
     });
     _startPing();
+    unawaited(_sendSyncPlan());
     debugPrint('[WebSession] Browser authenticated');
+  }
+
+  Future<void> _sendSyncPlan() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      await _ensureSyncPlans(db);
+      final tables = _syncPlans.values
+          .where((p) => p.isWebEligible)
+          .map((p) => {
+                'name': p.tableName,
+                'mode': p.mode.name,
+                'key':  p.keyColumn,
+              })
+          .toList();
+      _sendRaw({'type': 'SYNC_PLAN', 'tables': tables});
+    } catch (e) {
+      debugPrint('[WebSession] Failed to send sync plan: $e');
+    }
   }
 
   Future<void> _handlePull(Map<String, dynamic> msg) async {
@@ -206,32 +225,15 @@ class WebBrowserSession {
       return [];
     }
 
-    final columns = await _getTableColumns(db, table);
-    final hasUpdatedAt = columns.contains('updated_at');
-    final hasDeletedAt = columns.contains('deleted_at');
-
-    final where = <String>[];
-    final args = <Object?>[];
-
-    String sqlUtcExpr(String expr) {
-      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
-    }
-
-    if (since != null && hasUpdatedAt) {
-      final tsExpr = sqlUtcExpr('updated_at');
-      where.add('$tsExpr > julianday(?)');
-      args.add(since);
-    }
-    if (hasDeletedAt) {
-      where.add('deleted_at IS NULL');
-    }
-
-    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy = hasUpdatedAt ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC' : '';
-    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 1000';
+    final sinceTs = since != null ? DateTime.tryParse(since) : null;
+    final query = GenericSyncQueryBuilder.buildOutboundQuery(
+      plan: plan,
+      since: sinceTs,
+      limit: 1000,
+    );
 
     try {
-      return await db.rawQuery(sql, args);
+      return await db.rawQuery(query.sql, query.args);
     } catch (e) {
       debugPrint('[WebSession] Query error on $table: $e');
       return [];
@@ -251,21 +253,5 @@ class WebBrowserSession {
     }
   }
 
-  Future<Set<String>> _getTableColumns(Database db, String table) async {
-    final cached = _tableColumnsCache[table];
-    if (cached != null) return cached;
-
-    try {
-      final rows = await db.rawQuery('PRAGMA table_info($table)');
-      final columns = rows
-          .map((r) => (r['name'] as String?)?.toLowerCase())
-          .whereType<String>()
-          .toSet();
-      _tableColumnsCache[table] = columns;
-      return columns;
-    } catch (e) {
-      debugPrint('[WebSession] Failed to inspect schema for $table: $e');
-      return const <String>{};
-    }
-  }
 }
+

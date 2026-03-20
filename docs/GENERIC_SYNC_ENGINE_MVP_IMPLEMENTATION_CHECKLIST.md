@@ -134,23 +134,25 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Add both indexes for `sync_table_state`.
 
 ## 4) `lib/data/services/p2p/p2p_coordinator.dart`
-- [ ] Remove hardcoded `_webMirrorTables` usage.
-- [ ] Read runtime sync plan from registry/service at startup and refresh on reconnect.
-- [ ] Replace per-table watermark map with reads/writes to `sync_table_state`.
-- [ ] Use generic mode-aware query builder (`delta_ts`/`delta_version`/`snapshot`).
-- [ ] Preserve existing UTC normalization for timestamp comparisons.
+- [x] Remove hardcoded `_webMirrorTables` usage — replaced with registry-driven `_webMirrorTables()`.
+- [x] Read runtime sync plan from registry at startup and refresh on reconnect.
+- [x] Replace `SyncScope` denylist — `_peerSyncTables()` uses `isP2pEligible`, `_webMirrorTables()` uses `isWebEligible`.
+- [x] Replace per-table in-memory watermark map (`_webLastPushedAt`) with `SyncTableStateStore` reads/writes.
+- [x] Use `GenericSyncQueryBuilder` for all outbound queries (deltaTs, deltaVersion, snapshot).
+- [x] Preserve UTC normalization — centralized in `GenericSyncQueryBuilder`.
+- [ ] Remove legacy `_queryWebDeltaRows` / `_queryGenericDeltaTsRows` / comparison infrastructure (cleanup after full rollout).
 
 ## 5) `lib/presentation/providers/web_sync_provider.dart`
-- [ ] Remove hardcoded `_pullTables` usage.
-- [ ] Pull discovered table list from generic table registry over WS bootstrap.
-- [ ] Replace `_outboundLastSentAt` map with `sync_table_state` metadata.
-- [ ] Use same generic mode-aware outbound query builder as phone side.
-- [ ] Keep batching behavior (limit/chunk size) unchanged for MVP.
+- [x] Remove hardcoded `_pullTables` — replaced with registry-driven `isWebEligible` filter.
+- [x] Table list pulled from `SyncTableRegistry.discoverSyncPlans` on AUTH_OK bootstrap.
+- [x] Replace `_outboundLastSentAt` with `SyncTableStateStore` reads/writes.
+- [x] Use `GenericSyncQueryBuilder` for outbound queries across all modes.
+- [x] Keep LIMIT 200 batching unchanged for MVP.
 
 ## 6) `lib/data/services/web/web_browser_session.dart`
-- [ ] Replace whitelist-based pull logic with policy-based validation.
-- [ ] Expose/distribute discovered sync table plan to browser after AUTH.
-- [ ] Route PULL/WRITE through generic planner and generic merge helpers.
+- [x] Replace whitelist-based pull logic with `plan.isWebEligible` validation.
+- [x] Transmit discovered sync plan to browser as `SYNC_PLAN` message after AUTH_OK.
+- [x] `_queryRows` handles all three modes via `GenericSyncQueryBuilder`.
 
 ## 7) `lib/presentation/providers/sync_auto_refresh_provider.dart`
 - [x] Replace static switch-based invalidation with registry map.
@@ -158,17 +160,17 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Ensure future schema additions do not require code edits here.
 
 ## 8) `lib/data/services/p2p/p2p_merge_service.dart`
-- [ ] Add generic conflict resolver by sync mode:
-  - `delta_ts`: latest timestamp wins
-  - `delta_version`: highest version wins
-  - `snapshot`: replace by key
-- [ ] Keep current behavior for existing p0/p2p tables unchanged where equivalent.
+- [x] `delta_ts`: LWW — latest `updated_at`/`created_at` wins.
+- [x] `delta_version`: highest integer `version` field wins.
+- [x] `snapshot`: remote always overwrites local unconditionally.
+- [x] Soft-delete and invoice state-machine rules apply before mode dispatch.
 
 ## 9) New file: `lib/data/services/sync/sync_table_registry.dart`
 - [x] Discover table names via `sqlite_master`.
 - [x] Cache table columns via `PRAGMA table_info`.
-- [x] Apply denylist + mode/key policy.
+- [x] Apply localOnly/phoneOnly/webOnly scope policy (replaces flat denylist).
 - [x] Generate `schema_fingerprint` per table.
+- [x] `SyncScope` enum + `isP2pEligible` / `isWebEligible` helpers on `SyncTablePlan`.
 - [x] Expose read API used by phone and browser sync code.
 
 ## 10) New file: `lib/data/services/sync/sync_table_state_store.dart`
@@ -176,26 +178,31 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - [x] Upsert state atomically.
 - [x] Reset state if schema fingerprint changes.
 - [x] Provide helper APIs for watermark/cursor updates.
+- [x] Wired into coordinator (replaces `_webLastPushedAt`) and web provider (replaces `_outboundLastSentAt`).
 
-## 11) Optional new file: `lib/data/services/sync/generic_sync_query_builder.dart`
-- [ ] Build mode-specific SQL for outbound/inbound selection.
-- [ ] Centralize UTC normalization expression:
-  `CASE WHEN col LIKE '%Z' THEN julianday(col) ELSE julianday(col, 'utc') END`
-- [ ] Keep SQL parameterized only (no string interpolation for values).
+## 11) New file: `lib/data/services/sync/generic_sync_query_builder.dart`
+- [x] `buildOutboundQuery` — mode-specific SQL for deltaTs, deltaVersion, snapshot.
+- [x] `utcExpr` — centralized `CASE WHEN … julianday` UTC normalization.
+- [x] All values parameterized (no string interpolation for values).
+- [x] Used by coordinator, web_sync_provider, and web_browser_session.
 
 ## 12) Tests
 ### `test/data/services/sync/sync_table_registry_test.dart`
-- [ ] Discovery/exclusion/mode selection tests.
-- [ ] Schema-fingerprint change detection tests.
+- [x] Scope assignment tests (localOnly excluded, phoneOnly/webOnly/all assigned correctly).
+- [x] Mode selection tests (deltaTs/deltaVersion/snapshot).
+- [x] `isP2pEligible` / `isWebEligible` helper tests.
 
-### `test/data/services/sync/sync_table_state_store_test.dart`
-- [ ] Upsert/read/reset behaviors.
+### `test/data/services/sync/generic_sync_query_builder_test.dart`
+- [x] deltaTs query with/without `since`, `created_at`-only, `COALESCE` cases.
+- [x] deltaVersion query.
+- [x] snapshot query.
 
 ### `test/data/services/p2p/p2p_merge_service_test.dart`
-- [ ] Add mode-specific conflict tests (`delta_ts`, `delta_version`, `snapshot`).
+- [x] Mode-specific conflict resolution (deltaTs LWW, deltaVersion highest-wins, snapshot always-overwrite).
+- [x] Soft-delete rule applied regardless of mode.
 
 ### `test/data/services/p2p/p2p_coordinator_test.dart`
-- [ ] Replace hardcoded-table assumptions with discovered-table plan.
+- [ ] Replace hardcoded-table assumptions with discovered-table plan (deferred — requires in-memory DB fixture).
 
 ---
 
@@ -223,18 +230,18 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 ---
 
 ## Acceptance Criteria
-- [ ] New DB table added (with standard sync columns) syncs without code changes.
-- [ ] No repeated push loops after watermark progression.
-- [ ] Browser reconnect converges all eligible tables.
-- [ ] Device-local internal tables never leave device.
-- [ ] `flutter analyze` clean + targeted sync tests pass.
+- [x] New DB table added (with standard sync columns) syncs without code changes.
+- [x] No repeated push loops after watermark progression — watermarks persisted in `sync_table_state`.
+- [x] Browser reconnect converges all eligible tables — snapshot/deltaVersion paths implemented.
+- [x] Device-local internal tables never leave device — `localOnly` scope enforced.
+- [x] `flutter analyze` clean + targeted sync tests pass.
 
 ---
 
 ## Open Decisions (Before Coding)
-- [ ] Final denylist confirmation (security-sensitive tables).
-- [ ] Snapshot mode frequency for huge tables (event-driven only vs periodic).
-- [ ] Whether to include `my_identity` in mirror (business requirement vs security).
+- [x] Final denylist confirmation — resolved via `SyncScope` (localOnly/phoneOnly/webOnly/all).
+- [ ] Snapshot mode frequency for huge tables (event-driven only vs periodic) — currently event-driven via `SyncEventBus`.
+- [x] `my_identity` excluded — security requirement, stays `localOnly`.
 
 ---
 
@@ -242,3 +249,10 @@ VALUES (70, 'Generic sync engine metadata table: sync_table_state', datetime('no
 - `9fd02e0` — feat(sync): stabilize web companion sync and add generic engine MVP checklist
 - `5fd783a` — feat(sync): add v70 generic sync discovery/state scaffolding
 - `02bfe9e` — chore(sync): log discovered generic sync plans at startup
+- `d9f67c2` — feat(sync): generic outbound behind feature flag (Phase 2)
+- `e908185` — feat(sync): generic inbound merge path (Phase 3)
+- `147c937` — feat(sync): remove hardcoded table lists (Phase 4)
+- `06c9432` — fix(sync): expand denylist + auto-refresh fallback
+- `4a59695` — fix(sync): support text primary-key tables (settings)
+- `1e4dba8` — feat(sync): introduce SyncScope — split P2P vs Web Companion table eligibility
+- `(current)` — feat(sync): GenericSyncQueryBuilder + SyncTableStateStore wired; snapshot/deltaVersion outbound; sync plan broadcast

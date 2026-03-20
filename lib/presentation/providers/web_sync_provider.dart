@@ -8,13 +8,9 @@ import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../data/services/database_helper.dart';
+import '../../data/services/sync/generic_sync_query_builder.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync_event_bus.dart';
-
-const _genericOutboundEnabled = bool.fromEnvironment(
-  'KASHCUBE_SYNC_GENERIC_OUTBOUND',
-  defaultValue: false,
-);
 
 // ── WebSocket connection state ─────────────────────────────────────────────
 
@@ -74,11 +70,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   bool _writeLoopInFlight = false;
   bool _registrySnapshotLogged = false;
   final Map<String, SyncTablePlan> _syncPlans = {};
-  final Set<String> _comparisonModeSkipped = {};
-  final Set<String> _genericModeFallbackLogged = {};
-  final Set<String> _genericMissingPlanLogged = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
-  final Map<String, Set<String>> _tableColumnsCache = {};
+  final Map<String, int>      _outboundLastSentVersion = {};
+  final Set<String>           _snapshotSentTables = {};
   Set<String> _pullTables = const <String>{};
 
   Future<void> connect(String wsUrl, String token) async {
@@ -148,10 +142,21 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   Future<void> _handleAuthOk(Map<String, dynamic> msg) async {
     await _logDiscoveredSyncPlans();
 
-    final now = DateTime.now().toUtc();
     _outboundLastSentAt.clear();
-    for (final table in _outboundTables()) {
-      _outboundLastSentAt[table] = now;
+    _outboundLastSentVersion.clear();
+    _snapshotSentTables.clear();
+    final now = DateTime.now().toUtc();
+    for (final plan in _outboundTables()) {
+      switch (plan.mode) {
+        case SyncMode.deltaTs:
+          _outboundLastSentAt[plan.tableName] = now;
+        case SyncMode.snapshot:
+          // Never echo snapshot rows back to the phone — phone is authoritative.
+          _snapshotSentTables.add(plan.tableName);
+        case SyncMode.deltaVersion:
+          // First flush will send from version 0; acceptable for infrequent tables.
+          break;
+      }
     }
 
     state = state.copyWith(
@@ -262,54 +267,22 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     try {
       final db = await DatabaseHelper.instance.database;
-      for (final table in _outboundTables()) {
-        final legacyRows = await _queryOutboundRows(
-          db: db,
-          table: table,
-          since: _outboundLastSentAt[table],
-        );
-        await _compareLegacyAndGenericOutboundRows(
-          db: db,
-          table: table,
-          since: _outboundLastSentAt[table],
-          legacyRows: legacyRows,
-        );
-
-        var rows = legacyRows;
-        if (_genericOutboundEnabled) {
-          final plan = _syncPlans[table];
-          if (plan == null) {
-            if (_genericMissingPlanLogged.add(table)) {
-              debugPrint(
-                '[SyncSwitch][Web] table=$table generic=off reason=missing_plan fallback=legacy',
-              );
-            }
-          } else if (plan.mode == SyncMode.deltaTs) {
-            rows = await _queryGenericDeltaTsRows(
-              db: db,
-              table: table,
-              plan: plan,
-              since: _outboundLastSentAt[table],
-            );
-            if (rows.length != legacyRows.length) {
-              debugPrint(
-                '[SyncSwitch][Web] table=$table generic_rows=${rows.length} legacy_rows=${legacyRows.length}',
-              );
-            }
-          } else {
-            if (_genericModeFallbackLogged.add(table)) {
-              debugPrint(
-                '[SyncSwitch][Web] table=$table generic=off reason=mode_${plan.mode.name} fallback=legacy',
-              );
-            }
-          }
-        }
-
-        if (rows.isEmpty) {
+      for (final plan in _outboundTables()) {
+        final table = plan.tableName;
+        if (plan.mode == SyncMode.snapshot && _snapshotSentTables.contains(table)) {
           continue;
         }
 
-        final normalizedRows = <Map<String, dynamic>>[];
+        final query = GenericSyncQueryBuilder.buildOutboundQuery(
+          plan: plan,
+          since: plan.mode == SyncMode.deltaTs ? _outboundLastSentAt[table] : null,
+          afterVersion: plan.mode == SyncMode.deltaVersion
+              ? _outboundLastSentVersion[table]
+              : null,
+        );
+        final rows = await db.rawQuery(query.sql, query.args);
+        if (rows.isEmpty) continue;
+
         for (final row in rows) {
           final normalized = Map<String, dynamic>.from(row);
           normalized['sync_id'] ??= _newSyncId();
@@ -319,9 +292,18 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
             'sync_id': normalized['sync_id'],
             'row': normalized,
           }));
-          normalizedRows.add(normalized);
         }
-        _markOutboundWatermarkFromRows(table, normalizedRows);
+
+        // Advance watermark after successful push.
+        switch (plan.mode) {
+          case SyncMode.deltaTs:
+            _outboundLastSentAt[table] = GenericSyncQueryBuilder.maxTimestamp(rows);
+          case SyncMode.deltaVersion:
+            final maxV = GenericSyncQueryBuilder.maxVersion(rows);
+            if (maxV != null) _outboundLastSentVersion[table] = maxV;
+          case SyncMode.snapshot:
+            _snapshotSentTables.add(table);
+        }
       }
     } catch (e) {
       debugPrint('[WebSync] Outbound WRITE loop error: $e');
@@ -330,175 +312,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
   }
 
-  List<String> _outboundTables() {
-    final tables = _syncPlans.values
-        .where((plan) => plan.isWebEligible && plan.mode == SyncMode.deltaTs)
-        .map((plan) => plan.tableName)
+  List<SyncTablePlan> _outboundTables() {
+    return _syncPlans.values
+        .where((plan) => plan.isWebEligible)
         .toList()
-      ..sort();
-    return tables;
-  }
-
-  Future<List<Map<String, dynamic>>> _queryOutboundRows({
-    required Database db,
-    required String table,
-    required DateTime? since,
-  }) async {
-    final columns = await _getTableColumns(db, table);
-    final hasUpdatedAt = columns.contains('updated_at');
-    final hasCreatedAt = columns.contains('created_at');
-    final hasDeletedAt = columns.contains('deleted_at');
-
-    final where = <String>[];
-    final args = <Object?>[];
-
-    String sqlUtcExpr(String expr) {
-      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
-    }
-
-    if (since != null) {
-      final sinceIso = since.toUtc().toIso8601String();
-      if (hasUpdatedAt && hasCreatedAt) {
-        final tsExpr = sqlUtcExpr('COALESCE(updated_at, created_at)');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      } else if (hasUpdatedAt) {
-        final tsExpr = sqlUtcExpr('updated_at');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      } else if (hasCreatedAt) {
-        final tsExpr = sqlUtcExpr('created_at');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      }
-    }
-
-    if (hasDeletedAt) {
-      where.add('deleted_at IS NULL');
-    }
-
-    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy = hasUpdatedAt && hasCreatedAt
-      ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
-        : hasUpdatedAt
-        ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
-            : hasCreatedAt
-          ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
-                : '';
-    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
-    return db.rawQuery(sql, args);
-  }
-
-  Future<void> _compareLegacyAndGenericOutboundRows({
-    required Database db,
-    required String table,
-    required DateTime? since,
-    required List<Map<String, dynamic>> legacyRows,
-  }) async {
-    final plan = _syncPlans[table];
-    if (plan == null) return;
-
-    if (plan.mode != SyncMode.deltaTs) {
-      if (_comparisonModeSkipped.add(table)) {
-        debugPrint(
-          '[SyncCompare][Web] table=$table skipped mode=${plan.mode.name}',
-        );
-      }
-      return;
-    }
-
-    try {
-      final genericRows = await _queryGenericDeltaTsRows(
-        db: db,
-        table: table,
-        plan: plan,
-        since: since,
-      );
-
-      if (legacyRows.length == genericRows.length && legacyRows.isEmpty) {
-        return;
-      }
-
-      final key = plan.keyColumn ?? 'sync_id';
-      final legacyFirst = _rowKey(legacyRows, key, true);
-      final legacyLast = _rowKey(legacyRows, key, false);
-      final genericFirst = _rowKey(genericRows, key, true);
-      final genericLast = _rowKey(genericRows, key, false);
-
-      debugPrint(
-        '[SyncCompare][Web] table=$table mode=${plan.mode.name} legacy=${legacyRows.length} generic=${genericRows.length} '
-        'legacy_first=$legacyFirst legacy_last=$legacyLast generic_first=$genericFirst generic_last=$genericLast',
-      );
-    } catch (e) {
-      debugPrint('[SyncCompare][Web] compare failed table=$table error=$e');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _queryGenericDeltaTsRows({
-    required Database db,
-    required String table,
-    required SyncTablePlan plan,
-    required DateTime? since,
-  }) async {
-    final where = <String>[];
-    final args = <Object?>[];
-
-    String sqlUtcExpr(String expr) {
-      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
-    }
-
-    if (since != null) {
-      final sinceIso = since.toUtc().toIso8601String();
-      if (plan.hasUpdatedAt && plan.hasCreatedAt) {
-        where.add("${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
-        args.add(sinceIso);
-      } else if (plan.hasUpdatedAt) {
-        where.add("${sqlUtcExpr('updated_at')} > julianday(?)");
-        args.add(sinceIso);
-      } else if (plan.hasCreatedAt) {
-        where.add("${sqlUtcExpr('created_at')} > julianday(?)");
-        args.add(sinceIso);
-      }
-    }
-
-    if (plan.hasDeletedAt) {
-      where.add('deleted_at IS NULL');
-    }
-
-    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy = plan.hasUpdatedAt && plan.hasCreatedAt
-        ? " ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC"
-        : plan.hasUpdatedAt
-            ? " ORDER BY ${sqlUtcExpr('updated_at')} ASC"
-            : plan.hasCreatedAt
-                ? " ORDER BY ${sqlUtcExpr('created_at')} ASC"
-                : '';
-
-    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
-    return db.rawQuery(sql, args);
-  }
-
-  String _rowKey(
-    List<Map<String, dynamic>> rows,
-    String preferredKey,
-    bool first,
-  ) {
-    if (rows.isEmpty) return 'null';
-    final row = first ? rows.first : rows.last;
-    return (row[preferredKey] ?? row['sync_id'] ?? row['id'] ?? 'null').toString();
-  }
-
-  Future<Set<String>> _getTableColumns(Database db, String table) async {
-    final cached = _tableColumnsCache[table];
-    if (cached != null) return cached;
-
-    final rows = await db.rawQuery('PRAGMA table_info($table)');
-    final columns = rows
-        .map((r) => (r['name'] as String?)?.toLowerCase())
-        .whereType<String>()
-        .toSet();
-    _tableColumnsCache[table] = columns;
-    return columns;
+      ..sort((a, b) => a.tableName.compareTo(b.tableName));
   }
 
   void _markOutboundWatermarkFromRows(String table, List<dynamic> rows) {
@@ -561,9 +379,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _syncEventSub = null;
     _syncPlans.clear();
     _pullTables = const <String>{};
-    _comparisonModeSkipped.clear();
-    _genericModeFallbackLogged.clear();
-    _genericMissingPlanLogged.clear();
+    _outboundLastSentAt.clear();
+    _outboundLastSentVersion.clear();
+    _snapshotSentTables.clear();
     _sub?.cancel();
     _channel?.sink.close();
     _channel = null;

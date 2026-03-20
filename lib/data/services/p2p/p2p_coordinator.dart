@@ -10,7 +10,9 @@ import '../../models/trusted_peer.dart';
 import '../../../core/constants/app_constants.dart';
 import '../database_helper.dart';
 import '../identity_service.dart';
+import '../sync/generic_sync_query_builder.dart';
 import '../sync/sync_table_registry.dart';
+import '../sync/sync_table_state_store.dart';
 import '../sync_event_bus.dart';
 import '../web/web_session_service.dart';
 import 'p2p_auth_service.dart';
@@ -18,11 +20,6 @@ import 'p2p_client.dart';
 import 'p2p_discovery_service.dart';
 import 'p2p_merge_service.dart';
 import 'p2p_server.dart';
-
-const _genericOutboundEnabled = bool.fromEnvironment(
-  'KASHCUBE_SYNC_GENERIC_OUTBOUND',
-  defaultValue: false,
-);
 
 // ── SyncStatus ────────────────────────────────────────────────────────────────
 
@@ -87,12 +84,10 @@ class P2pCoordinator {
   bool _webPushInFlight = false;
 
   // Per-table high-watermark for incremental phone -> browser PUSH.
+  // Backed by SyncTableStateStore; this map is a warm in-memory cache.
   final Map<String, DateTime> _webLastPushedAt = {};
+  final Map<String, int> _webLastPushedVersion = {};
   final Map<String, SyncTablePlan> _webSyncPlans = {};
-  final Set<String> _webComparisonModeSkipped = {};
-  final Set<String> _webGenericModeFallbackLogged = {};
-  final Set<String> _webGenericMissingPlanLogged = {};
-
 
   // Cache table columns for schema-aware web delta queries.
   final Map<String, Set<String>> _tableColumnsCache = {};
@@ -234,6 +229,25 @@ class P2pCoordinator {
       _webSyncPlans
         ..clear()
         ..addEntries(plans.map((p) => MapEntry(p.tableName, p)));
+
+      // Warm the in-memory watermark cache from persisted state.
+      if (_identityId != null) {
+        for (final plan in plans) {
+          final state = await SyncTableStateStore.instance.read(
+            peerIdentityId: _identityId!,
+            tableName: plan.tableName,
+          );
+          if (state != null) {
+            if (state.lastSyncedAt != null) {
+              _webLastPushedAt[plan.tableName] = state.lastSyncedAt!;
+            }
+            if (state.lastVersion != null) {
+              _webLastPushedVersion[plan.tableName] = state.lastVersion!;
+            }
+          }
+        }
+      }
+
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
       final deltaVersion =
           plans.where((p) => p.mode == SyncMode.deltaVersion).length;
@@ -258,10 +272,8 @@ class P2pCoordinator {
     _webPushTimer?.cancel();
     _webPushTimer = null;
     _webLastPushedAt.clear();
+    _webLastPushedVersion.clear();
     _webSyncPlans.clear();
-    _webComparisonModeSkipped.clear();
-    _webGenericModeFallbackLogged.clear();
-    _webGenericMissingPlanLogged.clear();
     _tableColumnsCache.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
@@ -735,56 +747,48 @@ class P2pCoordinator {
 
       for (final table in _webMirrorTables()) {
         try {
-          final lastPushedAt = _webLastPushedAt[table];
-          final legacyRows = await _queryWebDeltaRows(
-            db: db,
-            table: table,
-            since: lastPushedAt,
-          );
-          await _compareLegacyAndGenericWebDelta(
-            db: db,
-            table: table,
-            since: lastPushedAt,
-            legacyRows: legacyRows,
-          );
+          final plan = _webSyncPlans[table]!;
 
-          var rows = legacyRows;
-          if (_genericOutboundEnabled) {
-            final plan = _webSyncPlans[table];
-            if (plan == null) {
-              if (_webGenericMissingPlanLogged.add(table)) {
-                debugPrint(
-                  '[SyncSwitch][Phone] table=$table generic=off reason=missing_plan fallback=legacy',
-                );
-              }
-            } else if (plan.mode == SyncMode.deltaTs) {
-              rows = await _queryGenericDeltaTsRows(
-                db: db,
-                table: table,
-                plan: plan,
-                since: lastPushedAt,
+          final query = GenericSyncQueryBuilder.buildOutboundQuery(
+            plan:         plan,
+            since:        _webLastPushedAt[table],
+            afterVersion: _webLastPushedVersion[table],
+          );
+          final rows = await db.rawQuery(query.sql, query.args);
+
+          if (rows.isEmpty) continue;
+
+          session.pushRows(table, rows);
+
+          // Advance the in-memory cursor and persist to sync_table_state.
+          if (plan.mode == SyncMode.deltaTs) {
+            final newTs = GenericSyncQueryBuilder.maxTimestamp(rows);
+            _webLastPushedAt[table] = newTs;
+            if (_identityId != null) {
+              await SyncTableStateStore.instance.updateProgress(
+                peerIdentityId: _identityId!,
+                tableName:      table,
+                syncMode:       plan.mode,
+                schemaFingerprint: plan.schemaFingerprint,
+                lastSyncedAt:   newTs,
               );
-              if (rows.length != legacyRows.length) {
-                debugPrint(
-                  '[SyncSwitch][Phone] table=$table generic_rows=${rows.length} legacy_rows=${legacyRows.length}',
-                );
-              }
-            } else {
-              if (_webGenericModeFallbackLogged.add(table)) {
-                debugPrint(
-                  '[SyncSwitch][Phone] table=$table generic=off reason=mode_${plan.mode.name} fallback=legacy',
+            }
+          } else if (plan.mode == SyncMode.deltaVersion) {
+            final newVer = GenericSyncQueryBuilder.maxVersion(rows);
+            if (newVer != null) {
+              _webLastPushedVersion[table] = newVer;
+              if (_identityId != null) {
+                await SyncTableStateStore.instance.updateProgress(
+                  peerIdentityId: _identityId!,
+                  tableName:      table,
+                  syncMode:       plan.mode,
+                  schemaFingerprint: plan.schemaFingerprint,
+                  lastVersion:    newVer,
                 );
               }
             }
           }
-
-          if (rows.isEmpty) {
-            continue;
-          }
-
-          session.pushRows(table, rows);
-          final maxTs = _maxRowTimestamp(rows);
-          _webLastPushedAt[table] = maxTs;
+          // snapshot: no cursor to advance — always full scan.
         } catch (e) {
           debugPrint('[P2pCoordinator] Web delta push failed for $table: $e');
         }
@@ -792,57 +796,6 @@ class P2pCoordinator {
     } finally {
       _webPushInFlight = false;
     }
-  }
-
-  Future<List<Map<String, dynamic>>> _queryWebDeltaRows({
-    required Database db,
-    required String table,
-    required DateTime? since,
-  }) async {
-    final columns = await _getTableColumns(db, table);
-    final hasUpdatedAt = columns.contains('updated_at');
-    final hasCreatedAt = columns.contains('created_at');
-    final hasDeletedAt = columns.contains('deleted_at');
-
-    final where = <String>[];
-    final args = <Object?>[];
-
-    String sqlUtcExpr(String expr) {
-      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
-    }
-
-    if (since != null) {
-      final sinceIso = since.toUtc().toIso8601String();
-      if (hasUpdatedAt && hasCreatedAt) {
-        final tsExpr = sqlUtcExpr('COALESCE(updated_at, created_at)');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      } else if (hasUpdatedAt) {
-        final tsExpr = sqlUtcExpr('updated_at');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      } else if (hasCreatedAt) {
-        final tsExpr = sqlUtcExpr('created_at');
-        where.add('$tsExpr > julianday(?)');
-        args.add(sinceIso);
-      }
-    }
-
-    if (hasDeletedAt) {
-      where.add('deleted_at IS NULL');
-    }
-
-    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy = hasUpdatedAt && hasCreatedAt
-      ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
-        : hasUpdatedAt
-        ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
-            : hasCreatedAt
-          ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
-                : '';
-    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
-
-    return db.rawQuery(sql, args);
   }
 
   List<String> _peerSyncTables() {
@@ -856,109 +809,11 @@ class P2pCoordinator {
 
   List<String> _webMirrorTables() {
     final tables = _webSyncPlans.values
-        .where((plan) => plan.isWebEligible && plan.mode == SyncMode.deltaTs)
+        .where((plan) => plan.isWebEligible)
         .map((plan) => plan.tableName)
         .toList()
       ..sort();
     return tables;
-  }
-
-  Future<void> _compareLegacyAndGenericWebDelta({
-    required Database db,
-    required String table,
-    required DateTime? since,
-    required List<Map<String, dynamic>> legacyRows,
-  }) async {
-    final plan = _webSyncPlans[table];
-    if (plan == null) return;
-
-    if (plan.mode != SyncMode.deltaTs) {
-      if (_webComparisonModeSkipped.add(table)) {
-        debugPrint(
-          '[SyncCompare][Phone] table=$table skipped mode=${plan.mode.name}',
-        );
-      }
-      return;
-    }
-
-    try {
-      final genericRows = await _queryGenericDeltaTsRows(
-        db: db,
-        table: table,
-        plan: plan,
-        since: since,
-      );
-      if (legacyRows.length == genericRows.length && legacyRows.isEmpty) {
-        return;
-      }
-
-      final key = plan.keyColumn ?? 'sync_id';
-      final legacyFirst = _rowKey(legacyRows, key, true);
-      final legacyLast = _rowKey(legacyRows, key, false);
-      final genericFirst = _rowKey(genericRows, key, true);
-      final genericLast = _rowKey(genericRows, key, false);
-
-      debugPrint(
-        '[SyncCompare][Phone] table=$table mode=${plan.mode.name} legacy=${legacyRows.length} generic=${genericRows.length} '
-        'legacy_first=$legacyFirst legacy_last=$legacyLast generic_first=$genericFirst generic_last=$genericLast',
-      );
-    } catch (e) {
-      debugPrint('[SyncCompare][Phone] compare failed table=$table error=$e');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _queryGenericDeltaTsRows({
-    required Database db,
-    required String table,
-    required SyncTablePlan plan,
-    required DateTime? since,
-  }) async {
-    final where = <String>[];
-    final args = <Object?>[];
-
-    String sqlUtcExpr(String expr) {
-      return "CASE WHEN $expr LIKE '%Z' THEN julianday($expr) ELSE julianday($expr, 'utc') END";
-    }
-
-    if (since != null) {
-      final sinceIso = since.toUtc().toIso8601String();
-      if (plan.hasUpdatedAt && plan.hasCreatedAt) {
-        where.add("${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
-        args.add(sinceIso);
-      } else if (plan.hasUpdatedAt) {
-        where.add("${sqlUtcExpr('updated_at')} > julianday(?)");
-        args.add(sinceIso);
-      } else if (plan.hasCreatedAt) {
-        where.add("${sqlUtcExpr('created_at')} > julianday(?)");
-        args.add(sinceIso);
-      }
-    }
-
-    if (plan.hasDeletedAt) {
-      where.add('deleted_at IS NULL');
-    }
-
-    final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy = plan.hasUpdatedAt && plan.hasCreatedAt
-        ? " ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC"
-        : plan.hasUpdatedAt
-            ? " ORDER BY ${sqlUtcExpr('updated_at')} ASC"
-            : plan.hasCreatedAt
-                ? " ORDER BY ${sqlUtcExpr('created_at')} ASC"
-                : '';
-
-    final sql = 'SELECT * FROM $table$whereSql$orderBy LIMIT 200';
-    return db.rawQuery(sql, args);
-  }
-
-  String _rowKey(
-    List<Map<String, dynamic>> rows,
-    String preferredKey,
-    bool first,
-  ) {
-    if (rows.isEmpty) return 'null';
-    final row = first ? rows.first : rows.last;
-    return (row[preferredKey] ?? row['sync_id'] ?? row['id'] ?? 'null').toString();
   }
 
   Future<Set<String>> _getTableColumns(Database db, String table) async {
@@ -972,21 +827,6 @@ class P2pCoordinator {
         .toSet();
     _tableColumnsCache[table] = columns;
     return columns;
-  }
-
-  DateTime _maxRowTimestamp(List<Map<String, dynamic>> rows) {
-    var max = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-    for (final row in rows) {
-      final updatedRaw = row['updated_at']?.toString();
-      final createdRaw = row['created_at']?.toString();
-      final ts = DateTime.tryParse(updatedRaw ?? '') ??
-          DateTime.tryParse(createdRaw ?? '') ??
-          DateTime.now().toUtc();
-      if (ts.isAfter(max)) {
-        max = ts.toUtc();
-      }
-    }
-    return max;
   }
 
   // Handles WRITE messages from the browser — merges directly into local DB.

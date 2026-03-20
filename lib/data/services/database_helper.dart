@@ -2803,6 +2803,110 @@ class DatabaseHelper {
         'description': 'Backfill businesses.upi_id missed in _onCreate DDL',
       });
     }
+
+    // ── v76: Rebuild subscription with correct column names ──────────────────
+    //
+    // Phones that installed the app before v58 had the subscription table
+    // created from an old _onCreate DDL with legacy column names:
+    //   purchased_at  → plan_started_at
+    //   expires_at    → plan_expires_at
+    //   receipt_data  → (dropped — stored in purchase_token)
+    //   updated_at    → (not applicable; subscription is a single-row config)
+    //
+    // The v58 migration used CREATE TABLE IF NOT EXISTS (no-op since the table
+    // already existed), so those phones still carry the old schema.  When the
+    // web companion receives such a row via WebSync it fails with
+    // "table subscription has no column named purchased_at".
+    //
+    // Fix: rename the table, recreate with the canonical schema, migrate data,
+    // then drop the old table.  The try/catch blocks tolerate databases that
+    // already have the correct schema (e.g. fresh installs from _onCreate).
+    if (oldVersion < 76) {
+      await db.transaction((txn) async {
+        // 1. Check whether the legacy columns actually exist.
+        final cols = await txn.rawQuery('PRAGMA table_info(subscription)');
+        final colNames = cols.map((r) => r['name'] as String).toSet();
+        final needsRebuild = colNames.contains('purchased_at') ||
+            colNames.contains('expires_at') ||
+            colNames.contains('receipt_data');
+
+        if (needsRebuild) {
+          // 2. Rename old table.
+          await txn.execute(
+              'ALTER TABLE subscription RENAME TO subscription_old');
+
+          // 3. Recreate with canonical schema.
+          await txn.execute("""
+            CREATE TABLE subscription (
+              id                      INTEGER PRIMARY KEY DEFAULT 1,
+              plan                    TEXT    NOT NULL DEFAULT 'free',
+              source                  TEXT    DEFAULT 'none',
+              purchase_token          TEXT,
+              plan_started_at         TEXT,
+              plan_expires_at         TEXT,
+              is_trial                INTEGER NOT NULL DEFAULT 0,
+              trial_ends_at           TEXT,
+              shareable_plan_features TEXT
+            )
+          """);
+
+          // 4. Migrate data, mapping old column names to new ones.
+          //    purchased_at  → plan_started_at
+          //    expires_at    → plan_expires_at
+          //    receipt_data  → purchase_token (closest semantic match)
+          final hasStarted =
+              colNames.contains('plan_started_at');
+          final hasExpires =
+              colNames.contains('plan_expires_at');
+          final hasSrc = colNames.contains('source') ? 'source' : null;
+          final hasTok =
+              colNames.contains('purchase_token') ? 'purchase_token' : null;
+          final hasTrial = colNames.contains('is_trial') ? 'is_trial' : null;
+          final hasTrialEnds =
+              colNames.contains('trial_ends_at') ? 'trial_ends_at' : null;
+          final hasShareable = colNames.contains('shareable_plan_features')
+              ? 'shareable_plan_features'
+              : null;
+
+          final src = hasSrc ?? "'none'";
+          final tok = hasTok ??
+              (colNames.contains('receipt_data') ? 'receipt_data' : 'NULL');
+          final isTrial = hasTrial ?? '0';
+          final trialEnds = hasTrialEnds ?? 'NULL';
+          final shareable = hasShareable ?? 'NULL';
+
+          await txn.rawInsert('''
+            INSERT OR IGNORE INTO subscription
+              (id, plan, source, purchase_token,
+               plan_started_at, plan_expires_at,
+               is_trial, trial_ends_at, shareable_plan_features)
+            SELECT
+              id, plan,
+              $src,
+              $tok,
+              ${hasStarted ? 'plan_started_at' : 'purchased_at'},
+              ${hasExpires ? 'plan_expires_at' : 'expires_at'},
+              $isTrial,
+              $trialEnds,
+              $shareable
+            FROM subscription_old
+          ''');
+
+          // 5. Drop the old table.
+          await txn.execute('DROP TABLE subscription_old');
+
+          debugPrint('[DB v76] subscription rebuilt with canonical schema');
+        } else {
+          debugPrint('[DB v76] subscription already has canonical schema — skipped rebuild');
+        }
+      });
+
+      await db.insert('schema_version', {
+        'version': 76,
+        'description':
+            'Rebuild subscription table: rename legacy columns (purchased_at→plan_started_at, expires_at→plan_expires_at, receipt_data→purchase_token)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

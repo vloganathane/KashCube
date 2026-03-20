@@ -475,6 +475,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         whatsapp TEXT,
         linkedin TEXT,
         instagram TEXT,
+        upi_id TEXT,
         country TEXT,
         dial_code TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),

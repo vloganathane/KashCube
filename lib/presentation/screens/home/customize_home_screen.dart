@@ -155,18 +155,18 @@ class _WidgetTile extends StatelessWidget {
   final HomeWidgetConfig config;
   final VoidCallback     onToggle;
 
-  static IconData _iconFor(String id) {
-    return switch (id) {
-      HomeWidgetId.todayCashflow      => Icons.swap_horiz_rounded,
-      HomeWidgetId.upcoming           => Icons.schedule_outlined,
-      HomeWidgetId.upcomingBookings   => Icons.event_available_outlined,
-      HomeWidgetId.alerts             => Icons.notifications_active_outlined,
-      HomeWidgetId.budgets            => Icons.pie_chart_outline_rounded,
-      HomeWidgetId.reportsShortcut    => Icons.bar_chart_outlined,
-      HomeWidgetId.recentTransactions => Icons.receipt_long_outlined,
-      _                               => Icons.widgets_outlined,
-    };
-  }
+  static const _icons = <String, IconData>{
+    HomeWidgetId.todayCashflow:      Icons.swap_horiz_rounded,
+    HomeWidgetId.upcoming:           Icons.schedule_outlined,
+    HomeWidgetId.upcomingBookings:   Icons.event_available_outlined,
+    HomeWidgetId.pendingSms:         Icons.sms_outlined,
+    HomeWidgetId.alerts:             Icons.notifications_active_outlined,
+    HomeWidgetId.budgets:            Icons.pie_chart_outline_rounded,
+    HomeWidgetId.reportsShortcut:    Icons.bar_chart_outlined,
+    HomeWidgetId.recentTransactions: Icons.receipt_long_outlined,
+  };
+
+  static IconData _iconFor(String id) => _icons[id] ?? Icons.widgets_outlined;
 
   @override
   Widget build(BuildContext context) {

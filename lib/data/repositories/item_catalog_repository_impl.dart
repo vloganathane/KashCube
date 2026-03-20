@@ -156,7 +156,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   @override
   Future<String> generateNextSku(ItemCategory category) async {
     final db = await _dbHelper.database;
-    final prefix = _getCategoryPrefix(category);
+    final prefix = category.skuPrefix;
 
     final result = await db.rawQuery('''
       SELECT sku FROM item_catalog
@@ -203,20 +203,4 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
     );
   }
 
-  String _getCategoryPrefix(ItemCategory category) {
-    switch (category) {
-      case ItemCategory.product:
-        return 'PROD';
-      case ItemCategory.service:
-        return 'SERV';
-      case ItemCategory.material:
-        return 'MATL';
-      case ItemCategory.labor:
-        return 'LABR';
-      case ItemCategory.equipment:
-        return 'EQUP';
-      case ItemCategory.other:
-        return 'OTHR';
-    }
-  }
 }

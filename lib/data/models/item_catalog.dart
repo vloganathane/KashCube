@@ -2,15 +2,23 @@ import 'package:equatable/equatable.dart';
 
 /// Categories for organizing catalog items
 enum ItemCategory {
-  product('Product'),
-  service('Service'),
-  material('Material'),
-  labor('Labor'),
-  equipment('Equipment'),
-  other('Other');
+  product('Product',   'Products',  'PROD'),
+  service('Service',   'Services',  'SERV'),
+  material('Material', 'Materials', 'MATL'),
+  labor('Labor',       'Labor',     'LABR'),
+  equipment('Equipment', 'Equipment', 'EQUP'),
+  other('Other',       'Other',     'OTHR');
 
-  const ItemCategory(this.label);
+  const ItemCategory(this.label, this.pluralLabel, this.skuPrefix);
+
+  /// Singular label — e.g. "Product", "Service".
   final String label;
+
+  /// Plural label for filter chips and headings — e.g. "Products", "Services".
+  final String pluralLabel;
+
+  /// 4-char prefix used in auto-generated SKUs — e.g. "PROD-001".
+  final String skuPrefix;
 }
 
 /// A product or service in the item catalog.

@@ -103,9 +103,9 @@ class TallyXmlService {
     // In Tally: positive AMOUNT = credit entry, negative = debit entry.
     // For expenses/payments: party ledger is debited (+), cash/bank credited (-).
     // For income/receipts: cash/bank is debited (+), income ledger credited (-).
-    final isIncome = txn.type.name == 'income' ||
-        txn.type.name == 'received_back' ||
-        txn.type.name == 'redeemed';
+    final isIncome = txn.type == TransactionType.income ||
+        txn.type == TransactionType.receivedBack ||
+        txn.type == TransactionType.redeemed;
 
     final cashLedger = _cashLedger(txn);
     final partyLedger = _categoryToLedger(txn.category, isIncome: isIncome);
@@ -145,42 +145,25 @@ class TallyXmlService {
     buf.writeln('          </VOUCHER>');
   }
 
-  String _voucherType(Transaction txn) {
-    switch (txn.type.name) {
-      case 'income':
-      case 'received_back':
-      case 'redeemed':
-        return 'Receipt';
-      case 'expense':
-      case 'paid_back':
-        return 'Payment';
-      case 'lent':
-        return 'Payment';
-      case 'borrowed':
-        return 'Receipt';
-      default:
-        return 'Journal';
-    }
-  }
+  String _voucherType(Transaction txn) => switch (txn.type) {
+    TransactionType.income ||
+    TransactionType.receivedBack ||
+    TransactionType.redeemed ||
+    TransactionType.borrowed => 'Receipt',
+    TransactionType.expense ||
+    TransactionType.paidBack ||
+    TransactionType.lent => 'Payment',
+    TransactionType.invested ||
+    TransactionType.transfer => 'Journal',
+  };
 
-  String _cashLedger(Transaction txn) {
-    switch (txn.paymentMethod.name) {
-      case 'upi':
-        return txn.upiApp != null ? '${txn.upiApp} UPI' : 'UPI';
-      case 'credit_card':
-        return 'Credit Card';
-      case 'debit_card':
-        return 'Bank Account';
-      case 'bank_transfer':
-      case 'net_banking':
-        return 'Bank Account';
-      case 'wallet':
-        return txn.upiApp ?? 'Wallet';
-      case 'cash':
-      default:
-        return 'Cash';
-    }
-  }
+  String _cashLedger(Transaction txn) => switch (txn.paymentMethod) {
+    PaymentMethod.upi => txn.upiApp != null ? '${txn.upiApp} UPI' : 'UPI',
+    PaymentMethod.creditCard => 'Credit Card',
+    PaymentMethod.debitCard || PaymentMethod.netBanking => 'Bank Account',
+    PaymentMethod.wallet => txn.upiApp ?? 'Wallet',
+    PaymentMethod.cash || PaymentMethod.cheque => 'Cash',
+  };
 
   String _categoryToLedger(String category, {required bool isIncome}) {
     if (isIncome) {

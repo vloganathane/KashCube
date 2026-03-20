@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/app_tables.dart';
 import '../../data/services/sync_event_bus.dart';
 import 'account_provider.dart';
 import 'booking_provider.dart';
@@ -30,7 +31,7 @@ final syncEventStreamProvider = StreamProvider<String>(
 /// Multiple tables can share the same list (child tables → parent providers).
 /// Tables absent from this map fall back to [_broadRefresh].
 final _tableInvalidators = <String, List<ProviderOrFamily>>{
-  'transactions': [
+  AppTables.transactions: [
     transactionsProvider,
     recentTransactionsProvider,
     ledgerSummariesProvider,
@@ -40,19 +41,19 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
     totalBalanceProvider,
     allTimeInvestmentProvider,
   ],
-  'credits': [
+  AppTables.credits: [
     activeCreditsProvider,
     creditPartySummariesProvider,
     totalCreditsPendingGivenProvider,
     totalCreditsPendingReceivedProvider,
   ],
-  'credit_payments': [
+  AppTables.creditPayments: [
     activeCreditsProvider,
     creditPartySummariesProvider,
     totalCreditsPendingGivenProvider,
     totalCreditsPendingReceivedProvider,
   ],
-  'loans': [
+  AppTables.loans: [
     activeLoansProvider,
     totalPendingLoanProvider,
     totalPendingLentProvider,
@@ -61,7 +62,7 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
     overdueLoansProvider,
     partySummariesProvider,
   ],
-  'loan_payments': [
+  AppTables.loanPayments: [
     activeLoansProvider,
     totalPendingLoanProvider,
     totalPendingLentProvider,
@@ -69,27 +70,27 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
     clearedLoansProvider,
     overdueLoansProvider,
   ],
-  'parties':         [partiesProvider],
-  'party_addresses': [partiesProvider],
-  'party_reminders': [partyRemindersProvider],
-  'accounts':        [accountsProvider, accountBalancesProvider, totalBalanceProvider],
-  'categories':      [customCategoriesProvider],
-  'budgets':         [currentMonthBudgetsProvider],
-  'invoices':        [invoicesProvider],
-  'invoice_items':   [invoicesProvider],
-  'quotes':          [quotesProvider],
-  'quote_items':     [quotesProvider],
-  'businesses':      [businessesProvider],
-  'purchase_bills':       [purchaseBillsProvider],
-  'purchase_bill_items':  [purchaseBillsProvider],
-  'item_catalog':    [catalogProvider],
-  'item_stock':      [inventoryProvider],
-  'stock_movements': [inventoryProvider],
-  'scheduled_payments': [
+  AppTables.parties:         [partiesProvider],
+  AppTables.partyAddresses:  [partiesProvider],
+  AppTables.partyReminders:  [partyRemindersProvider],
+  AppTables.accounts:        [accountsProvider, accountBalancesProvider, totalBalanceProvider],
+  AppTables.categories:      [customCategoriesProvider],
+  AppTables.budgets:         [currentMonthBudgetsProvider],
+  AppTables.invoices:        [invoicesProvider],
+  AppTables.invoiceItems:    [invoicesProvider],
+  AppTables.quotes:          [quotesProvider],
+  AppTables.quoteItems:      [quotesProvider],
+  AppTables.businesses:      [businessesProvider],
+  AppTables.purchaseBills:       [purchaseBillsProvider],
+  AppTables.purchaseBillItems:   [purchaseBillsProvider],
+  AppTables.itemCatalog:     [catalogProvider],
+  AppTables.itemStock:       [inventoryProvider],
+  AppTables.stockMovements:  [inventoryProvider],
+  AppTables.scheduledPayments: [
     scheduledPaymentsProvider,
     totalMonthlyScheduledExpenseProvider,
   ],
-  'settings': [
+  AppTables.settings: [
     themeModeProvider,
     businessModeProvider,
     businessNameProvider,
@@ -97,13 +98,13 @@ final _tableInvalidators = <String, List<ProviderOrFamily>>{
     smsAutoDetectEnabledProvider,
     defaultAccountIdProvider,
   ],
-  'document_templates':     [documentTemplatesProvider],
-  'delivery_challans':      [challansProvider],
-  'delivery_challan_items': [challansProvider],
-  'bookings':       [bookingsProvider],
-  'booking_items':  [bookingsProvider],
-  'staff':          [staffProvider],
-  'salary_payments': [staffProvider],
+  AppTables.documentTemplates:     [documentTemplatesProvider],
+  AppTables.deliveryChallans:      [challansProvider],
+  AppTables.deliveryChallanItems:  [challansProvider],
+  AppTables.bookings:       [bookingsProvider],
+  AppTables.bookingItems:   [bookingsProvider],
+  AppTables.staff:          [staffProvider],
+  AppTables.salaryPayments: [staffProvider],
 };
 
 /// Broad refresh applied when a table is not in [_tableInvalidators].

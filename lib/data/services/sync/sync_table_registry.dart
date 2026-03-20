@@ -1,5 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 
+import '../../../core/constants/app_tables.dart';
+
 /// Generic sync mode selected from table schema.
 enum SyncMode {
   deltaTs,
@@ -88,27 +90,27 @@ class SyncTableRegistry {
   /// sync-engine internal state, and device-local notification queues.
   static const Set<String> _localOnlyTables = {
     // Sync / P2P engine internals
-    'device_session',
-    'device_recovery',
-    'pairing_history',
-    'trusted_peers',
-    'sync_outbox',
-    'sync_watermarks',
-    'sync_table_state',
-    'schema_version',
+    AppTables.deviceSession,
+    AppTables.deviceRecovery,
+    AppTables.pairingHistory,
+    AppTables.trustedPeers,
+    AppTables.syncOutbox,
+    AppTables.syncWatermarks,
+    AppTables.syncTableState,
+    AppTables.schemaVersion,
     // Ed25519 private key material — absolutely must not leave the device.
-    'my_identity',
-    'linked_devices',
-    'linked_business_sessions',
+    AppTables.myIdentity,
+    AppTables.linkedDevices,
+    AppTables.linkedBusinessSessions,
     // Device-local notification delivery state
-    'payroll_notifications',
+    AppTables.payrollNotifications,
   };
 
   /// Tables excluded from all sync because the phone is the authoritative
   /// master and LWW merge is unsafe (e.g. sequence counters).
   static const Set<String> _phoneOnlyTables = {
     // Invoice number sequences — LWW would corrupt numbering on both sides.
-    'invoice_number_cursors',
+    AppTables.invoiceNumberCursors,
   };
 
   /// Tables excluded from P2P but included in Web Companion sync.
@@ -117,7 +119,7 @@ class SyncTableRegistry {
   /// so P2P would just duplicate it — but the browser needs a copy to render
   /// HSN code pickers for invoice creation.
   static const Set<String> _webOnlyTables = {
-    'hsn_master',
+    AppTables.hsnMaster,
   };
 
   // Tables previously in the blanket denylist that are now fully syncable:

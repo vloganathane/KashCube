@@ -183,7 +183,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       _syncPlans
         ..clear()
         ..addEntries(plans.map((p) => MapEntry(p.tableName, p)));
-      _pullTables = plans.map((p) => p.tableName).toSet();
+      // Only pull tables the browser is eligible to receive.
+      _pullTables = plans
+          .where((p) => p.isWebEligible)
+          .map((p) => p.tableName)
+          .toSet();
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
       final deltaVersion =
           plans.where((p) => p.mode == SyncMode.deltaVersion).length;
@@ -328,7 +332,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
   List<String> _outboundTables() {
     final tables = _syncPlans.values
-        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .where((plan) => plan.isWebEligible && plan.mode == SyncMode.deltaTs)
         .map((plan) => plan.tableName)
         .toList()
       ..sort();

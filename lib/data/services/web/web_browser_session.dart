@@ -145,6 +145,13 @@ class WebBrowserSession {
     final syncId = msg['sync_id'] as String?;
     if (table == null || row == null) return;
 
+    // Reject writes to phone-only or local-only tables.
+    final plan = _syncPlans[table];
+    if (plan != null && !plan.isWebEligible) {
+      debugPrint('[WebSession] Write rejected for phone-only table: $table');
+      return;
+    }
+
     try {
       await onWrite(table, row);
       _sendRaw({'type': 'WRITE_OK', 'sync_id': syncId});
@@ -193,8 +200,9 @@ class WebBrowserSession {
     String? since,
   ) async {
     await _ensureSyncPlans(db);
-    if (!_syncPlans.containsKey(table)) {
-      debugPrint('[WebSession] Pull rejected for disallowed table: $table');
+    final plan = _syncPlans[table];
+    if (plan == null || !plan.isWebEligible) {
+      debugPrint('[WebSession] Pull rejected for table: $table (scope=${plan?.scope.name ?? "unknown"})');
       return [];
     }
 

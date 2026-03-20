@@ -847,7 +847,7 @@ class P2pCoordinator {
 
   List<String> _peerSyncTables() {
     final tables = _webSyncPlans.values
-        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .where((plan) => plan.isP2pEligible && plan.mode == SyncMode.deltaTs)
         .map((plan) => plan.tableName)
         .toList()
       ..sort();
@@ -856,7 +856,7 @@ class P2pCoordinator {
 
   List<String> _webMirrorTables() {
     final tables = _webSyncPlans.values
-        .where((plan) => plan.mode == SyncMode.deltaTs)
+        .where((plan) => plan.isWebEligible && plan.mode == SyncMode.deltaTs)
         .map((plan) => plan.tableName)
         .toList()
       ..sort();

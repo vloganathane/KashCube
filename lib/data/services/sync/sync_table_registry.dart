@@ -7,11 +7,37 @@ enum SyncMode {
   snapshot,
 }
 
+/// Controls which sync channels a table participates in.
+enum SyncScope {
+  /// Syncs over both P2P (phone↔phone) and Web Companion (phone↔browser).
+  all,
+
+  /// Syncs to the Web Companion only.
+  ///
+  /// Excluded from P2P because the data is already embedded on every phone
+  /// (e.g. [hsn_master]) or because bandwidth cost outweighs the benefit.
+  webOnly,
+
+  /// Phone is the authoritative master; excluded from all sync channels.
+  ///
+  /// Differs from [localOnly] in that the exclusion is architectural rather
+  /// than a security requirement — these tables need a dedicated merge
+  /// strategy (e.g. max-wins for sequence counters) that LWW cannot provide.
+  phoneOnly,
+
+  /// Must never leave this device.
+  ///
+  /// Contains cryptographic key material, device-specific identity/session
+  /// state, or sync-engine internal metadata.
+  localOnly,
+}
+
 /// Runtime sync plan for a single table discovered from SQLite schema.
 class SyncTablePlan {
   const SyncTablePlan({
     required this.tableName,
     required this.mode,
+    required this.scope,
     required this.keyColumn,
     required this.hasCreatedAt,
     required this.hasUpdatedAt,
@@ -23,6 +49,10 @@ class SyncTablePlan {
 
   final String tableName;
   final SyncMode mode;
+
+  /// Which sync channels this table participates in.
+  final SyncScope scope;
+
   final String? keyColumn;
   final bool hasCreatedAt;
   final bool hasUpdatedAt;
@@ -30,6 +60,13 @@ class SyncTablePlan {
   final bool hasVersion;
   final String schemaFingerprint;
   final Set<String> columns;
+
+  /// True when this table should be included in P2P (phone↔phone) sync.
+  bool get isP2pEligible => scope == SyncScope.all;
+
+  /// True when this table should be included in Web Companion (phone↔browser) sync.
+  bool get isWebEligible =>
+      scope == SyncScope.all || scope == SyncScope.webOnly;
 }
 
 /// Discovers syncable tables and derives generic sync plans.
@@ -43,13 +80,14 @@ class SyncTableRegistry {
   // SQLite single-column PK detected from PRAGMA table_info (null for composite PKs).
   final Map<String, String?> _pkColumnCache = {};
 
-  /// Tables that must NEVER leave this device.
+  // ── Scope tables ──────────────────────────────────────────────────────────
+
+  /// Tables that must NEVER leave this device (completely excluded from discovery).
   ///
-  /// Includes engine metadata, device-specific identity/auth state, sequential
-  /// number state (invoice cursors), local subscription flags, and reference
-  /// data seeded from assets rather than user input.
-  static const Set<String> _engineLocalDenylist = {
-    // ── Engine / sync infrastructure ────────────────────────────────────
+  /// Contains cryptographic key material (Ed25519), P2P pairing secrets,
+  /// sync-engine internal state, and device-local notification queues.
+  static const Set<String> _localOnlyTables = {
+    // Sync / P2P engine internals
     'device_session',
     'device_recovery',
     'pairing_history',
@@ -58,31 +96,41 @@ class SyncTableRegistry {
     'sync_watermarks',
     'sync_table_state',
     'schema_version',
-    // ── Device-local identity & auth ────────────────────────────────────
-    // Contains Ed25519 key material — absolutely must not leave the device.
+    // Ed25519 private key material — absolutely must not leave the device.
     'my_identity',
     'linked_devices',
     'linked_business_sessions',
-    // ── Local access control ─────────────────────────────────────────────
-    'app_users',
-    'user_permissions',
-    // ── Sequential counters (per-device state) ───────────────────────────
-    // Syncing cursor rows would break invoice numbering on both sides.
-    'invoice_number_cursors',
-    // ── Subscription / feature flags (server-controlled) ────────────────
-    'subscription',
-    'plan_features',
-    // ── Device-local notification state ─────────────────────────────────
+    // Device-local notification delivery state
     'payroll_notifications',
-    // ── Reference / seed data (read-only, seeded from assets) ───────────
+  };
+
+  /// Tables excluded from all sync because the phone is the authoritative
+  /// master and LWW merge is unsafe (e.g. sequence counters).
+  static const Set<String> _phoneOnlyTables = {
+    // Invoice number sequences — LWW would corrupt numbering on both sides.
+    'invoice_number_cursors',
+  };
+
+  /// Tables excluded from P2P but included in Web Companion sync.
+  ///
+  /// [hsn_master] is already embedded on every phone (seeded from assets),
+  /// so P2P would just duplicate it — but the browser needs a copy to render
+  /// HSN code pickers for invoice creation.
+  static const Set<String> _webOnlyTables = {
     'hsn_master',
   };
+
+  // Tables previously in the blanket denylist that are now fully syncable:
+  //   app_users, user_permissions — RBAC; browser enforces the same rules.
+  //   subscription, plan_features — feature gates; all devices must agree.
 
   Future<List<SyncTablePlan>> discoverSyncPlans(
     Database db, {
     Set<String> extraDenylist = const {},
   }) async {
-    final denylist = <String>{..._engineLocalDenylist, ...extraDenylist};
+    // Only localOnly tables are fully excluded from discovery.
+    // phoneOnly and webOnly tables are discovered and assigned their scope.
+    final excluded = <String>{..._localOnlyTables, ...extraDenylist};
 
     final tableRows = await db.rawQuery('''
       SELECT name
@@ -96,7 +144,7 @@ class SyncTableRegistry {
     for (final row in tableRows) {
       final tableName = (row['name'] as String?)?.trim();
       if (tableName == null || tableName.isEmpty) continue;
-      if (denylist.contains(tableName)) continue;
+      if (excluded.contains(tableName)) continue;
 
       final columns = await _getTableColumns(db, tableName);
       if (columns.isEmpty) continue;
@@ -157,11 +205,18 @@ class SyncTableRegistry {
             ? SyncMode.deltaVersion
             : SyncMode.snapshot;
 
+    final scope = _phoneOnlyTables.contains(tableName)
+        ? SyncScope.phoneOnly
+        : _webOnlyTables.contains(tableName)
+            ? SyncScope.webOnly
+            : SyncScope.all;
+
     final schemaFingerprint = _schemaFingerprint(tableName, columns);
 
     return SyncTablePlan(
       tableName: tableName,
       mode: mode,
+      scope: scope,
       keyColumn: keyColumn,
       hasCreatedAt: hasCreatedAt,
       hasUpdatedAt: hasUpdatedAt,

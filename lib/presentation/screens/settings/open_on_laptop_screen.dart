@@ -41,14 +41,18 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   Future<void> _buildUrl() async {
     setState(() { _loading = true; _error = null; });
 
-    // Ensure the server is running — starts LAN sync if not enabled.
+    // Auto-start the server if it isn't running yet.
+    // Navigating to this screen is implicit consent to start the local server.
+    if (P2pCoordinator.instance.serverPort == null) {
+      await ref.read(p2pEnabledProvider.notifier).enable();
+      // Brief yield so the coordinator has time to bind the port.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    }
+
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
-      final enabled = ref.read(p2pEnabledProvider);
       setState(() {
-        _error = enabled
-            ? 'LAN Sync server is not ready yet — tap ↺ to retry.'
-            : 'Enable LAN Sync first to use this feature.';
+        _error   = 'Could not start the local server.\nMake sure you are connected to Wi-Fi and try again.';
         _loading = false;
       });
       return;
@@ -299,7 +303,7 @@ class _ErrorCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           TextButton.icon(
             icon: const Icon(Icons.refresh),
-            label: const Text('Enable LAN Sync & Retry'),
+            label: const Text('Retry'),
             onPressed: onRetry,
           ),
         ],

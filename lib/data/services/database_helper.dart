@@ -2784,6 +2784,25 @@ class DatabaseHelper {
             'Device-id columns on settings (created_by/updated_by_device_id)',
       });
     }
+
+    if (oldVersion < 75) {
+      // ── v75: Backfill businesses.upi_id ──────────────────────────────────
+      // upi_id was added in the v50 migration, but databases created via
+      // _onCreate before commit 69725d0 were missing the column because the
+      // DDL wasn't updated at the time.  Any device that was freshly set up
+      // between v50 and v74 (inclusive) has a businesses table without
+      // upi_id.  The try/catch is a no-op on databases that already have it.
+      try {
+        await db.execute('ALTER TABLE businesses ADD COLUMN upi_id TEXT');
+      } catch (e) {
+        debugPrint('[DB v75] businesses.upi_id already exists: $e');
+      }
+
+      await db.insert('schema_version', {
+        'version': 75,
+        'description': 'Backfill businesses.upi_id missed in _onCreate DDL',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

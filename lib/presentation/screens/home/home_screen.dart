@@ -813,6 +813,32 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 ),
               ),
 
+              // Net this month (income − expense for the period)
+              const SizedBox(height: 2),
+              Builder(builder: (context) {
+                final net      = summary.balance;
+                final isPos    = net >= 0;
+                final netColor = isPos ? colors.income : colors.expense;
+                final prefix   = isPos ? '+' : '−';
+                final absStr   = CurrencyFormatter.formatCompact(net.abs());
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: netColor.withAlpha(24),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Net this month  $prefix$absStr',
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: netColor,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'RobotoMono',
+                    ),
+                  ),
+                );
+              }),
+
               // Secondary: Net Balance + breakdown — only when loans exist
               if (hasLoans) ...[
               const SizedBox(height: AppSpacing.xs),

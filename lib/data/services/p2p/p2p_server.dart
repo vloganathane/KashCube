@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -77,6 +78,32 @@ class P2pServer {
   }
 
   bool get hasBrowserConnected => _activeSession != null;
+
+  // ── HTTP request log ──────────────────────────────────────────────────────
+
+  static const _kMaxLogEntries = 60;
+  final _httpLogEntries = <String>[];
+  final _httpLogController = StreamController<List<String>>.broadcast();
+
+  /// Live stream of HTTP request/response entries for the diagnostics panel.
+  Stream<List<String>> get httpLogStream => _httpLogController.stream;
+
+  /// Current snapshot of the HTTP log (newest at end).
+  List<String> get currentHttpLog => List.unmodifiable(_httpLogEntries);
+
+  void _addHttpLog(String message) {
+    final n  = DateTime.now();
+    final ts = '${n.hour.toString().padLeft(2, '0')}:'
+        '${n.minute.toString().padLeft(2, '0')}:'
+        '${n.second.toString().padLeft(2, '0')}';
+    final entry = '$ts  $message';
+    _httpLogEntries.add(entry);
+    if (_httpLogEntries.length > _kMaxLogEntries) _httpLogEntries.removeAt(0);
+    if (!_httpLogController.isClosed) {
+      _httpLogController.add(List.unmodifiable(_httpLogEntries));
+    }
+    debugPrint('[P2P-http] $message');
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -160,6 +187,7 @@ class P2pServer {
   Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
+    _httpLogEntries.clear();
     debugPrint('[P2P] Server stopped');
   }
 
@@ -171,11 +199,13 @@ class P2pServer {
   Handler _wsHandler() => webSocketHandler(
         (WebSocketChannel channel, String? _) {
           if (_webDeviceName == null || _webSchemaVersion == null) {
+            _addHttpLog('WS  /ws  REJECTED (web companion not enabled)');
             channel.sink.close();
             return;
           }
           // Dispose any existing session (one browser at a time).
           _activeSession?.dispose();
+          _addHttpLog('WS  /ws  CONNECTED');
           final session = WebBrowserSession(
             channel:         channel,
             validateToken:   WebSessionService.instance.validateAndConsume,
@@ -292,9 +322,11 @@ class P2pServer {
         final remoteAddr = info is HttpConnectionInfo
             ? info.remoteAddress.address
             : '?';
-        debugPrint('[P2P-req] ${request.method} /${request.url.path} from=$remoteAddr');
         final response = await inner(request);
-        debugPrint('[P2P-res] ${response.statusCode} /${request.url.path} from=$remoteAddr');
+        _addHttpLog(
+          '${response.statusCode}  ${request.method.padRight(4)}  '
+          '/${request.url.path}  from=$remoteAddr',
+        );
         return response;
       };
     };

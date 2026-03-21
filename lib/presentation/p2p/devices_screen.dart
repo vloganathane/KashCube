@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +12,7 @@ import '../../core/extensions/context_extensions.dart';
 import '../../data/models/peer_device.dart';
 import '../../data/models/trusted_peer.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
+import '../../data/services/p2p/p2p_discovery_service.dart';
 import '../providers/p2p_provider.dart';
 import 'pair_screen.dart';
 
@@ -430,25 +435,77 @@ String _fmtTs(DateTime? dt) {
 
 // ── Diagnostics panel ──────────────────────────────────────────────────────
 
-/// Collapsible section showing the local server address and a live mDNS
-/// event log.  Tap "Diagnostics" to expand, tap the copy icon to copy the
-/// full log to the clipboard for sharing.
-class _DiagnosticsPanel extends ConsumerWidget {
+/// Collapsible section showing the local server address, a live mDNS
+/// event log, and a live HTTP request log with a /hello probe button.
+class _DiagnosticsPanel extends ConsumerStatefulWidget {
   const _DiagnosticsPanel();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final logAsync = ref.watch(p2pDiscoveryLogProvider);
-    final ipAsync  = ref.watch(p2pLocalIpProvider);
+  ConsumerState<_DiagnosticsPanel> createState() => _DiagnosticsPanelState();
+}
+
+class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  String? _testResult;
+  bool    _testing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _testHello() async {
+    if (_testing) return;
+    // dart:io HttpClient is not available on Flutter Web.
+    if (kIsWeb) {
+      setState(() { _testResult = '⚠️ Not available in browser'; });
+      return;
+    }
+    setState(() { _testing = true; _testResult = null; });
+    final ip   = await P2pDiscoveryService.getLocalIp();
+    final port = P2pCoordinator.instance.serverPort;
+    if (ip == null || port == null) {
+      setState(() { _testResult = '❌ Server not running'; _testing = false; });
+      return;
+    }
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
+    try {
+      final req  = await client.getUrl(Uri.parse('http://$ip:$port/hello'));
+      final resp = await req.close().timeout(const Duration(seconds: 4));
+      final body = await resp.transform(Utf8Decoder()).join();
+      setState(() {
+        _testResult = resp.statusCode == 200
+            ? '✅ $ip:$port  →  $body'
+            : '❌ HTTP ${resp.statusCode}';
+      });
+    } catch (e) {
+      setState(() { _testResult = '❌ $e'; });
+    } finally {
+      client.close(force: true);
+      setState(() { _testing = false; });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final discoveryLog = ref.watch(p2pDiscoveryLogProvider).valueOrNull ?? const [];
+    final httpLog      = ref.watch(p2pServerLogProvider).valueOrNull    ?? const [];
+    final ipAsync      = ref.watch(p2pLocalIpProvider);
 
     final ip   = ipAsync.valueOrNull;
     final port = P2pCoordinator.instance.serverPort;
     final addressLine = [
-      ?ip,
+      if (ip != null) ip,
       if (port != null) 'port $port',
     ].join('  ');
-
-    final log = logAsync.valueOrNull ?? const [];
 
     return ExpansionTile(
       leading: Icon(
@@ -471,6 +528,95 @@ class _DiagnosticsPanel extends ConsumerWidget {
         AppSpacing.base, 0, AppSpacing.base, AppSpacing.base,
       ),
       children: [
+        // ── Tab bar ──────────────────────────────────────────────────────
+        TabBar(
+          controller:     _tabController,
+          labelStyle:     context.textTheme.labelSmall,
+          indicatorSize:  TabBarIndicatorSize.tab,
+          tabs: const [
+            Tab(text: 'mDNS'),
+            Tab(text: 'Web / HTTP'),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+
+        // ── mDNS tab ─────────────────────────────────────────────────────
+        AnimatedBuilder(
+          animation: _tabController,
+          builder: (context, _) {
+            if (_tabController.index != 0) return const SizedBox.shrink();
+            return _LogBox(
+              log:         discoveryLog,
+              addressLine: addressLine,
+              label:       'mDNS',
+            );
+          },
+        ),
+
+        // ── Web / HTTP tab ────────────────────────────────────────────────
+        AnimatedBuilder(
+          animation: _tabController,
+          builder: (context, _) {
+            if (_tabController.index != 1) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Test button
+                Row(
+                  children: [
+                    FilledButton.tonal(
+                      onPressed: _testing ? null : _testHello,
+                      child: _testing
+                          ? const SizedBox(
+                              width: 14, height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Test /hello'),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        _testResult ?? 'Tap to probe the server from this device',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                _LogBox(
+                  log:         httpLog,
+                  addressLine: addressLine,
+                  label:       'HTTP',
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+/// Shared log-box widget used by both the mDNS and HTTP tabs.
+class _LogBox extends StatelessWidget {
+  const _LogBox({
+    required this.log,
+    required this.addressLine,
+    required this.label,
+  });
+
+  final List<String> log;
+  final String addressLine;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Row(
           children: [
             Expanded(
@@ -487,7 +633,7 @@ class _DiagnosticsPanel extends ConsumerWidget {
               onPressed: () {
                 final text = log.reversed.join('\n');
                 Clipboard.setData(ClipboardData(
-                  text: '--- KashCube P2P Log ---\n'
+                  text: '--- KashCube $label Log ---\n'
                       'Server: $addressLine\n\n$text',
                 ));
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -506,12 +652,12 @@ class _DiagnosticsPanel extends ConsumerWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: context.colorScheme.surfaceContainerHighest,
+              color:        context.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: log.reversed.take(25).map(
+              children: log.reversed.take(30).map(
                 (e) => Text(
                   e,
                   style: context.textTheme.labelSmall?.copyWith(

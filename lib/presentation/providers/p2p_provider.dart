@@ -9,6 +9,7 @@ import '../../data/services/database_helper.dart';
 import '../../data/services/identity_service.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../../data/services/p2p/p2p_discovery_service.dart';
+import '../../data/services/p2p/p2p_server.dart';
 import '../providers/identity_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -188,6 +189,12 @@ final webCompanionProvider =
 final p2pDiscoveryLogProvider = StreamProvider<List<String>>((ref) async* {
   yield P2pDiscoveryService.instance.currentLog;
   yield* P2pDiscoveryService.instance.logStream;
+});
+
+/// Live HTTP request log from the embedded P2pServer.
+final p2pServerLogProvider = StreamProvider<List<String>>((ref) async* {
+  yield P2pServer.instance.currentHttpLog;
+  yield* P2pServer.instance.httpLogStream;
 });
 
 /// Local IPv4 address of this device (null if unavailable).

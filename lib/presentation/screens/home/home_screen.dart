@@ -761,6 +761,8 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                   style: context.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontFamily: 'RobotoMono',
+                    // Red when the running balance itself goes negative (in debt)
+                    color: balance < 0 ? colors.expense : null,
                   ),
                 ),
                 loading: () => const SizedBox(
@@ -813,28 +815,36 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 ),
               ),
 
-              // Net this month (income − expense for the period)
-              const SizedBox(height: 2),
-              Builder(builder: (context) {
-                final net      = summary.balance;
-                final isPos    = net >= 0;
-                final netColor = isPos ? colors.income : colors.expense;
-                final prefix   = isPos ? '+' : '−';
-                final absStr   = CurrencyFormatter.formatCompact(net.abs());
+              // Monthly net flow pill — always shown so users understand
+              // why the all-time balance and the monthly income/expense differ.
+              const SizedBox(height: AppSpacing.xs),
+              Builder(builder: (ctx) {
+                final net = summary.totalIncome - summary.totalExpense;
+                final pos = net >= 0;
                 return Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 1),
+                      horizontal: AppSpacing.sm, vertical: 2),
                   decoration: BoxDecoration(
-                    color: netColor.withAlpha(24),
+                    color: (pos ? colors.income : colors.expense).withAlpha(25),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
-                    'Net this month  $prefix$absStr',
-                    style: context.textTheme.labelSmall?.copyWith(
-                      color: netColor,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'RobotoMono',
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        pos ? Icons.trending_up : Icons.trending_down,
+                        size: 11,
+                        color: pos ? colors.income : colors.expense,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${pos ? '+' : ''}${CurrencyFormatter.formatCompact(net)}  this month',
+                        style: ctx.textTheme.labelSmall?.copyWith(
+                          color: pos ? colors.income : colors.expense,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }),

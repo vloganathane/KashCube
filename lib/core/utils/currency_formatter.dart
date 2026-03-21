@@ -23,12 +23,13 @@ class CurrencyFormatter {
     decimalDigits: 2,
   );
 
-  /// Formats amount in Indian numbering system: ₹1,23,456
+  /// Formats amount in Indian numbering system: ₹1,23,456 or -₹1,058
   static String format(double amount, {bool showDecimals = false}) {
+    final prefix = amount < 0 ? '-' : '';
     if (showDecimals) {
-      return _indianFormatWithDecimals.format(amount.abs());
+      return '$prefix${_indianFormatWithDecimals.format(amount.abs())}';
     }
-    return _indianFormat.format(amount.abs());
+    return '$prefix${_indianFormat.format(amount.abs())}';
   }
 
   /// Formats with sign prefix: +₹25,000 or -₹450

@@ -665,7 +665,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       maxWidth: 1600,
     );
     if (picked != null && mounted) {
-      final compressed = await compressPickedImage(picked.path);
+      final compressed = await compressPickedImage(picked);
       setState(() => _businessCardImagePath = compressed);
     }
   }

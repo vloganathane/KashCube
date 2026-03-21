@@ -2,55 +2,66 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// Compresses an image picked from the gallery or camera.
+/// Compresses a picked image to fit within a 150 KB budget.
+///
+/// Reads via [XFile.readAsBytes()] — the only cross-platform, sandbox-safe
+/// method to access a picker-selected file (works on macOS sandbox, iOS,
+/// Android without needing direct filesystem access to the source path).
 ///
 /// Strategy:
-///   1. Compress to 800 × 600 min dimensions, quality 70.
-///   2. If result is still > 150 KB, compress again at quality 50.
-///   3. Writes compressed bytes to the app's documents directory (not back to
-///      the source path, which may be outside the sandbox on macOS/iOS).
-///   4. Returns the path to the new file in the app sandbox.
+///   1. Read source bytes through XFile (security-scoped on macOS/iOS).
+///   2. Compress to ≤ 800×600 px at quality 70.
+///   3. If still > 150 KB, re-compress at quality 50.
+///   4. Write final bytes to [getApplicationDocumentsDirectory()] and
+///      return the new sandbox-safe path.
 ///
-/// On any error, returns [sourcePath] unchanged (graceful fallback).
+/// On any error, falls back to writing the raw bytes as-is to the docs dir
+/// so the caller always gets a sandbox-safe path.
 ///
 /// All processing is local — no data leaves the device.
-Future<String> compressPickedImage(String sourcePath) async {
+Future<String> compressPickedImage(XFile xfile) async {
   try {
-    var bytes = await FlutterImageCompress.compressWithFile(
-      sourcePath,
+    var bytes = await xfile.readAsBytes();
+
+    // First compression pass.
+    var compressed = await FlutterImageCompress.compressWithList(
+      bytes,
       minWidth: 800,
       minHeight: 600,
       quality: 70,
     );
 
-    if (bytes == null) return sourcePath;
-
     // Hard cap: 150 KB — reduce quality further if still too large.
-    if (bytes.length > 150 * 1024) {
-      bytes = await FlutterImageCompress.compressWithFile(
-            sourcePath,
+    if (compressed.length > 150 * 1024) {
+      compressed = await FlutterImageCompress.compressWithList(
+            compressed,
             minWidth: 800,
             minHeight: 600,
             quality: 50,
-          ) ??
-          bytes;
+          );
     }
 
-    // Write to the app's documents directory so the path stays accessible
-    // inside the sandbox (avoids macOS/iOS permission errors on re-open).
     final dir      = await getApplicationDocumentsDirectory();
     final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
     final dest     = File('${dir.path}/$fileName');
-    await dest.writeAsBytes(bytes);
+    await dest.writeAsBytes(compressed);
 
-    final kbAfter = bytes.length ~/ 1024;
-    debugPrint('[ImageCompress] → $kbAfter KB after compression');
-
+    debugPrint('[ImageCompress] → ${compressed.length ~/ 1024} KB after compression');
     return dest.path;
   } catch (e) {
-    debugPrint('[ImageCompress] Error ($e) — using original');
-    return sourcePath;
+    debugPrint('[ImageCompress] Error ($e) — saving raw bytes to docs dir');
+    try {
+      final bytes    = await xfile.readAsBytes();
+      final dir      = await getApplicationDocumentsDirectory();
+      final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final dest     = File('${dir.path}/$fileName');
+      await dest.writeAsBytes(bytes);
+      return dest.path;
+    } catch (_) {
+      return xfile.path;
+    }
   }
 }

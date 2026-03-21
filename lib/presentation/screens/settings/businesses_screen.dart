@@ -379,7 +379,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       imageQuality: 85,
     );
     if (xfile != null) {
-      final compressed = await compressPickedImage(xfile.path);
+      final compressed = await compressPickedImage(xfile);
       setState(() => _logoPath = compressed);
     }
   }

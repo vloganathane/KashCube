@@ -150,7 +150,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       imageQuality: 85,
     );
     if (xfile != null) {
-      final compressed = await compressPickedImage(xfile.path);
+      final compressed = await compressPickedImage(xfile);
       if (mounted) setState(() => _photoPath = compressed);
     }
   }

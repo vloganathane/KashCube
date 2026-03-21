@@ -15,8 +15,14 @@ import '../providers/settings_provider.dart';
 // ── Read-only stream providers ─────────────────────────────────────────────
 
 /// Live list of peers currently visible on the LAN via mDNS.
-final p2pPeersProvider = StreamProvider<List<PeerDevice>>((ref) =>
-    P2pDiscoveryService.instance.peersStream);
+///
+/// Immediately yields [P2pDiscoveryService.currentPeers] so the UI shows the
+/// already-discovered peers when the screen is (re-)opened mid-session,
+/// matching the pattern used by [p2pSyncStatusProvider].
+final p2pPeersProvider = StreamProvider<List<PeerDevice>>((ref) async* {
+  yield P2pDiscoveryService.instance.currentPeers;
+  yield* P2pDiscoveryService.instance.peersStream;
+});
 
 /// Current coordinator status (phase, peer name, progress message).
 /// Immediately yields [P2pCoordinator.currentStatus] so the UI never

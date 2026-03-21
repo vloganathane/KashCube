@@ -24,6 +24,16 @@ class DevicesScreen extends ConsumerWidget {
     final statusAsync       = ref.watch(p2pSyncStatusProvider);
     final trustedPeersAsync = ref.watch(trustedPeersProvider);
 
+    // Refresh the trusted-peers list ("last synced" timestamps) whenever a
+    // sync cycle completes so the UI reflects the updated DB values.
+    ref.listen<AsyncValue<SyncStatus>>(p2pSyncStatusProvider, (_, next) {
+      next.whenData((status) {
+        if (status.phase == SyncPhase.done) {
+          ref.invalidate(trustedPeersProvider);
+        }
+      });
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Devices & LAN Sync'),

@@ -12,6 +12,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../web/web_browser_session.dart';
 import '../web/web_session_service.dart';
 import '../web/web_ui_extractor.dart';
+import '../../../core/constants/app_constants.dart';
 import 'p2p_auth_service.dart';
 
 /// Lightweight HTTP server for P2P LAN sync.
@@ -149,8 +150,9 @@ class P2pServer {
     _server = await shelf_io.serve(
       logged,
       InternetAddress.anyIPv4,
-      0, // OS assigns a random free port
+      AppConstants.p2pPort, // fixed LAN sync port — IANA private range, easy to remember
       shared: false,
+      poweredByHeader: 'KashCube',
     );
     debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
   }

@@ -12,6 +12,10 @@ class AppConstants {
   static const String dbName = 'kash_cube.db';
   static const int dbVersion = 76;
 
+  // P2P LAN sync
+  /// Fixed port for the on-device HTTP server (IANA private range 49152-65535).
+  static const int p2pPort = 50505;
+
   // Categories (MVP - 10 pre-defined)
   static const List<String> defaultCategories = [
     'Food & Dining',

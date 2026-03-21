@@ -3,14 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
 import '../../../data/services/p2p/p2p_discovery_service.dart';
 import '../../../data/services/web/web_session_service.dart';
 import '../../providers/p2p_provider.dart';
-import '../../providers/settings_provider.dart';
 
 /// Shows a QR code that lets the user open KashCube on a laptop browser.
 ///
@@ -41,13 +39,10 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   Future<void> _buildUrl() async {
     setState(() { _loading = true; _error = null; });
 
-    // Auto-start the server if it isn't running yet.
-    // Navigating to this screen is implicit consent to start the local server.
-    if (P2pCoordinator.instance.serverPort == null) {
-      await ref.read(p2pEnabledProvider.notifier).enable();
-      // Brief yield so the coordinator has time to bind the port.
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    }
+    // Start the HTTP server (web companion mode) if it isn't running yet.
+    // This works whether or not the user has LAN sync enabled — the server
+    // starts in server-only mode and does NOT turn on mDNS broadcast/discovery.
+    await ref.read(webCompanionProvider.notifier).ensureStarted();
 
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
@@ -66,14 +61,6 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       });
       return;
     }
-
-    // Enable web companion on the server (idempotent).
-    final settings = ref.read(settingsRepositoryProvider);
-    final name     = await settings.get(SettingsKeys.ownerName);
-    P2pCoordinator.instance.enableWebCompanion(
-      deviceName:    (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
-      schemaVersion: AppConstants.dbVersion,
-    );
 
     final token = WebSessionService.instance.generateToken();
     final url   = 'http://$ip:$port?token=$token';

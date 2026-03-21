@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:bonsoir/bonsoir.dart';
@@ -30,6 +31,17 @@ class P2pDiscoveryService {
 
   BonsoirBroadcast? _broadcast;
   BonsoirDiscovery? _discovery;
+
+  // Guards to prevent concurrent start calls from racing through the stop→create→start sequence.
+  bool _startingBroadcast = false;
+  bool _startingDiscovery = false;
+
+  // Periodically probes each known peer's /hello endpoint to evict stale
+  // entries that linger after the remote app is killed without sending a
+  // mDNS goodbye packet.
+  Timer? _stalenessTimer;
+  static const _kProbeInterval  = Duration(seconds: 30);
+  static const _kProbeTimeout   = Duration(seconds: 4);
 
   // Peers indexed by identityId for O(1) lookup during updates/removals.
   final _peers = <String, PeerDevice>{};
@@ -66,6 +78,9 @@ class P2pDiscoveryService {
     required int port,
     String? businessName,
   }) async {
+    if (_startingBroadcast) return;
+    _startingBroadcast = true;
+    try {
     await stopBroadcast();
 
     final service = BonsoirService(
@@ -85,6 +100,9 @@ class P2pDiscoveryService {
     await _broadcast!.ready;
     await _broadcast!.start();
     _logEvent('BROADCAST started  name="$displayName"  port=$port');
+    } finally {
+      _startingBroadcast = false;
+    }
   }
 
   Future<void> stopBroadcast() async {
@@ -106,6 +124,9 @@ class P2pDiscoveryService {
     required String localIdentityId,
     bool Function(String identityId)? onTrusted,
   }) async {
+    if (_startingDiscovery) return;
+    _startingDiscovery = true;
+    try {
     await stopDiscovery();
 
     _discovery = BonsoirDiscovery(type: _kServiceType);
@@ -121,15 +142,79 @@ class P2pDiscoveryService {
     // subscribers exit the loading state even when no peers are nearby yet.
     _emit();
     _logEvent('DISCOVERY started  type=$_kServiceType');
+
+    // Start the staleness prober.  Android NSD does not send a mDNS goodbye
+    // packet when the remote app is force-killed, so `discoveryServiceLost`
+    // never fires.  We compensate by probing each known peer's /hello every
+    // 30 seconds and evicting any that fail to respond.
+    _stalenessTimer?.cancel();
+    _stalenessTimer = Timer.periodic(_kProbeInterval, (_) => _probeAllPeers());
+    } finally {
+      _startingDiscovery = false;
+    }
   }
 
   Future<void> stopDiscovery() async {
+    _stalenessTimer?.cancel();
+    _stalenessTimer = null;
     if (_discovery != null) {
       await _discovery!.stop();
       _discovery = null;
       _peers.clear();
       _emit();
       _logEvent('DISCOVERY stopped');
+    }
+  }
+
+  /// Probes every currently-tracked peer's `/hello` endpoint.
+  /// Peers that fail (connection refused, timeout, wrong app) are evicted.
+  void _probeAllPeers() {
+    // Snapshot the current peer list to avoid concurrent-modification issues.
+    final snapshot = Map<String, PeerDevice>.from(_peers);
+    for (final entry in snapshot.entries) {
+      _probePeer(entry.key, entry.value);
+    }
+  }
+
+  Future<void> _probePeer(String identityId, PeerDevice peer) async {
+    final client = HttpClient()
+      ..connectionTimeout = _kProbeTimeout;
+    try {
+      final uri     = Uri.parse('http://${peer.host}:${peer.port}/hello');
+      final request = await client.getUrl(uri)
+          .timeout(_kProbeTimeout);
+      final response = await request.close()
+          .timeout(_kProbeTimeout);
+      final body = await response
+          .transform(const Utf8Decoder())
+          .join()
+          .timeout(_kProbeTimeout);
+
+      if (response.statusCode >= 400) {
+        _evictStalePeer(identityId, peer, 'hello status ${response.statusCode}');
+        return;
+      }
+
+      final json = jsonDecode(body);
+      if (json is! Map || json['app'] != 'kashcube') {
+        _evictStalePeer(identityId, peer, 'unexpected hello body');
+      }
+      // Peer is alive — update lastSeenAt.
+      final updated = peer.copyWith(lastSeenAt: DateTime.now());
+      _peers[identityId] = updated;
+    } catch (_) {
+      // Any error (connection refused, timeout, socket exception) means the
+      // server is unreachable — treat as gone.
+      _evictStalePeer(identityId, peer, 'probe failed');
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  void _evictStalePeer(String identityId, PeerDevice peer, String reason) {
+    if (_peers.remove(identityId) != null) {
+      _emit();
+      _logEvent('EVICTED stale peer  id=$identityId  name="${peer.displayName}"  reason=$reason');
     }
   }
 
@@ -180,10 +265,46 @@ class P2pDiscoveryService {
       return;
     }
 
-    final host = service.host ?? '';
-    if (host.isEmpty) return; // not yet resolved
+    final rawHost = service.host ?? '';
+    if (rawHost.isEmpty) return; // not yet resolved
 
-    final peer = PeerDevice(
+    // Bonsoir on Android returns the mDNS hostname (e.g. "Android_XXXX.local.")
+    // instead of the IP address. InternetAddress.tryParse() returns null for
+    // hostnames, so we detect that case and resolve asynchronously.
+    if (InternetAddress.tryParse(rawHost) != null) {
+      // Already an IP — store immediately.
+      _storePeer(
+        service:      service,
+        identityId:   identityId,
+        host:         rawHost,
+        onTrusted:    onTrusted,
+      );
+    } else {
+      // Hostname — resolve to IP via mDNS/DNS, then store.
+      // Store with the hostname first so the peer is visible while resolving.
+      _storePeer(
+        service:    service,
+        identityId: identityId,
+        host:       rawHost,
+        onTrusted:  onTrusted,
+      );
+      _resolveHostname(
+        service:    service,
+        identityId: identityId,
+        hostname:   rawHost,
+        onTrusted:  onTrusted,
+      );
+    }
+  }
+
+  void _storePeer({
+    required ResolvedBonsoirService service,
+    required String identityId,
+    required String host,
+    required bool Function(String)? onTrusted,
+  }) {
+    final attrs = service.attributes;
+    final peer  = PeerDevice(
       identityId:   identityId,
       displayName:  attrs[_kKeyDisplayName] ?? service.name,
       host:         host,
@@ -192,10 +313,39 @@ class P2pDiscoveryService {
       isTrusted:    onTrusted?.call(identityId) ?? false,
       lastSeenAt:   DateTime.now(),
     );
-
     _peers[identityId] = peer;
     _emit();
     _logEvent('RESOLVED  id=$identityId  name="${peer.displayName}"  addr=$host:${service.port}  trusted=${peer.isTrusted}');
+  }
+
+  /// Performs an async DNS/mDNS lookup for [hostname] and, if successful,
+  /// upgrades the stored [PeerDevice] with the resolved IPv4 address.
+  Future<void> _resolveHostname({
+    required ResolvedBonsoirService service,
+    required String identityId,
+    required String hostname,
+    required bool Function(String)? onTrusted,
+  }) async {
+    try {
+      // Strip trailing dot from mDNS FQDN ("foo.local." → "foo.local")
+      final lookup = hostname.endsWith('.') ? hostname.substring(0, hostname.length - 1) : hostname;
+      final addresses = await InternetAddress.lookup(lookup, type: InternetAddressType.IPv4);
+      if (addresses.isEmpty) return;
+
+      final ip = addresses.first.address;
+      // Only update if the peer is still tracked (it may have been lost).
+      if (!_peers.containsKey(identityId)) return;
+
+      _storePeer(
+        service:    service,
+        identityId: identityId,
+        host:       ip,
+        onTrusted:  onTrusted,
+      );
+      _logEvent('RESOLVED-IP  id=$identityId  hostname=$hostname  ip=$ip');
+    } catch (e) {
+      debugPrint('[P2P] hostname lookup failed for $hostname: $e');
+    }
   }
 
   void _emit() {

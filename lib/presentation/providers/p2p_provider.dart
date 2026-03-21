@@ -6,6 +6,7 @@ import '../../data/models/peer_device.dart';
 import '../../data/models/trusted_peer.dart';
 import '../../data/services/action_center_background_service.dart';
 import '../../data/services/database_helper.dart';
+import '../../data/services/identity_service.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../../data/services/p2p/p2p_discovery_service.dart';
 import '../providers/identity_provider.dart';
@@ -58,6 +59,10 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
 
   final Ref _ref;
 
+  /// Guard against concurrent enable() calls — e.g. _restore() and a UI
+  /// toggle arriving before the first start() completes.
+  bool _enabling = false;
+
   /// Reads the persisted preference and re-enables LAN sync if the user had
   /// it turned on before the app was last closed.
   Future<void> _restore() async {
@@ -71,7 +76,8 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
   }
 
   Future<void> enable() async {
-    if (state) return;
+    if (state || _enabling) return;
+    _enabling = true;
     try {
       final db = await DatabaseHelper.instance.database;
       // Wait for both the signing keypair AND the identity keypair to be
@@ -101,6 +107,8 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_kLanSyncEnabled, true);
       }
+    } finally {
+      _enabling = false;
     }
   }
 
@@ -119,6 +127,53 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
 final p2pEnabledProvider =
     StateNotifierProvider<P2pEnabledNotifier, bool>(
   (ref) => P2pEnabledNotifier(ref),
+);
+
+// ── Web companion (server-only mode) ────────────────────────────────────────
+
+/// Manages starting/stopping the HTTP server for the web companion
+/// independently of the LAN sync toggle.
+///
+/// The server is started when "Open on Laptop" is opened and stopped when the
+/// screen is closed (if LAN sync is not separately active).
+class WebCompanionNotifier extends StateNotifier<bool> {
+  WebCompanionNotifier(this._ref) : super(false);
+
+  final Ref _ref;
+
+  Future<void> ensureStarted() async {
+    // If the full LAN sync coordinator is already running we just piggyback.
+    if (P2pCoordinator.instance.serverPort != null) {
+      if (mounted) state = true;
+      return;
+    }
+    if (state) return;
+    try {
+      final db       = await DatabaseHelper.instance.database;
+      await _ref.read(identityInitProvider.future);
+      final identity = await _ref.read(identityServiceProvider.future);
+      final settings = _ref.read(settingsRepositoryProvider);
+      final name     = await settings.get(SettingsKeys.ownerName);
+      await P2pCoordinator.instance.startServerOnly(
+        db:          db,
+        identity:    identity,
+        displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
+      );
+      if (mounted) state = true;
+    } catch (e) {
+      debugPrint('[WebCompanion] ensureStarted() failed: $e');
+    }
+  }
+
+  Future<void> stop() async {
+    await P2pCoordinator.instance.stopServerOnly();
+    if (mounted) state = false;
+  }
+}
+
+final webCompanionProvider =
+    StateNotifierProvider<WebCompanionNotifier, bool>(
+  (ref) => WebCompanionNotifier(ref),
 );
 
 // ── Diagnostics ─────────────────────────────────────────────────────────────

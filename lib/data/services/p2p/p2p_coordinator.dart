@@ -79,6 +79,14 @@ class P2pCoordinator {
   Uint8List? _deviceKeyBytes; // Ed25519 seed — used to decrypt stored peer secrets
 
   bool _running = false;
+  /// True while a start() call is in progress — prevents concurrent starts
+  /// (e.g. _restore() + UI toggle racing before the server is bound).
+  bool _startInProgress = false;
+
+  /// True when the HTTP server was started exclusively for the web companion
+  /// (without mDNS broadcast/discovery).  The server stays alive even when
+  /// the LAN sync toggle is off so the browser companion keeps working.
+  bool _serverOnlyMode = false;
   Timer? _webPushTimer;
   StreamSubscription<String>? _syncEventSub;
   bool _webPushInFlight = false;
@@ -140,14 +148,11 @@ class P2pCoordinator {
     required String displayName,
     String? businessName,
   }) async {
-    if (_running) {
-      // Happy path: coordinator is already fully running.
-      if (P2pServer.instance.port != null) return;
-      // A previous start() set _running=true but the server never bound
-      // (e.g. mDNS threw before shelf_io.serve completed).  Reset so
-      // this call can attempt a full restart.
-      _running = false;
-    }
+    // Already fully running — nothing to do.
+    if (_running && P2pServer.instance.port != null) return;
+    // Another start() is in progress — bail; the in-flight call will finish.
+    if (_startInProgress) return;
+    _startInProgress = true;
     _running = true;
     _db = db;
     _identityId  = identity.identityId;
@@ -221,6 +226,7 @@ class P2pCoordinator {
     );
 
     debugPrint('[P2pCoordinator] Started on port $port');
+    _startInProgress = false;
   }
 
   Future<void> _logDiscoveredSyncPlans(Database db) async {
@@ -262,9 +268,86 @@ class P2pCoordinator {
   }
 
   /// Stops the coordinator and releases all resources.
+  // ── Server-only mode (web companion without LAN sync) ────────────────────
+
+  /// Starts only the HTTP server and web companion — no mDNS broadcast or
+  /// device discovery.  Use this when the user opens "Open on Laptop" without
+  /// having LAN sync enabled, so the browser companion works independently.
+  ///
+  /// Idempotent: if the full coordinator (or another server-only session) is
+  /// already running this is a no-op.
+  Future<void> startServerOnly({
+    required Database db,
+    required IdentityService identity,
+    required String displayName,
+  }) async {
+    // Full coordinator already running — just ensure web companion is enabled.
+    if (_running && P2pServer.instance.port != null) {
+      P2pServer.instance.enableWebCompanion(
+        deviceName:    displayName,
+        schemaVersion: AppConstants.dbVersion,
+        onWrite:       _handleWebWrite,
+      );
+      return;
+    }
+    // Server-only already up.
+    if (_serverOnlyMode && P2pServer.instance.port != null) return;
+
+    _db          = db;
+    _identityId  = identity.identityId;
+    _displayName = displayName;
+
+    final seedB64 = await identity.exportIdentityPrivateKeySeed();
+    _deviceKeyBytes = seedB64 != null
+        ? Uint8List.fromList(base64.decode(seedB64))
+        : null;
+
+    await _logDiscoveredSyncPlans(db);
+    _startWebPushLoop();
+
+    await P2pServer.instance.start(
+      secretForPeer:  _secretForPeer,
+      onPull:         _handlePull,
+      onPush:         _handlePush,
+      onPairRequest:  _handlePairRequest,
+    );
+
+    P2pServer.instance.enableWebCompanion(
+      deviceName:    displayName,
+      schemaVersion: AppConstants.dbVersion,
+      onWrite:       _handleWebWrite,
+    );
+
+    _serverOnlyMode = true;
+    debugPrint('[P2pCoordinator] Server-only mode started on port ${P2pServer.instance.port}');
+  }
+
+  /// Stops the HTTP server when it was started via [startServerOnly] and the
+  /// full coordinator is not running.  No-op if the full coordinator is active.
+  Future<void> stopServerOnly() async {
+    if (_running) return; // full coordinator owns the server
+    if (!_serverOnlyMode) return;
+    _serverOnlyMode = false;
+
+    _webPushTimer?.cancel();
+    _webPushTimer = null;
+    _webLastPushedAt.clear();
+    _webLastPushedVersion.clear();
+    _webSyncPlans.clear();
+    _tableColumnsCache.clear();
+    await _syncEventSub?.cancel();
+    _syncEventSub = null;
+
+    await P2pServer.instance.stop();
+    _db = null;
+    _deviceKeyBytes = null;
+    debugPrint('[P2pCoordinator] Server-only mode stopped');
+  }
+
   Future<void> stop() async {
     if (!_running) return;
     _running = false;
+    _startInProgress = false;
 
     await _peerSub?.cancel();
     _peerSub = null;
@@ -280,7 +363,15 @@ class P2pCoordinator {
 
     await P2pDiscoveryService.instance.stopDiscovery();
     await P2pDiscoveryService.instance.stopBroadcast();
-    await P2pServer.instance.stop();
+
+    // Only stop the HTTP server if the web companion is not serving a browser
+    // session and we are not in server-only mode.  This keeps the server alive
+    // when the user disables LAN sync while a browser tab is open.
+    if (!_serverOnlyMode && !P2pServer.instance.hasBrowserConnected) {
+      await P2pServer.instance.stop();
+    } else {
+      debugPrint('[P2pCoordinator] Server kept alive for web companion');
+    }
 
     _activeSyncs.clear();
     _trustedPeerIds.clear();

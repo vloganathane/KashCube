@@ -222,17 +222,63 @@ class P2pDiscoveryService {
     debugPrint('[P2P] $message');
   }
 
-  /// Returns the first non-loopback IPv4 address of this device, or null.
+  /// Returns the LAN IPv4 address of this device, preferring the Wi-Fi
+  /// interface so the correct IP is encoded in QR codes.
+  ///
+  /// Android exposes interfaces in arbitrary order; VPN (`tun*`), hotspot
+  /// (`ap*`, `rndis*`), and cellular (`rmnet*`) interfaces often appear
+  /// before `wlan0`, causing the QR URL to be unreachable from other devices
+  /// on the same Wi-Fi network.
+  ///
+  /// Priority:
+  ///   1. `wlan*`  — Wi-Fi (Android)
+  ///   2. `en*`    — Wi-Fi / Ethernet (iOS / macOS)
+  ///   3. Any other non-loopback, non-virtual IPv4 (fallback for emulators etc.)
   static Future<String?> getLocalIp() async {
     try {
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
       );
+
+      // Build a list of (priority, address) pairs and return the best one.
+      // Lower priority number = preferred.
+      String? best;
+      int bestPriority = 99;
+
       for (final iface in interfaces) {
+        final name = iface.name.toLowerCase();
+        int priority;
+        if (name.startsWith('wlan')) {
+          priority = 0; // Android Wi-Fi
+        } else if (name.startsWith('en')) {
+          priority = 1; // iOS/macOS Wi-Fi or Ethernet
+        } else if (name.startsWith('tun') ||
+            name.startsWith('tap') ||
+            name.startsWith('rmnet') ||
+            name.startsWith('rndis') ||
+            name.startsWith('ap') ||
+            name.startsWith('p2p')) {
+          priority = 90; // VPN / cellular / hotspot — avoid these
+        } else {
+          priority = 50; // Unknown — accept as last resort
+        }
+
         for (final addr in iface.addresses) {
-          if (!addr.isLoopback) return addr.address;
+          if (addr.isLoopback) continue;
+          debugPrint(
+            '[getLocalIp] iface=${iface.name} addr=${addr.address} '
+            'loopback=${addr.isLoopback} priority=$priority '
+            '(current best: $best @ $bestPriority)',
+          );
+          if (priority < bestPriority) {
+            bestPriority = priority;
+            best = addr.address;
+          }
         }
       }
+
+      debugPrint('[getLocalIp] selected → $best (priority $bestPriority)');
+      return best;
     } catch (_) {}
     return null;
   }

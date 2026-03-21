@@ -28,36 +28,45 @@ void main() async {
   // Set the correct SQLite backend (WASM on web, native on Android).
   await initDatabaseFactory();
 
-  if (!kIsWeb) {
-    // Initialise local notifications before the first frame.
-    // 100% on-device — no network calls.
-    await NotificationService.instance.initialize();
-    await NotificationService.instance.requestPermission();
-  }
+  // All pre-runApp initialisation is wrapped in a try/catch so that a failure
+  // in notification setup, WorkManager registration, or DB migration never
+  // leaves the app stuck on the native splash screen.
+  try {
+    if (!kIsWeb) {
+      // Initialise local notifications before the first frame.
+      // 100% on-device — no network calls.
+      await NotificationService.instance.initialize();
+      await NotificationService.instance.requestPermission();
+    }
 
-  // Ensure current_fy_start is in sync with today's FY.
-  // This also triggers isResetDue() to return true if the FY has flipped
-  // since the last launch, so invoice numbers reset correctly.
-  await FiscalYearService.instance.ensureCurrentFYStart();
+    // Ensure current_fy_start is in sync with today's FY.
+    // This also triggers isResetDue() to return true if the FY has flipped
+    // since the last launch, so invoice numbers reset correctly.
+    await FiscalYearService.instance.ensureCurrentFYStart();
 
-  if (!kIsWeb) {
-    // Show year-end notifications if the FY is within 7 days of ending
-    // or if the old FY was never closed after the new year started.
-    await NotificationService.instance.checkAndShowYearEndAlerts();
+    if (!kIsWeb) {
+      // Show year-end notifications if the FY is within 7 days of ending
+      // or if the old FY was never closed after the new year started.
+      await NotificationService.instance.checkAndShowYearEndAlerts();
 
-    // Backup reminder if no encrypted backup in 30 days (or ever).
-    await NotificationService.instance.checkAndShowBackupReminder();
+      // Backup reminder if no encrypted backup in 30 days (or ever).
+      await NotificationService.instance.checkAndShowBackupReminder();
 
-    // Register daily Action Center background task (fires ~9 AM via WorkManager).
-    // Non-fatal if WorkManager is unavailable on this device.
-    await registerActionCenterDailyTask();
+      // Register daily Action Center background task (fires ~9 AM via WorkManager).
+      // Non-fatal if WorkManager is unavailable on this device.
+      await registerActionCenterDailyTask();
 
-    // Register daily low-stock inventory alert task.
-    await registerLowStockDailyTask();
+      // Register daily low-stock inventory alert task.
+      await registerLowStockDailyTask();
 
-    // Re-register auto-backup task if the user had it enabled.
-    // WorkManager tasks can be cleared by OS updates; this restores the schedule.
-    await maybeRestoreAutoBackupTask();
+      // Re-register auto-backup task if the user had it enabled.
+      // WorkManager tasks can be cleared by OS updates; this restores the schedule.
+      await maybeRestoreAutoBackupTask();
+    }
+  } catch (e, st) {
+    // Non-fatal: log and proceed. The app UI handles DB errors at the feature
+    // level; a failure here must never prevent runApp() from being called.
+    debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
   }
 
   runApp(const ProviderScope(child: KashCubeApp()));

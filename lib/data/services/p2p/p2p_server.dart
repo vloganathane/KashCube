@@ -140,13 +140,19 @@ class P2pServer {
         .add(staticHandler)
         .handler;
 
+    // Thin request-log middleware — logs every inbound request with the
+    // remote address so connectivity issues on other devices can be diagnosed.
+    final logged = const Pipeline()
+        .addMiddleware(_requestLogMiddleware())
+        .addHandler(combined);
+
     _server = await shelf_io.serve(
-      combined,
+      logged,
       InternetAddress.anyIPv4,
       0, // OS assigns a random free port
       shared: false,
     );
-    debugPrint('[P2P] Server listening on port ${_server!.port}');
+    debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
   }
 
   Future<void> stop() async {
@@ -273,9 +279,26 @@ class P2pServer {
     return Response.ok(jsonEncode({'ok': true}));
   }
 
-  // ── HMAC middleware ───────────────────────────────────────────────────────
+  // ── Request-log middleware ────────────────────────────────────────────────
 
-  /// Rejects requests that are missing or have invalid HMAC signatures.
+  /// Logs every inbound request (method, path, remote IP) so connectivity
+  /// problems from other devices on the LAN can be diagnosed quickly.
+  Middleware _requestLogMiddleware() {
+    return (Handler inner) {
+      return (Request request) async {
+        final info = request.context['shelf.io.connection_info'];
+        final remoteAddr = info is HttpConnectionInfo
+            ? info.remoteAddress.address
+            : '?';
+        debugPrint('[P2P-req] ${request.method} /${request.url.path} from=$remoteAddr');
+        final response = await inner(request);
+        debugPrint('[P2P-res] ${response.statusCode} /${request.url.path} from=$remoteAddr');
+        return response;
+      };
+    };
+  }
+
+  // ── HMAC middleware ───────────────────────────────────────────────────────
   /// Only applied to the sync router — open and static routes bypass it.
   Middleware _hmacMiddleware() {
     return (Handler inner) {

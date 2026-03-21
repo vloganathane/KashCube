@@ -1,6 +1,6 @@
 import 'dart:convert';
+import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 import 'web_browser_session.dart';
@@ -33,12 +33,12 @@ class WebSessionService {
   static const _tokenTtl   = Duration(minutes: 5);
   static const _sessionTtl = Duration(minutes: 30);
 
+  static final Random _rng = Random.secure();
+
   /// Generates a new QR token, invalidating any previous one.
-  /// Returns a base64url-encoded SHA-256 hash (43 chars).
+  /// Returns a 43-char base64url string of 32 cryptographically random bytes.
   String generateToken() {
-    final seed = '${DateTime.now().microsecondsSinceEpoch}'
-        '${_pseudoRandom()}';
-    final bytes = sha256.convert(utf8.encode(seed)).bytes;
+    final bytes = List<int>.generate(32, (_) => _rng.nextInt(256));
     _activeToken = base64Url.encode(bytes).replaceAll('=', '');
     _expiresAt   = DateTime.now().add(_tokenTtl);
     debugPrint('[WebSession] QR token generated, expires at $_expiresAt');
@@ -93,9 +93,7 @@ class WebSessionService {
   }
 
   void _issueSessionToken() {
-    final seed = 'session${DateTime.now().microsecondsSinceEpoch}'
-        '${_pseudoRandom()}';
-    final bytes = sha256.convert(utf8.encode(seed)).bytes;
+    final bytes = List<int>.generate(32, (_) => _rng.nextInt(256));
     _sessionToken  = base64Url.encode(bytes).replaceAll('=', '');
     _sessionExpiry = DateTime.now().add(_sessionTtl);
     debugPrint('[WebSession] Session token issued, expires at $_sessionExpiry');
@@ -111,10 +109,4 @@ class WebSessionService {
     return result == 0;
   }
 
-  // Simple pseudo-random string using dart:core — good enough combined with
-  // the timestamp for a short-lived LAN-only token.
-  static String _pseudoRandom() {
-    final now = DateTime.now();
-    return '${now.microsecond}${now.millisecond}${now.hashCode}';
-  }
 }

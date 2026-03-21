@@ -386,17 +386,26 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   /// Bulk-upserts [rows] into the in-memory SQLite using INSERT OR REPLACE.
+  /// Strips any columns that don't exist in the target table (e.g. rows from
+  /// an older phone schema where column names have since been renamed).
   Future<void> _upsertRows(String table, List<dynamic> rows) async {
     try {
-      final db    = await DatabaseHelper.instance.database;
+      final db = await DatabaseHelper.instance.database;
+      final tableInfo = await db.rawQuery('PRAGMA table_info($table)');
+      final validCols = tableInfo.map((r) => r['name'] as String).toSet();
       final batch = db.batch();
       for (final r in rows) {
         if (r is Map<String, dynamic>) {
-          batch.insert(
-            table,
-            r,
-            conflictAlgorithm: ConflictAlgorithm.replace,
+          final filtered = Map<String, dynamic>.fromEntries(
+            r.entries.where((e) => validCols.contains(e.key)),
           );
+          if (filtered.isNotEmpty) {
+            batch.insert(
+              table,
+              filtered,
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+          }
         }
       }
       await batch.commit(noResult: true);

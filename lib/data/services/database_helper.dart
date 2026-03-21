@@ -2619,7 +2619,10 @@ class DatabaseHelper {
       ];
       for (final tbl in childTables) {
         for (final col in [
-          "ALTER TABLE $tbl ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+          // Note: SQLite ALTER TABLE ADD COLUMN does NOT support non-constant
+          // DEFAULT expressions like datetime('now'). Use plain TEXT (nullable)
+          // and backfill the value in the UPDATE loop below.
+          'ALTER TABLE $tbl ADD COLUMN created_at TEXT',
           'ALTER TABLE $tbl ADD COLUMN updated_at TEXT',
         ]) {
           try {
@@ -2632,9 +2635,13 @@ class DatabaseHelper {
 
       // Backfill created_at for existing rows (SQLite DEFAULT only applies to INSERT).
       for (final tbl in childTables) {
-        await db.execute(
-          "UPDATE $tbl SET created_at = datetime('now') WHERE created_at IS NULL",
-        );
+        try {
+          await db.execute(
+            "UPDATE $tbl SET created_at = datetime('now') WHERE created_at IS NULL",
+          );
+        } catch (e) {
+          debugPrint('[DB v72] $tbl backfill: $e');
+        }
       }
 
       // Create UPDATE triggers for updated_at on child tables.
@@ -2695,10 +2702,14 @@ class DatabaseHelper {
         }
       }
 
-      // party_reminders: also needs created_at (sent_at exists but isn't created_at)
+      // party_reminders: also needs created_at (sent_at exists but isn't created_at).
+      // Use plain TEXT — SQLite ALTER TABLE ADD COLUMN rejects non-constant defaults.
       try {
         await db.execute(
-          "ALTER TABLE party_reminders ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))",
+          'ALTER TABLE party_reminders ADD COLUMN created_at TEXT',
+        );
+        await db.execute(
+          "UPDATE party_reminders SET created_at = datetime('now') WHERE created_at IS NULL",
         );
       } catch (e) {
         debugPrint('[DB v73] party_reminders created_at: $e');
@@ -2822,21 +2833,94 @@ class DatabaseHelper {
     // then drop the old table.  The try/catch blocks tolerate databases that
     // already have the correct schema (e.g. fresh installs from _onCreate).
     if (oldVersion < 76) {
-      await db.transaction((txn) async {
-        // 1. Check whether the legacy columns actually exist.
-        final cols = await txn.rawQuery('PRAGMA table_info(subscription)');
-        final colNames = cols.map((r) => r['name'] as String).toSet();
-        final needsRebuild = colNames.contains('purchased_at') ||
-            colNames.contains('expires_at') ||
-            colNames.contains('receipt_data');
+      try {
+        await db.transaction((txn) async {
+          // 1. Check whether the legacy columns actually exist.
+          final cols = await txn.rawQuery('PRAGMA table_info(subscription)');
+          final colNames = cols.map((r) => r['name'] as String).toSet();
+          final needsRebuild = colNames.contains('purchased_at') ||
+              colNames.contains('expires_at') ||
+              colNames.contains('receipt_data');
 
-        if (needsRebuild) {
-          // 2. Rename old table.
-          await txn.execute(
-              'ALTER TABLE subscription RENAME TO subscription_old');
+          if (needsRebuild) {
+            // 2. Rename old table.
+            await txn.execute(
+                'ALTER TABLE subscription RENAME TO subscription_old');
 
-          // 3. Recreate with canonical schema.
-          await txn.execute("""
+            // 3. Recreate with canonical schema.
+            await txn.execute("""
+              CREATE TABLE subscription (
+                id                      INTEGER PRIMARY KEY DEFAULT 1,
+                plan                    TEXT    NOT NULL DEFAULT 'free',
+                source                  TEXT    DEFAULT 'none',
+                purchase_token          TEXT,
+                plan_started_at         TEXT,
+                plan_expires_at         TEXT,
+                is_trial                INTEGER NOT NULL DEFAULT 0,
+                trial_ends_at           TEXT,
+                shareable_plan_features TEXT
+              )
+            """);
+
+            // 4. Migrate data, mapping old column names to new ones.
+            //    purchased_at  → plan_started_at
+            //    expires_at    → plan_expires_at
+            //    receipt_data  → purchase_token (closest semantic match)
+            final hasStarted =
+                colNames.contains('plan_started_at');
+            final hasExpires =
+                colNames.contains('plan_expires_at');
+            final hasSrc = colNames.contains('source') ? 'source' : null;
+            final hasTok =
+                colNames.contains('purchase_token') ? 'purchase_token' : null;
+            final hasTrial = colNames.contains('is_trial') ? 'is_trial' : null;
+            final hasTrialEnds =
+                colNames.contains('trial_ends_at') ? 'trial_ends_at' : null;
+            final hasShareable = colNames.contains('shareable_plan_features')
+                ? 'shareable_plan_features'
+                : null;
+
+            final src = hasSrc ?? "'none'";
+            final tok = hasTok ??
+                (colNames.contains('receipt_data') ? 'receipt_data' : 'NULL');
+            final isTrial = hasTrial ?? '0';
+            final trialEnds = hasTrialEnds ?? 'NULL';
+            final shareable = hasShareable ?? 'NULL';
+
+            await txn.rawInsert('''
+              INSERT OR IGNORE INTO subscription
+                (id, plan, source, purchase_token,
+                 plan_started_at, plan_expires_at,
+                 is_trial, trial_ends_at, shareable_plan_features)
+              SELECT
+                id, plan,
+                $src,
+                $tok,
+                ${hasStarted ? 'plan_started_at' : 'purchased_at'},
+                ${hasExpires ? 'plan_expires_at' : 'expires_at'},
+                $isTrial,
+                $trialEnds,
+                $shareable
+              FROM subscription_old
+            ''');
+
+            // 5. Drop the old table.
+            await txn.execute('DROP TABLE subscription_old');
+
+            debugPrint('[DB v76] subscription rebuilt with canonical schema');
+          } else {
+            debugPrint('[DB v76] subscription already has canonical schema — skipped rebuild');
+          }
+        });
+      } catch (e) {
+        // The migration failed (possibly due to an unexpected schema variant).
+        // As a last resort, drop and recreate the subscription table so the
+        // app can still start.  Subscription data is non-critical (always free
+        // tier unless upgraded via IAP) and will be re-synced from the store.
+        debugPrint('[DB v76] migration failed ($e) — attempting emergency recreate');
+        try {
+          await db.execute('DROP TABLE IF EXISTS subscription');
+          await db.execute("""
             CREATE TABLE subscription (
               id                      INTEGER PRIMARY KEY DEFAULT 1,
               plan                    TEXT    NOT NULL DEFAULT 'free',
@@ -2849,57 +2933,12 @@ class DatabaseHelper {
               shareable_plan_features TEXT
             )
           """);
-
-          // 4. Migrate data, mapping old column names to new ones.
-          //    purchased_at  → plan_started_at
-          //    expires_at    → plan_expires_at
-          //    receipt_data  → purchase_token (closest semantic match)
-          final hasStarted =
-              colNames.contains('plan_started_at');
-          final hasExpires =
-              colNames.contains('plan_expires_at');
-          final hasSrc = colNames.contains('source') ? 'source' : null;
-          final hasTok =
-              colNames.contains('purchase_token') ? 'purchase_token' : null;
-          final hasTrial = colNames.contains('is_trial') ? 'is_trial' : null;
-          final hasTrialEnds =
-              colNames.contains('trial_ends_at') ? 'trial_ends_at' : null;
-          final hasShareable = colNames.contains('shareable_plan_features')
-              ? 'shareable_plan_features'
-              : null;
-
-          final src = hasSrc ?? "'none'";
-          final tok = hasTok ??
-              (colNames.contains('receipt_data') ? 'receipt_data' : 'NULL');
-          final isTrial = hasTrial ?? '0';
-          final trialEnds = hasTrialEnds ?? 'NULL';
-          final shareable = hasShareable ?? 'NULL';
-
-          await txn.rawInsert('''
-            INSERT OR IGNORE INTO subscription
-              (id, plan, source, purchase_token,
-               plan_started_at, plan_expires_at,
-               is_trial, trial_ends_at, shareable_plan_features)
-            SELECT
-              id, plan,
-              $src,
-              $tok,
-              ${hasStarted ? 'plan_started_at' : 'purchased_at'},
-              ${hasExpires ? 'plan_expires_at' : 'expires_at'},
-              $isTrial,
-              $trialEnds,
-              $shareable
-            FROM subscription_old
-          ''');
-
-          // 5. Drop the old table.
-          await txn.execute('DROP TABLE subscription_old');
-
-          debugPrint('[DB v76] subscription rebuilt with canonical schema');
-        } else {
-          debugPrint('[DB v76] subscription already has canonical schema — skipped rebuild');
+          await db.execute("INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')");
+          debugPrint('[DB v76] subscription recreated from scratch');
+        } catch (e2) {
+          debugPrint('[DB v76] emergency recreate also failed: $e2');
         }
-      });
+      }
 
       await db.insert('schema_version', {
         'version': 76,

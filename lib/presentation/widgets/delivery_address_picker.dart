@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:world_countries/world_countries.dart';
 
 import '../../core/constants/app_spacing.dart';
+import '../../core/utils/adaptive_sheet.dart';
 import '../../data/models/party_address.dart';
 import '../../data/services/pincode_lookup_service.dart';
 import '../providers/party_address_provider.dart';
@@ -28,10 +29,8 @@ Future<void> showDeliveryAddressPicker({
   required PartyAddress? current,
   required void Function(PartyAddress? address) onSelected,
 }) async {
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
+  await showAdaptiveSheet<void>(
+    context,
     builder: (sheetCtx) => _DeliveryAddressPicker(
       partyId: partyId,
       current: current,

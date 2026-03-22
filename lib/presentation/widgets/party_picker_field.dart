@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/kash_cube_colors.dart';
+import '../../core/utils/adaptive_sheet.dart';
 import '../../core/utils/contacts_helper.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/credit.dart';
@@ -65,13 +66,8 @@ class _PartyPickerFieldState extends ConsumerState<PartyPickerField> {
   
   Future<void> _openPicker() async {
     _focusNode.unfocus();  // Close autocomplete dropdown
-    final result = await showModalBottomSheet<({Party? party, String? name})>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+    final result = await showAdaptiveSheet<({Party? party, String? name})>(
+      context,
       builder: (_) => _PartyPickerSheet(
         initial: widget.controller.text,
         filterTypes: widget.filterTypes,

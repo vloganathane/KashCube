@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
+import '../../core/utils/adaptive_sheet.dart';
 
 /// Action returned by [showUpgradePromptSheet].
 enum UpgradePromptAction {
@@ -31,15 +32,8 @@ Future<UpgradePromptAction?> showUpgradePromptSheet(
   /// Short name of the document type shown in the sheet body (e.g. 'invoice').
   String featureName = 'document',
 }) {
-  return showModalBottomSheet<UpgradePromptAction>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AppSpacing.radiusLg),
-      ),
-    ),
+  return showAdaptiveSheet<UpgradePromptAction>(
+    context,
     builder: (_) => _UpgradePromptContent(featureName: featureName),
   );
 }

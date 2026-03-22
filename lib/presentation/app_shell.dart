@@ -11,6 +11,7 @@ import '../domain/models/permission.dart';
 import '../data/models/user_permission.dart';
 import '../core/constants/app_config.dart';
 import '../core/extensions/context_extensions.dart';
+import '../core/utils/adaptive_sheet.dart';
 import '../core/utils/deep_link_vcard.dart';
 import '../core/utils/vcard_builder.dart' show parseVCard;
 import '../data/models/parsed_sms.dart';
@@ -174,10 +175,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       partyType: PartyType.personal,
     );
 
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
+    showAdaptiveSheet<void>(
+      context,
       builder: (_) => PartyFormSheet(
         existing: prefilled,
         onSave: (saved) {

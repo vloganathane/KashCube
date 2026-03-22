@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_spacing.dart';
+import '../../core/utils/adaptive_sheet.dart';
 import '../../data/models/account.dart';
 import '../providers/account_provider.dart';
 
@@ -12,10 +13,8 @@ Future<Account?> showAccountPicker(
   int? excludeId,
   String? title,
 }) {
-  return showModalBottomSheet<Account>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
+  return showAdaptiveSheet<Account>(
+    context,
     builder: (_) => _AccountPickerSheet(
       excludeId: excludeId,
       title: title ?? 'Select Account',

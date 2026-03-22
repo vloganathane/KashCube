@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/theme/kash_cube_colors.dart';
+import '../../core/utils/adaptive_sheet.dart';
 import '../../data/models/transaction.dart';
 
 /// Quick payment method picker bottom sheet.
@@ -366,9 +367,9 @@ Future<Map<String, dynamic>?> showPaymentMethodPicker({
   PaymentMethod? lastUsedMethod,
   DateTime? defaultDate,
 }) {
-  return showModalBottomSheet<Map<String, dynamic>>(
-    context: context,
-    builder: (context) => PaymentMethodPickerBottomSheet(
+  return showAdaptiveSheet<Map<String, dynamic>>(
+    context,
+    builder: (ctx) => PaymentMethodPickerBottomSheet(
       amount: amount,
       title: title,
       customerName: customerName,
@@ -376,8 +377,5 @@ Future<Map<String, dynamic>?> showPaymentMethodPicker({
       lastUsedMethod: lastUsedMethod,
       defaultDate: defaultDate,
     ),
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    useSafeArea: true,
   );
 }

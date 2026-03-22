@@ -55,6 +55,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   DateTime? _dateFrom;
   DateTime? _dateTo;
   TransactionSortOrder _sortOrder = TransactionSortOrder.dateDesc;
+  int? _selectedTransactionId;
 
   bool get _hasAdvancedFilters =>
       _typeFilter != null ||
@@ -144,6 +145,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   @override
   Widget build(BuildContext context) {
     final transactionsAsync = ref.watch(transactionsProvider);
+    final isWide = context.isExpanded;
 
     return Scaffold(
       appBar: AppBar(
@@ -265,7 +267,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         data: (transactions) {
           final filtered = _applyFilter(transactions);
 
-          return RefreshIndicator(
+          // List pane — shared between wide/narrow layouts.
+          final Widget listPane = RefreshIndicator(
             onRefresh: () async {
               await ref.read(transactionsProvider.notifier).loadTransactions();
             },
@@ -296,11 +299,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             final amountColor =
                                 txn.isIncome ? colors.income : colors.expense;
                             final prefix = txn.isIncome ? '+' : '-';
+                            final isSelected =
+                                isWide && txn.id == _selectedTransactionId;
 
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.xs,
                               ),
+                              selected: isSelected,
+                              selectedTileColor: context
+                                  .colorScheme.secondaryContainer
+                                  .withValues(alpha: 0.4),
                               leading: CircleAvatar(
                                 backgroundColor:
                                     context.colorScheme.primaryContainer,
@@ -330,14 +339,19 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                               ),
                               onTap: () {
                                 if (txn.id != null) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          TransactionDetailScreen(
-                                        transactionId: txn.id!,
+                                  if (isWide) {
+                                    setState(() =>
+                                        _selectedTransactionId = txn.id);
+                                  } else {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            TransactionDetailScreen(
+                                          transactionId: txn.id!,
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
                               },
                             );
@@ -346,6 +360,31 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ),
               ],
             ),
+          );
+
+          if (!isWide) return listPane;
+
+          // Wide layout: master list on left, detail panel on right.
+          final selectedTxn = _selectedTransactionId == null
+              ? null
+              : transactions
+                  .where((t) => t.id == _selectedTransactionId)
+                  .firstOrNull;
+
+          return Row(
+            children: [
+              SizedBox(width: 380, child: listPane),
+              const VerticalDivider(width: 1, thickness: 1),
+              Expanded(
+                child: selectedTxn != null
+                    ? TransactionDetailPanel(
+                        transaction: selectedTxn,
+                        onDeleted: () =>
+                            setState(() => _selectedTransactionId = null),
+                      )
+                    : _buildDetailPlaceholder(context),
+              ),
+            ],
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -443,6 +482,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             subtitle,
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: context.colorScheme.outline,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailPlaceholder(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.receipt_long_outlined,
+            size: 64,
+            color: context.colorScheme.outline,
+          ),
+          const SizedBox(height: AppSpacing.base),
+          Text(
+            'Select a transaction',
+            style: context.textTheme.titleMedium?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Tap a row to view details',
             style: context.textTheme.bodyMedium?.copyWith(
               color: context.colorScheme.outline,
             ),

@@ -36,7 +36,7 @@ class TransactionDetailScreen extends ConsumerWidget {
             body: const Center(child: Text('Transaction not found')),
           );
         }
-        return _TransactionDetailContent(transaction: txn);
+        return TransactionDetailPanel(transaction: txn);
       },
       loading: () => Scaffold(
         appBar: AppBar(title: const Text('Transaction')),
@@ -50,10 +50,18 @@ class TransactionDetailScreen extends ConsumerWidget {
   }
 }
 
-class _TransactionDetailContent extends ConsumerWidget {
-  const _TransactionDetailContent({required this.transaction});
+class TransactionDetailPanel extends ConsumerWidget {
+  const TransactionDetailPanel({
+    super.key,
+    required this.transaction,
+    this.onDeleted,
+  });
 
   final Transaction transaction;
+
+  /// Called after a successful delete. On desktop panels, use this to clear
+  /// the selection instead of Navigator.pop().
+  final VoidCallback? onDeleted;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -394,7 +402,13 @@ class _TransactionDetailContent extends ConsumerWidget {
           .deleteTransaction(transaction.id!);
       ref.read(dashboardSummaryProvider.notifier).loadSummary();
       ref.read(recentTransactionsProvider.notifier).loadRecent();
-      if (context.mounted) Navigator.of(context).pop();
+      if (context.mounted) {
+        if (onDeleted != null) {
+          onDeleted!();
+        } else {
+          Navigator.of(context).pop();
+        }
+      }
     }
   }
 }

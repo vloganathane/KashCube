@@ -513,7 +513,56 @@ Web companion work that can start **immediately**, parallel to P2P sync:
 
 ---
 
-## 16. Open Risks
+## 16. Responsive Desktop Layout
+
+**Decision date:** 22 March 2026  
+**Status:** P1–P5 complete
+
+The Flutter web app runs the same codebase as Android. On a desktop browser
+the mobile layout (bottom `NavigationBar`, narrow columns) looks stretched.
+A single breakpoint driven by `MediaQuery.sizeOf` gives a proper desktop
+chrome without forking any screen code.
+
+### Breakpoints (Material 3 Adaptive Window Classes)
+
+| Class | Width | Behaviour |
+|---|---|---|
+| Compact | < 600 dp | Phone portrait — bottom `NavigationBar` (unchanged) |
+| Medium | 600–839 dp | Tablet / small laptop — bottom `NavigationBar` |
+| **Expanded** | **≥ 840 dp** | **Desktop — `NavigationRail` (left sidebar)** |
+
+Added to `lib/core/extensions/context_extensions.dart`:
+```dart
+bool get isCompact  => MediaQuery.sizeOf(this).width < 600;
+bool get isMedium   => MediaQuery.sizeOf(this).width >= 600 &&
+                       MediaQuery.sizeOf(this).width < 840;
+bool get isExpanded => MediaQuery.sizeOf(this).width >= 840;
+```
+
+### Phased Roadmap
+
+| Phase | Work | Status |
+|---|---|---|
+| **P1** | `isExpanded` breakpoint · `NavigationRail` in `AppShell` | ✅ Done |
+| **P2** | Adaptive bottom sheets → `Dialog` on expanded (`showAdaptiveSheet` helper) | ✅ Done |
+| **P3** | Master-Detail: Transactions list + detail side panel | ✅ Done |
+| **P4** | Transactions `DataTable` on expanded (sortable columns) | ✅ Done |
+| **P5** | Settings two-pane layout (section nav + content pane) | ✅ Done |
+
+### Key files changed
+
+| File | Change |
+|---|---|
+| `lib/core/extensions/context_extensions.dart` | Added `isCompact` / `isMedium` / `isExpanded` getters |
+| `lib/presentation/app_shell.dart` | `NavigationRail` on expanded; `NavigationBar` on compact/medium |
+| `lib/core/utils/adaptive_sheet.dart` | `showAdaptiveSheet<T>()` — `showDialog` on expanded, `showModalBottomSheet` on compact/medium |
+| `lib/presentation/screens/transactions/transaction_detail_screen.dart` | `TransactionDetailPanel` public widget with `onDeleted` callback |
+| `lib/presentation/screens/transactions/transactions_screen.dart` | Master-detail split + sortable `DataTable` list pane on expanded |
+| `lib/presentation/screens/settings/settings_screen.dart` | 260 dp section nav + content pane on expanded |
+
+---
+
+## 17. Open Risks
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|

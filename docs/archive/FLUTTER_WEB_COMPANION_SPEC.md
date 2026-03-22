@@ -1,7 +1,13 @@
 # KashCube Web Companion — Single Codebase Spec
 
+> ⚠️ **SUPERSEDED** — This document describes the Cloudflare Pages deployment
+> approach (13 March 2026), which was superseded by the LAN-serve architecture
+> documented in **[WEB_COMPANION_SPEC.md](WEB_COMPANION_SPEC.md)** (17 March 2026).
+> The Responsive Desktop Layout section (P1–P5) has been migrated to that document.
+> Do not update this file.
+
 **Decision date:** 13 March 2026  
-**Status:** Approved — implementation starting W2
+**Status:** ~~Approved~~ **SUPERSEDED by WEB_COMPANION_SPEC.md**
 
 ---
 

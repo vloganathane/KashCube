@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/models/permission.dart';
 import '../data/models/user_permission.dart';
 import '../core/constants/app_config.dart';
+import '../core/extensions/context_extensions.dart';
 import '../core/utils/deep_link_vcard.dart';
 import '../core/utils/vcard_builder.dart' show parseVCard;
 import '../data/models/parsed_sms.dart';
@@ -272,6 +273,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     final currentIndex = ref.watch(currentTabIndexProvider);
     final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
     final activeUser = ref.watch(activeAppUserProvider);
+    final isWide = context.isExpanded; // ≥840 dp → NavigationRail layout
 
     final visibleTabs = _computeVisibleTabs();
 
@@ -370,38 +372,56 @@ class _AppShellState extends ConsumerState<AppShell> {
           ]
         : visibleTabs;
 
+    // Build content stack once; wrap with web-disconnect banner when on web.
+    Widget contentStack = IndexedStack(index: currentIndex, children: _screens);
+    if (kIsWeb) contentStack = WebConnectionBanner(child: contentStack);
+
     return Scaffold(
       body: Column(
         children: [
           // Context banner: shown when viewing a linked business session.
           const ContextBannerWidget(),
-          // Web connection lost banner (kIsWeb only).
-          if (kIsWeb)
+          if (isWide)
+            // ── Expanded layout: NavigationRail + constrained content ─────
             Expanded(
-              child: WebConnectionBanner(
-                child: IndexedStack(
-                  index: currentIndex,
-                  children: _screens,
-                ),
+              child: Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: navBarIndex,
+                    labelType: NavigationRailLabelType.all,
+                    onDestinationSelected: (navIdx) =>
+                        handleTabSelected(visibleTabs[navIdx].screenIndex),
+                    destinations: displayedTabs
+                        .map(
+                          (t) => NavigationRailDestination(
+                            icon: t.destination.icon,
+                            selectedIcon: t.destination.selectedIcon,
+                            label: Text(t.destination.label),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const VerticalDivider(width: 1, thickness: 1),
+                  Expanded(child: contentStack),
+                ],
               ),
             )
           else
-            Expanded(
-              child: IndexedStack(
-                index: currentIndex,
-                children: _screens,
-              ),
-            ),
+            // ── Compact/medium layout: full-width content ─────────────────
+            Expanded(child: contentStack),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navBarIndex,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-        onDestinationSelected: (navIdx) {
-          handleTabSelected(visibleTabs[navIdx].screenIndex);
-        },
-        destinations: displayedTabs.map((t) => t.destination).toList(),
-      ),
+      bottomNavigationBar: isWide
+          ? null
+          : NavigationBar(
+              selectedIndex: navBarIndex,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
+              onDestinationSelected: (navIdx) {
+                handleTabSelected(visibleTabs[navIdx].screenIndex);
+              },
+              destinations: displayedTabs.map((t) => t.destination).toList(),
+            ),
       floatingActionButton: showFab
           ? SpeedDialFab(
               transactionsTabOnly: currentIndex == 1,

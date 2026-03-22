@@ -284,6 +284,67 @@ The relay is a blind pipe — it routes encrypted WebSocket frames between phone
 
 ---
 
+## Responsive Desktop Layout
+
+**Decision date:** 22 March 2026  
+**Status:** P1 implemented — `NavigationRail` on expanded (≥840 dp)
+
+The web companion runs the same Flutter codebase as Android. On a desktop
+browser the mobile layout (bottom `NavigationBar`, narrow columns) looks
+stretched. A single `LayoutBuilder`-driven breakpoint gives a proper desktop
+chrome without forking any screen code.
+
+### Breakpoints (Material 3 Adaptive Window Classes)
+
+| Class | Width | Behaviour |
+|---|---|---|
+| Compact | < 600 dp | Phone portrait — bottom `NavigationBar` (unchanged) |
+| Medium | 600–839 dp | Tablet / small laptop — bottom `NavigationBar` |
+| **Expanded** | **≥ 840 dp** | **Desktop — `NavigationRail` (left sidebar)** |
+
+Added to `lib/core/extensions/context_extensions.dart`:
+```dart
+bool get isCompact  => MediaQuery.sizeOf(this).width < 600;
+bool get isMedium   => MediaQuery.sizeOf(this).width >= 600 &&
+                       MediaQuery.sizeOf(this).width < 840;
+bool get isExpanded => MediaQuery.sizeOf(this).width >= 840;
+```
+
+### P1 — NavigationRail in AppShell
+
+`lib/presentation/app_shell.dart` — when `context.isExpanded`:
+
+```
+┌──────────────┬────────────────────────────────────────┐
+│ NavigationRail│            Screen content              │
+│              │  (IndexedStack — same screens as mobile)│
+│  🏠 Home     │                                        │
+│  📋 Transactions │                                   │
+│  🏪 Business │                                        │
+│  👥 Contacts │                                        │
+│  ⚙  Settings │                                        │
+│              │                                        │
+│  [+ FAB]     │                                        │
+└──────────────┴────────────────────────────────────────┘
+```
+
+- Zero screen code changed — all 5 screens are identical
+- `NavigationBar` hidden on expanded; `NavigationRail` shown
+- FAB stays on `Scaffold` at default `endFloat` position (bottom-right)
+- Android build unaffected — `isExpanded` is false on a phone
+
+### Phased Roadmap
+
+| Phase | Work | Status |
+|---|---|---|
+| **P1** | `isExpanded` breakpoint · `NavigationRail` in `AppShell` | ✅ Done |
+| **P2** | Adaptive bottom sheets → `Dialog` on expanded (add `showAdaptiveSheet` helper) | Planned |
+| **P3** | Master-Detail: Transactions list + detail side panel | Planned |
+| **P4** | Transactions `DataTable` on expanded (sortable columns) | Planned |
+| **P5** | Settings two-pane layout (category list + pane) | Planned |
+
+---
+
 ## Summary
 
 | Before | After |
@@ -293,3 +354,4 @@ The relay is a blind pipe — it routes encrypted WebSocket frames between phone
 | Phone serves HTML + REST API | Phone serves WS endpoint only |
 | Browser: thin REST client | Browser: full Flutter app with local DB copy |
 | Two UIs to maintain | Zero drift, ever |
+| Mobile-only layout on desktop | Adaptive `NavigationRail` at ≥840 dp |

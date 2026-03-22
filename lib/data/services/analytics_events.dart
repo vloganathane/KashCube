@@ -44,4 +44,14 @@ abstract final class AnalyticsEvents {
   static const onboardingCompleted  = 'onboarding_completed';
   static const analyticsConsentGiven   = 'analytics_consent_given';
   static const analyticsConsentRevoked = 'analytics_consent_revoked';
+
+  // ── Web Companion ───────────────────────────────────────────────────────────
+  /// Phone shows QR code for "Open on Laptop".
+  static const webCompanionQrShown             = 'web_companion_qr_shown';
+  /// User copies the URL chip on the "Open on Laptop" screen.
+  static const webCompanionUrlCopied           = 'web_companion_url_copied';
+  /// Browser successfully authenticates — AUTH_OK sent by phone server.
+  static const webCompanionBrowserConnected    = 'web_companion_browser_connected';
+  /// User manually taps "Disconnect browser" on the phone.
+  static const webCompanionDisconnectedManually = 'web_companion_disconnected_manually';
 }

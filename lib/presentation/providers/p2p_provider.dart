@@ -197,6 +197,12 @@ final p2pServerLogProvider = StreamProvider<List<String>>((ref) async* {
   yield* P2pServer.instance.httpLogStream;
 });
 
+/// Emits `true` each time a browser successfully authenticates with the phone.
+/// Use [ref.listen] to fire analytics or update UI — never replays past events.
+final browserConnectionEventProvider = StreamProvider.autoDispose<bool>((ref) {
+  return P2pCoordinator.instance.browserConnectionStream;
+});
+
 /// Local IPv4 address of this device (null if unavailable).
 final p2pLocalIpProvider = FutureProvider<String?>((ref) =>
     P2pDiscoveryService.getLocalIp());

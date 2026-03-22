@@ -79,6 +79,13 @@ class P2pServer {
 
   bool get hasBrowserConnected => _activeSession != null;
 
+  // ── Browser connection events ─────────────────────────────────────────────
+
+  /// Emits `true` when a browser authenticates (AUTH_OK sent).
+  /// Consumers can use this to trigger analytics or UI updates.
+  final _browserConnectionController = StreamController<bool>.broadcast();
+  Stream<bool> get browserConnectionStream => _browserConnectionController.stream;
+
   // ── HTTP request log ──────────────────────────────────────────────────────
 
   static const _kMaxLogEntries = 60;
@@ -214,6 +221,11 @@ class P2pServer {
             onWrite:         _webOnWrite ?? (_, p2) async {},
             schemaVersion:   _webSchemaVersion!,
             deviceName:      _webDeviceName!,
+            onAuthenticated: (_) {
+              if (!_browserConnectionController.isClosed) {
+                _browserConnectionController.add(true);
+              }
+            },
           );
           _activeSession = session;
           session.attach();

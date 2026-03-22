@@ -804,6 +804,11 @@ class P2pCoordinator {
 
   bool get hasBrowserConnected => P2pServer.instance.hasBrowserConnected;
 
+  /// Emits `true` each time a browser successfully authenticates.
+  /// Delegate straight to the server's broadcast stream.
+  Stream<bool> get browserConnectionStream =>
+      P2pServer.instance.browserConnectionStream;
+
   void _startWebPushLoop() {
     _webPushTimer?.cancel();
     _webPushTimer = Timer.periodic(const Duration(seconds: 30), (_) {

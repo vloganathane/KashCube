@@ -27,6 +27,7 @@ class WebBrowserSession {
     required this.onWrite,
     required this.schemaVersion,
     required this.deviceName,
+    this.onAuthenticated,
   });
 
   final WebSocketChannel channel;
@@ -42,6 +43,10 @@ class WebBrowserSession {
 
   /// Called when browser writes a row — phone persists it.
   final Future<void> Function(String table, Map<String, dynamic> row) onWrite;
+
+  /// Optional callback fired after the browser successfully authenticates.
+  /// [isSession] is true when re-auth used a session token (page refresh).
+  final void Function(bool isSession)? onAuthenticated;
 
   final int schemaVersion;
   final String deviceName;
@@ -116,6 +121,7 @@ class WebBrowserSession {
       'schema_version': schemaVersion,
       if (sessionId != null) 'session_id': sessionId,
     });
+    onAuthenticated?.call(isSession);
     _startPing();
     unawaited(_sendSyncPlan());
     debugPrint('[WebSession] Browser authenticated (${isSession ? 'session' : 'QR'})');

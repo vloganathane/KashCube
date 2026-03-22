@@ -8,6 +8,7 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
 import '../../../data/services/p2p/p2p_discovery_service.dart';
 import '../../../data/services/web/web_session_service.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/p2p_provider.dart';
 
 /// Shows a QR code that lets the user open KashCube on a laptop browser.
@@ -70,11 +71,17 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         _url     = url;
         _loading = false;
       });
+      trackEvent(ref, AnalyticsEvents.webCompanionQrShown);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Fire once each time a browser successfully authenticates.
+    ref.listen<AsyncValue<bool>>(browserConnectionEventProvider, (_, next) {
+      next.whenData((_) => trackEvent(ref, AnalyticsEvents.webCompanionBrowserConnected));
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Open on Laptop'),
@@ -113,7 +120,10 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             else ...[
               _QrCard(url: _url!),
               const SizedBox(height: AppSpacing.md),
-              _UrlChip(url: _url!),
+              _UrlChip(
+                url: _url!,
+                onCopied: () => trackEvent(ref, AnalyticsEvents.webCompanionUrlCopied),
+              ),
             ],
 
             const SizedBox(height: AppSpacing.xl),
@@ -144,6 +154,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
                 icon: const Icon(Icons.link_off, size: 18),
                 label: const Text('Disconnect browser'),
                 onPressed: () {
+                  trackEvent(ref, AnalyticsEvents.webCompanionDisconnectedManually);
                   P2pCoordinator.instance.disconnectBrowser();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -207,8 +218,9 @@ class _QrCard extends StatelessWidget {
 }
 
 class _UrlChip extends StatefulWidget {
-  const _UrlChip({required this.url});
+  const _UrlChip({required this.url, this.onCopied});
   final String url;
+  final VoidCallback? onCopied;
   @override
   State<_UrlChip> createState() => _UrlChipState();
 }
@@ -220,6 +232,7 @@ class _UrlChipState extends State<_UrlChip> {
     await Clipboard.setData(ClipboardData(text: widget.url));
     if (!mounted) return;
     setState(() => _copied = true);
+    widget.onCopied?.call();
     await Future<void>.delayed(const Duration(seconds: 2));
     if (mounted) setState(() => _copied = false);
   }

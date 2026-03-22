@@ -332,15 +332,17 @@ class _BackupNudgeBannerSliverState
         return SliverToBoxAdapter(
           child: Container(
             color: scheme.primaryContainer.withValues(alpha: 0.55),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.base,
-              vertical: AppSpacing.sm,
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.xs,
+              AppSpacing.sm,
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.shield_outlined, size: 18,
-                    color: scheme.onPrimaryContainer),
+                Icon(Icons.shield_outlined,
+                    size: 18, color: scheme.onPrimaryContainer),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -350,33 +352,37 @@ class _BackupNudgeBannerSliverState
                         ?.copyWith(color: scheme.onPrimaryContainer),
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const EncryptedBackupScreen(),
-                      ),
-                    );
-                  },
-                  style: TextButton.styleFrom(
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton.tonal(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const EncryptedBackupScreen(),
+                    ),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor:
+                        scheme.onPrimaryContainer.withValues(alpha: 0.15),
                     foregroundColor: scheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs, vertical: 0),
+                        horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+                    minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: context.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                   child: const Text('Back up'),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close, size: 16,
-                      color: scheme.onPrimaryContainer),
+                  icon: Icon(Icons.close,
+                      size: 16, color: scheme.onPrimaryContainer),
                   onPressed: () async {
                     await dismissBackupNudge();
                     if (mounted) {
                       setState(() => _dismissedLocally = true);
                     }
                   },
-                  padding: EdgeInsets.zero,
+                  padding: const EdgeInsets.all(AppSpacing.xs),
                   constraints: const BoxConstraints(),
                   tooltip: 'Remind me later',
                 ),

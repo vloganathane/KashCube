@@ -298,18 +298,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              ListTile(
-                leading: const Icon(Icons.devices_outlined),
-                title: const Text('Devices & LAN Sync'),
-                subtitle: const Text('Pair devices and sync over Wi-Fi'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const DevicesScreen(),
+              // TODO(lan-sync): re-enable when LAN sync is production-ready
+              if (false)
+                ListTile(
+                  leading: const Icon(Icons.devices_outlined),
+                  title: const Text('Devices & LAN Sync'),
+                  subtitle: const Text('Pair devices and sync over Wi-Fi'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const DevicesScreen(),
+                    ),
                   ),
                 ),
-              ),
               ListTile(
                 leading: const Icon(Icons.laptop_outlined),
                 title: const Text('Open on Laptop'),
@@ -734,16 +736,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     builder: (_) => const EncryptedBackupScreen()),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.devices_outlined),
-              title: const Text('Devices & LAN Sync'),
-              subtitle: const Text('Pair devices and sync over Wi-Fi'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DevicesScreen()),
+            // TODO(lan-sync): re-enable when LAN sync is production-ready
+            if (false)
+              ListTile(
+                leading: const Icon(Icons.devices_outlined),
+                title: const Text('Devices & LAN Sync'),
+                subtitle: const Text('Pair devices and sync over Wi-Fi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DevicesScreen()),
+                ),
               ),
-            ),
             ListTile(
               leading: const Icon(Icons.laptop_outlined),
               title: const Text('Open on Laptop'),

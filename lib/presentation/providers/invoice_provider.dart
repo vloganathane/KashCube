@@ -62,10 +62,12 @@ class CatalogNotifier
   final int? _businessId;
 
   Future<void> load() async {
+    if (!mounted) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
+    final next = await AsyncValue.guard(
       () => _repo.getAll(businessId: _businessId),
     );
+    if (mounted) state = next;
   }
 
   Future<void> add(ItemCatalog item) async {

@@ -311,8 +311,15 @@ class _CatalogTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final infoLine = [
+      if (item.description != null) item.description!,
+      item.unit,
+      if (item.hsnCode != null) '${item.hsnOrSac}: ${item.hsnCode}',
+    ].join(' · ');
+
     return ListTile(
       onTap: pickMode ? onPick : onEdit,
+      isThreeLine: item.trackInventory,
       leading: CircleAvatar(
         backgroundColor:
             Theme.of(context).colorScheme.primaryContainer,
@@ -321,15 +328,47 @@ class _CatalogTile extends StatelessWidget {
       ),
       title: Text(item.name,
           style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(
-        [
-          if (item.description != null) item.description!,
-          item.unit,
-          if (item.hsnCode != null) '${item.hsnOrSac}: ${item.hsnCode}',
-        ].join(' · '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
+      subtitle: item.trackInventory
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(infoLine,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xs + 2, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: _stockColor(context).withValues(alpha: 0.12),
+                    borderRadius:
+                        BorderRadius.circular(AppSpacing.radiusSm),
+                    border: Border.all(
+                        color:
+                            _stockColor(context).withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.inventory_2_outlined,
+                          size: 10, color: _stockColor(context)),
+                      const SizedBox(width: 3),
+                      Text(
+                        item.stockQty <= 0
+                            ? 'Out of stock'
+                            : '${item.stockQty % 1 == 0 ? item.stockQty.toInt() : item.stockQty} ${item.unit.toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: _stockColor(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Text(infoLine, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
@@ -346,36 +385,6 @@ class _CatalogTile extends StatelessWidget {
               style: TextStyle(
                   fontSize: 11,
                   color: Theme.of(context).colorScheme.outline),
-            ),
-          if (item.trackInventory)
-            Container(
-              margin: const EdgeInsets.only(top: 1),
-              padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.xs + 2, vertical: 1),
-              decoration: BoxDecoration(
-                color: _stockColor(context).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                border: Border.all(
-                    color: _stockColor(context).withValues(alpha: 0.35)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inventory_2_outlined,
-                      size: 10, color: _stockColor(context)),
-                  const SizedBox(width: 3),
-                  Text(
-                    item.stockQty <= 0
-                        ? 'Out of stock'
-                        : '${item.stockQty % 1 == 0 ? item.stockQty.toInt() : item.stockQty} ${item.unit.toUpperCase()}',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: _stockColor(context),
-                    ),
-                  ),
-                ],
-              ),
             ),
         ],
       ),

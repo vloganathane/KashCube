@@ -1,9 +1,12 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import 'core/theme/kash_cube_theme.dart';
+import 'data/repositories/settings_repository_impl.dart';
 import 'data/services/action_center_background_service.dart';
 import 'data/services/database_helper.dart';
 import 'data/services/db_factory.dart';
@@ -27,6 +30,23 @@ void main() async {
 
   // Set the correct SQLite backend (WASM on web, native on Android).
   await initDatabaseFactory();
+
+  // Firebase Analytics — opt-in anonymous analytics (no financial data).
+  // Gracefully skipped if google-services.json is not yet configured.
+  // See docs/technical/FIREBASE_SETUP.md for one-time setup steps.
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      // Apply the stored consent flag so collection is off by default.
+      final repo = SettingsRepositoryImpl();
+      final consentVal = await repo.get(SettingsKeys.analyticsConsent);
+      await FirebaseAnalytics.instance
+          .setAnalyticsCollectionEnabled(consentVal == 'true');
+    } catch (e) {
+      // Not fatal — analytics simply stays disabled until configured.
+      debugPrint('[main] Firebase init skipped (not configured): $e');
+    }
+  }
 
   // All pre-runApp initialisation is wrapped in a try/catch so that a failure
   // in notification setup, WorkManager registration, or DB migration never

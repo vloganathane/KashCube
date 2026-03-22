@@ -84,6 +84,11 @@ dependencies:
   # Default state: GSP is disabled, nothing is stored here.
   flutter_secure_storage: ^9.2.4
 
+  # Analytics — opt-in, anonymous, no financial data (see docs/legal/PRIVACY_POLICY.md v1.1)
+  # User consent is gated in AnalyticsService; SettingsKeys.analyticsConsent controls the toggle.
+  firebase_core: ^3.13.0
+  firebase_analytics: ^11.4.0
+
   # Utilities
   equatable: ^2.0.7
   uuid: ^4.5.1

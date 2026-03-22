@@ -2,9 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/services/analytics_events.dart';
 import '../../data/services/analytics_service.dart';
+import '../../data/services/firebase_analytics_service.dart';
+// ignore: unused_import — kept for easy swap in tests
 import '../../data/services/noop_analytics_service.dart';
-// import '../../data/services/firebase_analytics_service.dart';
-// ↑ Uncomment when firebase_analytics is added to pubspec.yaml
 
 import 'settings_provider.dart';
 
@@ -20,8 +20,8 @@ export '../../data/services/analytics_service.dart';
 ///
 /// The rest of the app never changes — only this one line.
 AnalyticsService _buildBackend() {
-  return const NoOpAnalyticsService();
-  // return FirebaseAnalyticsService();
+  return FirebaseAnalyticsService();
+  // return const NoOpAnalyticsService(); // ← use this for debug / unit tests
 }
 
 // ---------------------------------------------------------------------------

@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../providers/analytics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
@@ -53,6 +54,7 @@ enum _SettingsSectionId {
   data('Data', Icons.storage_outlined),
   notifications('Notifications', Icons.notifications_outlined),
   automation('Automation', Icons.sms_outlined),
+  privacy('Privacy', Icons.privacy_tip_outlined),
   business('Business Mode', Icons.storefront_outlined),
   about('About', Icons.info_outline);
 
@@ -350,6 +352,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // -- Automation (SMS) --
           const _AutomationSection(),
 
+          // -- Privacy --
+          const _PrivacySection(),
+
           // -- Business Mode --
           _SettingsSection(
             title: 'Business Mode',
@@ -458,7 +463,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         child: Text(
                           'Kash Cube stores all data locally on your device.\n\n'
                           '• No data is ever sent to any server.\n'
-                          '• No analytics or crash reporting.\n'
+                          '• Anonymous analytics: opt-in only,\n'
+                          '  off by default (Settings → Privacy).\n'
+                          '• No crash reporting or ad tracking.\n'
                           '• No third-party SDKs that transmit data.\n'
                           '• SMS is read, parsed, and stored locally.\n'
                           '• Backups and exports stay on your device\n'
@@ -778,6 +785,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ],
         ),
       _SettingsSectionId.automation => const _AutomationSection(),
+      _SettingsSectionId.privacy => const _PrivacySection(),
       _SettingsSectionId.business => Consumer(
           builder: (ctx, r, _) {
             final enabled = r.watch(businessModeProvider);
@@ -876,7 +884,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: Text(
                         'Kash Cube stores all data locally on your device.\n\n'
                         '• No data is ever sent to any server.\n'
-                        '• No analytics or crash reporting.\n'
+                        '• Anonymous analytics: opt-in only,\n'
+                        '  off by default (Settings → Privacy).\n'
+                        '• No crash reporting or ad tracking.\n'
                         '• No third-party SDKs that transmit data.\n'
                         '• SMS is read, parsed, and stored locally.\n'
                         '• Backups and exports stay on your device\n'
@@ -1298,5 +1308,51 @@ class _AutomationSection extends ConsumerWidget {
         SnackBar(content: Text(msg)),
       );
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Privacy section (analytics consent toggle)
+// ---------------------------------------------------------------------------
+
+class _PrivacySection extends ConsumerWidget {
+  const _PrivacySection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final consentAsync = ref.watch(analyticsConsentProvider);
+
+    return _SettingsSection(
+      title: 'Privacy',
+      children: [
+        consentAsync.when(
+          loading: () => const ListTile(
+            leading: Icon(Icons.analytics_outlined),
+            title: Text('Anonymous Analytics'),
+            trailing: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+          error: (_, _) => const ListTile(
+            leading: Icon(Icons.analytics_outlined),
+            title: Text('Anonymous Analytics'),
+            subtitle: Text('Error loading setting'),
+          ),
+          data: (consent) => SwitchListTile(
+            secondary: const Icon(Icons.analytics_outlined),
+            title: const Text('Anonymous Analytics'),
+            subtitle: const Text(
+              'Share anonymous feature usage to help improve the app. '
+              'No financial data is ever included.',
+            ),
+            value: consent ?? false,
+            onChanged: (value) =>
+                ref.read(analyticsConsentProvider.notifier).setConsent(value),
+          ),
+        ),
+      ],
+    );
   }
 }

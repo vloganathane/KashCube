@@ -1,7 +1,7 @@
 # Privacy Policy - Kash Cube
 
-**Version:** 1.0  
-**Last Updated:** February 24, 2026  
+**Version:** 1.1  
+**Last Updated:** March 22, 2026  
 **Status:** Active
 
 ## Our Privacy Commitment
@@ -34,11 +34,11 @@ We explicitly DO NOT collect, store, or transmit:
 - ❌ Personal information (name, email, phone)
 - ❌ Location data
 - ❌ Device information
-- ❌ Usage analytics
 - ❌ Crash reports
 - ❌ Advertising IDs
 - ❌ IP addresses
-- ❌ Any data to third parties
+- ❌ Any financial data to third parties
+- ✅ **Anonymous usage analytics** — opt-in only, off by default (see [Analytics](#analytics--tracking) below)
 
 ## Permissions
 
@@ -117,14 +117,28 @@ Since all data is local on your device, you have complete control:
 
 ## Analytics & Tracking
 
-**None.** Zero. Nada. 
+Kash Cube includes **opt-in anonymous usage analytics** powered by Firebase Analytics. This feature is **off by default**. You must explicitly enable it in **Settings → Privacy**.
 
-We do not use:
-- ❌ Google Analytics
-- ❌ Firebase Analytics
-- ❌ Crashlytics
-- ❌ Any analytics service
-- ❌ Any tracking SDK
+### What we collect (only when opted in)
+- Screen navigation events (e.g., "opened Reports screen")
+- Feature interaction events (e.g., "exported CSV", "enabled App Lock")
+- App session metadata provided automatically by Firebase (OS version, country)
+
+### What we NEVER collect (even when opted in)
+- ❌ Transaction amounts, descriptions, or dates
+- ❌ Party names, phone numbers, or addresses
+- ❌ Account balances or credit amounts
+- ❌ Any personally identifiable financial information
+- ❌ SMS content
+- ❌ Crashlytics or crash data
+
+### Your control
+- Default state: **disabled**
+- Toggle in **Settings → Privacy → Anonymous Analytics**
+- Disabling stops all event collection immediately
+- Firebase Analytics data is subject to [Google's Privacy Policy](https://policies.google.com/privacy)
+
+If analytics is disabled, no data is sent to Firebase. Period.
 
 ## Contact
 

@@ -47,5 +47,10 @@ app.*.map.json
 /android/app/release
 android/build/
 
+# Firebase config files — contain API keys, must not be committed
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
+
 # Sample / scratch files
 /sample/

@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
+import 'firebase_options.dart';
+
 import 'core/theme/kash_cube_theme.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/services/action_center_background_service.dart';
@@ -36,7 +38,7 @@ void main() async {
   // See docs/technical/FIREBASE_SETUP.md for one-time setup steps.
   if (!kIsWeb) {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       // Apply the stored consent flag so collection is off by default.
       final repo = SettingsRepositoryImpl();
       final consentVal = await repo.get(SettingsKeys.analyticsConsent);

@@ -22,6 +22,7 @@ import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_auto_refresh_provider.dart';
 import 'presentation/providers/terms_provider.dart';
+import 'presentation/screens/auth/setup_wizard_screen.dart';
 import 'presentation/screens/auth/terms_gate_screen.dart';
 import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
@@ -241,6 +242,17 @@ class _LockGateState extends ConsumerState<_LockGate>
     if (!termsAccepted) {
       return TermsGateScreen(
         onAccepted: () => ref.invalidate(termsAcceptedProvider),
+      );
+    }
+
+    // ── First-run setup wizard ───────────────────────────────────────────────
+    final wizardState = ref.watch(setupWizardDoneProvider);
+    if (wizardState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!(wizardState.valueOrNull ?? false)) {
+      return SetupWizardScreen(
+        onComplete: () => ref.invalidate(setupWizardDoneProvider),
       );
     }
 

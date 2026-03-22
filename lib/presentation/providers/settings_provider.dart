@@ -103,6 +103,10 @@ class SettingsKeys {
 
   // SMS automation
   static const smsAutoDetectEnabled = 'sms_auto_detect_enabled';
+
+  // First-run setup wizard
+  /// 'true' once the user has completed (or explicitly skipped) the setup wizard.
+  static const setupWizardDone = 'setup_wizard_done';
 }
 
 // ---------------------------------------------------------------------------
@@ -423,3 +427,26 @@ final smsAutoDetectEnabledProvider =
     StateNotifierProvider<SmsAutoDetectNotifier, bool>(
   (ref) => SmsAutoDetectNotifier(ref.read(settingsRepositoryProvider)),
 );
+
+// ---------------------------------------------------------------------------
+// Setup Wizard
+// ---------------------------------------------------------------------------
+
+class SetupWizardNotifier extends AsyncNotifier<bool> {
+  @override
+  Future<bool> build() async {
+    final repo = ref.read(settingsRepositoryProvider);
+    return (await repo.get(SettingsKeys.setupWizardDone)) == 'true';
+  }
+
+  Future<void> markDone() async {
+    await ref.read(settingsRepositoryProvider).set(
+          SettingsKeys.setupWizardDone,
+          'true',
+        );
+    state = const AsyncData(true);
+  }
+}
+
+final setupWizardDoneProvider =
+    AsyncNotifierProvider<SetupWizardNotifier, bool>(SetupWizardNotifier.new);

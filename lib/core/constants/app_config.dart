@@ -30,7 +30,7 @@ class AppConfig {
 
   /// Used by the landing page to construct the Play Store install URL with
   /// a deferred deep link referrer (Option B acquisition flow).
-  static const String androidPackage = 'com.kashcube.kash_cube';
+  static const String androidPackage = 'com.kashcube.app';
 
   /// MethodChannel name for the install referrer bridge (MainActivity.kt).
   static const String installReferrerChannel = 'com.kashcube/install_referrer';

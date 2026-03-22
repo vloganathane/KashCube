@@ -1,4 +1,4 @@
-package com.kashcube.kash_cube
+package com.kashcube.app
 
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener

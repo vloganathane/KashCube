@@ -51,7 +51,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAy9tbS9YWdHkyryAbo912Pc2Dhws3Gycs',
-    appId: '1:124525970713:android:06a4057c6f05e11a41b188',
+    appId: '1:124525970713:android:afb6c5fd8b63c88041b188',
     messagingSenderId: '124525970713',
     projectId: 'kash-cube',
     storageBucket: 'kash-cube.firebasestorage.app',

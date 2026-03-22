@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/gstin_validator.dart';
 import '../../../data/models/account.dart';
+import '../../../data/services/pincode_lookup_service.dart';
 import '../../../data/models/business.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/business_provider.dart';
@@ -56,6 +57,10 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
   final _bizNameCtrl = TextEditingController();
   final _gstinCtrl = TextEditingController();
   final _bizAddressCtrl = TextEditingController();
+  final _bizPincodeCtrl = TextEditingController();
+  final _bizCityCtrl = TextEditingController();
+  final _bizStateCtrl = TextEditingController();
+  bool _bizPincodeAutoFilled = false;
   String? _gstinError;
 
   // Step 4 – Financial
@@ -65,12 +70,54 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
 
   bool _saving = false;
 
+  @override
+  void initState() {
+    super.initState();
+    PincodeLookupService.ensureLoaded();
+    _bizPincodeCtrl.addListener(_onBizPincodeChanged);
+    // Trigger rebuilds so _canContinue re-evaluates on required field changes.
+    _nameCtrl.addListener(_onRequiredFieldChanged);
+    _bizNameCtrl.addListener(_onRequiredFieldChanged);
+  }
+
+  void _onRequiredFieldChanged() => setState(() {});
+
+  void _onBizPincodeChanged() {
+    final pin = _bizPincodeCtrl.text.trim();
+    if (pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
+      if (_bizPincodeAutoFilled) setState(() => _bizPincodeAutoFilled = false);
+      return;
+    }
+    final result = PincodeLookupService.lookup(pin);
+    if (result == null) {
+      if (_bizPincodeAutoFilled) setState(() => _bizPincodeAutoFilled = false);
+      return;
+    }
+    setState(() {
+      if (_bizCityCtrl.text.isEmpty) _bizCityCtrl.text = result.city;
+      _bizStateCtrl.text = result.state;
+      _bizPincodeAutoFilled = true;
+    });
+  }
+
   // Whether business step is needed given current mode.
   bool get _hasBizStep =>
       _mode == _AppMode.business || _mode == _AppMode.both;
 
   // Total number of pages for the current mode.
   int get _totalPages => _hasBizStep ? 4 : 3;
+
+  /// Whether the Continue/Finish button should be enabled on the current page.
+  bool get _canContinue {
+    switch (_currentPage) {
+      case 1:
+        return _nameCtrl.text.trim().isNotEmpty;
+      case 2:
+        return _bizNameCtrl.text.trim().isNotEmpty && _gstinError == null;
+      default:
+        return true;
+    }
+  }
 
   @override
   void dispose() {
@@ -81,6 +128,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
     _bizNameCtrl.dispose();
     _gstinCtrl.dispose();
     _bizAddressCtrl.dispose();
+    _bizPincodeCtrl.dispose();
+    _bizCityCtrl.dispose();
+    _bizStateCtrl.dispose();
     _cashCtrl.dispose();
     _bankCtrl.dispose();
     super.dispose();
@@ -147,19 +197,17 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
       if (_hasBizStep) {
         final bizName = _bizNameCtrl.text.trim();
         if (bizName.isNotEmpty) {
+          String? nullIfEmpty(String s) => s.isEmpty ? null : s;
           final now = DateTime.now();
           final biz = Business(
             name: bizName,
             ownerName: name.isNotEmpty ? name : null,
-            gstNo: _gstinCtrl.text.trim().isNotEmpty
-                ? _gstinCtrl.text.trim().toUpperCase()
-                : null,
-            address: _bizAddressCtrl.text.trim().isNotEmpty
-                ? _bizAddressCtrl.text.trim()
-                : null,
-            upiId: _personalUpiCtrl.text.trim().isNotEmpty
-                ? _personalUpiCtrl.text.trim()
-                : null,
+            gstNo: nullIfEmpty(_gstinCtrl.text.trim())?.toUpperCase(),
+            address: nullIfEmpty(_bizAddressCtrl.text.trim()),
+            pincode: nullIfEmpty(_bizPincodeCtrl.text.trim()),
+            city: nullIfEmpty(_bizCityCtrl.text.trim()),
+            state: nullIfEmpty(_bizStateCtrl.text.trim()),
+            upiId: nullIfEmpty(_personalUpiCtrl.text.trim()),
             isActive: true,
             createdAt: now,
             updatedAt: now,
@@ -251,6 +299,10 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                     bizNameCtrl: _bizNameCtrl,
                     gstinCtrl: _gstinCtrl,
                     addressCtrl: _bizAddressCtrl,
+                    pincodeCtrl: _bizPincodeCtrl,
+                    cityCtrl: _bizCityCtrl,
+                    stateCtrl: _bizStateCtrl,
+                    pincodeAutoFilled: _bizPincodeAutoFilled,
                     gstinError: _gstinError,
                     onGstinChanged: (v) {
                       setState(() {
@@ -280,7 +332,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
               isLastPage: _isLastPage,
               saving: _saving,
               canGoBack: _currentPage > 0,
-              hasGstinError: _gstinError != null,
+              canContinue: _canContinue,
               onBack: _prevPage,
               onNext: _nextPage,
               onFinish: _finish,
@@ -383,7 +435,7 @@ class _WizardFooter extends StatelessWidget {
     required this.isLastPage,
     required this.saving,
     required this.canGoBack,
-    required this.hasGstinError,
+    required this.canContinue,
     required this.onBack,
     required this.onNext,
     required this.onFinish,
@@ -395,7 +447,7 @@ class _WizardFooter extends StatelessWidget {
   final bool isLastPage;
   final bool saving;
   final bool canGoBack;
-  final bool hasGstinError;
+  final bool canContinue;
   final VoidCallback onBack;
   final VoidCallback onNext;
   final VoidCallback onFinish;
@@ -417,7 +469,7 @@ class _WizardFooter extends StatelessWidget {
           else
             const SizedBox.shrink(),
           const Spacer(),
-          if (!isLastPage)
+          if (!isLastPage && currentPage > 2)
             TextButton(
               onPressed: isLastPage ? null : onNext,
               child: const Text('Skip for now'),
@@ -426,7 +478,7 @@ class _WizardFooter extends StatelessWidget {
           FilledButton(
             onPressed: saving
                 ? null
-                : (hasGstinError ? null : (isLastPage ? onFinish : onNext)),
+                : (canContinue ? (isLastPage ? onFinish : onNext) : null),
             child: saving
                 ? const SizedBox(
                     width: 18,
@@ -459,12 +511,20 @@ class _ModePage extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.base),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: AppSpacing.xl),
+          Image.asset(
+            isDark ? 'assets/logo-white.png' : 'assets/logo.png',
+            width: 56,
+            height: 56,
+          ),
+          const SizedBox(height: AppSpacing.lg),
           Text('Welcome to Kash Cube', style: tt.headlineSmall),
           const SizedBox(height: AppSpacing.sm),
           Text(
@@ -623,7 +683,7 @@ class _ProfilePage extends StatelessWidget {
             controller: nameCtrl,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-              labelText: 'Your name',
+              labelText: 'Your name *',
               hintText: 'e.g. Ravi Kumar',
               prefixIcon: Icon(Icons.person_outline),
             ),
@@ -672,6 +732,10 @@ class _BusinessPage extends StatelessWidget {
     required this.bizNameCtrl,
     required this.gstinCtrl,
     required this.addressCtrl,
+    required this.pincodeCtrl,
+    required this.cityCtrl,
+    required this.stateCtrl,
+    required this.pincodeAutoFilled,
     required this.gstinError,
     required this.onGstinChanged,
   });
@@ -679,6 +743,10 @@ class _BusinessPage extends StatelessWidget {
   final TextEditingController bizNameCtrl;
   final TextEditingController gstinCtrl;
   final TextEditingController addressCtrl;
+  final TextEditingController pincodeCtrl;
+  final TextEditingController cityCtrl;
+  final TextEditingController stateCtrl;
+  final bool pincodeAutoFilled;
   final String? gstinError;
   final ValueChanged<String> onGstinChanged;
 
@@ -704,7 +772,7 @@ class _BusinessPage extends StatelessWidget {
             controller: bizNameCtrl,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-              labelText: 'Business name',
+              labelText: 'Business name *',
               hintText: 'e.g. Kumar Traders',
               prefixIcon: Icon(Icons.business_outlined),
             ),
@@ -726,14 +794,64 @@ class _BusinessPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: addressCtrl,
-            maxLines: 3,
             textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
-              labelText: 'Business address (optional)',
-              hintText: 'Street, City, State — Pincode',
+              labelText: 'Street address (optional)',
+              hintText: 'Building, street, area',
               prefixIcon: Icon(Icons.location_on_outlined),
-              alignLabelWithHint: true,
             ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: pincodeCtrl,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              labelText: 'PIN code (optional)',
+              hintText: '6-digit PIN code',
+              prefixIcon: const Icon(Icons.pin_drop_outlined),
+              counterText: '',
+              suffixIcon: pincodeAutoFilled
+                  ? const Icon(Icons.check_circle_outline,
+                      color: Colors.green, size: 18)
+                  : null,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: cityCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'City',
+                    hintText: 'e.g. Mumbai',
+                    prefixIcon: Icon(Icons.location_city_outlined),
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: TextField(
+                  controller: stateCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  readOnly: pincodeAutoFilled,
+                  decoration: InputDecoration(
+                    labelText: 'State',
+                    hintText: 'e.g. Maharashtra',
+                    prefixIcon: const Icon(Icons.map_outlined),
+                    filled: pincodeAutoFilled,
+                    fillColor: pincodeAutoFilled
+                        ? Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                        : null,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(

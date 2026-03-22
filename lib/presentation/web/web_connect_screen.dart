@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
+import '../../data/services/analytics_events.dart';
 import '../app_shell.dart';
+import '../providers/analytics_provider.dart';
 import '../providers/web_sync_provider.dart';
 import 'web_url_reader_stub.dart'
     if (dart.library.js_interop) 'web_url_reader_web.dart'
@@ -52,6 +54,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
     final savedSession = url_reader.getSavedSessionId();
     final savedWsUrl   = url_reader.getSavedWsUrl();
     if (savedSession != null && savedWsUrl != null) {
+      trackEvent(ref, AnalyticsEvents.webBrowserSessionRestored);
       ref.read(webSyncProvider.notifier)
           .connect(savedWsUrl, savedSession, isSession: true);
       return;
@@ -62,6 +65,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
     final origin = url_reader.getOrigin(); // 'http://192.168.1.8:60567'
     if (token == null || origin == null) return;
 
+    trackEvent(ref, AnalyticsEvents.webBrowserAutoConnected);
     final wsUrl = '${origin.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
     ref.read(webSyncProvider.notifier).connect(wsUrl, token);
   }
@@ -78,6 +82,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
         _showError('URL must contain a ?token= parameter');
         return;
       }
+      trackEvent(ref, AnalyticsEvents.webBrowserManualConnect);
       final wsUri = uri.replace(scheme: 'ws', path: '/ws', query: '');
       await ref.read(webSyncProvider.notifier).connect(
             wsUri.toString(),
@@ -99,8 +104,9 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
     final sync = ref.watch(webSyncProvider);
 
     // Navigate to AppShell once authenticated.
-    ref.listen<WebSyncState>(webSyncProvider, (_, next) {
+    ref.listen<WebSyncState>(webSyncProvider, (prev, next) {
       if (next.state == WsConnState.connected && mounted) {
+        trackScreen(ref, 'web_companion_shell');
         Navigator.of(context).pushReplacement(
           MaterialPageRoute<void>(builder: (_) => const AppShell()),
         );

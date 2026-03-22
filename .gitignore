@@ -47,10 +47,10 @@ app.*.map.json
 /android/app/release
 android/build/
 
-# Firebase config files — contain API keys, must not be committed
+# Firebase config files — google-services.json contains signing credentials.
+# firebase_options.dart uses only public browser-facing keys; safe to commit.
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
-lib/firebase_options.dart
 
 # Sample / scratch files
 /sample/

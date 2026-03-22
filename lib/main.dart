@@ -34,20 +34,21 @@ void main() async {
   await initDatabaseFactory();
 
   // Firebase Analytics — opt-in anonymous analytics (no financial data).
-  // Gracefully skipped if google-services.json is not yet configured.
-  // See docs/technical/FIREBASE_SETUP.md for one-time setup steps.
-  if (!kIsWeb) {
-    try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-      // Apply the stored consent flag so collection is off by default.
+  // Runs on Android and web (Flutter Web companion). Gracefully skipped if
+  // config files are missing. See docs/technical/FIREBASE_SETUP.md.
+  try {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    // On web, analytics is always enabled (browser session, no financial data).
+    // On Android, respect the user's consent preference.
+    if (!kIsWeb) {
       final repo = SettingsRepositoryImpl();
       final consentVal = await repo.get(SettingsKeys.analyticsConsent);
       await FirebaseAnalytics.instance
           .setAnalyticsCollectionEnabled(consentVal == 'true');
-    } catch (e) {
-      // Not fatal — analytics simply stays disabled until configured.
-      debugPrint('[main] Firebase init skipped (not configured): $e');
     }
+  } catch (e) {
+    // Not fatal — analytics simply stays disabled until configured.
+    debugPrint('[main] Firebase init skipped (not configured): $e');
   }
 
   // All pre-runApp initialisation is wrapped in a try/catch so that a failure

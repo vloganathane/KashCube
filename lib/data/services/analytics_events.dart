@@ -45,7 +45,7 @@ abstract final class AnalyticsEvents {
   static const analyticsConsentGiven   = 'analytics_consent_given';
   static const analyticsConsentRevoked = 'analytics_consent_revoked';
 
-  // ── Web Companion ───────────────────────────────────────────────────────────
+  // ── Web Companion (phone-side) ──────────────────────────────────────────────
   /// Phone shows QR code for "Open on Laptop".
   static const webCompanionQrShown             = 'web_companion_qr_shown';
   /// User copies the URL chip on the "Open on Laptop" screen.
@@ -54,4 +54,12 @@ abstract final class AnalyticsEvents {
   static const webCompanionBrowserConnected    = 'web_companion_browser_connected';
   /// User manually taps "Disconnect browser" on the phone.
   static const webCompanionDisconnectedManually = 'web_companion_disconnected_manually';
+
+  // ── Web Companion (browser-side) ─────────────────────────────────────────────
+  /// Browser auto-connected via QR token on page load.
+  static const webBrowserAutoConnected   = 'web_browser_auto_connected';
+  /// Browser connected by manually pasting the URL.
+  static const webBrowserManualConnect   = 'web_browser_manual_connect';
+  /// Browser session restored from sessionStorage after page refresh.
+  static const webBrowserSessionRestored = 'web_browser_session_restored';
 }

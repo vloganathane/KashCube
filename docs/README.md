@@ -1,83 +1,111 @@
-# Kash Cube Documentation
+# Kash Cube — Documentation Index
 
-**Version:** 1.0  
-**Last Updated:** February 24, 2026  
-**Status:** Planning Phase
+**Last Updated:** March 22, 2026
 
-## 📚 Documentation Index
+> All documentation is organized below by category. Completed or superseded documents live in [`archive/`](./archive/).
 
-### Product Documents
-- [Product Requirements Document (PRD)](./PRD.md) - Complete product vision and requirements
-- Feature Specifications _(covered in PRD.md)_
-- User Personas _(covered in PRD.md Section 4)_
-- Market Analysis _(covered in PRD.md Section 2)_
+---
 
-### Technical Documents
-- [Technical Architecture](./TECHNICAL_ARCHITECTURE.md) - System design and architecture
-- [Database Schema](./DATABASE_SCHEMA.md) - Complete data models
-- [SMS Parsing Specification](./SMS_PARSING_SPEC.md) - SMS parsing patterns and logic
-- API Documentation _(coming in Phase 2)_
+## User
 
-### Implementation
-- [Implementation Roadmap](./IMPLEMENTATION_ROADMAP.md) - Phased build plan
-- [MVP Scope](./MVP_SCOPE.md) - Minimum Viable Product definition
-- Development Guidelines _(see CONTRIBUTING.md in root)_
+| Document | Description |
+|----------|-------------|
+| [HOW_TO_USE.md](./HOW_TO_USE.md) | End-user guide — setup, all features, FAQ |
 
-### Design
-- [UI/UX Guidelines](./UI_UX_GUIDELINES.md) - Design system, colors, typography, components
-- [Screen Flows](./SCREEN_FLOWS.md) - Navigation map and user journeys
-- Component Library _(will be built during development)_
+---
 
-### Privacy & Security
-- [Privacy Architecture](./PRIVACY_ARCHITECTURE.md) - Privacy-first design
-- [Privacy Policy](./PRIVACY_POLICY.md) - User-facing privacy policy
-- Security Specification _(covered in PRIVACY_ARCHITECTURE.md)_
-- Data Governance _(covered in PRIVACY_ARCHITECTURE.md)_
+## Product & Design
 
-##Test Plan _(planned for Week 4-5)_
-- Quality Checklist _(see MVP_SCOPE.md Definition of Done)_
-- [Quality Checklist](./QUALITY_CHECKLIST.md) - Release criteria
+| Document | Description |
+|----------|-------------|
+| [PRD.md](./PRD.md) | Product Requirements Document — vision, personas, features |
+| [SCREEN_FLOWS.md](./SCREEN_FLOWS.md) | Navigation map and user journey flows |
+| [UI_UX_GUIDELINES.md](./UI_UX_GUIDELINES.md) | Design system, colors, spacing, components |
+| [MONETIZATION_STRATEGY.md](./MONETIZATION_STRATEGY.md) | Revenue model and pricing |
+| [COMPETITIVE_GAP_ANALYSIS.md](./COMPETITIVE_GAP_ANALYSIS.md) | Feature comparison vs competitors |
 
-## 🎯 Quick Start
+---
 
-1. Read [PRD](./PRD.md) for complete product vision
-2. Review [Implementation Roadmap](./IMPLEMENTATION_ROADMAP.md) for build plan
-3. Check [MVP Scope](./MVP_SCOPE.md) for Phase 1 features
-4. Study [Technical Architecture](./TECHNICAL_ARCHITECTURE.md) for system design
+## Technical Architecture
 
-## 📖 Document Relationships
+| Document | Description |
+|----------|-------------|
+| [TECHNICAL_ARCHITECTURE.md](./TECHNICAL_ARCHITECTURE.md) | System design, patterns, tech stack |
+| [ARCHITECTURE_DECISIONS.md](./ARCHITECTURE_DECISIONS.md) | ADRs — key architecture decisions (v58+) |
+| [DUAL_PRIMARY_IDENTITY_SPEC.md](./DUAL_PRIMARY_IDENTITY_SPEC.md) | Dual-primary sync identity spec (v63+) |
+| [FEATURE_EXTENSION_PRINCIPLES.md](./FEATURE_EXTENSION_PRINCIPLES.md) | Rules for extending the app safely |
+| [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) | Full SQLite schema and data models |
+| [PRIVACY_ARCHITECTURE.md](./PRIVACY_ARCHITECTURE.md) | Privacy-first design — data residency, threat model |
+| [FOUNDATION_PERSONAL_BUSINESS.md](./FOUNDATION_PERSONAL_BUSINESS.md) | Personal / business mode architecture |
+| [STORAGE_AND_DISASTER_MANAGEMENT.md](./STORAGE_AND_DISASTER_MANAGEMENT.md) | Storage growth strategy and disaster recovery |
 
-```
-PRD (What & Why)
-├── Feature Specifications (Detailed What)
-├── User Personas (For Whom)
-└── Market Analysis (Positioning)
+---
 
-Technical Architecture (How)
-├── Database Schema (Data Structure)
-├── SMS Parsing Spec (Core Logic)
-└── API Documentation (Interfaces)
+## Feature Specifications
 
-Implementation Roadmap (When)
-├── MVP Scope (Phase 1)
-├── Development Guidelines (How to Build)
-└── Test Plan (Quality Assurance)
+| Document | Status | Description |
+|----------|--------|-------------|
+| [SMS_PARSING_SPEC.md](./SMS_PARSING_SPEC.md) | ✅ Implemented | Sender registry, regex patterns, confidence scoring |
+| [UNIFIED_TRACKING_SYSTEM.md](./UNIFIED_TRACKING_SYSTEM.md) | ✅ Phase 1–2 done | Transaction tracking model |
+| [FISCAL_YEAR_MANAGEMENT.md](./FISCAL_YEAR_MANAGEMENT.md) | ✅ Implemented | Indian FY, year-end close, invoice resets |
+| [GSTR1_WORKBOOK_SPEC.md](./GSTR1_WORKBOOK_SPEC.md) | 🚧 Planned | GSTR-1 workbook and JSON export |
+| [GST_COMPLIANCE_PLAN.md](./GST_COMPLIANCE_PLAN.md) | 🚧 Planned | Full GST compliance roadmap |
+| [HRMS_STAFF_SPEC.md](./HRMS_STAFF_SPEC.md) | 🚧 Planned | Staff management and HRMS features |
+| [BOOKINGS_SPEC.md](./BOOKINGS_SPEC.md) | 🚧 Planned | Bookings / appointments system |
+| [INVOICE_REMINDERS_SPEC.md](./INVOICE_REMINDERS_SPEC.md) | 🚧 Planned | Automated payment reminder flows |
+| [PARTY_DOCUMENT_LEDGER_SPEC.md](./PARTY_DOCUMENT_LEDGER_SPEC.md) | 🚧 Planned | Party 360 with full document history |
+| [CONTACT_DEEP_LINK_SPEC.md](./CONTACT_DEEP_LINK_SPEC.md) | 🚧 Planned | Contact QR codes for user acquisition |
+| [UNIFIED_NOTIFICATIONS_SPEC.md](./UNIFIED_NOTIFICATIONS_SPEC.md) | 🚧 Planned | Notification system across all triggers |
 
-UI/UX Guidelines (Look & Feel)
-├── Screen Flows (User Journey)
-└── Component Library (Building Blocks)
-```
+---
 
-## 🔄 Document Status
+## Sync & Networking
 
-| Document | Status | Last Updated |
-|----------|--------|--------------|
-| PRD | ✅ Complete | Feb 24, 2026 |
-| Technical Architecture | ✅ Complete | Feb 24, 2026 |
-| Implementation Roadmap | ✅ Complete | Feb 24, 2026 |
-| Database Schema | ✅ Complete | Feb 24, 2026 |
-| SMS Parsing Spec | ✅ Complete | Feb 24, 2026 |
-| MVP Scope | ✅ Complete | Feb 24, 2026 |
+| Document | Status | Description |
+|----------|--------|-------------|
+| [P2P_SYNC_SPEC.md](./P2P_SYNC_SPEC.md) | ✅ Approved | P2P LAN sync architecture (v2, Mar 2026) |
+| [WEB_COMPANION_SPEC.md](./WEB_COMPANION_SPEC.md) | ✅ Approved | Flutter web companion — LAN-serve spec (Mar 2026) |
+| [GENERIC_SYNC_ENGINE_MVP_IMPLEMENTATION_CHECKLIST.md](./GENERIC_SYNC_ENGINE_MVP_IMPLEMENTATION_CHECKLIST.md) | 🚧 In progress | Checklist for generic web-companion sync engine |
+| [IMPLEMENTATION_PLAN_SYNC_RBAC.md](./IMPLEMENTATION_PLAN_SYNC_RBAC.md) | 🔵 Active | Sprint plan: sync → RBAC → linked devices → dual-primary |
+
+---
+
+## Operations & Planning
+
+| Document | Description |
+|----------|-------------|
+| [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md) | Phased build plan and milestone tracker |
+| [SETUP_GUIDE.md](./SETUP_GUIDE.md) | Developer setup and build instructions |
+
+---
+
+## Legal
+
+| Document | Description |
+|----------|-------------|
+| [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) | User-facing privacy policy |
+| [TERMS_OF_USE_V2_2.md](./TERMS_OF_USE_V2_2.md) | Terms of use (v2.2, effective Mar 16 2026) |
+
+---
+
+## Archive
+
+Old, superseded, or completed documents are in [`archive/`](./archive/):
+
+| Document | Reason archived |
+|----------|----------------|
+| [FLUTTER_WEB_COMPANION_SPEC.md](./archive/FLUTTER_WEB_COMPANION_SPEC.md) | Superseded by WEB_COMPANION_SPEC.md (Cloudflare approach abandoned) |
+| [IMPLEMENTATION_PLAN_SUBSCRIPTION.md](./archive/IMPLEMENTATION_PLAN_SUBSCRIPTION.md) | Status: COMPLETE |
+| [INVOICE_NUMBERING_2026_03_15.md](./archive/INVOICE_NUMBERING_2026_03_15.md) | Status: Implemented |
+| [CODE_REVIEW_2026_03_15.md](./archive/CODE_REVIEW_2026_03_15.md) | Point-in-time code review snapshot (Mar 15) |
+| [LAN_SYNC_IMPROVEMENTS_2026_03_15.md](./archive/LAN_SYNC_IMPROVEMENTS_2026_03_15.md) | Superseded by P2P_SYNC_SPEC.md |
+| [SYNC_GAP_AUDIT_2026_03_20.md](./archive/SYNC_GAP_AUDIT_2026_03_20.md) | Point-in-time audit snapshot (Mar 20) |
+| [IMPLEMENTATION_PLAN_MAR_APR_2026.md](./archive/IMPLEMENTATION_PLAN_MAR_APR_2026.md) | Superseded by IMPLEMENTATION_ROADMAP.md |
+| [MVP_SCOPE.md](./archive/MVP_SCOPE.md) | Superseded by PRD.md |
+| [LINKED_DEVICES_BRAINSTORM.md](./archive/LINKED_DEVICES_BRAINSTORM.md) | Superseded by ARCHITECTURE_DECISIONS.md |
+| [PRIVATE_SYNC_BRAINSTORM.md](./archive/PRIVATE_SYNC_BRAINSTORM.md) | Superseded by P2P_SYNC_SPEC.md |
+| [USER_PERMISSIONS_BRAINSTORM.md](./archive/USER_PERMISSIONS_BRAINSTORM.md) | Superseded by ARCHITECTURE_DECISIONS.md |
+| [PARTY_MANAGEMENT_REVIEW.md](./archive/PARTY_MANAGEMENT_REVIEW.md) | Historical review, superseded by PARTY_DOCUMENT_LEDGER_SPEC.md |
 | Privacy Architecture | ✅ Complete | Feb 24, 2026 |
 | Privacy Policy | ✅ Complete | Feb 24, 2026 |
 | Setup Guide | ✅ Complete | Feb 24, 2026 |

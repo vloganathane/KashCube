@@ -287,76 +287,66 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 Expanded(
                   child: filtered.isEmpty
                       ? _buildEmptyState(transactions.isEmpty)
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.base,
-                            vertical: AppSpacing.sm,
-                          ),
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) {
-                            final txn = filtered[index];
-                            final colors = context.kashColors;
-                            final amountColor =
-                                txn.isIncome ? colors.income : colors.expense;
-                            final prefix = txn.isIncome ? '+' : '-';
-                            final isSelected =
-                                isWide && txn.id == _selectedTransactionId;
-
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.xs,
+                      : isWide
+                          ? _buildDataTable(filtered, context)
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.base,
+                                vertical: AppSpacing.sm,
                               ),
-                              selected: isSelected,
-                              selectedTileColor: context
-                                  .colorScheme.secondaryContainer
-                                  .withValues(alpha: 0.4),
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    context.colorScheme.primaryContainer,
-                                child: Icon(
-                                  CategoryHelper.getIcon(txn.category),
-                                  color:
-                                      context.colorScheme.onPrimaryContainer,
-                                  size: AppSpacing.iconMd,
-                                ),
-                              ),
-                              title: Text(
-                                txn.partyName ?? txn.category,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: Text(
-                                '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
-                                style: context.textTheme.bodySmall,
-                              ),
-                              trailing: Text(
-                                '$prefix${CurrencyFormatter.format(txn.amount)}',
-                                style: context.textTheme.titleSmall?.copyWith(
-                                  color: amountColor,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'RobotoMono',
-                                ),
-                              ),
-                              onTap: () {
-                                if (txn.id != null) {
-                                  if (isWide) {
-                                    setState(() =>
-                                        _selectedTransactionId = txn.id);
-                                  } else {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            TransactionDetailScreen(
-                                          transactionId: txn.id!,
+                              itemCount: filtered.length,
+                              itemBuilder: (context, index) {
+                                final txn = filtered[index];
+                                final colors = context.kashColors;
+                                final amountColor =
+                                    txn.isIncome ? colors.income : colors.expense;
+                                final prefix = txn.isIncome ? '+' : '-';
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.xs,
+                                  ),
+                                  leading: CircleAvatar(
+                                    backgroundColor:
+                                        context.colorScheme.primaryContainer,
+                                    child: Icon(
+                                      CategoryHelper.getIcon(txn.category),
+                                      color:
+                                          context.colorScheme.onPrimaryContainer,
+                                      size: AppSpacing.iconMd,
+                                    ),
+                                  ),
+                                  title: Text(
+                                    txn.partyName ?? txn.category,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: Text(
+                                    '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                                    style: context.textTheme.bodySmall,
+                                  ),
+                                  trailing: Text(
+                                    '$prefix${CurrencyFormatter.format(txn.amount)}',
+                                    style: context.textTheme.titleSmall?.copyWith(
+                                      color: amountColor,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: 'RobotoMono',
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    if (txn.id != null) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              TransactionDetailScreen(
+                                            transactionId: txn.id!,
+                                          ),
                                         ),
-                                      ),
-                                    );
-                                  }
-                                }
+                                      );
+                                    }
+                                  },
+                                );
                               },
-                            );
-                          },
-                        ),
+                            ),
                 ),
               ],
             ),
@@ -373,9 +363,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
           return Row(
             children: [
-              SizedBox(width: 380, child: listPane),
+              Expanded(child: listPane),
               const VerticalDivider(width: 1, thickness: 1),
-              Expanded(
+              SizedBox(
+                width: 360,
                 child: selectedTxn != null
                     ? TransactionDetailPanel(
                         transaction: selectedTxn,
@@ -487,6 +478,125 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Sortable [DataTable] shown in the list pane when width ≥ 840 dp.
+  Widget _buildDataTable(List<Transaction> filtered, BuildContext context) {
+    // Map current _sortOrder to DataTable header indicators.
+    int? sortColumnIndex;
+    bool sortAscending = false;
+    switch (_sortOrder) {
+      case TransactionSortOrder.dateDesc:
+        sortColumnIndex = 0;
+        sortAscending = false;
+      case TransactionSortOrder.dateAsc:
+        sortColumnIndex = 0;
+        sortAscending = true;
+      case TransactionSortOrder.amountHigh:
+        sortColumnIndex = 3;
+        sortAscending = false;
+      case TransactionSortOrder.amountLow:
+        sortColumnIndex = 3;
+        sortAscending = true;
+    }
+    final colors = context.kashColors;
+    return SingleChildScrollView(
+      child: DataTable(
+        sortColumnIndex: sortColumnIndex,
+        sortAscending: sortAscending,
+        showCheckboxColumn: false,
+        dataRowMinHeight: 44,
+        dataRowMaxHeight: 44,
+        columnSpacing: AppSpacing.xl,
+        horizontalMargin: AppSpacing.base,
+        headingRowHeight: 40,
+        columns: [
+          DataColumn(
+            label: const Text('Date'),
+            onSort: (_, ascending) => setState(() {
+              _sortOrder = ascending
+                  ? TransactionSortOrder.dateAsc
+                  : TransactionSortOrder.dateDesc;
+            }),
+          ),
+          const DataColumn(label: Text('Party / Description')),
+          const DataColumn(label: Text('Category')),
+          DataColumn(
+            label: const Text('Amount'),
+            numeric: true,
+            onSort: (_, ascending) => setState(() {
+              _sortOrder = ascending
+                  ? TransactionSortOrder.amountLow
+                  : TransactionSortOrder.amountHigh;
+            }),
+          ),
+          const DataColumn(label: Text('Method')),
+        ],
+        rows: filtered.map((txn) {
+          final isSelected = txn.id == _selectedTransactionId;
+          final amountColor = txn.isIncome ? colors.income : colors.expense;
+          final prefix = txn.isIncome ? '+' : '-';
+          return DataRow(
+            selected: isSelected,
+            color: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected)) {
+                return context.colorScheme.secondaryContainer
+                    .withValues(alpha: 0.4);
+              }
+              return null;
+            }),
+            onSelectChanged: txn.id != null
+                ? (_) => setState(() => _selectedTransactionId = txn.id)
+                : null,
+            cells: [
+              DataCell(
+                Text(
+                  DateFormatter.format(txn.date),
+                  style: context.textTheme.bodySmall,
+                ),
+              ),
+              DataCell(
+                Text(
+                  txn.partyName ?? txn.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      CategoryHelper.getIcon(txn.category),
+                      size: 14,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(txn.category, style: context.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              DataCell(
+                Text(
+                  '$prefix${CurrencyFormatter.format(txn.amount)}',
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: amountColor,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'RobotoMono',
+                  ),
+                ),
+              ),
+              DataCell(
+                Text(
+                  txn.paymentMethod.label,
+                  style: context.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }

@@ -340,7 +340,7 @@ bool get isExpanded => MediaQuery.sizeOf(this).width >= 840;
 | **P1** | `isExpanded` breakpoint · `NavigationRail` in `AppShell` | ✅ Done |
 | **P2** | Adaptive bottom sheets -> `Dialog` on expanded (add `showAdaptiveSheet` helper) | ✅ Done |
 | **P3** | Master-Detail: Transactions list + detail side panel | ✅ Done |
-| **P4** | Transactions `DataTable` on expanded (sortable columns) | Planned |
+| **P4** | Transactions `DataTable` on expanded (sortable columns) | ✅ Done |
 | **P5** | Settings two-pane layout (category list + pane) | Planned |
 
 ---

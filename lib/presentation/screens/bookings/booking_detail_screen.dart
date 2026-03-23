@@ -511,6 +511,7 @@ class _BookingDetailView extends ConsumerWidget {
     final isSchedule = booking.bookingType == BookingType.personal;
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => AlertDialog(
         title: Text(isSchedule ? 'Cancel Schedule?' : 'Cancel Booking?'),
         content: Text(isSchedule
@@ -541,6 +542,7 @@ class _BookingDetailView extends ConsumerWidget {
   Future<void> _markAsNoShow(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => AlertDialog(
         title: const Text('Mark as No-show?'),
         content: const Text('Customer did not show up for this booking?'),
@@ -575,6 +577,7 @@ class _BookingDetailView extends ConsumerWidget {
     );
     final result = await showDialog<double>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Record Payment'),
         content: TextField(

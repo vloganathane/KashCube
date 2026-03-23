@@ -126,6 +126,7 @@ class _FyCloseWizardScreenState extends ConsumerState<FyCloseWizardScreen> {
   Future<void> _archiveAndClose() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Archive & Close FY?'),
         content: Text(

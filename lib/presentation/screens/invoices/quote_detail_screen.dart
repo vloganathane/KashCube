@@ -267,6 +267,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   Future<void> _convertToInvoice() async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: Text(
@@ -308,6 +309,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Quote?'),
         content: Text('Delete ${quote.quoteNo}? This cannot be undone.'),

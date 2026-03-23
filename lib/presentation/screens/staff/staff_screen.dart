@@ -83,6 +83,7 @@ class StaffScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, Staff staff) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Deactivate Staff?'),
         content: Text(

@@ -187,6 +187,7 @@ class _TrustedPeerTile extends ConsumerWidget {
     final name = peer.peerName ?? 'this device';
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove device?'),
         content: Text(

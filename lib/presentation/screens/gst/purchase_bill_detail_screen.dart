@@ -133,6 +133,7 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     final navigator = Navigator.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Bill?'),
         content: Text(

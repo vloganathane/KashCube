@@ -81,9 +81,22 @@ class _AppShellState extends ConsumerState<AppShell> {
   final List<GlobalKey<NavigatorState>> _tabNavKeys =
       List.generate(5, (_) => GlobalKey<NavigatorState>());
 
+  /// Tab navigator widgets — created ONCE in [initState] and never rebuilt.
+  /// Keeping stable widget objects prevents Flutter from briefly unmounting
+  /// route elements on every [AppShell] rebuild (e.g. SMS badge changes),
+  /// which would leave captured [BuildContext]s stale inside open dialogs.
+  late final List<Widget> _tabScreens;
+
   @override
   void initState() {
     super.initState();
+    _tabScreens = [
+      Navigator(key: _tabNavKeys[0], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
+      Navigator(key: _tabNavKeys[1], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
+      Navigator(key: _tabNavKeys[2], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
+      Navigator(key: _tabNavKeys[3], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
+      Navigator(key: _tabNavKeys[4], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+    ];
     // Kick off SMS listener after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!kIsWeb) {
@@ -375,16 +388,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         : visibleTabs;
 
     // Build content stack once; wrap with web-disconnect banner when on web.
-    // Each tab wraps its root screen in its own Navigator so that detail
-    // screens pushed inside a tab don't overlay the bottom navigation bar.
-    final tabScreens = <Widget>[
-      Navigator(key: _tabNavKeys[0], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
-      Navigator(key: _tabNavKeys[1], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
-      Navigator(key: _tabNavKeys[2], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
-      Navigator(key: _tabNavKeys[3], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
-      Navigator(key: _tabNavKeys[4], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
-    ];
-    Widget contentStack = IndexedStack(index: currentIndex, children: tabScreens);
+    Widget contentStack = IndexedStack(index: currentIndex, children: _tabScreens);
     if (kIsWeb) contentStack = WebConnectionBanner(child: contentStack);
 
     return PopScope(

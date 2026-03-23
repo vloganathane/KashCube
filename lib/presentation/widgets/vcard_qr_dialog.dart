@@ -27,6 +27,7 @@ Future<void> showVCardQrDialog(
 }) {
   return showDialog<void>(
     context: context,
+    useRootNavigator: false,
     builder: (_) => _VCardQrDialog(
       vcard: vcard,
       displayName: displayName,

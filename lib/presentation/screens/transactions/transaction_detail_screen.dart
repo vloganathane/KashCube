@@ -377,6 +377,7 @@ class TransactionDetailPanel extends ConsumerWidget {
 
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: Text(title),
         content: Text(content),

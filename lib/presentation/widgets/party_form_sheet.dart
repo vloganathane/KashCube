@@ -889,6 +889,7 @@ Future<PartyAddress?> showAddressDialog(
   PartyAddress? result;
   await showDialog<void>(
     context: context,
+    useRootNavigator: false,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setDialogState) => AlertDialog(
         title: Text(editing == null ? 'Add Address' : 'Edit Address'),
@@ -1086,6 +1087,7 @@ class _PartyAddressesSectionState
   Future<void> _deleteAddress(PartyAddress addr) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Address'),
         content: Text('Delete "${addr.label}"? This cannot be undone.'),

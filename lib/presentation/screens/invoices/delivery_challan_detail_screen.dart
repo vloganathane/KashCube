@@ -386,6 +386,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   Future<bool> _confirm(String title, String body) async {
     return await showDialog<bool>(
           context: context,
+          useRootNavigator: false,
           builder: (ctx) => AlertDialog(
             title: Text(title),
             content: Text(body),

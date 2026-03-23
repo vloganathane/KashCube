@@ -31,6 +31,7 @@ class CustomizeHomeScreen extends ConsumerWidget {
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
+                useRootNavigator: false,
                 builder: (_) => AlertDialog(
                   title: const Text('Reset to defaults?'),
                   content: const Text(

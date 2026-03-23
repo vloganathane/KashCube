@@ -385,6 +385,7 @@ class _InvoiceTile extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Invoice?'),
         content: Text('Delete ${invoice.invoiceNo}? This cannot be undone.'),
@@ -592,6 +593,7 @@ class _QuoteTile extends ConsumerWidget {
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Quote?'),
         content: Text('Delete ${quote.quoteNo}? This cannot be undone.'),

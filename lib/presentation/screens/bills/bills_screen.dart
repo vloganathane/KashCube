@@ -168,6 +168,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
   void _confirmDelete(Bill bill) {
     showDialog(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Bill'),
         content: Text('Remove "${bill.name}" from your bills?'),

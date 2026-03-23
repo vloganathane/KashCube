@@ -88,6 +88,7 @@ class BusinessesScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, Business b) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Business?'),
         content: Text(

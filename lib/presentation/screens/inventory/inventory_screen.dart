@@ -129,6 +129,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     if (type == _AdjustType.physicalCount) {
       final result = await showDialog<(double, String?)>(
         context: context,
+        useRootNavigator: false,
         builder: (_) => _PhysicalCountDialog(item: item),
       );
       if (result == null || !mounted) return;
@@ -140,6 +141,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     }
     final result = await showDialog<(double, String?)>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => _AdjustDialog(item: item, type: type),
     );
     if (result == null || !mounted) return;

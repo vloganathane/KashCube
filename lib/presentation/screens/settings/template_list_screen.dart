@@ -111,6 +111,7 @@ class TemplateListScreen extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete template?'),
         content: Text(

@@ -575,6 +575,7 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
   void _confirmDelete(BuildContext ctx) {
     showDialog(
       context: ctx,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Entry'),
         content: Text(
@@ -743,6 +744,7 @@ class _InstallmentTile extends ConsumerWidget {
   Future<void> _confirmMarkUnpaid(BuildContext context, WidgetRef ref) async {
     final confirm = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Mark as Unpaid?'),
         content: Text(

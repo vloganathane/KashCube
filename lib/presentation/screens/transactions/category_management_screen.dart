@@ -71,6 +71,7 @@ class _CategoryManagementScreenState
 
     final result = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: Text('New ${typeKey == 'expense' ? 'expense' : 'income'} category'),
         content: Form(
@@ -202,6 +203,7 @@ class _CategoryTab extends ConsumerWidget {
 
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete category?'),
         content: Column(

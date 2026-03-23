@@ -217,6 +217,7 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
       BuildContext context, WidgetRef ref, ItemCatalog item) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Remove Item?'),
         content: Text(

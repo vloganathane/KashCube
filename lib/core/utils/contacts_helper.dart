@@ -23,6 +23,7 @@ Future<bool> requestContactsPickerRationale(
 
   final proceed = await showDialog<bool>(
     context: context,
+    useRootNavigator: false,
     builder: (ctx) => AlertDialog(
       icon: const Icon(Icons.contacts_outlined, size: 40),
       title: const Text('Import from Contacts'),

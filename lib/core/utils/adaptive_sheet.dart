@@ -34,6 +34,7 @@ Future<T?> showAdaptiveSheet<T>(
   if (context.isExpanded) {
     return showDialog<T>(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: isDismissible,
       builder: (ctx) => Dialog(
         clipBehavior: Clip.antiAlias,

@@ -497,6 +497,7 @@ class _DetailSheet extends StatelessWidget {
                     Navigator.pop(context);
                     final ok = await showDialog<bool>(
                       context: context,
+                      useRootNavigator: false,
                       builder: (_) => AlertDialog(
                         title: const Text('Delete?'),
                         content:

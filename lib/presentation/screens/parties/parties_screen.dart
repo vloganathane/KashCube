@@ -181,6 +181,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
   void _confirmDelete(BuildContext context, Party party) {
     showDialog(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Remove party?'),
         content: Text(

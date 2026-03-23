@@ -313,6 +313,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -384,6 +385,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -459,6 +461,7 @@ class _InvoiceDetailView extends ConsumerWidget {
     if (!context.mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -568,6 +571,7 @@ class _InvoiceDetailView extends ConsumerWidget {
   Future<void> _voidInvoice(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Void Invoice?'),
         content: Text(

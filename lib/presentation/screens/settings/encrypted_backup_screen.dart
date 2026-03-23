@@ -344,6 +344,7 @@ class _ImportTabState extends State<_ImportTab> {
   Future<bool> _showConfirmDialog() async {
     return await showDialog<bool>(
           context: context,
+          useRootNavigator: false,
           builder: (ctx) => AlertDialog(
             title: const Text('Restore Backup?'),
             content: const Text(
@@ -369,6 +370,7 @@ class _ImportTabState extends State<_ImportTab> {
   Future<void> _showSuccessDialog(String createdAt, String version) async {
     await showDialog<void>(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Restore Complete'),

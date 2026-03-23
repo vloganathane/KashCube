@@ -457,7 +457,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (_) => AlertDialog(
+                    useRootNavigator: false,
+                    builder: (dlgCtx) => AlertDialog(
                       title: const Text('Privacy Policy'),
                       content: const SingleChildScrollView(
                         child: Text(
@@ -475,7 +476,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       ),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () => Navigator.pop(dlgCtx),
                           child: const Text('OK'),
                         ),
                       ],
@@ -878,6 +879,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onTap: () {
                 showDialog(
                   context: context,
+                  useRootNavigator: false,
                   builder: (_) => AlertDialog(
                     title: const Text('Privacy Policy'),
                     content: const SingleChildScrollView(

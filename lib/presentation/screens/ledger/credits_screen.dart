@@ -164,6 +164,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
     final amtCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: Text('Record Payment — ${credit.customerName}'),
         content: TextFormField(
@@ -202,6 +203,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
   Future<void> _confirmDelete(BuildContext context, Credit credit) async {
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Entry?'),
         content:

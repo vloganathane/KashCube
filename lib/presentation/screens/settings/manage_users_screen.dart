@@ -66,6 +66,7 @@ class ManageUsersScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, AppUser user) async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Revoke Access'),
         content: Text(

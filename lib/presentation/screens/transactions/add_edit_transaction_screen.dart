@@ -255,6 +255,7 @@ class _AddEditTransactionScreenState
 
     final result = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('New category'),
         content: Form(
@@ -805,6 +806,7 @@ class _AddEditTransactionScreenState
   Future<void> _confirmDelete() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => AlertDialog(
         title: const Text('Delete Transaction'),
         content: const Text(

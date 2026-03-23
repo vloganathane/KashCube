@@ -254,6 +254,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         invoice.status == InvoiceStatus.partiallyPaid) {
       await showDialog(
         context: context,
+        useRootNavigator: false,
         builder: (ctx) => AlertDialog(
           title: const Text('Cannot Edit Invoice'),
           content: Text(
@@ -912,6 +913,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -939,6 +941,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (_existingQuote?.id == null) return;
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: const Text(
@@ -974,6 +977,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1027,6 +1031,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1088,6 +1093,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1149,6 +1155,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1201,6 +1208,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1247,6 +1255,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
+      useRootNavigator: false,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
@@ -1294,6 +1303,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     if (_existingChallan?.id == null) return;
     final ok = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: const Text(

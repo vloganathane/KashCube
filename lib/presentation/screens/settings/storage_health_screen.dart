@@ -490,6 +490,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Restore Backup?'),
         content: const Text(

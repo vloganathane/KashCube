@@ -216,6 +216,7 @@ class _BudgetBody extends ConsumerWidget {
   static Future<bool> _confirmDelete(BuildContext context) async {
     return await showDialog<bool>(
           context: context,
+          useRootNavigator: false,
           builder: (_) => AlertDialog(
             title: const Text('Delete budget?'),
             content: const Text(

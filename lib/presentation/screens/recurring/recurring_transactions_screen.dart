@@ -212,6 +212,7 @@ class _RecurringCard extends ConsumerWidget {
                         Navigator.pop(ctx);
                         final confirmed = await showDialog<bool>(
                           context: context,
+                          useRootNavigator: false,
                           builder: (_) => AlertDialog(
                             title: const Text('Delete?'),
                             content: const Text(

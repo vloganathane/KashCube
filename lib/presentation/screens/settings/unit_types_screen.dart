@@ -123,6 +123,7 @@ class UnitTypesScreen extends ConsumerWidget {
   Future<void> _showAddDialog(BuildContext context, WidgetRef ref) async {
     final label = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (ctx) => const _AddUnitDialog(),
     );
 
@@ -139,6 +140,7 @@ class UnitTypesScreen extends ConsumerWidget {
   Future<bool?> _confirmDelete(BuildContext context, String label) {
     return showDialog<bool>(
       context: context,
+      useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete unit?'),
         content: Text('"$label" will be removed. Items using it keep their saved unit.'),

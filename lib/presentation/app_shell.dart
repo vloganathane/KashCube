@@ -87,15 +87,23 @@ class _AppShellState extends ConsumerState<AppShell> {
   /// which would leave captured [BuildContext]s stale inside open dialogs.
   late final List<Widget> _tabScreens;
 
+  /// One observer per tab — calls setState when the stack depth changes so
+  /// [showFab] can hide the SpeedDial when a sub-screen is on top.
+  late final List<_StackObserver> _tabObservers;
+
   @override
   void initState() {
     super.initState();
+    _tabObservers = List.generate(
+      5,
+      (_) => _StackObserver(() { if (mounted) setState(() {}); }),
+    );
     _tabScreens = [
-      Navigator(key: _tabNavKeys[0], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
-      Navigator(key: _tabNavKeys[1], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
-      Navigator(key: _tabNavKeys[2], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
-      Navigator(key: _tabNavKeys[3], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
-      Navigator(key: _tabNavKeys[4], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+      Navigator(key: _tabNavKeys[0], observers: [_tabObservers[0]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
+      Navigator(key: _tabNavKeys[1], observers: [_tabObservers[1]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
+      Navigator(key: _tabNavKeys[2], observers: [_tabObservers[2]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
+      Navigator(key: _tabNavKeys[3], observers: [_tabObservers[3]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
+      Navigator(key: _tabNavKeys[4], observers: [_tabObservers[4]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
     ];
     // Kick off SMS listener after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -281,7 +289,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
-    final showFab = currentIndex == 0 || currentIndex == 1 || currentIndex == 2;
+    final subRouteActive = _tabNavKeys[currentIndex].currentState?.canPop() ?? false;
+    final showFab = (currentIndex == 0 || currentIndex == 1 || currentIndex == 2)
+        && !subRouteActive;
     final activeUser = ref.watch(activeAppUserProvider);
     final isWide = context.isExpanded; // ≥840 dp → NavigationRail layout
 
@@ -462,3 +472,16 @@ class _AppShellState extends ConsumerState<AppShell> {
 }
 
 // Speed Dial FAB → see lib/presentation/widgets/speed_dial_fab.dart
+
+/// Minimal [NavigatorObserver] that fires [onChanged] on every stack
+/// mutation (push / pop / replace / remove), allowing [AppShell] to
+/// rebuild and hide the global SpeedDial FAB when a sub-route is active.
+class _StackObserver extends NavigatorObserver {
+  _StackObserver(this.onChanged);
+  final VoidCallback onChanged;
+
+  @override void didPush(Route route, Route? previousRoute) => onChanged();
+  @override void didPop(Route route, Route? previousRoute) => onChanged();
+  @override void didRemove(Route route, Route? previousRoute) => onChanged();
+  @override void didReplace({Route? newRoute, Route? oldRoute}) => onChanged();
+}

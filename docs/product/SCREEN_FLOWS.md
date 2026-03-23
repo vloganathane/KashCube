@@ -456,10 +456,13 @@ Settings Screen
 ```
 
 **Navigation Rules:**
-- Bottom nav always visible (except modals and detail screens)
-- FAB visible on Home and Transactions tabs
-- Tab state preserved when switching (no data loss)
-- Badge on Ledger tab shows count of parties with pending amounts
+- Bottom nav always visible — persists through all push navigation within a tab (per-tab `Navigator` architecture)
+- FAB visible on Home, Transactions, and Business tabs
+- Tab state (scroll position, open filters) is preserved when switching tabs (`IndexedStack`)
+- **Tapping the currently active tab icon pops to the root of that tab's stack** — always one tap to escape deep stacks
+- Each tab has its own independent navigation stack, max 3 levels deep (root → list/detail → sub-detail)
+- Screens that need to appear above the bottom nav (full-screen modals, alerts) use `Navigator.of(context, rootNavigator: true)` explicitly
+- Android back button pops the active tab's stack; once at tab root, minimizes the app
 
 ### 4.2 Screen Transitions
 
@@ -474,14 +477,15 @@ Settings Screen
 
 ### 4.3 Back Navigation
 
-| Screen | Back Button |
-|--------|-------------|
-| Home | Exit app (with confirmation) |
-| Transaction Detail | → Transactions List |
-| Add Transaction | → Previous screen (discard warning if unsaved) |
-| Customer Detail | → Ledger Screen |
-| Settings | → Previous screen |
-| Search | → Previous screen |
+| Depth | Back Button Behaviour |
+|-------|-----------------------|
+| Tab root (level 1) | Minimize app (Android) / no-op (iOS) |
+| Level 2 screen | Pop to tab root |
+| Level 3 screen | Pop to level 2 |
+| Any form with unsaved changes | Discard-changes warning before pop |
+| Active tab icon tapped | Pop to tab root from any depth |
+
+**Max stack depth rule:** No tab stack should exceed 3 levels. If a screen would push a 4th level, open it as a modal bottom sheet instead of a full push route.
 
 ---
 

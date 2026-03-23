@@ -75,13 +75,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   bool _deepLinksStarted  = false;
   final _appLinks = AppLinks();
 
-  static const _screens = [
-    HomeScreen(),
-    TransactionsHubScreen(),
-    BusinessHubScreen(),
-    PartiesScreen(),
-    SettingsScreen(),
-  ];
+  /// Per-tab [Navigator] keys — one per tab in [IndexedStack].
+  /// Allows each tab to maintain its own push stack while the bottom nav
+  /// bar remains visible at all depths.
+  final List<GlobalKey<NavigatorState>> _tabNavKeys =
+      List.generate(5, (_) => GlobalKey<NavigatorState>());
 
   @override
   void initState() {
@@ -292,6 +290,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     ];
 
     Future<void> handleTabSelected(int screenIndex) async {
+      // Tapping the already-active tab pops to the root of that tab's stack.
+      if (screenIndex == currentIndex) {
+        _tabNavKeys[screenIndex].currentState?.popUntil((r) => r.isFirst);
+        return;
+      }
       if (activeUser == null) {
         ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;
@@ -372,10 +375,32 @@ class _AppShellState extends ConsumerState<AppShell> {
         : visibleTabs;
 
     // Build content stack once; wrap with web-disconnect banner when on web.
-    Widget contentStack = IndexedStack(index: currentIndex, children: _screens);
+    // Each tab wraps its root screen in its own Navigator so that detail
+    // screens pushed inside a tab don't overlay the bottom navigation bar.
+    final tabScreens = <Widget>[
+      Navigator(key: _tabNavKeys[0], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
+      Navigator(key: _tabNavKeys[1], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
+      Navigator(key: _tabNavKeys[2], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
+      Navigator(key: _tabNavKeys[3], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
+      Navigator(key: _tabNavKeys[4], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+    ];
+    Widget contentStack = IndexedStack(index: currentIndex, children: tabScreens);
     if (kIsWeb) contentStack = WebConnectionBanner(child: contentStack);
 
-    return Scaffold(
+    return PopScope(
+      // Never pop the shell itself. Forward Android back to the active tab's
+      // Navigator; if the tab is already at its root, minimize the app.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        final tabNav = _tabNavKeys[currentIndex].currentState;
+        if (tabNav != null && tabNav.canPop()) {
+          tabNav.pop();
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
       body: Column(
         children: [
           // Context banner: shown when viewing a linked business session.
@@ -427,6 +452,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               showAllOptions: currentIndex != 2,
             )
           : null,
+      ),
     );
   }
 }

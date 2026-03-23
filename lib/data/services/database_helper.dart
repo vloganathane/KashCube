@@ -2946,6 +2946,21 @@ class DatabaseHelper {
             'Rebuild subscription table: rename legacy columns (purchased_at→plan_started_at, expires_at→plan_expires_at, receipt_data→purchase_token)',
       });
     }
+
+    if (oldVersion < 77) {
+      // Add credit_limit column for credit card accounts.
+      // Also enables AccountType.cash (stored as TEXT 'cash' — no schema change needed).
+      try {
+        await db.execute('ALTER TABLE accounts ADD COLUMN credit_limit REAL');
+        debugPrint('[DB v77] accounts.credit_limit column added');
+      } catch (e) {
+        debugPrint('[DB v77] credit_limit already exists or error: $e');
+      }
+      await db.insert('schema_version', {
+        'version': 77,
+        'description': 'accounts: add credit_limit column; AccountType.cash support',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

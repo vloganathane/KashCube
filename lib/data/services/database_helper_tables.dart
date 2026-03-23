@@ -269,6 +269,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         bank_name TEXT,
         account_number_last4 TEXT,
         current_balance REAL,
+        credit_limit REAL,
         is_active INTEGER DEFAULT 1,
         is_primary INTEGER DEFAULT 0,
         sms_senders TEXT,

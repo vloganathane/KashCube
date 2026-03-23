@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 enum AccountType {
   savings,
   current,
+  cash,
   creditCard,
   debitCard,
   upiWallet,
@@ -15,6 +16,8 @@ enum AccountType {
         return 'Savings';
       case AccountType.current:
         return 'Current';
+      case AccountType.cash:
+        return 'Cash';
       case AccountType.creditCard:
         return 'Credit Card';
       case AccountType.debitCard:
@@ -36,7 +39,7 @@ enum AccountType {
   }
 }
 
-/// A payment account (bank account, card, wallet).
+/// A payment account (bank account, card, wallet, or cash).
 class Account extends Equatable {
   const Account({
     this.id,
@@ -45,6 +48,7 @@ class Account extends Equatable {
     this.bankName,
     this.accountNumberLast4,
     this.currentBalance,
+    this.creditLimit,
     this.isActive = true,
     this.isPrimary = false,
     this.smsSenders,
@@ -62,6 +66,8 @@ class Account extends Equatable {
   final String? bankName;
   final String? accountNumberLast4;
   final double? currentBalance;
+  /// For credit card accounts: the total approved credit limit.
+  final double? creditLimit;
   final bool isActive;
   final bool isPrimary;
   final List<String>? smsSenders;
@@ -79,6 +85,7 @@ class Account extends Equatable {
     String? bankName,
     String? accountNumberLast4,
     double? currentBalance,
+    double? creditLimit,
     bool? isActive,
     bool? isPrimary,
     List<String>? smsSenders,
@@ -96,6 +103,7 @@ class Account extends Equatable {
       bankName: bankName ?? this.bankName,
       accountNumberLast4: accountNumberLast4 ?? this.accountNumberLast4,
       currentBalance: currentBalance ?? this.currentBalance,
+      creditLimit: creditLimit ?? this.creditLimit,
       isActive: isActive ?? this.isActive,
       isPrimary: isPrimary ?? this.isPrimary,
       smsSenders: smsSenders ?? this.smsSenders,
@@ -116,6 +124,7 @@ class Account extends Equatable {
       'bank_name': bankName,
       'account_number_last4': accountNumberLast4,
       'current_balance': currentBalance,
+      'credit_limit': creditLimit,
       'is_active': isActive ? 1 : 0,
       'is_primary': isPrimary ? 1 : 0,
       'sms_senders': smsSenders?.join(','),
@@ -136,6 +145,7 @@ class Account extends Equatable {
       bankName: map['bank_name'] as String?,
       accountNumberLast4: map['account_number_last4'] as String?,
       currentBalance: (map['current_balance'] as num?)?.toDouble(),
+      creditLimit: (map['credit_limit'] as num?)?.toDouble(),
       isActive: (map['is_active'] as int? ?? 1) == 1,
       isPrimary: (map['is_primary'] as int? ?? 0) == 1,
       smsSenders: (map['sms_senders'] as String?)?.split(',').where((s) => s.isNotEmpty).toList(),

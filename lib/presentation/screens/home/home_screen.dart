@@ -71,6 +71,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     TargetFocus(
       identify: 'balance_card',
       keyTarget: _balanceDeckKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
       contents: [
         TargetContent(
           align: ContentAlign.bottom,
@@ -1130,8 +1132,17 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                 return Column(
                   children: [
                     ...active.map((a) {
-                      final bal = a.runningBalance;
-                      final balColor = bal >= 0 ? colors.income : colors.expense;
+                      final isCreditCard =
+                          a.method == PaymentMethod.creditCard;
+                      // Credit cards: show outstanding as a liability.
+                      final displayBal = isCreditCard
+                          ? -(a.openingBalance + a.allTimeExpense - a.allTimeIncome)
+                          : a.runningBalance;
+                      final balColor = isCreditCard
+                          ? (displayBal < 0
+                              ? colors.expense
+                              : context.colorScheme.onSurface)
+                          : (displayBal >= 0 ? colors.income : colors.expense);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
@@ -1141,22 +1152,39 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                               size: 18,
                               color: context.colorScheme.onSecondaryContainer),
                         ),
-                        title: Text(a.method.label,
+                        title: Text(a.displayName,
                             style: context.textTheme.bodyMedium
                                 ?.copyWith(fontWeight: FontWeight.w500)),
-                        subtitle: Text(
-                          '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
-                          '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
-                          style: context.textTheme.bodySmall?.copyWith(
-                              color: context.colorScheme.onSurfaceVariant),
-                        ),
-                        trailing: Text(
-                          CurrencyFormatter.format(bal),
-                          style: context.textTheme.bodyMedium?.copyWith(
-                            color: balColor,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'RobotoMono',
-                          ),
+                        subtitle: isCreditCard && a.creditLimit > 0
+                            ? Text(
+                                'Limit: ${CurrencyFormatter.formatCompact(a.creditLimit)}  •  '
+                                'Available: ${CurrencyFormatter.formatCompact(a.availableCredit)}',
+                                style: context.textTheme.bodySmall?.copyWith(
+                                    color: context.colorScheme.onSurfaceVariant),
+                              )
+                            : Text(
+                                '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
+                                '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
+                                style: context.textTheme.bodySmall?.copyWith(
+                                    color: context.colorScheme.onSurfaceVariant),
+                              ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              isCreditCard
+                                  ? (displayBal < 0
+                                      ? '-${CurrencyFormatter.format(displayBal.abs())} owed'
+                                      : CurrencyFormatter.format(displayBal))
+                                  : CurrencyFormatter.format(displayBal),
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                color: balColor,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'RobotoMono',
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }),

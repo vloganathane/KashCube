@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/account.dart';
 import '../../data/models/transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
+import 'account_provider.dart';
 import 'settings_provider.dart';
 import 'transaction_provider.dart';
 
@@ -115,13 +117,19 @@ final todayCashflowProvider = FutureProvider<TodayCashflow>((ref) async {
 // Account-based balance (Model C)
 // ---------------------------------------------------------------------------
 
-/// Per-payment-method running balance.
+/// Per-account running balance.
+///
+/// Either backed by a named [Account] from the repository (Option B) or by the
+/// legacy per-[PaymentMethod] settings keys (Option A fallback).
 class AccountBalance {
   const AccountBalance({
     required this.method,
     required this.openingBalance,
     required this.allTimeIncome,
     required this.allTimeExpense,
+    this.creditLimit = 0.0,
+    this.accountName,
+    this.accountId,
   });
 
   final PaymentMethod method;
@@ -129,37 +137,194 @@ class AccountBalance {
   final double allTimeIncome;
   final double allTimeExpense;
 
-  /// opening + all-time inflows − outflows.
+  /// Total approved credit limit (credit card accounts only).
+  final double creditLimit;
+
+  /// Named account label. When non-null, used instead of [method.label].
+  final String? accountName;
+
+  /// Linked [Account.id] if backed by a named account.
+  final int? accountId;
+
+  String get displayName => accountName ?? method.label;
+
+  /// Bank/wallet/cash: opening + net tx. Credit card: opening outstanding + purchases.
   double get runningBalance => openingBalance + allTimeIncome - allTimeExpense;
 
-  /// True when this account has any activity or a non-zero opening balance.
+  /// Available credit remaining (credit cards only).
+  double get availableCredit =>
+      creditLimit > 0 ? (creditLimit - openingBalance - allTimeExpense + allTimeIncome) : 0;
+
   bool get hasActivity =>
-      openingBalance != 0 || allTimeIncome != 0 || allTimeExpense != 0;
+      openingBalance != 0 || allTimeIncome != 0 || allTimeExpense != 0 || creditLimit != 0;
 }
 
-/// Provider for per-payment-method account balances.
-/// Reads opening balances from the settings table and combines with all-time
-/// transaction data grouped by [payment_method].
-final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async {
-  final repo = ref.watch(transactionRepositoryProvider);
-  final settings = ref.watch(settingsRepositoryProvider);
+// "Bank" payment rails — all draw from savings/current accounts.
+const _kBankRails = [
+  PaymentMethod.upi,
+  PaymentMethod.debitCard,
+  PaymentMethod.netBanking,
+  PaymentMethod.cheque,
+];
 
-  final netsByMethod = await repo.getAllTimeByPaymentMethod();
+/// Provider for per-account balances.
+///
+/// **Option B** (preferred): reads named accounts from [AccountRepository].
+/// Each account type group maps to the appropriate [PaymentMethod] rails.
+///
+/// **Fallback** (Option A / legacy): if no accounts exist in the repo yet,
+/// reads `opening_balance_*` from the settings table, preserving data for
+/// users who set them before the named-account system was introduced.
+final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async {
+  final acctRepo   = ref.watch(accountRepositoryProvider);
+  final txnRepo    = ref.watch(transactionRepositoryProvider);
+  final settings   = ref.watch(settingsRepositoryProvider);
+
+  final accounts      = await acctRepo.getAll(activeOnly: true);
+  final netsByMethod  = await txnRepo.getAllTimeByPaymentMethod();
+
+  ({double income, double expense}) netFor(PaymentMethod m) =>
+      netsByMethod[m.dbValue] ?? (income: 0.0, expense: 0.0);
+
+  // Partition accounts by role.
+  final bankAccts = accounts.where((a) =>
+      a.accountType == AccountType.savings ||
+      a.accountType == AccountType.current).toList();
+  final walletAccts = accounts.where((a) =>
+      a.accountType == AccountType.upiWallet ||
+      a.accountType == AccountType.paymentWallet).toList();
+  final ccAccts = accounts.where((a) =>
+      a.accountType == AccountType.creditCard).toList();
+  final cashAccts = accounts.where((a) =>
+      a.accountType == AccountType.cash).toList();
 
   final balances = <AccountBalance>[];
-  for (final method in PaymentMethod.values) {
-    final openingStr =
-        await settings.get('opening_balance_${method.dbValue}');
-    final opening = double.tryParse(openingStr ?? '') ?? 0.0;
-    final net = netsByMethod[method.dbValue] ??
-        (income: 0.0, expense: 0.0);
+
+  // ── Bank accounts (savings + current) ─────────────────────────────────
+  if (bankAccts.isNotEmpty) {
+    final opening =
+        bankAccts.fold<double>(0, (s, a) => s + (a.currentBalance ?? 0));
+    double income = 0, expense = 0;
+    for (final rail in _kBankRails) {
+      final n = netFor(rail);
+      income += n.income;
+      expense += n.expense;
+    }
     balances.add(AccountBalance(
-      method: method,
+      method: PaymentMethod.upi,
+      openingBalance: opening,
+      allTimeIncome: income,
+      allTimeExpense: expense,
+      accountName:
+          bankAccts.length == 1 ? bankAccts.first.accountName : 'Bank Accounts',
+      accountId: bankAccts.length == 1 ? bankAccts.first.id : null,
+    ));
+  } else {
+    // Legacy fallback: individual rail settings keys.
+    for (final m in _kBankRails) {
+      final opening = double.tryParse(
+              await settings.get('opening_balance_${m.dbValue}') ?? '') ??
+          0.0;
+      final net = netFor(m);
+      if (opening != 0 || net.income != 0 || net.expense != 0) {
+        balances.add(AccountBalance(
+          method: m,
+          openingBalance: opening,
+          allTimeIncome: net.income,
+          allTimeExpense: net.expense,
+        ));
+      }
+    }
+  }
+
+  // ── Wallet accounts ────────────────────────────────────────────────────
+  if (walletAccts.isNotEmpty) {
+    final opening =
+        walletAccts.fold<double>(0, (s, a) => s + (a.currentBalance ?? 0));
+    final net = netFor(PaymentMethod.wallet);
+    balances.add(AccountBalance(
+      method: PaymentMethod.wallet,
+      openingBalance: opening,
+      allTimeIncome: net.income,
+      allTimeExpense: net.expense,
+      accountName: walletAccts.length == 1 ? walletAccts.first.accountName : null,
+      accountId: walletAccts.length == 1 ? walletAccts.first.id : null,
+    ));
+  } else {
+    final opening = double.tryParse(
+            await settings.get('opening_balance_wallet') ?? '') ??
+        0.0;
+    final net = netFor(PaymentMethod.wallet);
+    if (opening != 0 || net.income != 0 || net.expense != 0) {
+      balances.add(AccountBalance(
+        method: PaymentMethod.wallet,
+        openingBalance: opening,
+        allTimeIncome: net.income,
+        allTimeExpense: net.expense,
+      ));
+    }
+  }
+
+  // ── Credit card accounts ───────────────────────────────────────────────
+  if (ccAccts.isNotEmpty) {
+    final outstanding =
+        ccAccts.fold<double>(0, (s, a) => s + (a.currentBalance ?? 0));
+    final limit = ccAccts.fold<double>(0, (s, a) => s + (a.creditLimit ?? 0));
+    final net = netFor(PaymentMethod.creditCard);
+    balances.add(AccountBalance(
+      method: PaymentMethod.creditCard,
+      openingBalance: outstanding,
+      allTimeIncome: net.income,
+      allTimeExpense: net.expense,
+      creditLimit: limit,
+      accountName: ccAccts.length == 1 ? ccAccts.first.accountName : null,
+      accountId: ccAccts.length == 1 ? ccAccts.first.id : null,
+    ));
+  } else {
+    final outstanding = double.tryParse(
+            await settings.get('opening_balance_creditCard') ?? '') ??
+        0.0;
+    final limit = double.tryParse(
+            await settings.get('opening_balance_creditCard_limit') ?? '') ??
+        0.0;
+    final net = netFor(PaymentMethod.creditCard);
+    if (outstanding != 0 || net.income != 0 || net.expense != 0 || limit != 0) {
+      balances.add(AccountBalance(
+        method: PaymentMethod.creditCard,
+        openingBalance: outstanding,
+        allTimeIncome: net.income,
+        allTimeExpense: net.expense,
+        creditLimit: limit,
+      ));
+    }
+  }
+
+  // ── Cash accounts ──────────────────────────────────────────────────────
+  if (cashAccts.isNotEmpty) {
+    final opening =
+        cashAccts.fold<double>(0, (s, a) => s + (a.currentBalance ?? 0));
+    final net = netFor(PaymentMethod.cash);
+    balances.add(AccountBalance(
+      method: PaymentMethod.cash,
       openingBalance: opening,
       allTimeIncome: net.income,
       allTimeExpense: net.expense,
     ));
+  } else {
+    final opening = double.tryParse(
+            await settings.get('opening_balance_cash') ?? '') ??
+        0.0;
+    final net = netFor(PaymentMethod.cash);
+    if (opening != 0 || net.income != 0 || net.expense != 0) {
+      balances.add(AccountBalance(
+        method: PaymentMethod.cash,
+        openingBalance: opening,
+        allTimeIncome: net.income,
+        allTimeExpense: net.expense,
+      ));
+    }
   }
+
   return balances;
 });
 

@@ -10,7 +10,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'kash_cube.db';
-  static const int dbVersion = 76;
+  static const int dbVersion = 77;
 
   // P2P LAN sync
   /// Fixed port for the on-device HTTP server (IANA private range 49152-65535).

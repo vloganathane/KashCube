@@ -31,6 +31,27 @@ class AccountRepositoryImpl implements AccountRepository {
   }
 
   @override
+  Future<List<Account>> getByType(
+    AccountType type, {
+    bool activeOnly = true,
+  }) async {
+    final db = await _db;
+    final where = [
+      'account_type = ?',
+      'deleted_at IS NULL',
+      _ctx,
+      if (activeOnly) 'is_active = 1',
+    ].join(' AND ');
+    final rows = await db.query(
+      'accounts',
+      where: where,
+      whereArgs: [type.dbValue],
+      orderBy: 'is_primary DESC, account_name ASC',
+    );
+    return rows.map((r) => Account.fromMap(Map<String, dynamic>.from(r))).toList();
+  }
+
+  @override
   Future<Account?> getById(int id) async {
     final db = await _db;
     final rows = await db.query('accounts', where: 'id = ?', whereArgs: [id]);

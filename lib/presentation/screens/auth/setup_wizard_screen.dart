@@ -142,7 +142,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
     // Skip business page when not needed.
     int next = _currentPage + 1;
     if (next == 2 && !_hasBizStep) next = 3;
-    if (next >= _totalPages + ((!_hasBizStep) ? 0 : 0)) {
+    if (next > 3) {
       // Handled via _finish.
       return;
     }

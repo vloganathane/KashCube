@@ -8,7 +8,11 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/credit.dart';
 import '../../providers/context_provider.dart';
 import '../../providers/credit_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../providers/tutorial_flow_provider.dart';
 import '../../widgets/party_picker_field.dart';
+import '../../../core/utils/tutorial_mixin.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 // ---------------------------------------------------------------------------
 // Filter enum
@@ -41,15 +45,210 @@ class CreditsScreen extends ConsumerStatefulWidget {
   ConsumerState<CreditsScreen> createState() => _CreditsScreenState();
 }
 
-class _CreditsScreenState extends ConsumerState<CreditsScreen> {
+class _CreditsScreenState extends ConsumerState<CreditsScreen>
+    with TutorialMixin<CreditsScreen> {
+  // Keys for tutorial spotlights
+  final _fabKey        = GlobalKey();
+  final _filterKey     = GlobalKey();
+  final _newestCardKey = GlobalKey();
+
   _CreditsFilter _filter = _CreditsFilter.all;
+
+  @override
+  String get tutorialKey => SettingsKeys.tutorialCreditsDone;
+
+  @override
+  List<TargetFocus> buildTargets() => [
+        TargetFocus(
+          identify: 'credit_fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Track who owes you',
+                message:
+                    'Tap + to record money you lent or borrowed\n'
+                    '\u2014 no paperwork, just a quick entry.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'credit_filter',
+          keyTarget: _filterKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Filter by direction',
+                message:
+                    '"I Lent" shows what others owe you.\n'
+                    '"I Owe" shows what you need to pay back.',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+  @override
+  List<TutorialMenuItem> get tutorialMenuItems => [
+        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+        TutorialMenuItem(
+          label: 'How to record a due',
+          onTap: _replayCreditFlow,
+        ),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    maybeShowTutorial();
+    _maybeStartFlow();
+  }
+
+  Future<void> _maybeStartFlow() async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (await settings.get(SettingsKeys.tutorialCreditFlowDone) != 'true') {
+      if (!mounted) return;
+      ref.read(tutorialFlowProvider.notifier).abandon();
+      ref.read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newCreditFab);
+    }
+  }
+
+  void _replayCreditFlow() {
+    ref.read(settingsRepositoryProvider)
+        .set(SettingsKeys.tutorialCreditFlowDone, 'false');
+    ref.read(tutorialFlowProvider.notifier).abandon();
+    ref.read(tutorialFlowProvider.notifier)
+        .advance(TutorialFlowStep.newCreditFab);
+  }
+
+  void _showFabFlowMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_credit_fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: "Let's record your first due",
+                message: 'Tap the + button to get started. '
+                    "We'll guide you through the form step by step.",
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () {},
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialCreditFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  void _showResultMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'newest_credit_card',
+          keyTarget: _newestCardKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Due recorded!',
+                message:
+                    'Tap to view details, record a payment,\n'
+                    'or swipe to delete.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'GOT IT',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
+      pulseEnable: false,
+      onFinish: () {
+        ref.read(tutorialFlowProvider.notifier).finish();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialCreditFlowDone, 'true');
+      },
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).finish();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialCreditFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
+  }
 
   @override
   Widget build(BuildContext context) {
     final creditsAsync = ref.watch(activeCreditsProvider);
 
+    // Listen for flow steps this screen owns.
+    ref.listen<TutorialFlowStep>(tutorialFlowProvider, (_, step) {
+      if (step == TutorialFlowStep.newCreditFab) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _showFabFlowMark();
+        });
+      }
+      if (step == TutorialFlowStep.newCreditResult) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _newestCardKey.currentContext == null) return;
+          _showResultMark();
+        });
+      }
+    });
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Dues')),
+      appBar: AppBar(
+        title: const Text('Dues'),
+        actions: [buildTutorialAppBarAction()],
+      ),
       body: Column(
         children: [
           // ── Summary strip ─────────────────────────────────────────────
@@ -57,6 +256,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
 
           // ── Filter chips ──────────────────────────────────────────────
           SingleChildScrollView(
+            key: _filterKey,
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.base,
@@ -106,6 +306,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
                   separatorBuilder: (_, _) =>
                       const Divider(height: 1, indent: 72),
                   itemBuilder: (_, i) => _CreditTile(
+                    key: i == 0 ? _newestCardKey : null,
                     credit: filtered[i],
                     onRecordPayment: () => _recordPayment(context, filtered[i]),
                     onEdit: () => _openEdit(context, filtered[i]),
@@ -118,6 +319,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        key: _fabKey,
         heroTag: null,
         onPressed: () => _openAdd(context),
         icon: const Icon(Icons.add),
@@ -144,6 +346,12 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
       };
 
   Future<void> _openAdd(BuildContext context) async {
+    // Advance flow BEFORE push so AddCreditScreen.initState sees newCreditAmount.
+    final step = ref.read(tutorialFlowProvider);
+    if (step == TutorialFlowStep.newCreditFab) {
+      ref.read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newCreditAmount);
+    }
     final added = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const AddCreditScreen()),
     );
@@ -338,6 +546,7 @@ class _Stat extends StatelessWidget {
 
 class _CreditTile extends StatelessWidget {
   const _CreditTile({
+    super.key,
     required this.credit,
     required this.onRecordPayment,
     required this.onEdit,
@@ -541,6 +750,11 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
   final _phoneCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
+  // Keys used by the guided New Credit tutorial flow.
+  final _amountFieldKey = GlobalKey();
+  final _partyFieldKey  = GlobalKey();
+  final _saveButtonKey  = GlobalKey();
+
   CreditDirection _direction = CreditDirection.given;
   DateTime _creditDate = DateTime.now();
   DateTime? _dueDate;
@@ -565,6 +779,15 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
       _notesCtrl.text = c.notes ?? '';
       _selectedCustomerId = c.customerId;
     }
+    // If the New Credit tutorial flow is active, show the form guide
+    // after the first frame so all keys are mounted.
+    if (!_isEditing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final step = ref.read(tutorialFlowProvider);
+        if (step == TutorialFlowStep.newCreditAmount) _showFormFlowMark();
+      });
+    }
   }
 
   @override
@@ -576,11 +799,102 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
     super.dispose();
   }
 
+  void _showFormFlowMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'credit_amount',
+          keyTarget: _amountFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Enter the amount',
+                message: 'How much was lent or borrowed?\n'
+                    'Type the rupee amount here.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'credit_party',
+          keyTarget: _partyFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Who is involved?',
+                message: 'Enter the name of the person\n'
+                    'who owes you or whom you owe.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'credit_save',
+          keyTarget: _saveButtonKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Save your due',
+                message: "Tap to record the due.\n"
+                    "You can always edit or settle it later.",
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () {},
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialCreditFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
 
-    return Scaffold(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          final step = ref.read(tutorialFlowProvider);
+          if (step.isNewCreditFlow) {
+            ref.read(tutorialFlowProvider.notifier).abandon();
+            ref.read(settingsRepositoryProvider)
+                .set(SettingsKeys.tutorialCreditFlowDone, 'true');
+          }
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(_isEditing ? 'Edit Due' : 'New Due'),
       ),
@@ -589,6 +903,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
           child: FilledButton(
+            key: _saveButtonKey,
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(
@@ -703,6 +1018,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
 
             // ── Amount ───────────────────────────────────────────────────
             TextFormField(
+              key: _amountFieldKey,
               controller: _amountCtrl,
               decoration: const InputDecoration(
                 labelText: 'Amount *',
@@ -721,6 +1037,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
 
             // ── Party name ────────────────────────────────────────────────
             PartyPickerField(
+              key: _partyFieldKey,
               controller: _nameCtrl,
               labelText: _direction == CreditDirection.given
                   ? 'Borrower Name *'
@@ -815,6 +1132,7 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           ],
         ),
       ),
+      ), // PopScope
     );
   }
 
@@ -858,7 +1176,15 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
         );
         await ref.read(activeCreditsProvider.notifier).addCredit(credit);
       }
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        // Advance flow before pop so CreditsScreen's ref.listen fires.
+        final step = ref.read(tutorialFlowProvider);
+        if (!_isEditing && step.isNewCreditFlow) {
+          ref.read(tutorialFlowProvider.notifier)
+              .advance(TutorialFlowStep.newCreditResult);
+        }
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

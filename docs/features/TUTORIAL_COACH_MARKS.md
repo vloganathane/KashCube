@@ -1,6 +1,6 @@
 # Tutorial Coach Marks — Spec
 
-**Status:** Partially implemented — orientation tour ✅ · flow-following ⬜  
+**Status:** Partially implemented — orientation tour ✅ · flow-following ✅ (Transactions · Credits)  
 **Package:** [`tutorial_coach_mark`](https://pub.dev/packages/tutorial_coach_mark)  
 **Last updated:** March 2026
 
@@ -16,8 +16,11 @@
 | `TransactionsScreen` orientation tour (FAB · Search · Filter) | ✅ |
 | `?` replay button on TransactionsScreen AppBar | ✅ |
 | `heroTag` collision fix across all FABs | ✅ |
-| Flow-following orchestrator | ⬜ |
-| Per-feature flows (Transactions, Credits, Invoices…) | ⬜ |
+| Flow-following orchestrator | ✅ `TutorialFlowNotifier` + `TutorialFlowStep` |
+| Add Transaction guided flow | ✅ FAB → form → result card |
+| New Credit guided flow | ✅ FAB → form → result card |
+| Per-feature flows (Invoices, Bookings, Catalog…) | ⬜ |
+| Orientation tours for Home, Credits, Reports | ⬜ |
 | "Reset all tutorials" in Settings → About | ⬜ |
 
 ---
@@ -190,18 +193,18 @@ enum TutorialFlowStep {
   none,
 
   // ── Add Transaction flow ──────────────────────────────────────────────
-  addTx_fab,       // TransactionsScreen  → spotlight FAB
-  addTx_amount,    // AddEditTransaction  → spotlight Amount field
-  addTx_category,  // AddEditTransaction  → spotlight Category picker
-  addTx_save,      // AddEditTransaction  → spotlight Add Transaction button
-  addTx_result,    // TransactionsScreen  → spotlight the newly created card
+  addTxFab,       // TransactionsScreen  → spotlight FAB
+  addTxAmount,    // AddEditTransaction  → spotlight Amount field
+  addTxCategory,  // AddEditTransaction  → spotlight Category picker
+  addTxSave,      // AddEditTransaction  → spotlight Add Transaction button
+  addTxResult,    // TransactionsScreen  → spotlight the newly created card
 
   // ── New Credit flow ───────────────────────────────────────────────────
-  newCredit_fab,
-  newCredit_party,
-  newCredit_amount,
-  newCredit_save,
-  newCredit_result,
+  newCreditFab,
+  newCreditParty,
+  newCreditAmount,
+  newCreditSave,
+  newCreditResult,
 }
 
 class TutorialFlowNotifier extends StateNotifier<TutorialFlowStep> {
@@ -231,13 +234,13 @@ void initState() {
 // Separately, listen for the flow orchestrator asking this screen to act
 // (called from build via ref.listen)
 ref.listen(tutorialFlowProvider, (_, step) {
-  if (step == TutorialFlowStep.addTx_fab) {
+  if (step == TutorialFlowStep.addTxFab) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _showFlowMark_addTxFab(); // single TargetFocus on the FAB
     });
   }
-  if (step == TutorialFlowStep.addTx_result) {
+  if (step == TutorialFlowStep.addTxResult) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _newestCardKey.currentContext == null) return;
       _showFlowMark_addTxResult();
@@ -247,12 +250,12 @@ ref.listen(tutorialFlowProvider, (_, step) {
 ```
 
 ```dart
-// AddEditTransactionScreen — shows steps addTx_amount → addTx_category → addTx_save
+// AddEditTransactionScreen — shows steps addTxAmount → addTxCategory → addTxSave
 @override
 void initState() {
   super.initState();
   final step = ref.read(tutorialFlowProvider);
-  if (step == TutorialFlowStep.addTx_amount) {
+  if (step == TutorialFlowStep.addTxAmount) {
     WidgetsBinding.instance.addPostFrameCallback((_) => _showFormFlowMark());
   }
 }
@@ -264,22 +267,22 @@ void initState() {
 TransactionsScreen                     AddEditTransactionScreen
        │
   [initState or ?-replay]
-  orchestrator.advance(addTx_fab)
+  orchestrator.advance(addTxFab)
        │
   ── spotlight FAB ──────────────────────────────────
   user taps FAB → route push
-  advance(addTx_amount)  ← set BEFORE Navigator.push
+  advance(addTxAmount)  ← set BEFORE Navigator.push
        │                                    │
-                                  initState sees addTx_amount
+                                  initState sees addTxAmount
                                   ── spotlight Amount field ──
-                                  user taps → advance(addTx_category)
+                                  user taps → advance(addTxCategory)
                                   ── spotlight Category ──────
-                                  user taps → advance(addTx_save)
+                                  user taps → advance(addTxSave)
                                   ── spotlight Add button ────
-                                  user saves → advance(addTx_result)
+                                  user saves → advance(addTxResult)
                                   Navigator.pop()
        │
-  route returns, ref.listen fires addTx_result
+  route returns, ref.listen fires addTxResult
   ── spotlight newly created card ──
   finish()   →   mark tutorial_tx_flow_done = 'true'
 ```
@@ -292,7 +295,7 @@ PopScope(
   onPopInvokedWithResult: (didPop, _) {
     if (didPop) {
       final step = ref.read(tutorialFlowProvider);
-      if (step.name.startsWith('addTx_')) {
+      if (step.name.startsWith('addTx')) {
         ref.read(tutorialFlowProvider.notifier).abandon();
         ref.read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialTxFlowDone, 'true');
@@ -311,11 +314,68 @@ The flow spotlights the main FAB (prompting tap), then lets the SpeedDial open n
 // In SpeedDialFab._openTransaction
 void _openTransaction() {
   _toggle(); // close dial
-  if (ref.read(tutorialFlowProvider) == TutorialFlowStep.addTx_fab) {
-    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTx_amount);
+  if (ref.read(tutorialFlowProvider) == TutorialFlowStep.addTxFab) {
+    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTxAmount);
   }
   // ... push AddEditTransactionScreen
 }
+```
+
+---
+
+### Multi-Flow Screen Participation
+
+A screen can participate in multiple flows simultaneously — both as an **entry point** for several different flows, and as a **mid-point** in one flow while being an entry for another. The key constraints are:
+
+1. **Only one flow active at a time.** `TutorialFlowNotifier` is a single `StateNotifier<TutorialFlowStep>`. Starting a new flow implicitly replaces the current one.
+2. **Priority ordering for auto-start.** When `initState` checks whether to start a flow automatically, check flows in descending priority order and start the first uncompleted one:
+
+```dart
+// TransactionsScreen initState — priority ordering
+@override
+void initState() {
+  super.initState();         // Layer 1 orientation tour
+  maybeShowTutorial();
+  _maybeStartFlow();         // Layer 2 flow auto-start
+}
+
+Future<void> _maybeStartFlow() async {
+  final settings = ref.read(settingsRepositoryProvider);
+  // Priority 1: Add Transaction flow (most important first action)
+  if (await settings.get(SettingsKeys.tutorialTxFlowDone) != 'true') {
+    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTxFab);
+    return;
+  }
+  // Priority 2: Import SMS flow (hypothetical future flow)
+  // if (await settings.get(SettingsKeys.tutorialImportSmsDone) != 'true') { ... }
+}
+```
+
+3. **`?` menu as the selection mechanism.** When a screen has multiple flows the user can *manually* replay, the `?` dropdown (see Replay section below) is the natural UI for letting the user pick which guide to run. Each menu item maps to a specific flow start or orientation replay.
+
+4. **Same form, multiple entry flows.** If a form screen (e.g. `AddEditTransactionScreen`) is reachable from two different flows, it just reads `ref.read(tutorialFlowProvider)` and dispatches on the *active step* — it doesn't care which entry path triggered it:
+
+```dart
+// AddEditTransactionScreen initState — flow-agnostic dispatch
+final step = ref.read(tutorialFlowProvider);
+if (step == TutorialFlowStep.addTxAmount) _showAddTxFormMark();
+// future: else if (step == TutorialFlowStep.someOtherFlow_amount) ...
+```
+
+5. **Sealed classes for scale.** A flat `enum` works cleanly for ≤ 6 flows. Beyond that, migrate to sealed classes to avoid an ever-growing enum and enable exhaustive matching per screen:
+
+```dart
+// Scaled alternative — each flow owns its own step type
+sealed class TutorialFlowStep {}
+final class TxFlowStep extends TutorialFlowStep { final int index; ... }
+final class CreditFlowStep extends TutorialFlowStep { final int index; ... }
+final class InvoiceFlowStep extends TutorialFlowStep { final int index; ... }
+
+// Screen check becomes readable and compiler-enforced
+ref.listen(tutorialFlowProvider, (_, step) {
+  if (step is TxFlowStep && step.index == 0) _showFabMark();
+  if (step is TxFlowStep && step.index == 4) _showResultMark();
+});
 ```
 
 ---
@@ -338,31 +398,92 @@ static const tutorialCreditFlowDone = 'tutorial_credit_flow_done';
 
 ---
 
-## Replay — `?` Button
+## Replay — `?` AppBar Action
 
-Every screen that has a tutorial gets a `?` `IconButton` in the AppBar.
+Every screen that has at least one tutorial gets a `?` action in the AppBar. The action renders **adaptively** based on how many guide items the screen exposes:
 
-- For **Layer 1 tours**: calls `replayTutorial()` from `TutorialMixin` — no flag reset needed.
-- For **Layer 2 flows**: resets the flow done-flag and re-advances the orchestrator to the first step.
+| Items | Rendered as | UX |
+|-------|-------------|----|
+| 1 | `IconButton` | single tap, no extra step |
+| 2+ | `PopupMenuButton` | tap opens dropdown list of guides |
+
+This means a screen with only an orientation tour keeps the same single-tap UX as today. A screen with both an orientation tour *and* one or more flows automatically gets a labeled dropdown — no extra code needed at the screen level.
+
+### `TutorialMenuItem` + `buildTutorialAppBarAction()`
+
+Add to `TutorialMixin`:
 
 ```dart
-// Layer 1 — already wired in TransactionsScreen
-IconButton(
-  icon: const Icon(Icons.help_outline_rounded),
-  tooltip: 'Replay guide',
-  onPressed: replayTutorial,
-)
+// lib/core/utils/tutorial_mixin.dart
 
-// Layer 2 — flow replay (to be wired when flow is implemented)
-IconButton(
-  icon: const Icon(Icons.help_outline_rounded),
-  tooltip: 'Replay guide',
-  onPressed: () {
-    ref.read(settingsRepositoryProvider).set(SettingsKeys.tutorialTxFlowDone, 'false');
-    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTx_fab);
-  },
+class TutorialMenuItem {
+  final String label;
+  final VoidCallback onTap;
+  const TutorialMenuItem({required this.label, required this.onTap});
+}
+
+mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  // ... existing API ...
+
+  /// Override to expose more items. Default: orientation tour only.
+  List<TutorialMenuItem> get tutorialMenuItems => [
+    TutorialMenuItem(label: 'Replay orientation tour', onTap: replayTutorial),
+  ];
+
+  /// Drop into AppBar.actions — renders as IconButton or PopupMenuButton.
+  Widget buildTutorialAppBarAction() {
+    final items = tutorialMenuItems;
+    if (items.length == 1) {
+      return IconButton(
+        icon: const Icon(Icons.help_outline_rounded),
+        tooltip: items.first.label,
+        onPressed: items.first.onTap,
+      );
+    }
+    return PopupMenuButton<TutorialMenuItem>(
+      icon: const Icon(Icons.help_outline_rounded),
+      tooltip: 'Tutorial guides',
+      onSelected: (item) => item.onTap(),
+      itemBuilder: (_) => items
+          .map((item) => PopupMenuItem(value: item, child: Text(item.label)))
+          .toList(),
+    );
+  }
+}
+```
+
+### Wiring on a screen with multiple guides
+
+```dart
+// TransactionsScreen — once flow is wired
+@override
+List<TutorialMenuItem> get tutorialMenuItems => [
+  TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+  TutorialMenuItem(
+    label: 'How to add a transaction',
+    onTap: () {
+      ref.read(settingsRepositoryProvider)
+          .set(SettingsKeys.tutorialTxFlowDone, 'false');
+      ref.read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.addTxFab);
+    },
+  ),
+];
+
+// AppBar — replace the current hardcoded IconButton
+appBar: AppBar(
+  actions: [
+    buildTutorialAppBarAction(), // ← adaptive: button or dropdown
+    ...
+  ],
 )
 ```
+
+### Screens that sit mid-flow only (form screens)
+
+Form screens that are reachable *as part of a flow* but have no standalone guide (e.g. `AddEditTransactionScreen`) do **not** need a `?` appbar action. The entry screen's `?` menu resets and restarts the full flow from step 1.
+
+> **Rule:** The `?` action lives on **entry screens** (where the flow can be started/replayed) and **result screens** (where the post-creation tour runs). Intermediate form screens omit it.
 
 ---
 
@@ -410,21 +531,74 @@ Broken key targets produce no error — just a mis-positioned or invisible spotl
 
 ---
 
+## Screen Audit
+
+### App navigation structure
+
+```
+AppShell (5 tabs, per-tab Navigator)
+├── Tab 0: Home           → HomeScreen
+├── Tab 1: Transactions   → TransactionsHubScreen → TransactionsScreen ✅
+├── Tab 2: Business       → BusinessHubScreen
+│                              ├── push → CreditsScreen + AddCreditScreen ✅
+│                              ├── push → InvoicesScreen → QuoteBuilderScreen
+│                              ├── push → BookingsScreen → CreateBookingScreen
+│                              ├── push → LoansScreen
+│                              ├── push → ItemCatalogScreen
+│                              └── push → StaffListScreen, InventoryScreen, …
+├── Tab 3: Contacts       → PartiesScreen
+└── Tab 4: Settings       → SettingsScreen
+```
+
+### Tier 1 — Core personal-mode screens (highest impact)
+
+| Screen | FAB action | Flow | Priority |
+|--------|-----------|------|----------|
+| `TransactionsScreen` | Add Transaction → `AddEditTransactionScreen` | `addTxFab → addTxAmount → … → addTxResult` | ✅ Done |
+| `CreditsScreen` | New Due → `AddCreditScreen` | `newCreditFab → newCreditAmount → … → newCreditResult` | ✅ Done |
+
+### Tier 2 — Business-mode only (gate with `businessModeEnabled`)
+
+| Screen | FAB action | Flow steps | Notes |
+|--------|-----------|------------|-------|
+| `InvoicesScreen` | New Invoice (`SpeedDialFab`) | `newInvoiceFab → … → newInvoiceResult` | Spotlight main FAB only (SpeedDial) |
+| `BookingsScreen` | New Booking → `CreateBookingScreen` | `newBookingFab → … → newBookingResult` | Personal + Business modes |
+| `ItemCatalogScreen` | Add Item | `newItemFab → … → newItemResult` | Guard `!widget.pickMode` |
+
+### Tier 3 — Orientation tour only (no Phase 1 flow)
+
+| Screen | Tour targets | Deferred condition |
+|--------|-------------|--------------------|
+| `HomeScreen` | Balance card · Search · Tune | First app open |
+| `ReportsScreen` | Period picker · Export button | After ≥1 transaction |
+| `PartiesScreen` | FAB (Add Contact) · Filter chips | First open |
+
+### Tier 4 — Skip for now (Settings-level / niche)
+
+`LoansScreen`, `BudgetScreen`, `RecurringTransactionsScreen`, `StaffListScreen`, `InventoryScreen`, `PurchaseBillsScreen` — tutorial ROI low; users discover organically.
+
+---
+
 ## Implementation Order
 
 ### Done ✅
 1. `tutorial_coach_mark` added to `pubspec.yaml`
-2. `TutorialMixin` created at `lib/core/utils/tutorial_mixin.dart`
+2. `TutorialMixin` created at `lib/core/utils/tutorial_mixin.dart` (includes `TutorialMenuItem` + `buildTutorialAppBarAction()`)
 3. Tutorial keys added to `SettingsKeys`
 4. `TransactionsScreen` orientation tour (FAB · Search · Filter) + `?` replay button
 5. `heroTag` collision fix across all FABs (per-tab navigator architecture)
+6. `TutorialFlowNotifier` + `TutorialFlowStep` enum at `lib/presentation/providers/tutorial_flow_provider.dart`
+7. Add Transaction flow wired: `TransactionsScreen` → `AddEditTransactionScreen` (3-step) → `TransactionsScreen` (result)
+8. `TransactionsScreen` `?` upgraded to adaptive `PopupMenuButton` (orientation tour + add-tx flow)
+9. New Credit flow wired: `CreditsScreen` → `AddCreditScreen` (3-step: amount · party · save) → `CreditsScreen` (result)
+10. `CreditsScreen` orientation tour (FAB · Filter chips) + adaptive `?` dropdown
 
-### Next — Flow-following orchestrator ⬜
-6. Create `TutorialFlowNotifier` + `TutorialFlowStep` enum at `lib/presentation/providers/tutorial_flow_provider.dart`
-7. Wire Add Transaction flow: `TransactionsScreen` (addTx_fab) → `AddEditTransactionScreen` (addTx_amount · addTx_category · addTx_save) → back to `TransactionsScreen` (addTx_result)
-8. Wire New Credit flow in `CreditsScreen` + credit form
+### Next — Business flows ⬜
+11. `InvoicesScreen` add-invoice flow (business-mode gate)
+12. `BookingsScreen` add-booking flow
+13. `ItemCatalogScreen` add-item flow
 
 ### Later ⬜
-9. Orientation tours for Home, Credits, Reports screens
-10. Flow-following for Invoices, Bookings, Item Catalog
-11. Add "Reset all tutorials" option under **Settings → About**
+14. Orientation tours for Home, Reports, Contacts screens
+15. Override `tutorialMenuItems` on each screen as its flows are wired
+16. Add "Reset all tutorials" option under **Settings → About**

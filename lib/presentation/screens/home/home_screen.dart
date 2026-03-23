@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/tutorial_mixin.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/category_helper.dart';
@@ -47,11 +49,82 @@ import '../settings/fy_close_wizard_screen.dart';
 import 'customize_home_screen.dart';
 
 /// Home screen with dashboard summary and recent transactions.
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with TutorialMixin<HomeScreen> {
+  // Keys for tutorial spotlights
+  final _balanceDeckKey = GlobalKey();
+  final _searchKey      = GlobalKey();
+  final _tuneKey        = GlobalKey();
+
+  @override
+  String get tutorialKey => SettingsKeys.tutorialHomeDone;
+
+  @override
+  List<TargetFocus> buildTargets() => [
+    TargetFocus(
+      identify: 'balance_card',
+      keyTarget: _balanceDeckKey,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          child: tutorialContentCard(
+            title: 'Your financial snapshot',
+            message: 'Swipe the balance card to see your income, expenses, and net balance at a glance.',
+          ),
+        ),
+      ],
+    ),
+    TargetFocus(
+      identify: 'search',
+      keyTarget: _searchKey,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          child: tutorialContentCard(
+            title: 'Search everything',
+            message: 'Find any transaction, party, or invoice instantly by amount, name, or note.',
+          ),
+        ),
+      ],
+    ),
+    TargetFocus(
+      identify: 'tune',
+      keyTarget: _tuneKey,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          child: tutorialContentCard(
+            title: 'Customise your Home',
+            message: 'Show or hide sections, reorder widgets, and tailor the dashboard to what you care about most.',
+          ),
+        ),
+      ],
+    ),
+  ];
+
+  @override
+  List<TutorialMenuItem> get tutorialMenuItems => [
+    TutorialMenuItem(
+      label: 'Replay Home tour',
+      onTap: replayTutorial,
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    maybeShowTutorial();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final dashboardAsync   = ref.watch(dashboardSummaryProvider);
     final homeWidgetConfig = ref.watch(homeWidgetProvider);
 
@@ -88,7 +161,9 @@ class HomeScreen extends ConsumerWidget {
                 ],
               ),
               actions: [
+                buildTutorialAppBarAction(),
                 IconButton(
+                  key: _tuneKey,
                   icon: const Icon(Icons.tune_outlined),
                   tooltip: 'Customise Home',
                   onPressed: () => Navigator.of(context).push(
@@ -100,9 +175,10 @@ class HomeScreen extends ConsumerWidget {
                 IconButton(
                   icon: const Icon(Icons.qr_code_2_outlined),
                   tooltip: 'My QR Cards',
-                  onPressed: () => _showQuickShareSheet(context, ref),
+                  onPressed: () => _showQuickShareSheet(),
                 ),
                 IconButton(
+                  key: _searchKey,
                   icon: const Icon(Icons.search),
                   tooltip: 'Search',
                   onPressed: () {
@@ -125,7 +201,7 @@ class HomeScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.base),
               sliver: SliverList(
                 delegate: SliverChildListDelegate(
-                  _buildSectionWidgets(context, ref, dashboardAsync, homeWidgetConfig),
+                  _buildSectionWidgets(dashboardAsync, homeWidgetConfig),
                 ),
               ),
             ),
@@ -138,19 +214,20 @@ class HomeScreen extends ConsumerWidget {
   // ── Section builder ─────────────────────────────────────────────────────
 
   List<Widget> _buildSectionWidgets(
-    BuildContext context,
-    WidgetRef ref,
     AsyncValue<DashboardSummary> dashboardAsync,
     List<HomeWidgetConfig> config,
   ) {
     final children = <Widget>[
       // Balance card — always pinned at top, non-removable
-      dashboardAsync.when(
-        data:    (s) => _DashboardDeck(summary: s),
-        loading: ()  => const _DashboardCardsLoading(),
-        error:   (e, _) => Center(
-          child: Text('Error: $e',
-              style: TextStyle(color: context.colorScheme.error))),
+      KeyedSubtree(
+        key: _balanceDeckKey,
+        child: dashboardAsync.when(
+          data:    (s) => _DashboardDeck(summary: s),
+          loading: ()  => const _DashboardCardsLoading(),
+          error:   (e, _) => Center(
+            child: Text('Error: $e',
+                style: TextStyle(color: context.colorScheme.error))),
+        ),
       ),
       const SizedBox(height: AppSpacing.sm),
     ];
@@ -185,7 +262,7 @@ class HomeScreen extends ConsumerWidget {
     return children;
   }
 
-  void _showQuickShareSheet(BuildContext context, WidgetRef ref) {
+  void _showQuickShareSheet() {
     final showBusinesses = ref.read(businessModeProvider);
     showModalBottomSheet<void>(
       context: context,

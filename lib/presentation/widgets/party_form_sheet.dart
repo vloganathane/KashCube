@@ -699,7 +699,16 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
         }
       });
     } catch (_) {
-      // User cancelled or permission denied — silently ignore
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not open contacts on this device. '
+              'Type the name manually.',
+            ),
+          ),
+        );
+      }
     }
   }
 

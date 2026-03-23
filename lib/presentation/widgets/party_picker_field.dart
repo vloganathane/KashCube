@@ -386,19 +386,31 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                       subtitle: const Text(
                           'Opens your contacts app — only selected contact is read'),
                       onTap: () async {
-                        // Capture navigator before any async gap.
+                        // Capture navigator + messenger before any async gap.
                         final nav = Navigator.of(context);
+                        final messenger = ScaffoldMessenger.of(context);
                         final proceed = await requestContactsPickerRationale(
                           context,
                           settingsRepository:
                               ref.read(settingsRepositoryProvider),
                         );
                         if (!proceed || !mounted) return;
-                        final contact =
-                            await FlutterContacts.openExternalPick();
-                        if (contact == null || !mounted) return;
-                        final name = contact.displayName.trim();
-                        if (name.isNotEmpty) nav.pop((party: null, name: name));
+                        try {
+                          final contact =
+                              await FlutterContacts.openExternalPick();
+                          if (contact == null || !mounted) return;
+                          final name = contact.displayName.trim();
+                          if (name.isNotEmpty) nav.pop((party: null, name: name));
+                        } catch (_) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Could not open contacts on this device. '
+                                'Type the name manually.',
+                              ),
+                            ),
+                          );
+                        }
                       },
                     ),
 

@@ -25,6 +25,7 @@ class TemplateListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('PDF Templates')),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(

@@ -118,6 +118,7 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _openAdd(context),
         icon: const Icon(Icons.add),
         label: const Text('New Due'),

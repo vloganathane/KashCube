@@ -57,6 +57,7 @@ class _CategoryManagementScreenState
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _showAddDialog(context),
         icon: const Icon(Icons.add),
         label: const Text('Add category'),

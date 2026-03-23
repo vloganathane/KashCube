@@ -18,6 +18,7 @@ class AccountsManageScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Accounts')),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () => _showAddEditSheet(context, ref),
         child: const Icon(Icons.add),
       ),

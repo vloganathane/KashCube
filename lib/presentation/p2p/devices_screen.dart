@@ -155,6 +155,7 @@ class DevicesScreen extends ConsumerWidget {
 
       // ── FAB: open PairScreen ───────────────────────────────────────────
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute<void>(builder: (_) => const PairScreen()),

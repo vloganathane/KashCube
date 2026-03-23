@@ -1,0 +1,124 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+
+import '../../presentation/providers/settings_provider.dart';
+
+/// Mixin that adds tutorial coach mark support to a [ConsumerStatefulWidget].
+///
+/// Usage:
+/// ```dart
+/// class _MyScreenState extends ConsumerState<MyScreen>
+///     with TutorialMixin<MyScreen> {
+///
+///   @override
+///   String get tutorialKey => SettingsKeys.tutorialMyScreenDone;
+///
+///   @override
+///   List<TargetFocus> buildTargets() => [...];
+///
+///   @override
+///   void initState() {
+///     super.initState();
+///     maybeShowTutorial();
+///   }
+/// }
+/// ```
+///
+/// Add a replay `?` button to the AppBar by calling [replayTutorial]:
+/// ```dart
+/// IconButton(
+///   icon: const Icon(Icons.help_outline_rounded),
+///   tooltip: 'Replay guide',
+///   onPressed: replayTutorial,
+/// )
+/// ```
+mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
+  /// The settings key that stores the "tutorial seen" flag ('true'/'false').
+  String get tutorialKey;
+
+  /// Return the ordered list of [TargetFocus] steps for this screen's tour.
+  List<TargetFocus> buildTargets();
+
+  /// Show the tutorial if it hasn't been completed yet.
+  /// Safe to call from [initState] — defers to the first rendered frame.
+  void maybeShowTutorial() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final done =
+          await ref.read(settingsRepositoryProvider).get(tutorialKey) == 'true';
+      if (!mounted || done) return;
+      _showTutorial();
+    });
+  }
+
+  /// Replay the tutorial regardless of completion state.
+  /// Hook this to the `?` help button in the AppBar.
+  void replayTutorial() {
+    if (mounted) _showTutorial();
+  }
+
+  void _showTutorial() {
+    final targets = buildTargets();
+    if (targets.isEmpty) return;
+
+    TutorialCoachMark(
+      targets: targets,
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () => _markDone(),
+      onSkip: () {
+        _markDone();
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  Future<void> _markDone() async {
+    await ref.read(settingsRepositoryProvider).set(tutorialKey, 'true');
+  }
+}
+
+/// Helper to build a standard coach mark content card shown beside a target.
+///
+/// Returns a [Column] with a bold [title] and body [message] in white,
+/// matching KashCube's dark overlay style.
+Widget tutorialContentCard({
+  required String title,
+  required String message,
+}) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        message,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          height: 1.5,
+        ),
+      ),
+    ],
+  );
+}

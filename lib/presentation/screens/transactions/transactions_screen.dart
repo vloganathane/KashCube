@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/category_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/tutorial_mixin.dart';
 import '../../../data/models/transaction.dart';
 import '../../providers/context_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -47,7 +49,91 @@ class TransactionsScreen extends ConsumerStatefulWidget {
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
+class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
+    with TutorialMixin<TransactionsScreen> {
+  // Keys for tutorial spotlights
+  final _fabKey    = GlobalKey();
+  final _searchKey = GlobalKey();
+  final _filterKey = GlobalKey();
+
+  @override
+  String get tutorialKey => SettingsKeys.tutorialTransactionsDone;
+
+  @override
+  List<TargetFocus> buildTargets() => [
+        TargetFocus(
+          identify: 'fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              child: tutorialContentCard(
+                title: 'Add a transaction',
+                message:
+                    'Tap + to record income or expenses\n'
+                    'in seconds — cash, UPI, card, anything.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'search',
+          keyTarget: _searchKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              child: tutorialContentCard(
+                title: 'Search transactions',
+                message:
+                    'Find any transaction instantly by amount,\n'
+                    'party name, or category.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'filter',
+          keyTarget: _filterKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+              child: tutorialContentCard(
+                title: 'Filter & sort',
+                message:
+                    'Show only this week\'s expenses,\n'
+                    'or sort by amount — your call.',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+  @override
+  void initState() {
+    super.initState();
+    maybeShowTutorial();
+  }
+
   TransactionFilter _activeFilter = TransactionFilter.all;
   TransactionType? _typeFilter;
   String? _categoryFilter;
@@ -152,6 +238,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         title: const Text('Transactions'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Replay guide',
+            onPressed: replayTutorial,
+          ),
+          IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined),
             tooltip: 'Ledger',
             onPressed: () => Navigator.of(context).push(
@@ -159,6 +250,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
           IconButton(
+            key: _searchKey,
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
@@ -166,6 +258,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             ),
           ),
           Badge(
+            key: _filterKey,
             isLabelVisible: _hasAdvancedFilters,
             child: IconButton(
               icon: const Icon(Icons.tune),
@@ -251,6 +344,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        key: _fabKey,
+        heroTag: 'fab_transactions',
         onPressed: () async {
           final added = await Navigator.of(context).push<bool>(
             MaterialPageRoute(

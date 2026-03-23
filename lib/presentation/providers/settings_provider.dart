@@ -107,6 +107,12 @@ class SettingsKeys {
   // First-run setup wizard
   /// 'true' once the user has completed (or explicitly skipped) the setup wizard.
   static const setupWizardDone = 'setup_wizard_done';
+
+  // Tutorial coach marks — 'true' once user has seen (or skipped) each tour.
+  static const tutorialTransactionsDone = 'tutorial_transactions_done';
+  static const tutorialCreditsDone     = 'tutorial_credits_done';
+  static const tutorialHomeDone        = 'tutorial_home_done';
+  static const tutorialReportsDone     = 'tutorial_reports_done';
 }
 
 // ---------------------------------------------------------------------------

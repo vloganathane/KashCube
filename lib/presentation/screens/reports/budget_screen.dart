@@ -70,6 +70,7 @@ class BudgetScreen extends ConsumerWidget {
         data: (budgets) => _BudgetBody(budgets: budgets, month: month),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () => _showAddEditSheet(context, ref, month, null),
         tooltip: 'Add Budget',
         child: const Icon(Icons.add),

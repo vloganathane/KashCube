@@ -118,6 +118,7 @@ dependencies:
 
   # Country / phone-code picker — all data is bundled, zero network calls
   world_countries: ^4.1.0
+  tutorial_coach_mark: ^1.3.3
 
 dev_dependencies:
   flutter_test:

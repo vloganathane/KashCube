@@ -136,6 +136,7 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _showAddEditSheet(context),
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Add Contact'),

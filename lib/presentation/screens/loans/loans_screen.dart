@@ -125,6 +125,7 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _openAddForm(context),
         icon: const Icon(Icons.add),
         label: const Text('New Entry'),

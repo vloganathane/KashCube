@@ -20,6 +20,7 @@ class UnitTypesScreen extends ConsumerWidget {
         title: const Text('Unit Types'),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _showAddDialog(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Add unit'),

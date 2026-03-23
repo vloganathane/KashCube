@@ -50,6 +50,7 @@ class _PurchaseBillsScreenState
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () async {
           final added = await Navigator.of(context).push<bool>(
             MaterialPageRoute(builder: (_) => const AddPurchaseBillScreen()),

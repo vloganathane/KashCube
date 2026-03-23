@@ -22,6 +22,7 @@ class ManageUsersScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Team')),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: () => _openSheet(context, ref, null),
         child: const Icon(Icons.person_add_outlined),
       ),

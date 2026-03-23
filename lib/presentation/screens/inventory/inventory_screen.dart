@@ -110,6 +110,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: _showAddTrackedItemInfo,
         icon: const Icon(Icons.add),
         label: const Text('Enable Tracking'),

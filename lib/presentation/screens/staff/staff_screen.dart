@@ -56,6 +56,7 @@ class StaffScreen extends ConsumerWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () => _openAddStaff(context, ref),
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Add Staff'),

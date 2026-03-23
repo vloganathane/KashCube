@@ -115,6 +115,7 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen>
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         onPressed: _addStaff,
         tooltip: 'Add Staff',
         child: const Icon(Icons.person_add_outlined),

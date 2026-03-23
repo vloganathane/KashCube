@@ -42,6 +42,7 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         icon: const Icon(Icons.add),
         label: Text(businessEnabled ? 'New' : 'New Schedule'),
         onPressed: () {

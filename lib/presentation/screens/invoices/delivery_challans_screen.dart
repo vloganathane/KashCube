@@ -51,6 +51,7 @@ class _DeliveryChallansScreenState
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         tooltip: 'New Delivery Challan',
         onPressed: () => Navigator.of(context)
             .push(MaterialPageRoute(

@@ -110,7 +110,7 @@ mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         fontSize: 14,
         letterSpacing: 0.5,
       ),
-      alignSkip: Alignment.topRight,
+      alignSkip: Alignment.bottomLeft,
       paddingFocus: 8,
       pulseEnable: true,
       onFinish: () => _markDone(),

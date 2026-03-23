@@ -12,6 +12,7 @@ import '../../../data/models/transaction.dart';
 import '../../providers/context_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/tutorial_flow_provider.dart';
 import 'add_edit_transaction_screen.dart';
 import 'category_management_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -52,9 +53,11 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     with TutorialMixin<TransactionsScreen> {
   // Keys for tutorial spotlights
-  final _fabKey    = GlobalKey();
-  final _searchKey = GlobalKey();
-  final _filterKey = GlobalKey();
+  final _fabKey        = GlobalKey();
+  final _searchKey     = GlobalKey();
+  final _filterKey     = GlobalKey();
+  // Key for the result spotlight — assigned to the first (newest) list tile.
+  final _newestCardKey = GlobalKey();
 
   @override
   String get tutorialKey => SettingsKeys.tutorialTransactionsDone;
@@ -129,9 +132,40 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       ];
 
   @override
+  List<TutorialMenuItem> get tutorialMenuItems => [
+        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+        TutorialMenuItem(
+          label: 'How to add a transaction',
+          onTap: _replayAddTxFlow,
+        ),
+      ];
+
+  @override
   void initState() {
     super.initState();
     maybeShowTutorial();
+    _maybeStartFlow();
+  }
+
+  Future<void> _maybeStartFlow() async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (await settings.get(SettingsKeys.tutorialTxFlowDone) != 'true') {
+      if (!mounted) return;
+      // Reset first in case a previous visit left state stuck at addTxFab.
+      ref.read(tutorialFlowProvider.notifier).abandon();
+      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTxFab);
+    }
+  }
+
+  void _replayAddTxFlow() {
+    ref.read(settingsRepositoryProvider)
+        .set(SettingsKeys.tutorialTxFlowDone, 'false');
+    // Always reset to none first — if state is already addTxFab (e.g. the
+    // auto-start fired but the user dismissed the overlay without tapping SKIP),
+    // calling advance(addTxFab) would be a no-op and ref.listen wouldn't fire.
+    ref.read(tutorialFlowProvider.notifier).abandon();
+    ref.read(tutorialFlowProvider.notifier)
+        .advance(TutorialFlowStep.addTxFab);
   }
 
   TransactionFilter _activeFilter = TransactionFilter.all;
@@ -161,6 +195,98 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       _dateTo = null;
       _sortOrder = TransactionSortOrder.dateDesc;
     });
+  }
+
+  void _showFabFlowMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Let\'s add your first transaction',
+                message: 'Tap the + button to get started. '
+                    'We\'ll guide you through the form step by step.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () {},  // user taps FAB overlay — FAB onPressed handles the advance
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialTxFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  void _showResultMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'newest_card',
+          keyTarget: _newestCardKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Your transaction is saved!',
+                message:
+                    'Tap to view details, swipe to delete,\n'
+                    'or long-press for quick actions.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'GOT IT',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
+      pulseEnable: false,
+      onFinish: () {
+        ref.read(tutorialFlowProvider.notifier).finish();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialTxFlowDone, 'true');
+      },
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).finish();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialTxFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
   }
 
   List<Transaction> _applyFilter(List<Transaction> transactions) {
@@ -233,15 +359,27 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     final transactionsAsync = ref.watch(transactionsProvider);
     final isWide = context.isExpanded;
 
+    // Listen for flow steps this screen owns.
+    ref.listen<TutorialFlowStep>(tutorialFlowProvider, (_, step) {
+      if (step == TutorialFlowStep.addTxFab) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _showFabFlowMark();
+        });
+      }
+      if (step == TutorialFlowStep.addTxResult) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _newestCardKey.currentContext == null) return;
+          _showResultMark();
+        });
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transactions'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            tooltip: 'Replay guide',
-            onPressed: replayTutorial,
-          ),
+          buildTutorialAppBarAction(),
           IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined),
             tooltip: 'Ledger',
@@ -347,6 +485,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         key: _fabKey,
         heroTag: 'fab_transactions',
         onPressed: () async {
+          // Advance flow before push so the form screen sees the active step
+          // in its initState.
+          final step = ref.read(tutorialFlowProvider);
+          if (step == TutorialFlowStep.addTxFab) {
+            ref.read(tutorialFlowProvider.notifier)
+                .advance(TutorialFlowStep.addTxAmount);
+          }
           final added = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
               builder: (_) => const AddEditTransactionScreen(),
@@ -397,6 +542,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                                     txn.isIncome ? colors.income : colors.expense;
                                 final prefix = txn.isIncome ? '+' : '-';
                                 return ListTile(
+                                  key: index == 0 ? _newestCardKey : null,
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: AppSpacing.xs,
                                   ),

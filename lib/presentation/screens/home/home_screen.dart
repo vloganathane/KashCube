@@ -238,45 +238,61 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
 
         return SliverToBoxAdapter(
           child: Container(
-            color: warningColor.withValues(alpha: 0.1),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.base,
-              vertical: AppSpacing.sm,
+            decoration: BoxDecoration(
+              color: warningColor.withValues(alpha: 0.08),
+              border: Border(
+                left: BorderSide(color: warningColor, width: 3),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.sm,
+              AppSpacing.sm,
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_today_outlined,
-                    size: 18, color: warningColor),
+                Icon(Icons.calendar_month_outlined,
+                    size: 20, color: warningColor),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     message,
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: warningColor),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: warningColor,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-                // Close FY action → Year-End Closing Wizard (Phase 2)
-                TextButton(
+                const SizedBox(width: AppSpacing.sm),
+                // Close FY CTA
+                FilledButton.tonal(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => const FyCloseWizardScreen()),
                   ),
-                  style: TextButton.styleFrom(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: warningColor.withValues(alpha: 0.15),
                     foregroundColor: warningColor,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs, vertical: 0),
+                        horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                    minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: context.textTheme.labelSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   child: const Text('Close FY'),
                 ),
                 // Dismiss
+                const SizedBox(width: AppSpacing.xs),
                 IconButton(
                   icon: Icon(Icons.close, size: 16, color: warningColor),
                   onPressed: () => setState(() => _dismissed = true),
                   padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  constraints: const BoxConstraints(
+                      minWidth: 28, minHeight: 28),
                   tooltip: 'Dismiss for this session',
                 ),
               ],

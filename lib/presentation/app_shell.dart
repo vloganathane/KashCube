@@ -480,8 +480,10 @@ class _StackObserver extends NavigatorObserver {
   _StackObserver(this.onChanged);
   final VoidCallback onChanged;
 
-  @override void didPush(Route route, Route? previousRoute) => onChanged();
-  @override void didPop(Route route, Route? previousRoute) => onChanged();
-  @override void didRemove(Route route, Route? previousRoute) => onChanged();
-  @override void didReplace({Route? newRoute, Route? oldRoute}) => onChanged();
+  void _notify() => WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
+
+  @override void didPush(Route route, Route? previousRoute) => _notify();
+  @override void didPop(Route route, Route? previousRoute) => _notify();
+  @override void didRemove(Route route, Route? previousRoute) => _notify();
+  @override void didReplace({Route? newRoute, Route? oldRoute}) => _notify();
 }

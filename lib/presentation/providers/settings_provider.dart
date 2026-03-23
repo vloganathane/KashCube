@@ -113,6 +113,10 @@ class SettingsKeys {
   static const tutorialCreditsDone     = 'tutorial_credits_done';
   static const tutorialHomeDone        = 'tutorial_home_done';
   static const tutorialReportsDone     = 'tutorial_reports_done';
+
+  // Tutorial flow-following — 'true' once user has completed (or skipped) each guided flow.
+  static const tutorialTxFlowDone     = 'tutorial_tx_flow_done';
+  static const tutorialCreditFlowDone = 'tutorial_credit_flow_done';
 }
 
 // ---------------------------------------------------------------------------

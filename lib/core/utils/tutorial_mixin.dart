@@ -4,6 +4,13 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../presentation/providers/settings_provider.dart';
 
+/// A single entry in the `?` tutorial dropdown (or the sole button label).
+class TutorialMenuItem {
+  final String label;
+  final VoidCallback onTap;
+  const TutorialMenuItem({required this.label, required this.onTap});
+}
+
 /// Mixin that adds tutorial coach mark support to a [ConsumerStatefulWidget].
 ///
 /// Usage:
@@ -25,20 +32,50 @@ import '../../presentation/providers/settings_provider.dart';
 /// }
 /// ```
 ///
-/// Add a replay `?` button to the AppBar by calling [replayTutorial]:
+/// Drop [buildTutorialAppBarAction] into `AppBar.actions`:
 /// ```dart
-/// IconButton(
-///   icon: const Icon(Icons.help_outline_rounded),
-///   tooltip: 'Replay guide',
-///   onPressed: replayTutorial,
-/// )
+/// appBar: AppBar(actions: [buildTutorialAppBarAction(), ...])
 /// ```
+/// It renders as a plain `IconButton` when there's only one guide, or as a
+/// `PopupMenuButton` dropdown when the screen exposes multiple guides.
+/// Override [tutorialMenuItems] to add flow entries alongside the tour.
 mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// The settings key that stores the "tutorial seen" flag ('true'/'false').
   String get tutorialKey;
 
   /// Return the ordered list of [TargetFocus] steps for this screen's tour.
   List<TargetFocus> buildTargets();
+
+  /// The items shown in the `?` AppBar action.
+  ///
+  /// Default: one entry that replays the orientation tour.
+  /// Override on screens that also have flow-following guides.
+  List<TutorialMenuItem> get tutorialMenuItems => [
+        TutorialMenuItem(label: 'Replay orientation tour', onTap: replayTutorial),
+      ];
+
+  /// Builds the `?` AppBar action.
+  ///
+  /// - 1 item → plain `IconButton` (no extra tap required).
+  /// - 2+ items → `PopupMenuButton` dropdown listing all guides.
+  Widget buildTutorialAppBarAction() {
+    final items = tutorialMenuItems;
+    if (items.length == 1) {
+      return IconButton(
+        icon: const Icon(Icons.help_outline_rounded),
+        tooltip: items.first.label,
+        onPressed: items.first.onTap,
+      );
+    }
+    return PopupMenuButton<TutorialMenuItem>(
+      icon: const Icon(Icons.help_outline_rounded),
+      tooltip: 'Tutorial guides',
+      onSelected: (item) => item.onTap(),
+      itemBuilder: (_) => items
+          .map((item) => PopupMenuItem(value: item, child: Text(item.label)))
+          .toList(),
+    );
+  }
 
   /// Show the tutorial if it hasn't been completed yet.
   /// Safe to call from [initState] — defers to the first rendered frame.

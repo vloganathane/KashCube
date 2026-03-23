@@ -177,10 +177,11 @@ class _AddEditTransactionScreenState
           keyTarget: _amountFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
-              align: ContentAlign.top,
+              // Amount field is near the top; putting content below keeps it
+              // clear of the type-selector chips that sit above the field.
+              align: ContentAlign.bottom,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Enter the amount',
@@ -195,7 +196,6 @@ class _AddEditTransactionScreenState
           keyTarget: _categoryFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.top,
@@ -213,7 +213,6 @@ class _AddEditTransactionScreenState
           keyTarget: _saveButtonKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.top,
@@ -550,7 +549,11 @@ class _AddEditTransactionScreenState
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [IndianCurrencyInputFormatter()],
               validator: Validators.validateAmount,
-              autofocus: !widget.isEditing,
+              // Disable autofocus when the tutorial is guiding through this form;
+              // opening the keyboard shifts the ListView layout before the coach
+              // mark captures the widget position, making the spotlight miss.
+              autofocus: !widget.isEditing &&
+                  ref.watch(tutorialFlowProvider) != TutorialFlowStep.addTxAmount,
               textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: AppSpacing.lg),

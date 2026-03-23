@@ -807,7 +807,6 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           keyTarget: _amountFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.bottom,
@@ -825,7 +824,6 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           keyTarget: _partyFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.bottom,
@@ -843,7 +841,6 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           keyTarget: _saveButtonKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
-          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.top,

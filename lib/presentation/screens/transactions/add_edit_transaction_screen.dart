@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/tutorial_mixin.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
 import '../../../data/models/party.dart';
@@ -20,6 +22,7 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/suggestion_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../providers/tutorial_flow_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import '../../widgets/account_picker_sheet.dart';
 import '../../widgets/bill_picker.dart';
@@ -72,6 +75,11 @@ class _AddEditTransactionScreenState
   final _partyNameController = TextEditingController();
   final _notesController = TextEditingController();
   final _interestRateController = TextEditingController();
+
+  // Keys used by the guided Add Transaction tutorial flow.
+  final _amountFieldKey  = GlobalKey();
+  final _categoryFieldKey = GlobalKey();
+  final _saveButtonKey   = GlobalKey();
 
   late TransactionType _type;
   late TransactionMode _mode;
@@ -149,6 +157,96 @@ class _AddEditTransactionScreenState
         _notesController.text = widget.initialDescription!;
       }
     }
+
+    // If the Add Transaction tutorial flow is active, show the form guide
+    // after the first frame so all keys are mounted.
+    if (!widget.isEditing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final step = ref.read(tutorialFlowProvider);
+        if (step == TutorialFlowStep.addTxAmount) _showFormFlowMark();
+      });
+    }
+  }
+
+  void _showFormFlowMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'amount',
+          keyTarget: _amountFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Enter the amount',
+                message: 'Type the amount in rupees — income,\n'
+                    'expense, cash, UPI, anything.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'category',
+          keyTarget: _categoryFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Pick a category',
+                message: 'Categorise the transaction so your\n'
+                    'reports stay meaningful.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'save',
+          keyTarget: _saveButtonKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Save your transaction',
+                message: 'Tap here when you\'re done — your\n'
+                    'balance updates instantly.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () {}, // user still fills and saves; orchestrator advances in _save()
+      onSkip: () {
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialTxFlowDone, 'true');
+        return true;
+      },
+    ).show(context: context);
   }
 
   @override
@@ -356,7 +454,18 @@ class _AddEditTransactionScreenState
       });
     }
 
-    return Scaffold(
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) {
+          final step = ref.read(tutorialFlowProvider);
+          if (step.isAddTxFlow) {
+            ref.read(tutorialFlowProvider.notifier).abandon();
+            ref.read(settingsRepositoryProvider)
+                .set(SettingsKeys.tutorialTxFlowDone, 'true');
+          }
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
@@ -372,6 +481,7 @@ class _AddEditTransactionScreenState
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
           child: FilledButton.icon(
+            key: _saveButtonKey,
             onPressed: _isSaving ? null : _save,
             icon: _isSaving
                 ? const SizedBox(
@@ -420,6 +530,7 @@ class _AddEditTransactionScreenState
 
             // Amount Field
             TextFormField(
+              key: _amountFieldKey,
               controller: _amountController,
               decoration: InputDecoration(
                 labelText: 'Amount',
@@ -466,7 +577,10 @@ class _AddEditTransactionScreenState
 
             // Category — only for income / expense
             if (_type.isIncome || _type.isExpense) ...[
-              _buildCategoryDropdown(),
+              KeyedSubtree(
+                key: _categoryFieldKey,
+                child: _buildCategoryDropdown(),
+              ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -587,7 +701,8 @@ class _AddEditTransactionScreenState
           ],
         ),
       ),
-    );
+    ), // Scaffold
+    ); // PopScope
   }
 
   Widget _buildPartyNameField() {
@@ -793,6 +908,15 @@ class _AddEditTransactionScreenState
         // Refresh dashboard
         ref.read(dashboardSummaryProvider.notifier).loadSummary();
         ref.read(recentTransactionsProvider.notifier).loadRecent();
+        // Advance the tutorial flow to the result step (if active) before
+        // popping, so TransactionsScreen sees the state when it resumes.
+        if (!widget.isEditing) {
+          final step = ref.read(tutorialFlowProvider);
+          if (step.isAddTxFlow) {
+            ref.read(tutorialFlowProvider.notifier)
+                .advance(TutorialFlowStep.addTxResult);
+          }
+        }
         if (mounted) Navigator.of(context).pop(true);
       }
     } catch (e) {

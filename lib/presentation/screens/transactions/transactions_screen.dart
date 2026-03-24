@@ -530,7 +530,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   child: filtered.isEmpty
                       ? _buildEmptyState(transactions.isEmpty)
                       : isTable
-                          ? _buildDataTable(filtered, context)
+                          ? _buildDataTable(filtered, context, isWide)
                           : ListView.builder(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: AppSpacing.base,
@@ -725,8 +725,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     );
   }
 
-  /// Sortable [DataTable] shown in the list pane when width ≥ 840 dp.
-  Widget _buildDataTable(List<Transaction> filtered, BuildContext context) {
+  /// Sortable [DataTable] shown in the list pane when width ≥ 600 dp.
+  /// 
+  /// On medium screens (600-839dp), tapping a row navigates to detail screen.
+  /// On wide screens (≥840dp), tapping a row shows detail in side panel.
+  Widget _buildDataTable(List<Transaction> filtered, BuildContext context, bool isWide) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -809,7 +812,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                     return null;
                   }),
                   onSelectChanged: txn.id != null
-                      ? (_) => setState(() => _selectedTransactionId = txn.id)
+                      ? (_) {
+                          if (isWide) {
+                            // Wide screen: show in side panel
+                            setState(() => _selectedTransactionId = txn.id);
+                          } else {
+                            // Medium screen: navigate to detail screen
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => TransactionDetailScreen(
+                                  transactionId: txn.id!,
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       : null,
                   cells: [
                     DataCell(

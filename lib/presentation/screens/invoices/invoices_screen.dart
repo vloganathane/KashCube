@@ -419,7 +419,7 @@ class _StatusFilterBar extends StatelessWidget {
 }
 
 class _InvoiceTile extends ConsumerWidget {
-  const _InvoiceTile({required this.invoice});
+  const _InvoiceTile({super.key, required this.invoice});
   final Invoice invoice;
 
   @override

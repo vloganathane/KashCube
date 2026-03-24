@@ -315,7 +315,10 @@ class _AppShellState extends ConsumerState<AppShell> {
     Future<void> handleTabSelected(int screenIndex) async {
       // Tapping the already-active tab pops to the root of that tab's stack.
       if (screenIndex == currentIndex) {
-        _tabNavKeys[screenIndex].currentState?.popUntil((r) => r.isFirst);
+        final navState = _tabNavKeys[screenIndex].currentState;
+        if (navState != null && navState.canPop()) {
+          navState.popUntil((r) => r.isFirst);
+        }
         return;
       }
       if (activeUser == null) {

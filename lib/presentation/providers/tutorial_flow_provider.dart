@@ -29,6 +29,22 @@ enum TutorialFlowStep {
   newCreditAmount,
   newCreditSave,
   newCreditResult,
+
+  // ── New Invoice flow ──────────────────────────────────────────────────
+  /// InvoicesScreen — spotlight the FAB to prompt the first tap.
+  newInvoiceFab,
+
+  /// QuoteBuilderScreen — spotlight the Customer field.
+  newInvoiceCustomer,
+
+  /// QuoteBuilderScreen — spotlight the first line item (Add Item button).
+  newInvoiceLineItem,
+
+  /// QuoteBuilderScreen — spotlight the Save / Create Invoice button.
+  newInvoiceSave,
+
+  /// InvoicesScreen — spotlight the newly created invoice card.
+  newInvoiceResult,
 }
 
 extension TutorialFlowStepX on TutorialFlowStep {
@@ -37,6 +53,9 @@ extension TutorialFlowStepX on TutorialFlowStep {
 
   /// True while any New Credit flow step is active.
   bool get isNewCreditFlow => name.startsWith('newCredit');
+
+  /// True while any New Invoice flow step is active.
+  bool get isNewInvoiceFlow => name.startsWith('newInvoice');
 
   /// True while any flow is active (i.e. not [TutorialFlowStep.none]).
   bool get isActive => this != TutorialFlowStep.none;

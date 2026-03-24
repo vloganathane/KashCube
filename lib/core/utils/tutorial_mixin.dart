@@ -46,6 +46,16 @@ mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Return the ordered list of [TargetFocus] steps for this screen's tour.
   List<TargetFocus> buildTargets();
 
+  /// Optional: title shown in the intro dialog before the tutorial starts.
+  /// Default: 'Quick Tutorial'
+  String get tutorialTitle => 'Quick Tutorial';
+
+  /// Optional: description shown in the intro dialog.
+  /// Default: generic message about walking through key features.
+  String get tutorialDescription =>
+      'This quick guide will walk you through the key features of this screen. '
+      'You can skip anytime using the SKIP button.';
+
   /// The items shown in the `?` AppBar action.
   ///
   /// Default: one entry that replays the orientation tour.
@@ -99,26 +109,73 @@ mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final targets = buildTargets();
     if (targets.isEmpty) return;
 
-    TutorialCoachMark(
-      targets: targets,
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'SKIP',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w600,
-        fontSize: 14,
-        letterSpacing: 0.5,
+    // Show intro dialog first
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.school_outlined,
+              color: Theme.of(ctx).colorScheme.primary,
+              size: 28,
+            ),
+            const SizedBox(width: 12),
+            Flexible(
+              child: Text(
+                tutorialTitle,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          tutorialDescription,
+          style: const TextStyle(fontSize: 15, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(false); // Skip
+              _markDone();
+            },
+            child: const Text('Skip for now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true), // Start
+            child: const Text('Start Tutorial'),
+          ),
+        ],
       ),
-      alignSkip: Alignment.bottomLeft,
-      paddingFocus: 8,
-      pulseEnable: true,
-      onFinish: () => _markDone(),
-      onSkip: () {
-        _markDone();
-        return true;
-      },
-    ).show(context: context);
+    ).then((start) {
+      if (start != true || !mounted) return;
+
+      // Show the coach marks
+      TutorialCoachMark(
+        targets: targets,
+        colorShadow: Colors.black,
+        opacityShadow: 0.85,
+        textSkip: 'SKIP',
+        textStyleSkip: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+          letterSpacing: 0.5,
+        ),
+        alignSkip: Alignment.bottomLeft,
+        paddingFocus: 8,
+        pulseEnable: true,
+        onFinish: () => _markDone(),
+        onSkip: () {
+          _markDone();
+          return true;
+        },
+      ).show(context: context);
+    });
   }
 
   Future<void> _markDone() async {

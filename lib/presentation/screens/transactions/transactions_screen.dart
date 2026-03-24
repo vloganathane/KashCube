@@ -63,6 +63,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   String get tutorialKey => SettingsKeys.tutorialTransactionsDone;
 
   @override
+  String get tutorialTitle => 'Track Your Transactions';
+
+  @override
+  String get tutorialDescription =>
+      'Learn how to add, search, and filter your transactions. '
+      'This quick tour will show you the key features of this screen.';
+
+  @override
   List<TargetFocus> buildTargets() => [
         TargetFocus(
           identify: 'fab',

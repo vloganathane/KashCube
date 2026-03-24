@@ -58,6 +58,14 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
   String get tutorialKey => SettingsKeys.tutorialCreditsDone;
 
   @override
+  String get tutorialTitle => 'Manage Your Credits';
+
+  @override
+  String get tutorialDescription =>
+      'Track money you\'ve lent or borrowed (udhar/khata). '
+      'Learn how to add credits, track dues, and manage settlements.';
+
+  @override
   List<TargetFocus> buildTargets() => [
         TargetFocus(
           identify: 'credit_fab',

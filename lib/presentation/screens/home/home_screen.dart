@@ -67,6 +67,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String get tutorialKey => SettingsKeys.tutorialHomeDone;
 
   @override
+  String get tutorialTitle => 'Welcome to Kash Cube! 👋';
+
+  @override
+  String get tutorialDescription =>
+      'Your privacy-first financial tracker is ready! Let me show you around '
+      'your dashboard — your balance card, quick actions, and recent '
+      'transactions. This will only take a moment.';
+
+  @override
   List<TargetFocus> buildTargets() => [
     TargetFocus(
       identify: 'balance_card',

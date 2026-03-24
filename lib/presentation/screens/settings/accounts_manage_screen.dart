@@ -120,6 +120,8 @@ class AccountsManageScreen extends ConsumerWidget {
       case AccountType.savings:
       case AccountType.current:
         return Icons.account_balance_outlined;
+      case AccountType.cash:
+        return Icons.money_outlined;
       case AccountType.creditCard:
         return Icons.credit_card_outlined;
       case AccountType.debitCard:

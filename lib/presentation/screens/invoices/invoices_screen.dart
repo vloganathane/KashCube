@@ -170,12 +170,14 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
         letterSpacing: 0.5,
       ),
       alignSkip: Alignment.topRight,
-      paddingFocus: 8,
+      paddingFocus: 2,
       pulseEnable: true,
       onFinish: () {},  // user taps FAB overlay — FAB onPressed handles the advance
       onSkip: () {
-        flowNotifier.abandon();
-        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        Future(() {
+          flowNotifier.abandon();
+          settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        });
         return true;
       },
     ).show(context: context);
@@ -221,12 +223,16 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
       paddingFocus: 4,
       pulseEnable: false,
       onFinish: () {
-        flowNotifier.finish();
-        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        Future(() {
+          flowNotifier.finish();
+          settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        });
       },
       onSkip: () {
-        flowNotifier.finish();
-        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        Future(() {
+          flowNotifier.finish();
+          settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        });
         return true;
       },
     ).show(context: context);

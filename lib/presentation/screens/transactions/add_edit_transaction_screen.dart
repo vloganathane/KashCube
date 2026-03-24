@@ -573,7 +573,22 @@ class _AddEditTransactionScreenState
             if (!_type.isTransfer) ...[  
               _AccountRow(
                 accountId: _accountId,
-                onChanged: (id) => setState(() => _accountId = id),
+                onChanged: (id) {
+                  setState(() {
+                    _accountId = id;
+                    // Auto-set payment method based on account type
+                    if (id != null) {
+                      final accountsAsync = ref.read(accountsProvider);
+                      accountsAsync.whenData((accounts) {
+                        final account = accounts.firstWhere(
+                          (a) => a.id == id,
+                          orElse: () => accounts.first,
+                        );
+                        _paymentMethod = account.accountType.representativeMethod;
+                      });
+                    }
+                  });
+                },
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -651,10 +666,17 @@ class _AddEditTransactionScreenState
                 _type.isExpense ||
                 _type.isSettlement) ...[
               DropdownButtonFormField<PaymentMethod>(
-                initialValue: _paymentMethod,
-                decoration: const InputDecoration(
+                value: _paymentMethod,
+                decoration: InputDecoration(
                   labelText: 'Payment Method',
-                  prefixIcon: Icon(Icons.payment_outlined),
+                  prefixIcon: const Icon(Icons.payment_outlined),
+                  helperText: _accountId != null
+                      ? 'Auto-set from selected account'
+                      : null,
+                  helperStyle: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 items: PaymentMethod.values
                     .map((method) => DropdownMenuItem(
@@ -662,9 +684,12 @@ class _AddEditTransactionScreenState
                           child: Text(method.label),
                         ))
                     .toList(),
-                onChanged: (value) {
-                  if (value != null) setState(() => _paymentMethod = value);
-                },
+                onChanged: _accountId != null
+                    ? null // Disabled when account is selected
+                    : (value) {
+                        if (value != null) setState(() => _paymentMethod = value);
+                      },
+                disabledHint: Text(_paymentMethod.label),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],

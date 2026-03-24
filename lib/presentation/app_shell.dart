@@ -313,14 +313,24 @@ class _AppShellState extends ConsumerState<AppShell> {
     ];
 
     Future<void> handleTabSelected(int screenIndex) async {
+      debugPrint('[AppShell] handleTabSelected: screenIndex=$screenIndex, currentIndex=$currentIndex');
+      
       // Tapping the already-active tab pops to the root of that tab's stack.
       if (screenIndex == currentIndex) {
         final navState = _tabNavKeys[screenIndex].currentState;
-        if (navState != null && navState.canPop()) {
+        final canPop = navState?.canPop() ?? false;
+        debugPrint('[AppShell] Same tab tapped. canPop=$canPop');
+        
+        if (navState != null && canPop) {
+          debugPrint('[AppShell] Popping to root...');
           navState.popUntil((r) => r.isFirst);
+        } else {
+          debugPrint('[AppShell] Cannot pop (already at root or navState is null)');
         }
         return;
       }
+      
+      debugPrint('[AppShell] Switching to tab $screenIndex');
       if (activeUser == null) {
         ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;

@@ -124,6 +124,15 @@ abstract class TransactionRepository {
 
   /// Gets all-time income and expense totals grouped by payment_method.
   Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod();
+
+  /// Gets all-time income and expense totals grouped by [account_id].
+  /// Only transactions that have a non-null [account_id] are included.
+  Future<Map<int, ({double income, double expense})>> getAllTimeByAccountId();
+
+  /// Gets all-time income and expense for transactions with NO linked account,
+  /// grouped by payment_method. Used for the "unlinked transactions" balance
+  /// buckets shown alongside named accounts on the home screen.
+  Future<Map<String, ({double income, double expense})>> getAllTimeUnlinkedByPaymentMethod();
 }
 
 /// Daily income/expense totals.

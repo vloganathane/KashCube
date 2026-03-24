@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'transaction.dart';
+
 /// Account type enum.
 enum AccountType {
   savings,
@@ -37,6 +39,25 @@ enum AccountType {
       orElse: () => AccountType.savings,
     );
   }
+
+  /// Maps this [AccountType] to the closest [PaymentMethod] for balance
+  /// grouping. Used when building [AccountBalance] from named accounts.
+  PaymentMethod get representativeMethod {
+    switch (this) {
+      case AccountType.savings:
+      case AccountType.current:
+        return PaymentMethod.upi;
+      case AccountType.cash:
+        return PaymentMethod.cash;
+      case AccountType.creditCard:
+        return PaymentMethod.creditCard;
+      case AccountType.debitCard:
+        return PaymentMethod.debitCard;
+      case AccountType.upiWallet:
+      case AccountType.paymentWallet:
+        return PaymentMethod.wallet;
+    }
+  }
 }
 
 /// A payment account (bank account, card, wallet, or cash).
@@ -47,8 +68,9 @@ class Account extends Equatable {
     required this.accountName,
     this.bankName,
     this.accountNumberLast4,
-    this.currentBalance,
+    this.openingBalance,
     this.creditLimit,
+    this.linkedBankAccountId,
     this.isActive = true,
     this.isPrimary = false,
     this.smsSenders,
@@ -65,9 +87,12 @@ class Account extends Equatable {
   final String accountName;
   final String? bankName;
   final String? accountNumberLast4;
-  final double? currentBalance;
+  /// The seed balance at the time the account was set up.
+  final double? openingBalance;
   /// For credit card accounts: the total approved credit limit.
   final double? creditLimit;
+  /// For debit_card / upi_wallet accounts: the parent savings/current account.
+  final int? linkedBankAccountId;
   final bool isActive;
   final bool isPrimary;
   final List<String>? smsSenders;
@@ -84,8 +109,9 @@ class Account extends Equatable {
     String? accountName,
     String? bankName,
     String? accountNumberLast4,
-    double? currentBalance,
+    double? openingBalance,
     double? creditLimit,
+    int? linkedBankAccountId,
     bool? isActive,
     bool? isPrimary,
     List<String>? smsSenders,
@@ -102,8 +128,9 @@ class Account extends Equatable {
       accountName: accountName ?? this.accountName,
       bankName: bankName ?? this.bankName,
       accountNumberLast4: accountNumberLast4 ?? this.accountNumberLast4,
-      currentBalance: currentBalance ?? this.currentBalance,
+      openingBalance: openingBalance ?? this.openingBalance,
       creditLimit: creditLimit ?? this.creditLimit,
+      linkedBankAccountId: linkedBankAccountId ?? this.linkedBankAccountId,
       isActive: isActive ?? this.isActive,
       isPrimary: isPrimary ?? this.isPrimary,
       smsSenders: smsSenders ?? this.smsSenders,
@@ -123,8 +150,9 @@ class Account extends Equatable {
       'account_name': accountName,
       'bank_name': bankName,
       'account_number_last4': accountNumberLast4,
-      'current_balance': currentBalance,
+      'opening_balance': openingBalance,
       'credit_limit': creditLimit,
+      'linked_bank_account_id': linkedBankAccountId,
       'is_active': isActive ? 1 : 0,
       'is_primary': isPrimary ? 1 : 0,
       'sms_senders': smsSenders?.join(','),
@@ -144,8 +172,11 @@ class Account extends Equatable {
       accountName: map['account_name'] as String,
       bankName: map['bank_name'] as String?,
       accountNumberLast4: map['account_number_last4'] as String?,
-      currentBalance: (map['current_balance'] as num?)?.toDouble(),
+      // Prefer opening_balance (v78+); fall back to current_balance for old rows.
+      openingBalance: (map['opening_balance'] as num?)?.toDouble() ??
+          (map['current_balance'] as num?)?.toDouble(),
       creditLimit: (map['credit_limit'] as num?)?.toDouble(),
+      linkedBankAccountId: map['linked_bank_account_id'] as int?,
       isActive: (map['is_active'] as int? ?? 1) == 1,
       isPrimary: (map['is_primary'] as int? ?? 0) == 1,
       smsSenders: (map['sms_senders'] as String?)?.split(',').where((s) => s.isNotEmpty).toList(),
@@ -159,5 +190,5 @@ class Account extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, accountName, accountType];
+  List<Object?> get props => [id, accountName, accountType, openingBalance];
 }

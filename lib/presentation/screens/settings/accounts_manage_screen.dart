@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/account.dart';
 import '../../providers/account_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
+
+/// Formats a double as a plain number string suitable for pre-filling a
+/// currency text field (no ₹ symbol, no commas; trims trailing zeros).
+String _formatBalance(double value) {
+  if (value == value.truncateToDouble()) return value.toInt().toString();
+  return value.toString();
+}
 
 /// Manage accounts — view, add, rename, archive.
 class AccountsManageScreen extends ConsumerWidget {
@@ -54,7 +64,7 @@ class AccountsManageScreen extends ConsumerWidget {
                   ),
                 ),
                 title: Text(account.accountName),
-                subtitle: Text(account.accountType.label),
+                subtitle: Text(_subtitleForAccount(account)),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -110,13 +120,25 @@ class AccountsManageScreen extends ConsumerWidget {
           } else {
             ref.read(accountsProvider.notifier).updateAccount(a);
           }
+          ref.invalidate(accountBalancesProvider);
+          ref.invalidate(totalBalanceProvider);
         },
       ),
     );
   }
 
-  IconData _iconForType(AccountType type) {
-    switch (type) {
+  String _subtitleForAccount(Account a) {
+    final parts = <String>[a.accountType.label];
+    if (a.openingBalance != null && a.openingBalance! != 0) {
+      parts.add('Opening: ${CurrencyFormatter.format(a.openingBalance!)}');
+    }
+    if (a.creditLimit != null && a.creditLimit! != 0) {
+      parts.add('Limit: ${CurrencyFormatter.format(a.creditLimit!)}');
+    }
+    return parts.join(' · ');
+  }
+
+  IconData _iconForType(AccountType type) {    switch (type) {
       case AccountType.savings:
       case AccountType.current:
         return Icons.account_balance_outlined;
@@ -133,40 +155,127 @@ class AccountsManageScreen extends ConsumerWidget {
   }
 }
 
-class _AddEditAccountSheet extends StatefulWidget {
+// ─── Add / Edit Account Sheet ────────────────────────────────────────────────
+
+/// Bottom sheet for creating or editing an [Account].
+///
+/// Fields shown:
+/// - Account Name (required)
+/// - Account Type (required)
+/// - Opening Balance (optional, ₹ prefix)
+/// - Credit Limit (optional, only for creditCard type)
+/// - Account Number Last 4 (optional, for bank/card types)
+/// - Bank Name (optional, for bank/card types)
+/// - Linked Bank Account (optional, for debitCard/upiWallet types)
+/// - Set as primary (checkbox)
+class _AddEditAccountSheet extends ConsumerStatefulWidget {
   const _AddEditAccountSheet({this.account, required this.onSave});
 
   final Account? account;
   final void Function(Account) onSave;
 
   @override
-  State<_AddEditAccountSheet> createState() => _AddEditAccountSheetState();
+  ConsumerState<_AddEditAccountSheet> createState() =>
+      _AddEditAccountSheetState();
 }
 
-class _AddEditAccountSheetState extends State<_AddEditAccountSheet> {
-  final _nameController = TextEditingController();
+class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
+  final _nameController       = TextEditingController();
+  final _openingBalCtrl       = TextEditingController();
+  final _creditLimitCtrl      = TextEditingController();
+  final _acctNumberCtrl       = TextEditingController();
+  final _bankNameCtrl         = TextEditingController();
+
   late AccountType _type;
+  int? _linkedBankAccountId;
   bool _isPrimary = false;
 
   bool get _isEditing => widget.account != null;
+
+  /// Account types that require a linked parent bank account (upcoming phase).
+  bool get _needsLinkedBank =>
+      _type == AccountType.debitCard || _type == AccountType.upiWallet;
+
+  /// Account types where we show bank name + account number.
+  bool get _showBankFields =>
+      _type == AccountType.savings ||
+      _type == AccountType.current ||
+      _type == AccountType.debitCard ||
+      _type == AccountType.creditCard;
 
   @override
   void initState() {
     super.initState();
     final a = widget.account;
-    _nameController.text = a?.accountName ?? '';
-    _type = a?.accountType ?? AccountType.savings;
-    _isPrimary = a?.isPrimary ?? false;
+    _nameController.text  = a?.accountName ?? '';
+    _type                 = a?.accountType ?? AccountType.savings;
+    _isPrimary            = a?.isPrimary ?? false;
+    _linkedBankAccountId  = a?.linkedBankAccountId;
+    _acctNumberCtrl.text  = a?.accountNumberLast4 ?? '';
+    _bankNameCtrl.text    = a?.bankName ?? '';
+
+    if (a?.openingBalance != null && a!.openingBalance! != 0) {
+      _openingBalCtrl.text =
+          _formatBalance(a.openingBalance!);
+    }
+    if (a?.creditLimit != null && a!.creditLimit! != 0) {
+      _creditLimitCtrl.text =
+          _formatBalance(a.creditLimit!);
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _openingBalCtrl.dispose();
+    _creditLimitCtrl.dispose();
+    _acctNumberCtrl.dispose();
+    _bankNameCtrl.dispose();
     super.dispose();
+  }
+
+  void _save() {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+
+    final openingBal   = double.tryParse(_openingBalCtrl.text.trim());
+    final creditLimit  = double.tryParse(_creditLimitCtrl.text.trim());
+    final acctNum      = _acctNumberCtrl.text.trim();
+    final bankName     = _bankNameCtrl.text.trim();
+
+    widget.onSave(
+      (widget.account ??
+              const Account(
+                accountType: AccountType.savings,
+                accountName: '',
+              ))
+          .copyWith(
+        accountName:          name,
+        accountType:          _type,
+        openingBalance:       openingBal,
+        creditLimit:          creditLimit,
+        linkedBankAccountId:  _linkedBankAccountId,
+        accountNumberLast4:   acctNum.isEmpty ? null : acctNum,
+        bankName:             bankName.isEmpty ? null : bankName,
+        isPrimary:            _isPrimary,
+        isActive:             true,
+      ),
+    );
+    Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
+    final tt = Theme.of(context).textTheme;
+    final allAccounts = ref.watch(accountsProvider).valueOrNull ?? [];
+    // Potential linked bank accounts: savings/current only, excluding self.
+    final bankAccounts = allAccounts
+        .where((a) =>
+            (a.accountType == AccountType.savings ||
+                a.accountType == AccountType.current) &&
+            a.id != widget.account?.id)
+        .toList();
+
     return Padding(
       padding: EdgeInsets.only(
         left: AppSpacing.base,
@@ -174,68 +283,171 @@ class _AddEditAccountSheetState extends State<_AddEditAccountSheet> {
         top: AppSpacing.sm,
         bottom: MediaQuery.viewInsetsOf(context).bottom + AppSpacing.xl,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _isEditing ? 'Edit Account' : 'Add Account',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          TextField(
-            controller: _nameController,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Account Name',
-              hintText: 'e.g. SBI Savings, PhonePe',
-              prefixIcon: Icon(Icons.label_outlined),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _isEditing ? 'Edit Account' : 'Add Account',
+              style: tt.titleMedium,
             ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          DropdownButtonFormField<AccountType>(
-            initialValue: _type,
-            decoration: const InputDecoration(
-              labelText: 'Account Type',
-              prefixIcon: Icon(Icons.category_outlined),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Account Name ──────────────────────────────────────────
+            TextField(
+              controller: _nameController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Account Name *',
+                hintText: 'e.g. HDFC Savings, PhonePe',
+                prefixIcon: Icon(Icons.label_outlined),
+              ),
             ),
-            items: AccountType.values
-                .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) setState(() => _type = v);
-            },
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Set as primary account'),
-            value: _isPrimary,
-            onChanged: (v) => setState(() => _isPrimary = v ?? false),
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: () {
-                final name = _nameController.text.trim();
-                if (name.isEmpty) return;
-                widget.onSave(
-                  (widget.account ?? const Account(accountType: AccountType.savings, accountName: ''))
-                      .copyWith(
-                    accountName: name,
-                    accountType: _type,
-                    isPrimary: _isPrimary,
-                    isActive: true,
-                  ),
-                );
-                Navigator.of(context).pop();
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Account Type ──────────────────────────────────────────
+            DropdownButtonFormField<AccountType>(
+              value: _type,
+              decoration: const InputDecoration(
+                labelText: 'Account Type *',
+                prefixIcon: Icon(Icons.category_outlined),
+              ),
+              items: AccountType.values
+                  .map((t) =>
+                      DropdownMenuItem(value: t, child: Text(t.label)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) {
+                  setState(() {
+                    _type = v;
+                    // Clear linked bank if switching to a non-linking type.
+                    if (!_needsLinkedBank) _linkedBankAccountId = null;
+                  });
+                }
               },
-              child: Text(_isEditing ? 'Save Changes' : 'Add Account'),
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Opening Balance ───────────────────────────────────────
+            TextField(
+              controller: _openingBalCtrl,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              ],
+              decoration: InputDecoration(
+                labelText: _type == AccountType.creditCard
+                    ? 'Outstanding balance (opening)'
+                    : 'Opening Balance',
+                hintText: '0',
+                prefixIcon: const Icon(Icons.currency_rupee_outlined),
+                helperText: _type == AccountType.creditCard
+                    ? 'Amount already owed on this card'
+                    : 'Balance at the time you set up this account',
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Credit Limit (credit cards only) ──────────────────────
+            if (_type == AccountType.creditCard) ...[
+              TextField(
+                controller: _creditLimitCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Credit Limit',
+                  hintText: '0',
+                  prefixIcon: Icon(Icons.credit_score_outlined),
+                  helperText: 'Total approved credit limit on this card',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // ── Bank Name + Account Number (bank/card types) ──────────
+            if (_showBankFields) ...[
+              TextField(
+                controller: _bankNameCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Bank Name',
+                  hintText: 'e.g. HDFC Bank, SBI',
+                  prefixIcon: Icon(Icons.account_balance_outlined),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextField(
+                controller: _acctNumberCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Last 4 digits of account / card number',
+                  hintText: '1234',
+                  prefixIcon: Icon(Icons.dialpad_outlined),
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // ── Linked Bank Account (debit card / UPI wallet) ─────────
+            if (_needsLinkedBank && bankAccounts.isNotEmpty) ...[
+              DropdownButtonFormField<int?>(
+                value: _linkedBankAccountId,
+                decoration: const InputDecoration(
+                  labelText: 'Linked Bank Account',
+                  prefixIcon: Icon(Icons.link_outlined),
+                  helperText:
+                      'Transactions on this account deduct from the linked bank account',
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('None'),
+                  ),
+                  ...bankAccounts.map(
+                    (a) => DropdownMenuItem<int?>(
+                      value: a.id,
+                      child: Text(a.accountName),
+                    ),
+                  ),
+                ],
+                onChanged: (v) =>
+                    setState(() => _linkedBankAccountId = v),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+
+            // ── Primary flag ──────────────────────────────────────────
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Set as primary account'),
+              subtitle: const Text(
+                  'Pre-selected when adding transactions'),
+              value: _isPrimary,
+              onChanged: (v) =>
+                  setState(() => _isPrimary = v ?? false),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // ── Save ──────────────────────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _save,
+                child:
+                    Text(_isEditing ? 'Save Changes' : 'Add Account'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

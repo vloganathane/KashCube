@@ -543,6 +543,50 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<Map<int, ({double income, double expense})>> getAllTimeByAccountId() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT account_id, "
+      "COALESCE(SUM(CASE WHEN type IN ('income','received_back','redeemed','borrowed') "
+      "  THEN amount ELSE 0 END), 0) AS inflow, "
+      "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back','lent') "
+      "  THEN amount ELSE 0 END), 0) AS outflow "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND account_id IS NOT NULL AND $_ctx "
+      "GROUP BY account_id",
+    );
+    return {
+      for (final r in rows)
+        (r['account_id'] as int): (
+          income: (r['inflow'] as num).toDouble(),
+          expense: (r['outflow'] as num).toDouble(),
+        ),
+    };
+  }
+
+  @override
+  Future<Map<String, ({double income, double expense})>> getAllTimeUnlinkedByPaymentMethod() async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      "SELECT payment_method, "
+      "COALESCE(SUM(CASE WHEN type IN ('income','received_back','redeemed','borrowed') "
+      "  THEN amount ELSE 0 END), 0) AS inflow, "
+      "COALESCE(SUM(CASE WHEN type IN ('expense','paid_back','lent') "
+      "  THEN amount ELSE 0 END), 0) AS outflow "
+      "FROM transactions "
+      "WHERE deleted_at IS NULL AND account_id IS NULL AND $_ctx "
+      "GROUP BY payment_method",
+    );
+    return {
+      for (final r in rows)
+        (r['payment_method'] as String? ?? 'cash'): (
+          income: (r['inflow'] as num).toDouble(),
+          expense: (r['outflow'] as num).toDouble(),
+        ),
+    };
+  }
+
+  @override
   Future<int> countByPartyId(int partyId) async {
     final db = await _db;
     final result = await db.rawQuery(

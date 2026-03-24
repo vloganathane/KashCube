@@ -358,6 +358,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   Widget build(BuildContext context) {
     final transactionsAsync = ref.watch(transactionsProvider);
     final isWide = context.isExpanded;
+    // Show DataTable on medium (600-839) screens too — no side panel though.
+    final isTable = !context.isCompact;
 
     // Listen for flow steps this screen owns.
     ref.listen<TutorialFlowStep>(tutorialFlowProvider, (_, step) {
@@ -527,7 +529,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 Expanded(
                   child: filtered.isEmpty
                       ? _buildEmptyState(transactions.isEmpty)
-                      : isWide
+                      : isTable
                           ? _buildDataTable(filtered, context)
                           : ListView.builder(
                               padding: const EdgeInsets.symmetric(
@@ -607,7 +609,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               Expanded(child: listPane),
               const VerticalDivider(width: 1, thickness: 1),
               SizedBox(
-                width: 360,
+                width: (MediaQuery.sizeOf(context).width * 0.33).clamp(300.0, 420.0),
                 child: selectedTxn != null
                     ? TransactionDetailPanel(
                         transaction: selectedTxn,
@@ -725,120 +727,146 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
   /// Sortable [DataTable] shown in the list pane when width ≥ 840 dp.
   Widget _buildDataTable(List<Transaction> filtered, BuildContext context) {
-    // Map current _sortOrder to DataTable header indicators.
-    int? sortColumnIndex;
-    bool sortAscending = false;
-    switch (_sortOrder) {
-      case TransactionSortOrder.dateDesc:
-        sortColumnIndex = 0;
-        sortAscending = false;
-      case TransactionSortOrder.dateAsc:
-        sortColumnIndex = 0;
-        sortAscending = true;
-      case TransactionSortOrder.amountHigh:
-        sortColumnIndex = 3;
-        sortAscending = false;
-      case TransactionSortOrder.amountLow:
-        sortColumnIndex = 3;
-        sortAscending = true;
-    }
-    final colors = context.kashColors;
-    return SingleChildScrollView(
-      child: DataTable(
-        sortColumnIndex: sortColumnIndex,
-        sortAscending: sortAscending,
-        showCheckboxColumn: false,
-        dataRowMinHeight: 44,
-        dataRowMaxHeight: 44,
-        columnSpacing: AppSpacing.xl,
-        horizontalMargin: AppSpacing.base,
-        headingRowHeight: 40,
-        columns: [
-          DataColumn(
-            label: const Text('Date'),
-            onSort: (_, ascending) => setState(() {
-              _sortOrder = ascending
-                  ? TransactionSortOrder.dateAsc
-                  : TransactionSortOrder.dateDesc;
-            }),
-          ),
-          const DataColumn(label: Text('Party / Description')),
-          const DataColumn(label: Text('Category')),
-          DataColumn(
-            label: const Text('Amount'),
-            numeric: true,
-            onSort: (_, ascending) => setState(() {
-              _sortOrder = ascending
-                  ? TransactionSortOrder.amountLow
-                  : TransactionSortOrder.amountHigh;
-            }),
-          ),
-          const DataColumn(label: Text('Method')),
-        ],
-        rows: filtered.map((txn) {
-          final isSelected = txn.id == _selectedTransactionId;
-          final amountColor = txn.isIncome ? colors.income : colors.expense;
-          final prefix = txn.isIncome ? '+' : '-';
-          return DataRow(
-            selected: isSelected,
-            color: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return context.colorScheme.secondaryContainer
-                    .withValues(alpha: 0.4);
-              }
-              return null;
-            }),
-            onSelectChanged: txn.id != null
-                ? (_) => setState(() => _selectedTransactionId = txn.id)
-                : null,
-            cells: [
-              DataCell(
-                Text(
-                  DateFormatter.format(txn.date),
-                  style: context.textTheme.bodySmall,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final w = constraints.maxWidth;
+        // Adaptive columns: hide less-critical cols on narrower list panes.
+        final showCategory = w > 500;
+        final showMethod = w > 720;
+        final spacing = w > 900
+            ? AppSpacing.xl
+            : w > 600
+                ? AppSpacing.base
+                : AppSpacing.sm;
+
+        // Amount column index shifts when Category is hidden.
+        final amountColIndex = showCategory ? 3 : 2;
+        int? sortColumnIndex;
+        bool sortAscending = false;
+        switch (_sortOrder) {
+          case TransactionSortOrder.dateDesc:
+            sortColumnIndex = 0;
+            sortAscending = false;
+          case TransactionSortOrder.dateAsc:
+            sortColumnIndex = 0;
+            sortAscending = true;
+          case TransactionSortOrder.amountHigh:
+            sortColumnIndex = amountColIndex;
+            sortAscending = false;
+          case TransactionSortOrder.amountLow:
+            sortColumnIndex = amountColIndex;
+            sortAscending = true;
+        }
+
+        final colors = context.kashColors;
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            // Ensure the table stretches to fill available width.
+            constraints: BoxConstraints(minWidth: w),
+            child: DataTable(
+              sortColumnIndex: sortColumnIndex,
+              sortAscending: sortAscending,
+              showCheckboxColumn: false,
+              dataRowMinHeight: 44,
+              dataRowMaxHeight: 44,
+              columnSpacing: spacing,
+              horizontalMargin: AppSpacing.base,
+              headingRowHeight: 40,
+              columns: [
+                DataColumn(
+                  label: const Text('Date'),
+                  onSort: (_, ascending) => setState(() {
+                    _sortOrder = ascending
+                        ? TransactionSortOrder.dateAsc
+                        : TransactionSortOrder.dateDesc;
+                  }),
                 ),
-              ),
-              DataCell(
-                Text(
-                  txn.partyName ?? txn.category,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                const DataColumn(label: Text('Party / Description')),
+                if (showCategory) const DataColumn(label: Text('Category')),
+                DataColumn(
+                  label: const Text('Amount'),
+                  numeric: true,
+                  onSort: (_, ascending) => setState(() {
+                    _sortOrder = ascending
+                        ? TransactionSortOrder.amountLow
+                        : TransactionSortOrder.amountHigh;
+                  }),
                 ),
-              ),
-              DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      CategoryHelper.getIcon(txn.category),
-                      size: 14,
-                      color: context.colorScheme.onSurfaceVariant,
+                if (showMethod) const DataColumn(label: Text('Method')),
+              ],
+              rows: filtered.map((txn) {
+                final isSelected = txn.id == _selectedTransactionId;
+                final amountColor =
+                    txn.isIncome ? colors.income : colors.expense;
+                final prefix = txn.isIncome ? '+' : '-';
+                return DataRow(
+                  selected: isSelected,
+                  color: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return context.colorScheme.secondaryContainer
+                          .withValues(alpha: 0.4);
+                    }
+                    return null;
+                  }),
+                  onSelectChanged: txn.id != null
+                      ? (_) => setState(() => _selectedTransactionId = txn.id)
+                      : null,
+                  cells: [
+                    DataCell(
+                      Text(
+                        DateFormatter.format(txn.date),
+                        style: context.textTheme.bodySmall,
+                      ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(txn.category, style: context.textTheme.bodySmall),
+                    DataCell(
+                      Text(
+                        txn.partyName ?? txn.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (showCategory)
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              CategoryHelper.getIcon(txn.category),
+                              size: 14,
+                              color: context.colorScheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(
+                              txn.category,
+                              style: context.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    DataCell(
+                      Text(
+                        '$prefix${CurrencyFormatter.format(txn.amount)}',
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: amountColor,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: 'RobotoMono',
+                        ),
+                      ),
+                    ),
+                    if (showMethod)
+                      DataCell(
+                        Text(
+                          txn.paymentMethod.label,
+                          style: context.textTheme.bodySmall,
+                        ),
+                      ),
                   ],
-                ),
-              ),
-              DataCell(
-                Text(
-                  '$prefix${CurrencyFormatter.format(txn.amount)}',
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: amountColor,
-                    fontWeight: FontWeight.w600,
-                    fontFamily: 'RobotoMono',
-                  ),
-                ),
-              ),
-              DataCell(
-                Text(
-                  txn.paymentMethod.label,
-                  style: context.textTheme.bodySmall,
-                ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
     );
   }
 

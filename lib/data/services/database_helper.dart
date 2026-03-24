@@ -2961,6 +2961,31 @@ class DatabaseHelper {
         'description': 'accounts: add credit_limit column; AccountType.cash support',
       });
     }
+
+    if (oldVersion < 78) {
+      // Rename current_balance → opening_balance (add new column, copy data).
+      // SQLite cannot rename columns portably, so we keep the old column.
+      try {
+        await db.execute('ALTER TABLE accounts ADD COLUMN opening_balance REAL');
+        await db.execute(
+            'UPDATE accounts SET opening_balance = current_balance WHERE current_balance IS NOT NULL');
+        debugPrint('[DB v78] accounts.opening_balance column added and populated');
+      } catch (e) {
+        debugPrint('[DB v78] opening_balance already exists or error: \$e');
+      }
+      try {
+        await db.execute(
+            'ALTER TABLE accounts ADD COLUMN linked_bank_account_id INTEGER REFERENCES accounts(id)');
+        debugPrint('[DB v78] accounts.linked_bank_account_id column added');
+      } catch (e) {
+        debugPrint('[DB v78] linked_bank_account_id already exists or error: \$e');
+      }
+      await db.insert('schema_version', {
+        'version': 78,
+        'description':
+            'accounts: opening_balance column (replaces current_balance); linked_bank_account_id FK',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

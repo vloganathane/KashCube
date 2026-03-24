@@ -228,8 +228,8 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
         await ref.read(accountsProvider.notifier).addAccount(
               Account(
                 accountName: 'Cash',
-                accountType: AccountType.savings,
-                currentBalance: cashAmt,
+                accountType: AccountType.cash,
+                openingBalance: cashAmt,
                 isActive: true,
                 isPrimary: true,
               ),
@@ -242,7 +242,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
               Account(
                 accountName: 'Bank Account',
                 accountType: AccountType.savings,
-                currentBalance: bankAmt,
+                openingBalance: bankAmt,
                 isActive: true,
                 isPrimary: cashAmt == null || cashAmt <= 0,
               ),

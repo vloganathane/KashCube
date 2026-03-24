@@ -11,7 +11,6 @@ import '../../providers/settings_provider.dart';
 import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
 import 'accounts_manage_screen.dart';
-import 'opening_balances_screen.dart';
 import 'pin_lock_screen.dart';
 import 'profile_screen.dart';
 import 'businesses_screen.dart';
@@ -221,25 +220,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.account_balance_outlined),
-                title: const Text('Manage Accounts'),
-                subtitle: const Text('Bank, UPI, Wallet, Cash'),
+                title: const Text('Accounts'),
+                subtitle: const Text('Bank, UPI, Wallet, Cash · Opening Balances'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AccountsManageScreen(),
-                  ),
-                ),
-              ),
-              ListTile(
-                leading: const Icon(Icons.account_balance_wallet_outlined),
-                title: const Text('Opening Balances'),
-                subtitle: const Text('Set starting balance per payment method'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const OpeningBalancesScreen(),
                   ),
                 ),
               ),
@@ -676,23 +663,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.account_balance_outlined),
-              title: const Text('Manage Accounts'),
-              subtitle: const Text('Bank, UPI, Wallet, Cash'),
+              title: const Text('Accounts'),
+              subtitle: const Text('Bank, UPI, Wallet, Cash · Opening Balances'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AccountsManageScreen()),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet_outlined),
-              title: const Text('Opening Balances'),
-              subtitle: const Text('Set starting balance per payment method'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const OpeningBalancesScreen()),
               ),
             ),
           ],

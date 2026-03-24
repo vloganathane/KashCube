@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/tutorial_mixin.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/tutorial_flow_provider.dart';
 import '../search/search_screen.dart';
 import '../../widgets/speed_dial_fab.dart';
 import 'invoice_detail_screen.dart';
@@ -21,12 +24,181 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 }
 
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, TutorialMixin<InvoicesScreen> {
+  // Keys for tutorial spotlights
+  final _fabKey        = GlobalKey();
+  final _searchKey     = GlobalKey();
+  final _filterKey     = GlobalKey();
+  final _newestCardKey = GlobalKey();
+
   late final TabController _tabController;
+
+  @override
+  String get tutorialKey => SettingsKeys.tutorialInvoicesDone;
+
+  @override
+  String get tutorialTitle => 'Invoices & Quotes';
+
+  @override
+  String get tutorialDescription =>
+      'Create professional invoices for your business. '
+      'Learn how to add customers, line items, and generate invoices.';
+
+  @override
+  List<TargetFocus> buildTargets() => [
+        TargetFocus(
+          identify: 'invoice_fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Create invoices & quotes',
+                message:
+                    'Tap + to create a new invoice or quote\n'
+                    '\u2014 add customers, items, and track payments.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'invoice_search',
+          keyTarget: _searchKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Search invoices',
+                message: 'Quickly find invoices by number, customer, or amount.',
+              ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'invoice_filter',
+          keyTarget: _filterKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Filter by date',
+                message: 'View invoices from a specific period.',
+              ),
+            ),
+          ],
+        ),
+      ];
+
+  @override
+  List<TutorialMenuItem> get tutorialMenuItems => [
+        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+        TutorialMenuItem(
+          label: 'How to create an invoice',
+          onTap: _replayInvoiceFlow,
+        ),
+      ];
+
+  void _replayInvoiceFlow() {
+    ref.read(settingsRepositoryProvider)
+        .set(SettingsKeys.tutorialInvoiceFlowDone, 'false');
+    ref.read(tutorialFlowProvider.notifier).abandon();
+    ref.read(tutorialFlowProvider.notifier)
+        .advance(TutorialFlowStep.newInvoiceFab);
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    maybeShowTutorial();
+    _maybeStartFlow();
+  }
+
+  Future<void> _maybeStartFlow() async {
+    final settings = ref.read(settingsRepositoryProvider);
+    if (await settings.get(SettingsKeys.tutorialInvoiceFlowDone) != 'true') {
+      if (!mounted) return;
+      ref.read(tutorialFlowProvider.notifier).abandon();
+      ref.read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newInvoiceFab);
+    }
+  }
+
+  void _showFabFlowMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_invoice_fab',
+          keyTarget: _fabKey,
+          shape: ShapeLightFocus.Circle,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Let\'s create your first invoice',
+                message: 'Tap the + button to get started.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      pulseEnable: false,
+      onSkip: () {
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  void _showResultMark() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_invoice_result',
+          keyTarget: _newestCardKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 12,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Invoice created!',
+                message:
+                    'Tap to view details, share PDF, or mark as paid.\n'
+                    'Swipe to delete.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      pulseEnable: false,
+      onFinish: () {
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        ref.read(tutorialFlowProvider.notifier).finish();
+      },
+      onSkip: () {
+        ref.read(settingsRepositoryProvider)
+            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+        ref.read(tutorialFlowProvider.notifier).abandon();
+        return true;
+      },
+    ).show(context: context);
   }
 
   @override
@@ -44,6 +216,22 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Listen for tutorial flow steps
+    ref.listen<TutorialFlowStep>(tutorialFlowProvider, (_, step) {
+      if (step == TutorialFlowStep.newInvoiceFab) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _showFabFlowMark();
+        });
+      }
+      if (step == TutorialFlowStep.newInvoiceResult) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _newestCardKey.currentContext == null) return;
+          _showResultMark();
+        });
+      }
+    });
+
     final businessEnabled = ref.watch(businessModeProvider);
     if (!businessEnabled) {
       return Scaffold(
@@ -58,7 +246,9 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
       appBar: AppBar(
         title: const Text('Invoices & Quotes'),
         actions: [
+          buildTutorialAppBarAction(),
           IconButton(
+            key: _searchKey,
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
@@ -66,6 +256,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
             ),
           ),
           IconButton(
+            key: _filterKey,
             icon: const Icon(Icons.tune),
             onPressed: _showFilterDialog,
             tooltip: 'Filter by date',
@@ -79,12 +270,12 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ),
-      floatingActionButton: const SpeedDialFab(showAllOptions: false),
+      floatingActionButton: SpeedDialFab(key: _fabKey, showAllOptions: false),
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          _InvoicesTab(),
-          _QuotesTab(),
+        children: [
+          _InvoicesTab(newestCardKey: _newestCardKey),
+          const _QuotesTab(),
         ],
       ),
     );
@@ -94,7 +285,9 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
 // ── Invoices Tab ─────────────────────────────────────────────────────────────
 
 class _InvoicesTab extends ConsumerWidget {
-  const _InvoicesTab();
+  const _InvoicesTab({this.newestCardKey});
+
+  final GlobalKey? newestCardKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -135,9 +328,12 @@ class _InvoicesTab extends ConsumerWidget {
                         right: AppSpacing.base,
                         top: AppSpacing.base,
                         bottom: 80,
-                      ),
+                     ),
                       itemCount: list.length,
-                      itemBuilder: (ctx, i) => _InvoiceTile(invoice: list[i]),
+                      itemBuilder: (ctx, i) => _InvoiceTile(
+                        key: i == 0 ? newestCardKey : null,
+                        invoice: list[i],
+                      ),
                     ),
             ),
           ),

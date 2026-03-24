@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/settings_provider.dart';
+import '../providers/tutorial_flow_provider.dart';
 import '../screens/bills/bills_and_payments_screen.dart';
 import '../screens/bookings/create_booking_screen.dart';
 import '../screens/invoices/quote_builder_screen.dart';
@@ -103,6 +104,10 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
 
   void _openNewInvoice() {
     _close();
+    // Advance tutorial flow if active
+    if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceFab) {
+      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceCustomer);
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => const QuoteBuilderScreen(docType: DocumentType.invoice),

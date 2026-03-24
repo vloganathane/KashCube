@@ -2,7 +2,7 @@
 
 **Status:** Partially implemented — orientation tour ✅ · flow-following ✅ (Transactions · Credits)  
 **Package:** [`tutorial_coach_mark`](https://pub.dev/packages/tutorial_coach_mark)  
-**Last updated:** March 2026
+**Last updated:** 24 March 2026
 
 ---
 
@@ -14,13 +14,14 @@
 | `TutorialMixin` in `lib/core/utils/tutorial_mixin.dart` | ✅ |
 | Tutorial keys in `SettingsKeys` | ✅ |
 | `TransactionsScreen` orientation tour (FAB · Search · Filter) | ✅ |
-| `?` replay button on TransactionsScreen AppBar | ✅ |
+| `?` adaptive dropdown on TransactionsScreen & CreditsScreen | ✅ |
 | `heroTag` collision fix across all FABs | ✅ |
 | Flow-following orchestrator | ✅ `TutorialFlowNotifier` + `TutorialFlowStep` |
 | Add Transaction guided flow | ✅ FAB → form → result card |
 | New Credit guided flow | ✅ FAB → form → result card |
+| `CreditsScreen` orientation tour (FAB · Filter chips) | ✅ |
 | Per-feature flows (Invoices, Bookings, Catalog…) | ⬜ |
-| Orientation tours for Home, Credits, Reports | ⬜ |
+| Orientation tours for Home, Reports, Contacts | ⬜ |
 | "Reset all tutorials" in Settings → About | ⬜ |
 
 ---

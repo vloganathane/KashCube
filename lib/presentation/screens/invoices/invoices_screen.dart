@@ -45,6 +45,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
       'Learn how to add customers, line items, and generate invoices.';
 
   @override
+  @override
   List<TargetFocus> buildTargets() => [
         TargetFocus(
           identify: 'invoice_fab',
@@ -67,7 +68,8 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
         TargetFocus(
           identify: 'invoice_search',
           keyTarget: _searchKey,
-          shape: ShapeLightFocus.Circle,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
           enableOverlayTab: true,
           contents: [
             TargetContent(
@@ -83,7 +85,8 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
         TargetFocus(
           identify: 'invoice_filter',
           keyTarget: _filterKey,
-          shape: ShapeLightFocus.Circle,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
           enableOverlayTab: true,
           contents: [
             TargetContent(
@@ -134,6 +137,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
   }
 
   void _showFabFlowMark() {
+    // Capture refs before showing tutorial to avoid "ref after dispose" errors
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -153,17 +160,32 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ],
-      pulseEnable: false,
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: true,
+      onFinish: () {},  // user taps FAB overlay — FAB onPressed handles the advance
       onSkip: () {
-        ref.read(settingsRepositoryProvider)
-            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
-        ref.read(tutorialFlowProvider.notifier).abandon();
+        flowNotifier.abandon();
+        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
         return true;
       },
     ).show(context: context);
   }
 
   void _showResultMark() {
+    // Capture refs before showing tutorial to avoid "ref after dispose" errors
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    final settingsRepo = ref.read(settingsRepositoryProvider);
+    
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -186,16 +208,25 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'GOT IT',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
       pulseEnable: false,
       onFinish: () {
-        ref.read(settingsRepositoryProvider)
-            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
-        ref.read(tutorialFlowProvider.notifier).finish();
+        flowNotifier.finish();
+        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
       },
       onSkip: () {
-        ref.read(settingsRepositoryProvider)
-            .set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
-        ref.read(tutorialFlowProvider.notifier).abandon();
+        flowNotifier.finish();
+        settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
         return true;
       },
     ).show(context: context);

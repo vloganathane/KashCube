@@ -215,6 +215,7 @@ class _BusinessHub extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final now = DateTime.now();
+    final colors = context.kashColors;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Business'),
@@ -281,6 +282,26 @@ class _BusinessHub extends ConsumerWidget {
                 color: const Color(0xFF1565C0),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const StaffListScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.currency_rupee_outlined,
+                label: 'Dues',
+                subtitle: Consumer(
+                  builder: (ctx, r, _) {
+                    final given =
+                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ?? 0.0;
+                    final text = given > 0
+                        ? '${CurrencyFormatter.formatCompact(given)} to collect'
+                        : 'Track who owes whom';
+                    return Text(text,
+                        style: ctx.textTheme.bodySmall
+                            ?.copyWith(color: ctx.colorScheme.outline));
+                  },
+                ),
+                color: colors.credit,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CreditsScreen()),
                 ),
               ),
             ],

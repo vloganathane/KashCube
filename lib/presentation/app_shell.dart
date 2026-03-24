@@ -330,6 +330,15 @@ class _AppShellState extends ConsumerState<AppShell> {
         return;
       }
       
+      // When switching TO a tab, also pop that tab's stack to root if it has a deep navigation.
+      // This ensures that tapping "Transactions" always shows TransactionsHubScreen, even if
+      // the user previously navigated to a detail screen then switched away.
+      final targetNavState = _tabNavKeys[screenIndex].currentState;
+      if (targetNavState != null && targetNavState.canPop()) {
+        debugPrint('[AppShell] Target tab has deep stack, popping to root before switching...');
+        targetNavState.popUntil((r) => r.isFirst);
+      }
+      
       debugPrint('[AppShell] Switching to tab $screenIndex');
       if (activeUser == null) {
         ref.read(currentTabIndexProvider.notifier).state = screenIndex;

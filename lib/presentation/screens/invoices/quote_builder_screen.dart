@@ -1358,50 +1358,100 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   // ── Tutorial methods ─────────────────────────────────────────────────────
 
-  /// Re-starts the form guide from the first relevant step based on what
-  /// the user has filled so far. Tap ? to get contextual help at any point.
+  /// Contextual restart: jumps to the first incomplete step.
+  /// Tapping ? at any point in the form takes the user to the next thing
+  /// they need to do, not back to step 1.
   void _restartFormTutorial() {
-    final step = ref.read(tutorialFlowProvider);
     if (_customerCtrl.text.trim().isEmpty) {
-      // Nothing filled yet — start from customer spotlight
-      if (!step.isNewInvoiceFlow) {
-        // Not in a flow at all — kick one off
-        ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceCustomer);
-      } else {
-        _showCustomerFieldMark();
-      }
+      _showFormQuickMark(startAt: 0);
     } else if (_items.every((i) => i.itemName.trim().isEmpty && i.unitPrice == 0)) {
-      // Customer done, no items yet
-      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
+      _showFormQuickMark(startAt: 1);
     } else {
-      // Items filled — jump to save spotlight
-      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
+      _showFormQuickMark(startAt: 2);
     }
   }
 
-  void _showCustomerFieldMark() {
+  /// Single 3-step quick guide: Customer → Line Items → Save.
+  /// [startAt] skips already-completed steps so ? always points at what's next.
+  void _showFormQuickMark({int startAt = 0}) {
     final flowNotifier = ref.read(tutorialFlowProvider.notifier);
-    
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'flow_invoice_customer',
-          keyTarget: _customerFieldKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Select a customer',
-                message: 'Choose an existing customer or type a new name.',
-              ),
+
+    final allTargets = <TargetFocus>[
+      TargetFocus(
+        identify: 'quick_customer',
+        keyTarget: _customerFieldKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: '1 / 3 — Customer',
+              message: 'Choose an existing customer or type a\n'
+                  'new name. Required to send the invoice.',
             ),
-          ],
-        ),
-      ],
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'quick_line_items',
+        keyTarget: _lineItemsKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 12,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: '2 / 3 — Line Items',
+              message: 'Enter item name, quantity, and unit price.\n'
+                  'Tap Catalog to pick from saved items.',
+            ),
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'quick_save',
+        keyTarget: _saveButtonKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: '3 / 3 — Save Invoice',
+              message: 'Saves the invoice and takes you back to\n'
+                  'the list. You can share or print from there.',
+            ),
+          ),
+        ],
+      ),
+    ];
+
+    final targets = allTargets.sublist(startAt.clamp(0, allTargets.length - 1));
+
+    void scrollTo(TargetFocus? t) {
+      final ctx = t?.keyTarget?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          alignment: 0.2);
+    }
+
+    void scrollToNext(TargetFocus current) {
+      final idx = targets.indexWhere((t) => t.identify == current.identify);
+      if (idx + 1 < targets.length) scrollTo(targets[idx + 1]);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => scrollTo(targets.isEmpty ? null : targets.first),
+    );
+
+    TutorialCoachMark(
+      targets: targets,
       colorShadow: Colors.black,
       opacityShadow: 0.85,
       textSkip: 'SKIP',
@@ -1414,107 +1464,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       alignSkip: Alignment.topRight,
       paddingFocus: 4,
       pulseEnable: true,
+      focusAnimationDuration: const Duration(milliseconds: 400),
+      onClickTarget: scrollToNext,
+      onClickOverlay: scrollToNext,
       onFinish: () {
-        // User tapped overlay — advance to next step
         Future(() {
-          if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceCustomer) {
-            ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
-          }
+          flowNotifier.finish();
         });
       },
-      onSkip: () {
-        Future(() => flowNotifier.abandon());
-        return true;
-      },
-    ).show(context: context);
-  }
-
-  void _showLineItemsMark() {
-    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
-    
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'flow_invoice_line_items',
-          keyTarget: _lineItemsKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 12,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Add items',
-                message: 'Add items from your catalog or enter them manually.',
-              ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'SKIP',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w600,
-        fontSize: 14,
-        letterSpacing: 0.5,
-      ),
-      alignSkip: Alignment.topRight,
-      paddingFocus: 4,
-      pulseEnable: true,
-      onFinish: () {
-        // User tapped overlay — advance to next step
-        Future(() {
-          if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceLineItem) {
-            ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
-          }
-        });
-      },
-      onSkip: () {
-        Future(() => flowNotifier.abandon());
-        return true;
-      },
-    ).show(context: context);
-  }
-
-  void _showSaveButtonMark() {
-    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
-    
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'flow_invoice_save',
-          keyTarget: _saveButtonKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Save your invoice',
-                message: 'Tap to save — you\'ll see it on the invoices list.',
-              ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'SKIP',
-      textStyleSkip: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w600,
-        fontSize: 14,
-        letterSpacing: 0.5,
-      ),
-      alignSkip: Alignment.topRight,
-      paddingFocus: 4,
-      pulseEnable: true,
-      onFinish: () {},
       onSkip: () {
         Future(() => flowNotifier.abandon());
         return true;
@@ -1546,21 +1503,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       title = isEdit ? 'Edit Quote' : 'New Quote';
     }
     
-    // Tutorial flow listener
+    // Tutorial flow listener.
+    // newInvoiceCustomer: FAB path — advance fires before the push so we
+    // can't rely on initState; catch it here and start the quick guide.
+    // newInvoiceResult: handled by InvoicesScreen (result spotlight).
+    // Note: newInvoiceLineItem / newInvoiceSave are no longer used;
+    // progression is now handled inside _showFormQuickMark itself.
     ref.listen<TutorialFlowStep>(tutorialFlowProvider, (prev, next) {
       if (!mounted) return;
       switch (next) {
         case TutorialFlowStep.newInvoiceCustomer:
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showCustomerFieldMark();
-          });
-        case TutorialFlowStep.newInvoiceLineItem:
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showLineItemsMark();
-          });
-        case TutorialFlowStep.newInvoiceSave:
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _showSaveButtonMark();
+            if (mounted) _showFormQuickMark(startAt: 0);
           });
         default:
           break;
@@ -1658,13 +1612,6 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   // Clear stale delivery address from previous customer
                   _selectedDeliveryAddress = null;
                 });
-                // Advance tutorial flow when customer selected (new or existing)
-                if (mounted) {
-                  final currentStep = ref.read(tutorialFlowProvider);
-                  if (currentStep == TutorialFlowStep.newInvoiceCustomer) {
-                    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
-                  }
-                }
                 // Look up party by name to get party ID
                 final parties = await ref.read(partyRepositoryProvider).getAll();
                 final party = parties.cast<Party?>().firstWhere(
@@ -2001,11 +1948,6 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                     _items.add(catalogItem);
                   }
                 });
-                // Advance tutorial flow if active (catalog path)
-                final currentStep = ref.read(tutorialFlowProvider);
-                if (currentStep == TutorialFlowStep.newInvoiceLineItem) {
-                  ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
-                }
                 // Track usage for smart sorting
                 if (item.id != null) {
                   ref

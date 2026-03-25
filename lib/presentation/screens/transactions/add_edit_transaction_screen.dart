@@ -76,10 +76,21 @@ class _AddEditTransactionScreenState
   final _notesController = TextEditingController();
   final _interestRateController = TextEditingController();
 
-  // Keys used by the guided Add Transaction tutorial flow.
-  final _amountFieldKey  = GlobalKey();
+  // Keys used by the guided Add Transaction tutorial flow (Quick mode).
+  final _amountFieldKey   = GlobalKey();
   final _categoryFieldKey = GlobalKey();
-  final _saveButtonKey   = GlobalKey();
+  final _saveButtonKey    = GlobalKey();
+
+  // Keys used by the Detail field-reference mode (all form fields).
+  final _typeChipsKey     = GlobalKey();
+  final _accountFieldKey  = GlobalKey();
+  final _partyFieldKey    = GlobalKey();
+  final _dateTimeKey      = GlobalKey();
+  final _paymentMethodKey = GlobalKey();
+  final _modeKey          = GlobalKey();
+  final _notesKey         = GlobalKey();
+  final _addCategoryKey   = GlobalKey();
+  final _billAttachKey    = GlobalKey();
 
   late TransactionType _type;
   late TransactionMode _mode;
@@ -170,6 +181,253 @@ class _AddEditTransactionScreenState
   }
 
   void _restartFormTutorial() => _showFormFlowMark();
+
+  /// Detail mode — standalone field-by-field reference. Not connected to
+  /// TutorialFlowNotifier; no done-flag; always replayable.
+  void _showDetailModeMark() {
+    // Only include targets whose keys are currently mounted (some fields are
+    // conditionally rendered based on transaction type).
+    final targets = <TargetFocus>[
+      TargetFocus(
+        identify: 'type_chips',
+        keyTarget: _typeChipsKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'What happened?',
+              message: 'Spent / Earned for everyday money.\n'
+                  'Lent / Borrowed for money between people.\n'
+                  'Invested / Redeemed for savings & MF.',
+            ),
+          ),
+        ],
+      ),
+      TargetFocus(
+        identify: 'amount',
+        keyTarget: _amountFieldKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'Amount',
+              message: 'Enter in rupees. Indian comma formatting\n'
+                  'is applied automatically — ₹1,23,456.',
+            ),
+          ),
+        ],
+      ),
+      if (_accountFieldKey.currentContext != null)
+        TargetFocus(
+          identify: 'account',
+          keyTarget: _accountFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Account',
+                message: 'Which bank or wallet this came from or\n'
+                    'went to. Leave blank to record without\n'
+                    'account tracking.',
+              ),
+            ),
+          ],
+        ),
+      if (_categoryFieldKey.currentContext != null)
+        TargetFocus(
+          identify: 'category',
+          keyTarget: _categoryFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Category',
+                message: 'Affects your Reports breakdown.\n'
+                    'Tap "+ Add custom category" to create\n'
+                    'your own.',
+              ),
+            ),
+          ],
+        ),
+      if (_addCategoryKey.currentContext != null)
+        TargetFocus(
+          identify: 'add_category',
+          keyTarget: _addCategoryKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: '+ Add custom category',
+                message: 'Create categories that don\'t exist yet —\n'
+                    'e.g. Pet Care, Side Hustle, School Fees.\n'
+                    'They appear in Reports immediately.',
+              ),
+            ),
+          ],
+        ),
+      if (_partyFieldKey.currentContext != null)
+        TargetFocus(
+          identify: 'party',
+          keyTarget: _partyFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Party / Merchant',
+                message: 'Who you paid or received from.\n'
+                    'Tap the contacts icon to pick from\n'
+                    'your saved parties.',
+              ),
+            ),
+          ],
+        ),
+      TargetFocus(
+        identify: 'datetime',
+        keyTarget: _dateTimeKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'Date & Time',
+              message: 'Defaults to now. Tap either field\n'
+                  'to change for past or future transactions.',
+            ),
+          ),
+        ],
+      ),
+      if (_paymentMethodKey.currentContext != null)
+        TargetFocus(
+          identify: 'payment_method',
+          keyTarget: _paymentMethodKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Payment Method',
+                message: 'UPI, Cash, Card, Net Banking, or Wallet.\n'
+                    'Auto-updates when you pick an Account.',
+              ),
+            ),
+          ],
+        ),
+      if (_modeKey.currentContext != null)
+        TargetFocus(
+          identify: 'mode',
+          keyTarget: _modeKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Personal / Business',
+                message: 'Personal: your own ledger.\n'
+                    'Business: records in P&L and can\n'
+                    'appear on invoices.',
+              ),
+            ),
+          ],
+        ),
+      if (_notesKey.currentContext != null)
+        TargetFocus(
+          identify: 'notes',
+          keyTarget: _notesKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Notes (optional)',
+                message: 'Add context — ref numbers, descriptions,\n'
+                    'or reminders. Optional but fully\n'
+                    'searchable in Transactions.',
+              ),
+            ),
+          ],
+        ),
+      if (_billAttachKey.currentContext != null)
+        TargetFocus(
+          identify: 'bill_attach',
+          keyTarget: _billAttachKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Attach Bill / Receipt',
+                message: 'Photo or PDF of the bill. Stored\n'
+                    'locally — viewable from the transaction\n'
+                    'detail screen anytime.',
+              ),
+            ),
+          ],
+        ),
+      TargetFocus(
+        identify: 'save',
+        keyTarget: _saveButtonKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'Save',
+              message: 'Saves and returns. Balance, reports,\n'
+                  'and party ledger update instantly.',
+            ),
+          ),
+        ],
+      ),
+    ];
+
+    TutorialCoachMark(
+      targets: targets,
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'CLOSE',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: false, // reference mode — no pulsing, calmer UX
+      onSkip: () { return true; },
+      onFinish: () {},
+    ).show(context: context);
+  }
 
   void _showFormFlowMark() {
     // Capture refs before showing overlay — avoids "ref after dispose" crash.
@@ -474,11 +732,23 @@ class _AddEditTransactionScreenState
       appBar: AppBar(
         title: Text(title),
         actions: [
-          if (!widget.isEditing)
+          // ? help button — Quick + Detail on new, Detail only on edit
+          if (widget.isEditing)
             IconButton(
               icon: const Icon(Icons.help_outline_rounded),
-              tooltip: 'How to add a transaction',
-              onPressed: _restartFormTutorial,
+              tooltip: 'Field reference',
+              onPressed: _showDetailModeMark,
+            )
+          else
+            PopupMenuButton<int>(
+              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'Help guides',
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 0, child: Text('Quick guide')),
+                PopupMenuItem(value: 1, child: Text('Field reference')),
+              ],
+              onSelected: (v) =>
+                  v == 0 ? _restartFormTutorial() : _showDetailModeMark(),
             ),
           if (widget.isEditing)
             IconButton(
@@ -512,30 +782,33 @@ class _AddEditTransactionScreenState
           padding: const EdgeInsets.all(AppSpacing.base),
           children: [
             // Transaction type selector — progressive disclosure chips
-            _TypeSelector(
-              selected: _type,
-              onChanged: (type) {
-                setState(() {
-                  _type = type;
-                  // Reset category when type group changes
-                  final custom = ref.read(customCategoriesProvider);
-                  final cats = _categoriesForType(custom)
-                      .where((c) => c != kAddCustomCategorysentinel)
-                      .toList();
-                  if (!cats.contains(_category)) {
-                    _category = cats.first;
-                  }
-                  // Reset mode — only personal/business apply to income/expense
-                  if (!type.isIncome && !type.isExpense) {
-                    _mode = TransactionMode.personal;
-                  }
-                  // Transfer accounts reset
-                  if (!type.isTransfer) {
-                    _fromAccountId = null;
-                    _toAccountId = null;
-                  }
-                });
-              },
+            KeyedSubtree(
+              key: _typeChipsKey,
+              child: _TypeSelector(
+                selected: _type,
+                onChanged: (type) {
+                  setState(() {
+                    _type = type;
+                    // Reset category when type group changes
+                    final custom = ref.read(customCategoriesProvider);
+                    final cats = _categoriesForType(custom)
+                        .where((c) => c != kAddCustomCategorysentinel)
+                        .toList();
+                    if (!cats.contains(_category)) {
+                      _category = cats.first;
+                    }
+                    // Reset mode — only personal/business apply to income/expense
+                    if (!type.isIncome && !type.isExpense) {
+                      _mode = TransactionMode.personal;
+                    }
+                    // Transfer accounts reset
+                    if (!type.isTransfer) {
+                      _fromAccountId = null;
+                      _toAccountId = null;
+                    }
+                  });
+                },
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
 
@@ -583,24 +856,27 @@ class _AddEditTransactionScreenState
 
             // Account picker — for all non-transfer types
             if (!_type.isTransfer) ...[  
-              _AccountRow(
-                accountId: _accountId,
-                onChanged: (id) {
-                  setState(() {
-                    _accountId = id;
-                    // Auto-set payment method based on account type
-                    if (id != null) {
-                      final accountsAsync = ref.read(accountsProvider);
-                      accountsAsync.whenData((accounts) {
-                        final account = accounts.firstWhere(
-                          (a) => a.id == id,
-                          orElse: () => accounts.first,
-                        );
-                        _paymentMethod = account.accountType.representativeMethod;
-                      });
-                    }
-                  });
-                },
+              KeyedSubtree(
+                key: _accountFieldKey,
+                child: _AccountRow(
+                  accountId: _accountId,
+                  onChanged: (id) {
+                    setState(() {
+                      _accountId = id;
+                      // Auto-set payment method based on account type
+                      if (id != null) {
+                        final accountsAsync = ref.read(accountsProvider);
+                        accountsAsync.whenData((accounts) {
+                          final account = accounts.firstWhere(
+                            (a) => a.id == id,
+                            orElse: () => accounts.first,
+                          );
+                          _paymentMethod = account.accountType.representativeMethod;
+                        });
+                      }
+                    });
+                  },
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -614,6 +890,7 @@ class _AddEditTransactionScreenState
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
+                  key: _addCategoryKey,
                   onPressed: _showAddCategoryDialog,
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add custom category'),
@@ -630,7 +907,10 @@ class _AddEditTransactionScreenState
 
             // Party Name — not for transfer
             if (!_type.isTransfer) ...[  
-              _buildPartyNameField(),
+              KeyedSubtree(
+                key: _partyFieldKey,
+                child: _buildPartyNameField(),
+              ),
               if (_activeSuggestion != null && !_suggestionApplied)
                 _buildSuggestionChip(),
               const SizedBox(height: AppSpacing.lg),
@@ -655,6 +935,7 @@ class _AddEditTransactionScreenState
 
             // Date & Time Row
             Row(
+              key: _dateTimeKey,
               children: [
                 Expanded(
                   child: _DateField(
@@ -678,6 +959,7 @@ class _AddEditTransactionScreenState
                 _type.isExpense ||
                 _type.isSettlement) ...[
               DropdownButtonFormField<PaymentMethod>(
+                key: _paymentMethodKey,
                 value: _paymentMethod,
                 decoration: InputDecoration(
                   labelText: 'Payment Method',
@@ -708,15 +990,19 @@ class _AddEditTransactionScreenState
 
             // Mode Toggle — only relevant for income / expense
             if (_type.isIncome || _type.isExpense) ...[  
-              _ModeChips(
-                selected: _mode,
-                onChanged: (mode) => setState(() => _mode = mode),
+              KeyedSubtree(
+                key: _modeKey,
+                child: _ModeChips(
+                  selected: _mode,
+                  onChanged: (mode) => setState(() => _mode = mode),
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
 
             // Notes
             TextFormField(
+              key: _notesKey,
               controller: _notesController,
               decoration: const InputDecoration(
                 labelText: 'Notes (optional)',
@@ -732,7 +1018,10 @@ class _AddEditTransactionScreenState
 
             // Bill Attachment — only for income / expense
             if (_type.isIncome || _type.isExpense) ...[
-              _buildBillSection(),
+              KeyedSubtree(
+                key: _billAttachKey,
+                child: _buildBillSection(),
+              ),
               const SizedBox(height: AppSpacing.xxl),
             ] else
               const SizedBox(height: AppSpacing.xxl),

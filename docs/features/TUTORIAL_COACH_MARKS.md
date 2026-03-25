@@ -504,7 +504,7 @@ For complex forms (many required fields, non-obvious structure), a `?` help butt
 | Simple 2–3 field sheet/dialog | ❌ | ❌ |
 | Delivery Challan / Credit Note / Debit Note | ❌ | ❌ niche/expert |
 
-Currently applies to: `QuoteBuilderScreen` (Quick mode ✅) · `AddEditTransactionScreen` (Quick ✅ · Detail ⬜).
+Currently applies to: `QuoteBuilderScreen` (Quick mode ✅) · `AddEditTransactionScreen` (Quick ✅ · Detail ✅).
 
 ### Contextual restart pattern (`_restartFormTutorial`)
 
@@ -592,13 +592,16 @@ void _showDetailModeMark() {
 | 2 | **Amount** | `_amountFieldKey` | Enter in rupees — Indian comma formatting applied automatically (₹1,23,456) |
 | 3 | **Account** | `_accountFieldKey` | Which bank/wallet this came from or went to. Leave blank to record without account tracking |
 | 4 | **Category** | `_categoryFieldKey` | Affects your Reports breakdown. Tap "+ Add custom category" to create your own |
-| 5 | **Party / Merchant** | `_partyFieldKey` | Who you paid or received from. Tap the contacts icon to pick from saved parties |
-| 6 | **Date & Time** | `_dateTimeKey` | Defaults to now. Tap either to change for past or future transactions |
-| 7 | **Payment Method** | `_paymentMethodKey` | UPI, Cash, Card, Net Banking, or Wallet. Auto-updates when you pick an Account |
-| 8 | **Personal / Business** | `_modeKey` | Personal: your personal ledger. Business: records in business P&L and can appear on invoices |
-| 9 | **Add Transaction** | `_saveButtonKey` | Saves and returns. Balance, reports, and party ledger update instantly |
+| 5 | **+ Add custom category** | `_addCategoryKey` | Create categories that don't exist yet — e.g. Pet Care, Side Hustle, School Fees. They appear in Reports immediately |
+| 6 | **Party / Merchant** | `_partyFieldKey` | Who you paid or received from. Tap the contacts icon to pick from saved parties |
+| 7 | **Date & Time** | `_dateTimeKey` | Defaults to now. Tap either to change for past or future transactions |
+| 8 | **Payment Method** | `_paymentMethodKey` | UPI, Cash, Card, Net Banking, or Wallet. Auto-updates when you pick an Account |
+| 9 | **Personal / Business** | `_modeKey` | Personal: your personal ledger. Business: records in business P&L and can appear on invoices |
+| 10 | **Notes** | `_notesKey` | Add context — ref numbers, descriptions, or reminders. Optional but fully searchable in Transactions |
+| 11 | **Attach Bill / Receipt** | `_billAttachKey` | Photo or PDF of the bill. Stored locally — viewable from the transaction detail screen anytime |
+| 12 | **Add Transaction** | `_saveButtonKey` | Saves and returns. Balance, reports, and party ledger update instantly |
 
-> **New GlobalKeys required before implementing:** `_typeChipsKey`, `_accountFieldKey`, `_partyFieldKey`, `_dateTimeKey`, `_paymentMethodKey`, `_modeKey` — add alongside the existing `_amountFieldKey`, `_categoryFieldKey`, `_saveButtonKey`.
+> **All GlobalKeys are implemented:** `_typeChipsKey`, `_accountFieldKey`, `_partyFieldKey`, `_dateTimeKey`, `_paymentMethodKey`, `_modeKey`, `_addCategoryKey`, `_notesKey`, `_billAttachKey` — plus the existing `_amountFieldKey`, `_categoryFieldKey`, `_saveButtonKey`.
 
 ---
 
@@ -785,7 +788,7 @@ All 69 screens across 18 modules. Work through these one at a time top-to-bottom
 | # | Module | Screen | Form | Status | Plan / Reason |
 |---|--------|--------|:----:|--------|---------------|
 | 1 | transactions | `transactions_screen` | — | ✅ Done | Orientation tour + Add Transaction flow |
-| 2 | transactions | `add_edit_transaction_screen` | ✓ | ✅ Quick · ⬜ Detail | Quick guide (3 steps) ✅ · 9-step field reference ⬜ Item 18 |
+| 2 | transactions | `add_edit_transaction_screen` | ✓ | ✅ Done | Quick guide (3 steps) + 9-step field reference · `?` → PopupMenuButton on new · `?` → IconButton (detail only) on edit |
 | 3 | ledger | `credits_screen` | ✓ | ✅ Done | Orientation tour + New Credit flow |
 | 4 | invoices | `invoices_screen` | — | ✅ Done | Orientation tour + New Invoice flow |
 | 5 | invoices | `quote_builder_screen` | ✓ | ✅ Done | Form spotlights + contextual `?` help |
@@ -854,7 +857,7 @@ All 69 screens across 18 modules. Work through these one at a time top-to-bottom
 | 68 | auth | `terms_gate_screen` | — | — Skip | One-time consent |
 | 69 | auth | `user_selection_screen` | — | — Skip | Auth |
 
-**Summary:** 5 done · 7 queued (Items 18–21) · 4 later · 54 skip
+**Summary:** 6 done · 6 queued (Items 19–21) · 4 later · 54 skip
 
 ---
 
@@ -880,7 +883,7 @@ All 69 screens across 18 modules. Work through these one at a time top-to-bottom
 17. Fixed: removed `_maybeStartFlow()` auto-start from `initState` — guided flow only starts via `?` menu
 
 ### Next — Quick win ⬜
-18. `AddEditTransactionScreen` detail mode — `_showDetailModeMark()` (9 steps, all fields) + upgrade `?` from `IconButton` to `PopupMenuButton` ("Quick guide" / "Field reference")
+18. `AddEditTransactionScreen` detail mode — ✅ Done
 
 ### Business flows ⬜
 19. `BookingsScreen` add-booking flow

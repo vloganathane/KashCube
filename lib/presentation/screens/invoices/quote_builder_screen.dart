@@ -59,10 +59,17 @@ class QuoteBuilderScreen extends ConsumerStatefulWidget {
 
 class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Tutorial keys
+  // Tutorial keys — quick guide (3)
   final _customerFieldKey = GlobalKey();
   final _lineItemsKey = GlobalKey();
   final _saveButtonKey = GlobalKey();
+  // Tutorial keys — detail mode (5 additional)
+  final _deliveryAddressKey = GlobalKey();
+  final _businessSelectorKey = GlobalKey();
+  final _docNumberKey = GlobalKey();
+  final _issueDateKey = GlobalKey();
+  final _dueDateKey = GlobalKey();
+  final _notesFieldKey = GlobalKey();
   
   String _customerName = '';
   int? _customerPartyId;
@@ -1482,6 +1489,230 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     ).show(context: context);
   }
 
+  /// Field-by-field reference — all visible fields, standalone, always replayable.
+  /// pulseEnable: false keeps it calm; scroll ensures off-screen fields are reached.
+  void _showDetailModeMark() {
+    final isInvoice = widget.docType == DocumentType.invoice;
+    final isQuote = widget.docType == DocumentType.quote;
+
+    final targets = <TargetFocus>[
+      TargetFocus(
+        identify: 'detail_customer',
+        keyTarget: _customerFieldKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'Customer',
+              message: 'Pick from saved contacts or type a new\n'
+                  'name. Their address auto-fills below.',
+            ),
+          ),
+        ],
+      ),
+      if (_deliveryAddressKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_delivery',
+          keyTarget: _deliveryAddressKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Delivery Address',
+                message: 'Appears on the invoice PDF. Auto-filled\n'
+                    'from the customer\'s default address —\n'
+                    'tap to change or add one.',
+              ),
+            ),
+          ],
+        ),
+      if (_businessSelectorKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_business',
+          keyTarget: _businessSelectorKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Business',
+                message: 'Which of your businesses is issuing\n'
+                    'this document. Affects the letterhead,\n'
+                    'GST number, and bank details on the PDF.',
+              ),
+            ),
+          ],
+        ),
+      if (_docNumberKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_doc_number',
+          keyTarget: _docNumberKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: isInvoice ? 'Invoice Number' : 'Quote Number',
+                message: 'Auto-generated and sequential. You can\n'
+                    'edit it — just keep it unique for your\n'
+                    'records and GST filing.',
+              ),
+            ),
+          ],
+        ),
+      if (_issueDateKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_issue_date',
+          keyTarget: _issueDateKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: isInvoice ? 'Issue Date' : 'Valid Until',
+                message: isInvoice
+                    ? 'The date printed on the invoice.\n'
+                        'Defaults to today — tap to change for\n'
+                        'backdated or future invoices.'
+                    : 'Expiry date for this quote. After this\n'
+                        'date the customer should request a fresh\n'
+                        'quote with updated prices.',
+              ),
+            ),
+          ],
+        ),
+      if (_dueDateKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_due_date',
+          keyTarget: _dueDateKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Due Date',
+                message: 'When payment is expected. Drives the\n'
+                    'overdue badge and payment reminders\n'
+                    '— highly recommended to set.',
+              ),
+            ),
+          ],
+        ),
+      TargetFocus(
+        identify: 'detail_line_items',
+        keyTarget: _lineItemsKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 12,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: 'Line Items',
+              message: 'Add items with name, qty, price, and\n'
+                  'tax %. Tap Catalog to reuse saved items.\n'
+                  'Totals update automatically.',
+            ),
+          ),
+        ],
+      ),
+      if (_notesFieldKey.currentContext != null)
+        TargetFocus(
+          identify: 'detail_notes',
+          keyTarget: _notesFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Notes (optional)',
+                message: 'Printed at the bottom of the PDF.\n'
+                    'Use for payment terms, bank details,\n'
+                    'or a thank-you message.',
+              ),
+            ),
+          ],
+        ),
+      TargetFocus(
+        identify: 'detail_save',
+        keyTarget: _saveButtonKey,
+        shape: ShapeLightFocus.RRect,
+        radius: 8,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            child: tutorialContentCard(
+              title: isInvoice ? 'Save Invoice' : 'Save as Draft',
+              message: isInvoice
+                  ? 'Saves the invoice. Tap Send (top right)\n'
+                      'to share as PDF via WhatsApp, email,\n'
+                      'or any other app.'
+                  : 'Saves the quote as a draft. You can\n'
+                      'convert it to an invoice once the\n'
+                      'customer confirms.',
+            ),
+          ),
+        ],
+      ),
+    ];
+
+    void scrollTo(TargetFocus? t) {
+      final ctx = t?.keyTarget?.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          alignment: 0.2);
+    }
+
+    void scrollToNext(TargetFocus current) {
+      final idx = targets.indexWhere((t) => t.identify == current.identify);
+      if (idx + 1 < targets.length) scrollTo(targets[idx + 1]);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => scrollTo(targets.isEmpty ? null : targets.first),
+    );
+
+    TutorialCoachMark(
+      targets: targets,
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'CLOSE',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      pulseEnable: false,
+      focusAnimationDuration: const Duration(milliseconds: 400),
+      onClickTarget: scrollToNext,
+      onClickOverlay: scrollToNext,
+      onSkip: () { return true; },
+      onFinish: () {},
+    ).show(context: context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCN = widget.docType == DocumentType.creditNote;
@@ -1528,13 +1759,27 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
-          // Help button: only on new (non-edit) invoice/quote docs
-          if (!isEdit && !isDC)
-            IconButton(
-              icon: const Icon(Icons.help_outline_rounded),
-              tooltip: 'How to fill this form',
-              onPressed: _restartFormTutorial,
-            ),
+          // ? button — invoice/quote only (not DC/CN/DN)
+          if (!isDC && (widget.docType == DocumentType.invoice || widget.docType == DocumentType.quote))
+            if (!isEdit)
+              // New: Quick guide + Field reference
+              PopupMenuButton<int>(
+                icon: const Icon(Icons.help_outline_rounded),
+                tooltip: 'Help',
+                onSelected: (v) =>
+                    v == 0 ? _restartFormTutorial() : _showDetailModeMark(),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 0, child: Text('Quick guide')),
+                  PopupMenuItem(value: 1, child: Text('Field reference')),
+                ],
+              )
+            else
+              // Edit: Field reference only
+              IconButton(
+                icon: const Icon(Icons.help_outline_rounded),
+                tooltip: 'Field reference',
+                onPressed: _showDetailModeMark,
+              ),
           if (isEdit)
             IconButton(
               icon: const Icon(Icons.visibility_outlined),
@@ -1643,7 +1888,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
             // Delivery Address (Invoice + DC only)
             if (widget.docType != DocumentType.quote) ...[
-              _DeliveryAddressTile(
+              KeyedSubtree(
+                key: _deliveryAddressKey,
+                child: _DeliveryAddressTile(
                 selectedAddress: _selectedDeliveryAddress,
                 partyId: _customerPartyId,
                 onTap: () async {
@@ -1660,6 +1907,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 },
                 onClear: () =>
                     setState(() => _selectedDeliveryAddress = null),
+              ),
               ),
               const SizedBox(height: AppSpacing.base),
             ],
@@ -1695,7 +1943,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        DropdownButtonFormField<int>(
+                        KeyedSubtree(
+                          key: _businessSelectorKey,
+                          child: DropdownButtonFormField<int>(
                           initialValue: selectedId,
                           decoration: const InputDecoration(
                             labelText: 'Business',
@@ -1740,6 +1990,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                             return null;
                           },
                         ),
+                        ),
                         const SizedBox(height: AppSpacing.base),
                       ],
                     );
@@ -1750,6 +2001,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
             // Document number
             TextFormField(
+              key: _docNumberKey,
               controller: _documentNoCtrl,
               decoration: InputDecoration(
                 labelText: isInvoice
@@ -1775,16 +2027,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
             // Date fields
             if (isInvoice) ...[  
-              _DateField(
+              KeyedSubtree(
+                key: _issueDateKey,
+                child: _DateField(
                 label: 'Issue Date',
                 value: _issueDate,
                 onChanged: (d) => setState(() => _issueDate = d),
               ),
+              ),
               const SizedBox(height: AppSpacing.base),
-              _OptionalDateField(
+              KeyedSubtree(
+                key: _dueDateKey,
+                child: _OptionalDateField(
                 label: 'Due Date (optional)',
                 value: _dueDate,
                 onChanged: (d) => setState(() => _dueDate = d),
+              ),
               ),
             ] else if (isDC) ...[  
               _DateField(
@@ -1999,6 +2257,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
             // Notes
             TextFormField(
+              key: _notesFieldKey,
               controller: _notesController,
               decoration: const InputDecoration(
                 labelText: 'Notes (optional)',

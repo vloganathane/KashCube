@@ -410,6 +410,34 @@ class _AddEditTransactionScreenState
       ),
     ];
 
+    // Scroll the target's widget into view ahead of the spotlight arriving.
+    // alignment: 0.2 places the widget ~20% from the top so content above
+    // it remains visible and the spotlight isn't clipped by the AppBar.
+    void scrollTo(TargetFocus? target) {
+      final key = target?.keyTarget;
+      if (key == null) return;
+      final ctx = key.currentContext;
+      if (ctx == null) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+        alignment: 0.2,
+      );
+    }
+
+    // When the user taps the current spotlight (target or overlay), scroll
+    // to the next field before the focus animation completes (400 ms).
+    void scrollToNext(TargetFocus current) {
+      final idx = targets.indexWhere((t) => t.identify == current.identify);
+      if (idx + 1 < targets.length) scrollTo(targets[idx + 1]);
+    }
+
+    // Ensure the first field is visible before the overlay renders.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => scrollTo(targets.isEmpty ? null : targets.first),
+    );
+
     TutorialCoachMark(
       targets: targets,
       colorShadow: Colors.black,
@@ -424,6 +452,9 @@ class _AddEditTransactionScreenState
       alignSkip: Alignment.topRight,
       paddingFocus: 8,
       pulseEnable: false, // reference mode — no pulsing, calmer UX
+      focusAnimationDuration: const Duration(milliseconds: 400),
+      onClickTarget: scrollToNext,
+      onClickOverlay: scrollToNext,
       onSkip: () { return true; },
       onFinish: () {},
     ).show(context: context);

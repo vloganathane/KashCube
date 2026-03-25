@@ -119,7 +119,7 @@ class WebBrowserSession {
       'type':           'AUTH_OK',
       'device_name':    deviceName,
       'schema_version': schemaVersion,
-      if (sessionId != null) 'session_id': sessionId,
+      'session_id': ?sessionId,
     });
     onAuthenticated?.call(isSession);
     _startPing();

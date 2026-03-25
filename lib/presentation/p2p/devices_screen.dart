@@ -505,7 +505,7 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
     final ip   = ipAsync.valueOrNull;
     final port = P2pCoordinator.instance.serverPort;
     final addressLine = [
-      if (ip != null) ip,
+      ?ip,
       if (port != null) 'port $port',
     ].join('  ');
 

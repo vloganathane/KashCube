@@ -25,7 +25,6 @@ import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
-import '../../p2p/devices_screen.dart';
 import 'open_on_laptop_screen.dart';
 
 // ── Profile provider ──────────────────────────────────────────────────────────

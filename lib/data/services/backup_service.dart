@@ -158,9 +158,9 @@ class BackupService {
         'identity_id':      identity.identityId,
         'display_name':     identity.displayName,
         'public_key':       identity.publicKey,
-        if (identity.avatarSeed case final seed?) 'avatar_seed': seed,
+        'avatar_seed':      ?identity.avatarSeed,
         'created_at':       identity.createdAt.toIso8601String(),
-        if (privateSeed != null) 'private_key_seed': privateSeed,
+        'private_key_seed': ?privateSeed,
       };
     } catch (e) {
       debugPrint('[BackupService] exportIdentitySection failed: $e');

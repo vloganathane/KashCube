@@ -994,7 +994,7 @@ class _AddEditTransactionScreenState
                 _type.isSettlement) ...[
               DropdownButtonFormField<PaymentMethod>(
                 key: _paymentMethodKey,
-                value: _paymentMethod,
+                initialValue: _paymentMethod,
                 decoration: InputDecoration(
                   labelText: 'Payment Method',
                   prefixIcon: const Icon(Icons.payment_outlined),

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
-import '../../data/services/analytics_events.dart';
 import '../app_shell.dart';
 import '../providers/analytics_provider.dart';
 import '../providers/web_sync_provider.dart';

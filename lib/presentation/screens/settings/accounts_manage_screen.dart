@@ -309,7 +309,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
 
             // ── Account Type ──────────────────────────────────────────
             DropdownButtonFormField<AccountType>(
-              value: _type,
+              initialValue: _type,
               decoration: const InputDecoration(
                 labelText: 'Account Type *',
                 prefixIcon: Icon(Icons.category_outlined),
@@ -400,7 +400,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             // ── Linked Bank Account (debit card / UPI wallet) ─────────
             if (_needsLinkedBank && bankAccounts.isNotEmpty) ...[
               DropdownButtonFormField<int?>(
-                value: _linkedBankAccountId,
+                initialValue: _linkedBankAccountId,
                 decoration: const InputDecoration(
                   labelText: 'Linked Bank Account',
                   prefixIcon: Icon(Icons.link_outlined),

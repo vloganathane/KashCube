@@ -504,31 +504,59 @@ For complex forms (many required fields, non-obvious structure), a `?` help butt
 | Simple 2–3 field sheet/dialog | ❌ | ❌ |
 | Delivery Challan / Credit Note / Debit Note | ❌ | ❌ niche/expert |
 
-Currently applies to: `QuoteBuilderScreen` (Quick mode ✅) · `AddEditTransactionScreen` (Quick ✅ · Detail ✅).
+Currently applies to: `QuoteBuilderScreen` (Quick ✅ · Detail ✅) · `AddEditTransactionScreen` (Quick ✅ · Detail ✅).
 
 ### Contextual restart pattern (`_restartFormTutorial`)
 
-Instead of blindly replaying from step 1, inspect what the user has filled and point to the **next thing they need to do**:
+Instead of blindly replaying from step 1, inspect what the user has filled and point to the **next thing they need to do**. The consolidated `_showFormQuickMark(startAt:)` approach skips completed steps directly — no flow-provider dispatch needed:
 
 ```dart
 void _restartFormTutorial() {
   if (_customerCtrl.text.trim().isEmpty) {
-    // Not in a flow — kick one off at the customer step
-    if (!ref.read(tutorialFlowProvider).isNewInvoiceFlow) {
-      ref.read(tutorialFlowProvider.notifier)
-          .advance(TutorialFlowStep.newInvoiceCustomer);
-    } else {
-      _showCustomerFieldMark(); // already in flow, just re-show the mark
-    }
+    _showFormQuickMark(startAt: 0);
   } else if (_items.every((i) => i.itemName.trim().isEmpty && i.unitPrice == 0)) {
-    ref.read(tutorialFlowProvider.notifier)
-        .advance(TutorialFlowStep.newInvoiceLineItem);
+    _showFormQuickMark(startAt: 1);
   } else {
-    ref.read(tutorialFlowProvider.notifier)
-        .advance(TutorialFlowStep.newInvoiceSave);
+    _showFormQuickMark(startAt: 2);
   }
 }
+
+void _showFormQuickMark({int startAt = 0}) {
+  final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+
+  final allTargets = [
+    TargetFocus(
+      keyTarget: _customerFieldKey,
+      enableOverlayTab: true,            // ← required: tap field → advance
+      contents: [/* "1 / 3 — Customer" explanation */],
+    ),
+    TargetFocus(
+      keyTarget: _lineItemsKey,
+      enableOverlayTab: true,
+      contents: [/* "2 / 3 — Line Items" explanation */],
+    ),
+    TargetFocus(
+      keyTarget: _saveButtonKey,
+      enableOverlayTab: true,
+      contents: [/* "3 / 3 — Save Invoice" explanation */],
+    ),
+  ];
+
+  TutorialCoachMark(
+    targets: allTargets.sublist(startAt),
+    focusAnimationDuration: const Duration(milliseconds: 400),
+    onClickTarget: (t) => scrollToNext(t, allTargets),
+    onClickOverlay: (t) => scrollToNext(t, allTargets),
+    onSkip: () { Future(() { flowNotifier.abandon(); }); return true; },
+    onFinish: () { Future(() { flowNotifier.finish(); }); },
+  ).show(context: context);
+}
 ```
+
+> **Key rules:**
+> - `enableOverlayTab: true` on **every** Quick-mode target (see Pitfall 5)
+> - Pass all targets as a list and slice with `sublist(startAt)` — do **not** chain three separate `TutorialCoachMark` instances (see Pitfall 6)
+> - `flowNotifier` captured **before** `.show(...)` (see Pitfall 2)
 
 **UX result:** Tapping `?` at any point in the form takes the user to the *next* incomplete step, not the beginning.
 
@@ -559,25 +587,52 @@ Every complex form `?` button offers two complementary guide modes:
 
 ### Implementation pattern — `_showDetailModeMark()`
 
-Detail mode is a **standalone `TutorialCoachMark`** — not wired to `TutorialFlowNotifier`. No `advance()` calls. No settings key to persist. Same ref-capture + `Future(() {...})` rules still apply:
+Detail mode is a **standalone `TutorialCoachMark`** — not wired to `TutorialFlowNotifier`. No `advance()` calls. No settings key to persist. Same ref-capture + `Future(() {...})` rules still apply. Add scroll support so off-screen fields are visible when spotlighted:
 
 ```dart
+// Helper — scrolls to the widget's render object before the spotlight renders
+void _scrollTo(TargetFocus? target) {
+  if (target == null) return;
+  final key = target.keyTarget as GlobalKey?;
+  if (key?.currentContext == null) return;
+  Scrollable.ensureVisible(
+    key!.currentContext!,
+    duration: const Duration(milliseconds: 350),
+    curve: Curves.easeInOut,
+    alignment: 0.2,  // show target near top of visible area
+  );
+}
+
+// Advance scroll to the *next* target in the list
+void _scrollToNext(TargetFocus current, List<TargetFocus> all) {
+  final idx = all.indexOf(current);
+  if (idx >= 0 && idx + 1 < all.length) _scrollTo(all[idx + 1]);
+}
+
 void _showDetailModeMark() {
   // No flowNotifier needed — detail mode is entirely self-contained
+  final targets = [
+    TargetFocus(keyTarget: _typeChipsKey,     /* explanation */),
+    TargetFocus(keyTarget: _amountFieldKey,   /* explanation */),
+    TargetFocus(keyTarget: _accountFieldKey,  /* explanation */),
+    TargetFocus(keyTarget: _categoryFieldKey, /* explanation */),
+    TargetFocus(keyTarget: _partyFieldKey,    /* explanation */),
+    TargetFocus(keyTarget: _dateTimeKey,      /* explanation */),
+    TargetFocus(keyTarget: _paymentMethodKey, /* explanation */),
+    TargetFocus(keyTarget: _modeKey,          /* explanation */),
+    TargetFocus(keyTarget: _saveButtonKey,    /* explanation */),
+  ];
+
+  // Scroll to first target before the overlay renders
+  WidgetsBinding.instance.addPostFrameCallback((_) => _scrollTo(targets.first));
+
   TutorialCoachMark(
-    targets: [
-      TargetFocus(keyTarget: _typeChipsKey,     /* explanation */),
-      TargetFocus(keyTarget: _amountFieldKey,   /* explanation */),
-      TargetFocus(keyTarget: _accountFieldKey,  /* explanation */),
-      TargetFocus(keyTarget: _categoryFieldKey, /* explanation */),
-      TargetFocus(keyTarget: _partyFieldKey,    /* explanation */),
-      TargetFocus(keyTarget: _dateTimeKey,      /* explanation */),
-      TargetFocus(keyTarget: _paymentMethodKey, /* explanation */),
-      TargetFocus(keyTarget: _modeKey,          /* explanation */),
-      TargetFocus(keyTarget: _saveButtonKey,    /* explanation */),
-    ],
+    targets: targets,
     colorShadow: Colors.black,
     opacityShadow: 0.85,
+    focusAnimationDuration: const Duration(milliseconds: 400),
+    onClickTarget: (t) => _scrollToNext(t, targets),
+    onClickOverlay: (t) => _scrollToNext(t, targets),
     onSkip: () { return true; },  // no provider state to clean up
     onFinish: () {},
   ).show(context: context);
@@ -602,6 +657,22 @@ void _showDetailModeMark() {
 | 12 | **Add Transaction** | `_saveButtonKey` | Saves and returns. Balance, reports, and party ledger update instantly |
 
 > **All GlobalKeys are implemented:** `_typeChipsKey`, `_accountFieldKey`, `_partyFieldKey`, `_dateTimeKey`, `_paymentMethodKey`, `_modeKey`, `_addCategoryKey`, `_notesKey`, `_billAttachKey` — plus the existing `_amountFieldKey`, `_categoryFieldKey`, `_saveButtonKey`.
+
+### Detail field map — `QuoteBuilderScreen` (up to 9 steps, conditional)
+
+| Step | Field | Key | Conditional | Content |
+|------|-------|-----|-------------|---------|
+| 1 | **Customer** | `_customerFieldKey` | Always | Who this invoice/quote is for. Start typing to search saved parties or add a new one |
+| 2 | **Delivery Address** | `_deliveryAddressKey` | Invoice only | Optional ship-to address. Overrides the party's default if specified |
+| 3 | **Business** | `_businessSelectorKey` | 2+ businesses | Which of your businesses this invoice comes from. Letterhead and GST details update automatically |
+| 4 | **Invoice / Quote Number** | `_docNumberKey` | Always if key present | Auto-generated but editable. Useful if you need to match your own numbering sequence |
+| 5 | **Issue Date / Valid Until** | `_issueDateKey` | Always if key present | Invoice: the date of issue. Quote: the date the quote was generated / its validity start |
+| 6 | **Due Date** | `_dueDateKey` | Invoice only | Payment deadline shown on the printed invoice. Drives overdue reminders |
+| 7 | **Line Items** | `_lineItemsKey` | Always | Add products or services. Tap "+" to add rows, or pick from your saved item catalog |
+| 8 | **Notes** | `_notesFieldKey` | Present in form | Internal or customer-facing notes (e.g. bank details, T&Cs). Printed at the bottom of the document |
+| 9 | **Save / Send** | `_saveButtonKey` | Always | Saves the document. On invoices you can also send directly via WhatsApp or share as PDF |
+
+> **GlobalKeys used:** `_customerFieldKey`, `_lineItemsKey`, `_saveButtonKey` (Quick guide, pre-existing) + `_deliveryAddressKey`, `_businessSelectorKey`, `_docNumberKey`, `_issueDateKey`, `_dueDateKey`, `_notesFieldKey` (Detail mode, wrapped with `KeyedSubtree` where the widget doesn't expose a `key:` param).
 
 ---
 
@@ -682,6 +753,48 @@ void initState() {
   _tabController = TabController(length: 2, vsync: this);
   maybeShowTutorial(); // ✅ orientation tour only — fires once via settings flag
   // ❌ _maybeStartFlow(); — removed; use ? menu to replay
+}
+```
+
+### 5. `enableOverlayTab: false` default — tapping highlighted field doesn't advance
+
+Without `enableOverlayTab: true` on a `TargetFocus`, tapping the spotlighted widget interacts with it (opens the keyboard, toggles a dropdown) but does **not** advance the coach mark to the next step. Only tapping the dark surround (overlay) advances the tutorial, producing confusing UX where the user types into the field and nothing seems to happen.
+
+**Fix:** Set `enableOverlayTab: true` on every target in Quick-guide marks:
+
+```dart
+// ✅ Correct — tapping the highlighted field also advances the step
+TargetFocus(
+  keyTarget: _customerFieldKey,
+  enableOverlayTab: true,  // ← must be explicit; default is false
+  contents: [/* … */],
+),
+
+// Detail mode targets are fine with the default (false) — users
+// move through detail mode by tapping the dark overlay, not the field.
+```
+
+### 6. Chained single-target marks via `TutorialFlowNotifier` break on target-tap
+
+Three separate `TutorialCoachMark` instances where `onFinish` calls `advance()` to trigger the next step are unreliable. `onFinish` fires when the **target widget itself** is tapped, not only the dark overlay. If a user taps the customer field to start typing, the chain advances to step 2 instantly — before they've filled anything in.
+
+**Fix:** Use **one** `TutorialCoachMark` with multiple targets in a list. Internal library progression is reliable. Use `startAt:` to skip already-complete steps when replaying via `?`:
+
+```dart
+// ❌ Wrong — three separate marks chained through onFinish / flow provider
+void _showCustomerFieldMark() {
+  TutorialCoachMark(targets: [customerTarget], onFinish: () {
+    flowNotifier.advance(TutorialFlowStep.newInvoiceLineItem); // fires on field-tap too!
+  }).show(context: context);
+}
+
+// ✅ Correct — one mark with all three targets
+void _showFormQuickMark({int startAt = 0}) {
+  final allTargets = [customerTarget, lineItemsTarget, saveTarget];
+  TutorialCoachMark(
+    targets: allTargets.sublist(startAt),
+    // progression is internal — no advance() calls needed
+  ).show(context: context);
 }
 ```
 
@@ -791,7 +904,7 @@ All 69 screens across 18 modules. Work through these one at a time top-to-bottom
 | 2 | transactions | `add_edit_transaction_screen` | ✓ | ✅ Done | Quick guide (3 steps) + 9-step field reference · `?` → PopupMenuButton on new · `?` → IconButton (detail only) on edit |
 | 3 | ledger | `credits_screen` | ✓ | ✅ Done | Orientation tour + New Credit flow |
 | 4 | invoices | `invoices_screen` | — | ✅ Done | Orientation tour + New Invoice flow |
-| 5 | invoices | `quote_builder_screen` | ✓ | ✅ Done | Form spotlights + contextual `?` help |
+| 5 | invoices | `quote_builder_screen` | ✓ | ✅ Done | Quick guide (3 steps) + 9-step field reference · `?` → PopupMenuButton on new · `?` → IconButton (detail only) on edit |
 | 6 | bookings | `bookings_screen` | — | ⬜ Item 19 | Orientation + New Booking flow |
 | 7 | bookings | `create_booking_screen` | ✓ | ⬜ Item 19 | Form spotlights: customer → service → datetime → save |
 | 8 | invoices | `item_catalog_screen` | ✓ | ⬜ Item 20 | Add Item flow; guard `!widget.pickMode` |
@@ -881,15 +994,18 @@ All 69 screens across 18 modules. Work through these one at a time top-to-bottom
 15. Fixed: captured refs before `TutorialCoachMark` to prevent "ref after dispose" crash
 16. Fixed: all tutorial callbacks use `Future(() {...})` to prevent "modifying provider during build" error
 17. Fixed: removed `_maybeStartFlow()` auto-start from `initState` — guided flow only starts via `?` menu
+18. Auto-scroll to each target in detail mode (`Scrollable.ensureVisible`, `_scrollToNext`, `focusAnimationDuration: 400ms`) — applied to `AddEditTransactionScreen` + `QuoteBuilderScreen`
+19. Fixed: `enableOverlayTab: true` on all Quick-guide targets (both forms) — tapping highlighted field now advances tutorial
+20. Fixed: QuoteBuilder Quick guide consolidated — 3 chained single-target marks → 1 `_showFormQuickMark(startAt:)` with contextual restart
+21. `QuoteBuilderScreen` Detail field-reference mode (up to 9 conditional steps) + `?` → `PopupMenuButton` (new doc) / `IconButton` (edit)
 
 ### Next — Quick win ⬜
-18. `AddEditTransactionScreen` detail mode — ✅ Done
+22. `BookingsScreen` add-booking flow + `CreateBookingScreen` form spotlights
 
 ### Business flows ⬜
-19. `BookingsScreen` add-booking flow
-20. `ItemCatalogScreen` add-item flow
+23. `ItemCatalogScreen` add-item flow
 
 ### Later ⬜
-21. Orientation tours for Home, Reports, Contacts screens
-22. Override `tutorialMenuItems` on each screen as its flows are wired
-23. Add "Reset all tutorials" option under **Settings → About**
+24. Orientation tours for Home, Reports, Contacts screens
+25. Override `tutorialMenuItems` on each screen as its flows are wired
+26. Add "Reset all tutorials" option under **Settings → About**

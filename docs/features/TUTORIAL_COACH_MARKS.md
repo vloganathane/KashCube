@@ -1,8 +1,8 @@
 # Tutorial Coach Marks — Spec
 
-**Status:** Partially implemented — orientation tour ✅ · flow-following ✅ (Transactions · Credits)  
+**Status:** Partially implemented — orientation tour ✅ · flow-following ✅ (Transactions · Credits · Invoices)  
 **Package:** [`tutorial_coach_mark`](https://pub.dev/packages/tutorial_coach_mark)  
-**Last updated:** 24 March 2026
+**Last updated:** 25 March 2026
 
 ---
 
@@ -20,7 +20,10 @@
 | Add Transaction guided flow | ✅ FAB → form → result card |
 | New Credit guided flow | ✅ FAB → form → result card |
 | `CreditsScreen` orientation tour (FAB · Filter chips) | ✅ |
-| Per-feature flows (Invoices, Bookings, Catalog…) | ⬜ |
+| `InvoicesScreen` orientation tour (FAB · Search · Filter) | ✅ |
+| New Invoice guided flow (FAB → `QuoteBuilderScreen` → result) | ✅ |
+| `?` help button on `QuoteBuilderScreen` (contextual form guide) | ✅ |
+| Per-feature flows (Bookings, Catalog…) | ⬜ |
 | Orientation tours for Home, Reports, Contacts | ⬜ |
 | "Reset all tutorials" in Settings → About | ⬜ |
 
@@ -484,7 +487,132 @@ appBar: AppBar(
 
 Form screens that are reachable *as part of a flow* but have no standalone guide (e.g. `AddEditTransactionScreen`) do **not** need a `?` appbar action. The entry screen's `?` menu resets and restarts the full flow from step 1.
 
-> **Rule:** The `?` action lives on **entry screens** (where the flow can be started/replayed) and **result screens** (where the post-creation tour runs). Intermediate form screens omit it.
+> **Rule:** The `?` action lives on **entry screens** (where the flow can be started/replayed) and **result screens** (where the post-creation tour runs). Intermediate form screens omit it unless the form is complex enough to warrant in-context help (see below).
+
+---
+
+## `?` Button on Complex Form Screens
+
+For complex forms (many required fields, non-obvious structure), a `?` help button in the AppBar restarts the contextual spotlight guide from the most relevant step — not from scratch.
+
+### When to add
+
+| Condition | Add `?`? |
+|---|---|
+| New (non-edit) record, 4+ fields, accessed via guided flow | ✅ Yes |
+| Edit mode | ❌ No — user already knows the form |
+| Simple 2–3 field sheet/dialog | ❌ No |
+| Delivery Challan / Credit Note / Debit Note forms | ❌ No — niche, expert users |
+
+Currently applies to: `QuoteBuilderScreen` (new invoice / new quote).
+
+### Contextual restart pattern (`_restartFormTutorial`)
+
+Instead of blindly replaying from step 1, inspect what the user has filled and point to the **next thing they need to do**:
+
+```dart
+void _restartFormTutorial() {
+  if (_customerCtrl.text.trim().isEmpty) {
+    // Not in a flow — kick one off at the customer step
+    if (!ref.read(tutorialFlowProvider).isNewInvoiceFlow) {
+      ref.read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newInvoiceCustomer);
+    } else {
+      _showCustomerFieldMark(); // already in flow, just re-show the mark
+    }
+  } else if (_items.every((i) => i.itemName.trim().isEmpty && i.unitPrice == 0)) {
+    ref.read(tutorialFlowProvider.notifier)
+        .advance(TutorialFlowStep.newInvoiceLineItem);
+  } else {
+    ref.read(tutorialFlowProvider.notifier)
+        .advance(TutorialFlowStep.newInvoiceSave);
+  }
+}
+```
+
+**UX result:** Tapping `?` at any point in the form takes the user to the *next* incomplete step, not the beginning.
+
+---
+
+## Known Pitfalls & Fixes
+
+### 1. SpeedDialFab — `key` targets the Column, not the button
+
+`SpeedDialFab` renders as a `Column` (dial options + main button). Assigning a `GlobalKey` to the widget attaches it to the entire Column's render box — the spotlight covers all the mini-options too.
+
+**Fix:** Use the dedicated `fabButtonKey` parameter, which threads the key directly onto the inner `FloatingActionButton`:
+
+```dart
+// ❌ Wrong — key targets the whole Column
+SpeedDialFab(key: _fabKey, showAllOptions: false)
+
+// ✅ Correct — key targets the inner FAB button only
+SpeedDialFab(fabButtonKey: _fabKey, showAllOptions: false)
+```
+
+The `fabButtonKey` parameter is declared on `SpeedDialFab` and forwarded to its internal `FloatingActionButton(key: widget.fabButtonKey, ...)`.
+
+### 2. `ref.read()` in tutorial callbacks causes "ref after dispose" crash
+
+`TutorialCoachMark`'s `onSkip`/`onFinish` callbacks may fire after the widget is disposed (e.g. navigate away then skip). Calling `ref.read()` on a disposed widget throws `StateError: Cannot use "ref" after the widget was disposed`.
+
+**Fix:** Capture provider refs **before** showing the coach mark:
+
+```dart
+void _showFabFlowMark() {
+  // ✅ Capture BEFORE showing — refs are safe even after disposal
+  final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+  final settingsRepo = ref.read(settingsRepositoryProvider);
+
+  TutorialCoachMark(
+    onSkip: () {
+      flowNotifier.abandon();      // safe — no ref.read()
+      settingsRepo.set(...);        // safe — no ref.read()
+      return true;
+    },
+  ).show(context: context);
+}
+```
+
+### 3. "Tried to modify a provider while the widget tree was building"
+
+`TutorialCoachMark` sometimes calls `onSkip` during its own build phase (first frame). Calling `StateNotifier.state =` at that point is forbidden by Riverpod.
+
+**Fix:** Wrap **all** provider state modifications in `Future(() { ... })` inside tutorial callbacks:
+
+```dart
+onSkip: () {
+  Future(() {              // ← defer until after build completes
+    flowNotifier.abandon();
+    settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+  });
+  return true;
+},
+onFinish: () {
+  Future(() {
+    flowNotifier.finish();
+    settingsRepo.set(SettingsKeys.tutorialInvoiceFlowDone, 'true');
+  });
+},
+```
+
+This pattern must be applied consistently to **every** `onSkip`/`onFinish`/`onClickTarget` callback that modifies Riverpod state.
+
+### 4. Auto-start `_maybeStartFlow()` fires on every navigation return
+
+Calling `_maybeStartFlow()` from `initState` re-triggers the flow overlay every time the user navigates back to the screen (e.g. pressing back from the form).
+
+**Fix:** Do **not** auto-start the guided flow from `initState`. The flow should only start on explicit user action via the `?` menu:
+
+```dart
+@override
+void initState() {
+  super.initState();
+  _tabController = TabController(length: 2, vsync: this);
+  maybeShowTutorial(); // ✅ orientation tour only — fires once via settings flag
+  // ❌ _maybeStartFlow(); — removed; use ? menu to replay
+}
+```
 
 ---
 
@@ -593,13 +721,19 @@ AppShell (5 tabs, per-tab Navigator)
 8. `TransactionsScreen` `?` upgraded to adaptive `PopupMenuButton` (orientation tour + add-tx flow)
 9. New Credit flow wired: `CreditsScreen` → `AddCreditScreen` (3-step: amount · party · save) → `CreditsScreen` (result)
 10. `CreditsScreen` orientation tour (FAB · Filter chips) + adaptive `?` dropdown
+11. `InvoicesScreen` orientation tour (FAB · Search · Filter) + adaptive `?` dropdown (`Orientation tour` + `How to create an invoice`)
+12. New Invoice guided flow: `InvoicesScreen` (FAB spotlight) → `QuoteBuilderScreen` (customer → line items → save) → `InvoicesScreen` (result card)
+13. `QuoteBuilderScreen` contextual `?` help button on new invoice/quote (smart `_restartFormTutorial` — points to next incomplete step)
+14. Fixed: `fabButtonKey` on `SpeedDialFab` for precise FAB spotlight targeting
+15. Fixed: captured refs before `TutorialCoachMark` to prevent "ref after dispose" crash
+16. Fixed: all tutorial callbacks use `Future(() {...})` to prevent "modifying provider during build" error
+17. Fixed: removed `_maybeStartFlow()` auto-start from `initState` — guided flow only starts via `?` menu
 
 ### Next — Business flows ⬜
-11. `InvoicesScreen` add-invoice flow (business-mode gate)
-12. `BookingsScreen` add-booking flow
-13. `ItemCatalogScreen` add-item flow
+18. `BookingsScreen` add-booking flow
+19. `ItemCatalogScreen` add-item flow
 
 ### Later ⬜
-14. Orientation tours for Home, Reports, Contacts screens
-15. Override `tutorialMenuItems` on each screen as its flows are wired
-16. Add "Reset all tutorials" option under **Settings → About**
+20. Orientation tours for Home, Reports, Contacts screens
+21. Override `tutorialMenuItems` on each screen as its flows are wired
+22. Add "Reset all tutorials" option under **Settings → About**

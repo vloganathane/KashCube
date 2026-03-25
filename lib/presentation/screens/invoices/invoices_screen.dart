@@ -123,17 +123,6 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     maybeShowTutorial();
-    _maybeStartFlow();
-  }
-
-  Future<void> _maybeStartFlow() async {
-    final settings = ref.read(settingsRepositoryProvider);
-    if (await settings.get(SettingsKeys.tutorialInvoiceFlowDone) != 'true') {
-      if (!mounted) return;
-      ref.read(tutorialFlowProvider.notifier).abandon();
-      ref.read(tutorialFlowProvider.notifier)
-          .advance(TutorialFlowStep.newInvoiceFab);
-    }
   }
 
   void _showFabFlowMark() {
@@ -307,7 +296,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ),
-      floatingActionButton: SpeedDialFab(key: _fabKey, showAllOptions: false),
+      floatingActionButton: SpeedDialFab(fabButtonKey: _fabKey, showAllOptions: false),
       body: TabBarView(
         controller: _tabController,
         children: [

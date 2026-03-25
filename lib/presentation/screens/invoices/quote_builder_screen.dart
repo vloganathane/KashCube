@@ -4,10 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
+import '../../../core/utils/tutorial_mixin.dart';
 import '../../../data/models/business.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
@@ -25,6 +27,7 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/party_address_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/tutorial_flow_provider.dart';
 import '../../widgets/party_picker_field.dart';
 import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
@@ -56,6 +59,11 @@ class QuoteBuilderScreen extends ConsumerStatefulWidget {
 
 class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _formKey = GlobalKey<FormState>();
+  // Tutorial keys
+  final _customerFieldKey = GlobalKey();
+  final _lineItemsKey = GlobalKey();
+  final _saveButtonKey = GlobalKey();
+  
   String _customerName = '';
   int? _customerPartyId;
   int? _selectedBusinessId;
@@ -484,6 +492,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Add at least one item')));
       return;
+    }
+
+    // Advance tutorial flow if on save step
+    final currentStep = ref.read(tutorialFlowProvider);
+    if (currentStep == TutorialFlowStep.newInvoiceSave) {
+      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceResult);
     }
 
     setState(() => _isSaving = true);
@@ -1342,6 +1356,172 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
+  // ── Tutorial methods ─────────────────────────────────────────────────────
+
+  /// Re-starts the form guide from the first relevant step based on what
+  /// the user has filled so far. Tap ? to get contextual help at any point.
+  void _restartFormTutorial() {
+    final step = ref.read(tutorialFlowProvider);
+    if (_customerCtrl.text.trim().isEmpty) {
+      // Nothing filled yet — start from customer spotlight
+      if (!step.isNewInvoiceFlow) {
+        // Not in a flow at all — kick one off
+        ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceCustomer);
+      } else {
+        _showCustomerFieldMark();
+      }
+    } else if (_items.every((i) => i.itemName.trim().isEmpty && i.unitPrice == 0)) {
+      // Customer done, no items yet
+      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
+    } else {
+      // Items filled — jump to save spotlight
+      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
+    }
+  }
+
+  void _showCustomerFieldMark() {
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_invoice_customer',
+          keyTarget: _customerFieldKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Select a customer',
+                message: 'Choose an existing customer or type a new name.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
+      pulseEnable: true,
+      onFinish: () {
+        // User tapped overlay — advance to next step
+        Future(() {
+          if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceCustomer) {
+            ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
+          }
+        });
+      },
+      onSkip: () {
+        Future(() => flowNotifier.abandon());
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  void _showLineItemsMark() {
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_invoice_line_items',
+          keyTarget: _lineItemsKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 12,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Add items',
+                message: 'Add items from your catalog or enter them manually.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
+      pulseEnable: true,
+      onFinish: () {
+        // User tapped overlay — advance to next step
+        Future(() {
+          if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceLineItem) {
+            ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
+          }
+        });
+      },
+      onSkip: () {
+        Future(() => flowNotifier.abandon());
+        return true;
+      },
+    ).show(context: context);
+  }
+
+  void _showSaveButtonMark() {
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'flow_invoice_save',
+          keyTarget: _saveButtonKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 8,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              child: tutorialContentCard(
+                title: 'Save your invoice',
+                message: 'Tap to save — you\'ll see it on the invoices list.',
+              ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'SKIP',
+      textStyleSkip: const TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        letterSpacing: 0.5,
+      ),
+      alignSkip: Alignment.topRight,
+      paddingFocus: 4,
+      pulseEnable: true,
+      onFinish: () {},
+      onSkip: () {
+        Future(() => flowNotifier.abandon());
+        return true;
+      },
+    ).show(context: context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isCN = widget.docType == DocumentType.creditNote;
@@ -1365,10 +1545,39 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } else {
       title = isEdit ? 'Edit Quote' : 'New Quote';
     }
+    
+    // Tutorial flow listener
+    ref.listen<TutorialFlowStep>(tutorialFlowProvider, (prev, next) {
+      if (!mounted) return;
+      switch (next) {
+        case TutorialFlowStep.newInvoiceCustomer:
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showCustomerFieldMark();
+          });
+        case TutorialFlowStep.newInvoiceLineItem:
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showLineItemsMark();
+          });
+        case TutorialFlowStep.newInvoiceSave:
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _showSaveButtonMark();
+          });
+        default:
+          break;
+      }
+    });
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
+          // Help button: only on new (non-edit) invoice/quote docs
+          if (!isEdit && !isDC)
+            IconButton(
+              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'How to fill this form',
+              onPressed: _restartFormTutorial,
+            ),
           if (isEdit)
             IconButton(
               icon: const Icon(Icons.visibility_outlined),
@@ -1418,6 +1627,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           padding: const EdgeInsets.fromLTRB(
               AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
           child: FilledButton(
+            key: _saveButtonKey,
             onPressed: _isSaving ? null : () => _save(),
             child: _isSaving
                 ? const SizedBox(
@@ -1439,6 +1649,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           children: [
             // Customer
             PartyPickerField(
+              key: _customerFieldKey,
               controller: _customerCtrl,
               labelText: 'Customer',
               onSelected: (name) async {
@@ -1447,6 +1658,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   // Clear stale delivery address from previous customer
                   _selectedDeliveryAddress = null;
                 });
+                // Advance tutorial flow when customer selected (new or existing)
+                if (mounted) {
+                  final currentStep = ref.read(tutorialFlowProvider);
+                  if (currentStep == TutorialFlowStep.newInvoiceCustomer) {
+                    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceLineItem);
+                  }
+                }
                 // Look up party by name to get party ID
                 final parties = await ref.read(partyRepositoryProvider).getAll();
                 final party = parties.cast<Party?>().firstWhere(
@@ -1757,6 +1975,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
             // Line items
             _LineItemsSection(
+              key: _lineItemsKey,
               items: _items,
               onChanged: () => setState(() {}),
               showTaxDiscount: !isDC,
@@ -1782,6 +2001,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                     _items.add(catalogItem);
                   }
                 });
+                // Advance tutorial flow if active (catalog path)
+                final currentStep = ref.read(tutorialFlowProvider);
+                if (currentStep == TutorialFlowStep.newInvoiceLineItem) {
+                  ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceSave);
+                }
                 // Track usage for smart sorting
                 if (item.id != null) {
                   ref
@@ -1850,6 +2074,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
 class _LineItemsSection extends StatelessWidget {
   const _LineItemsSection({
+    super.key,
     required this.items,
     required this.onChanged,
     required this.onAddFromCatalog,

@@ -26,6 +26,7 @@ class SpeedDialFab extends ConsumerStatefulWidget {
     super.key,
     this.showAllOptions = true,
     this.transactionsTabOnly = false,
+    this.fabButtonKey,
   });
 
   /// If true (default), shows Transaction / Loan / Bills options in addition
@@ -36,6 +37,11 @@ class SpeedDialFab extends ConsumerStatefulWidget {
   /// transaction-relevant actions (Transaction, Loan/Lend, Bills Payable)
   /// are shown. Takes precedence over [showAllOptions] for business items.
   final bool transactionsTabOnly;
+
+  /// Optional key attached directly to the inner [FloatingActionButton].
+  /// Use this for tutorial spotlight targeting — the outer widget key targets
+  /// the entire Column, not just the button.
+  final GlobalKey? fabButtonKey;
 
   @override
   ConsumerState<SpeedDialFab> createState() => _SpeedDialFabState();
@@ -239,6 +245,7 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
 
         // ── Main FAB ───────────────────────────────────────────────────
         FloatingActionButton(
+          key: widget.fabButtonKey,
           heroTag: 'fab_speed_dial',
           onPressed: _toggle,
           child: AnimatedRotation(

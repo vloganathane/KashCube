@@ -471,6 +471,7 @@ class _AddEditTransactionScreenState
           keyTarget: _amountFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
+          enableOverlayTab: true,
           contents: [
             TargetContent(
               // Amount field is near the top; putting content below keeps it
@@ -490,6 +491,7 @@ class _AddEditTransactionScreenState
           keyTarget: _categoryFieldKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
+          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.top,
@@ -507,6 +509,7 @@ class _AddEditTransactionScreenState
           keyTarget: _saveButtonKey,
           shape: ShapeLightFocus.RRect,
           radius: 8,
+          enableOverlayTab: true,
           contents: [
             TargetContent(
               align: ContentAlign.top,

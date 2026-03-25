@@ -1382,6 +1382,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         keyTarget: _customerFieldKey,
         shape: ShapeLightFocus.RRect,
         radius: 8,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.bottom,
@@ -1399,6 +1400,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         keyTarget: _lineItemsKey,
         shape: ShapeLightFocus.RRect,
         radius: 12,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.bottom,
@@ -1416,6 +1418,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         keyTarget: _saveButtonKey,
         shape: ShapeLightFocus.RRect,
         radius: 8,
+        enableOverlayTab: true,
         contents: [
           TargetContent(
             align: ContentAlign.top,

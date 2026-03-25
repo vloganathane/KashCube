@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/hsn_entry.dart';
 import '../../../data/models/item_catalog.dart';

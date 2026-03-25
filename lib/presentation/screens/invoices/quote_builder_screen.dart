@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/constants/subscription_tier.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/tutorial_mixin.dart';
@@ -799,16 +800,6 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
   }
 
-  /// Maps [DocumentType] to the server-side `doc_type` key used by
-  /// `reserve_number` messages (see [SyncNowNotifier.reserveDocNumber]).
-  static String _docTypeKey(DocumentType docType) => switch (docType) {
-        DocumentType.invoice         => 'invoice',
-        DocumentType.quote           => 'quote',
-        DocumentType.deliveryChallan => 'dc',
-        DocumentType.creditNote      => 'credit_note',
-        DocumentType.debitNote       => 'debit_note',
-      };
-
   /// Shows a bottom sheet with a message preview and a "Send PDF + Message"
   /// button. If the user confirms, delegates to [_generateAndShare].
   Future<void> _showSendPreviewSheet({
@@ -1573,7 +1564,6 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   /// pulseEnable: false keeps it calm; scroll ensures off-screen fields are reached.
   void _showDetailModeMark() {
     final isInvoice = widget.docType == DocumentType.invoice;
-    final isQuote = widget.docType == DocumentType.quote;
 
     final targets = <TargetFocus>[
       TargetFocus(

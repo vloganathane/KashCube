@@ -6,7 +6,6 @@ import '../../data/models/peer_device.dart';
 import '../../data/models/trusted_peer.dart';
 import '../../data/services/action_center_background_service.dart';
 import '../../data/services/database_helper.dart';
-import '../../data/services/identity_service.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../../data/services/p2p/p2p_discovery_service.dart';
 import '../../data/services/p2p/p2p_server.dart';

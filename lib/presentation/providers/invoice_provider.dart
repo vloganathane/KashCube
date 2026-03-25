@@ -349,9 +349,11 @@ final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
   });
 });
 
-/// Single quote by id
+/// Single quote by id — re-fetches from DB whenever the quotes list changes
+/// so the detail view stays in sync after status updates (e.g. accepted/sent).
 final quoteByIdProvider =
     FutureProvider.family<Quote?, int>((ref, id) async {
+  ref.watch(quotesProvider);
   return ref.read(quoteRepositoryProvider).getById(id);
 });
 

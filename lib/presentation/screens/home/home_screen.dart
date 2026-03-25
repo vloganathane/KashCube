@@ -867,7 +867,7 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               // Primary: Total Balance (all-time account balance)
               totalBalanceAsync.when(
                 data: (balance) => Text(
-                  CurrencyFormatter.format(balance),
+                  '${balance < 0 ? '-' : ''}${CurrencyFormatter.format(balance)}',
                   style: context.textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     fontFamily: 'RobotoMono',
@@ -1298,7 +1298,7 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                           color: context.colorScheme.onSurfaceVariant),
                     ),
                     trailing: Text(
-                      CurrencyFormatter.format(inv.net),
+                      '${inv.net < 0 ? '-' : ''}${CurrencyFormatter.format(inv.net)}',
                       style: context.textTheme.bodyMedium?.copyWith(
                         color: colors.investment,
                         fontWeight: FontWeight.w700,

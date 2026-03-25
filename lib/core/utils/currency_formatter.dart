@@ -23,19 +23,19 @@ class CurrencyFormatter {
     decimalDigits: 2,
   );
 
-  /// Formats amount in Indian numbering system: ₹1,23,456 or -₹1,058
+  /// Formats amount as absolute value in Indian numbering system: ₹1,23,456
+  /// Sign is the caller's responsibility — use [formatSigned] for explicit ±.
   static String format(double amount, {bool showDecimals = false}) {
-    final prefix = amount < 0 ? '-' : '';
     if (showDecimals) {
-      return '$prefix${_indianFormatWithDecimals.format(amount.abs())}';
+      return _indianFormatWithDecimals.format(amount.abs());
     }
-    return '$prefix${_indianFormat.format(amount.abs())}';
+    return _indianFormat.format(amount.abs());
   }
 
-  /// Formats with sign prefix: +₹25,000 or -₹450
+  /// Formats with explicit sign prefix: +₹25,000 or -₹450
   static String formatSigned(double amount, {bool showDecimals = false}) {
     final prefix = amount >= 0 ? '+' : '-';
-    return '$prefix${format(amount, showDecimals: showDecimals)}';
+    return '$prefix${format(amount.abs(), showDecimals: showDecimals)}';
   }
 
   /// Compact format for summary cards: ₹1.5L, ₹25K, ₹1.2Cr

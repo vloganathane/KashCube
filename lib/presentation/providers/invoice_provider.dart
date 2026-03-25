@@ -308,13 +308,22 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
   });
 });
 
-/// Single invoice by id — re-fetches from DB whenever the invoices list changes
-/// so the detail view stays in sync after markAsPaid / edit / delete.
+/// Single invoice by id — reads from the same in-memory list that the Invoices
+/// tab uses, so status is ALWAYS consistent between list and detail.
+/// Falls back to a direct DB fetch only while [invoicesProvider] is still loading.
 final invoiceByIdProvider =
     FutureProvider.family<Invoice?, int>((ref, id) async {
-  // Watching invoicesProvider invalidates this provider whenever the list
-  // is mutated, forcing a fresh DB read that reflects the latest state.
-  ref.watch(invoicesProvider);
+  final fromList = ref.watch(invoicesProvider).whenOrNull(
+        data: (list) {
+          try {
+            return list.firstWhere((inv) => inv.id == id);
+          } catch (_) {
+            return null;
+          }
+        },
+      );
+  if (fromList != null) return fromList;
+  // invoicesProvider still loading or invoice not in list yet — hit DB directly.
   return ref.read(invoiceRepositoryProvider).getById(id);
 });
 
@@ -349,11 +358,22 @@ final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
   });
 });
 
-/// Single quote by id — re-fetches from DB whenever the quotes list changes
-/// so the detail view stays in sync after status updates (e.g. accepted/sent).
+/// Single quote by id — reads from the same in-memory list that the Quotes
+/// tab uses, so status is ALWAYS consistent between list and detail.
+/// Falls back to a direct DB fetch only while [quotesProvider] is still loading.
 final quoteByIdProvider =
     FutureProvider.family<Quote?, int>((ref, id) async {
-  ref.watch(quotesProvider);
+  final fromList = ref.watch(quotesProvider).whenOrNull(
+        data: (list) {
+          try {
+            return list.firstWhere((q) => q.id == id);
+          } catch (_) {
+            return null;
+          }
+        },
+      );
+  if (fromList != null) return fromList;
+  // quotesProvider still loading or quote not in list yet — hit DB directly.
   return ref.read(quoteRepositoryProvider).getById(id);
 });
 

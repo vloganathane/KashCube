@@ -24,7 +24,10 @@ final itemCatalogRepositoryProvider = Provider<ItemCatalogRepository>(
 );
 
 final quoteRepositoryProvider = Provider<QuoteRepository>(
-  (_) => QuoteRepositoryImpl(),
+  (ref) {
+    final contextId = ref.watch(activeContextProvider);
+    return QuoteRepositoryImpl(contextId: contextId);
+  },
 );
 
 final invoiceRepositoryProvider = Provider<InvoiceRepository>(
@@ -48,6 +51,12 @@ final invoiceSearchQueryProvider = StateProvider<String>((_) => '');
 
 /// Date range for filtering invoices (null = all dates)
 final invoiceDateRangeProvider = StateProvider<DateTimeRange?>((_) => null);
+
+/// Search query for filtering quotes — independent from the invoices search
+final quoteSearchQueryProvider = StateProvider<String>((_) => '');
+
+/// Date range for filtering quotes — independent from the invoices date range
+final quoteDateRangeProvider = StateProvider<DateTimeRange?>((_) => null);
 
 // ── Item Catalog ─────────────────────────────────────────────────────────────
 
@@ -334,11 +343,12 @@ final invoiceByIdProvider =
   return ref.read(invoiceRepositoryProvider).getById(id);
 });
 
-/// Filtered view of quotes (search + date range)
+/// Filtered view of quotes (search + date range) — uses quote-specific
+/// providers so quote filters are independent from invoice filters.
 final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
   final all = ref.watch(quotesProvider);
-  final searchQuery = ref.watch(invoiceSearchQueryProvider);
-  final dateRange = ref.watch(invoiceDateRangeProvider);
+  final searchQuery = ref.watch(quoteSearchQueryProvider);
+  final dateRange = ref.watch(quoteDateRangeProvider);
 
   return all.whenData((list) {
     var filtered = list;

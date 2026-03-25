@@ -236,7 +236,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
   void _showFilterDialog() {
     showModalBottomSheet(
       context: context,
-      builder: (context) => _FilterBottomSheet(),
+      builder: (context) => _FilterBottomSheet(tabIndex: _tabController.index),
     );
   }
 
@@ -461,7 +461,7 @@ class _InvoiceTile extends ConsumerWidget {
           MaterialPageRoute(
             builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
           ),
-        ).then((_) => ref.invalidate(invoicesProvider)),
+        ).then((_) { if (context.mounted) ref.invalidate(invoicesProvider); }),
         onLongPress: () => _confirmDelete(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -716,7 +716,7 @@ class _QuoteTile extends ConsumerWidget {
           MaterialPageRoute(
             builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
           ),
-        ).then((_) => ref.invalidate(quotesProvider)),
+        ).then((_) { if (context.mounted) ref.invalidate(quotesProvider); }),
         onLongPress: () => _confirmDelete(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -912,9 +912,26 @@ class _DisabledView extends StatelessWidget {
 // ── Filter Bottom Sheet ──────────────────────────────────────────────────────
 
 class _FilterBottomSheet extends ConsumerWidget {
+  const _FilterBottomSheet({required this.tabIndex});
+
+  /// 0 = Invoices tab, 1 = Quotes tab.
+  final int tabIndex;
+
+  bool get _isQuotes => tabIndex == 1;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dateRange = ref.watch(invoiceDateRangeProvider);
+    final dateRange = _isQuotes
+        ? ref.watch(quoteDateRangeProvider)
+        : ref.watch(invoiceDateRangeProvider);
+
+    void setRange(DateTimeRange? range) {
+      if (_isQuotes) {
+        ref.read(quoteDateRangeProvider.notifier).state = range;
+      } else {
+        ref.read(invoiceDateRangeProvider.notifier).state = range;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -935,7 +952,7 @@ class _FilterBottomSheet extends ConsumerWidget {
               if (dateRange != null)
                 TextButton(
                   onPressed: () {
-                    ref.read(invoiceDateRangeProvider.notifier).state = null;
+                    setRange(null);
                     Navigator.pop(context);
                   },
                   child: const Text('Clear'),
@@ -950,10 +967,10 @@ class _FilterBottomSheet extends ConsumerWidget {
             title: const Text('Today'),
             onTap: () {
               final today = DateTime.now();
-              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+              setRange(DateTimeRange(
                 start: DateTime(today.year, today.month, today.day),
                 end: DateTime(today.year, today.month, today.day, 23, 59, 59),
-              );
+              ));
               Navigator.pop(context);
             },
           ),
@@ -964,10 +981,10 @@ class _FilterBottomSheet extends ConsumerWidget {
               final now = DateTime.now();
               final weekStart = now.subtract(Duration(days: now.weekday - 1));
               final weekEnd = weekStart.add(const Duration(days: 6));
-              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+              setRange(DateTimeRange(
                 start: DateTime(weekStart.year, weekStart.month, weekStart.day),
                 end: DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59),
-              );
+              ));
               Navigator.pop(context);
             },
           ),
@@ -978,10 +995,10 @@ class _FilterBottomSheet extends ConsumerWidget {
               final now = DateTime.now();
               final monthStart = DateTime(now.year, now.month, 1);
               final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-              ref.read(invoiceDateRangeProvider.notifier).state = DateTimeRange(
+              setRange(DateTimeRange(
                 start: monthStart,
                 end: monthEnd,
-              );
+              ));
               Navigator.pop(context);
             },
           ),
@@ -1002,7 +1019,7 @@ class _FilterBottomSheet extends ConsumerWidget {
                 initialDateRange: dateRange,
               );
               if (picked != null) {
-                ref.read(invoiceDateRangeProvider.notifier).state = picked;
+                setRange(picked);
                 if (context.mounted) Navigator.pop(context);
               }
             },

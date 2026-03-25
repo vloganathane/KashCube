@@ -11,12 +11,21 @@ import '../../domain/repositories/invoice_repository.dart';
 // ---------------------------------------------------------------------------
 
 class QuoteRepositoryImpl implements QuoteRepository {
+  QuoteRepositoryImpl({this.contextId});
+
   final _db = DatabaseHelper.instance;
+
+  /// The active context for data isolation (mirrors [InvoiceRepositoryImpl]).
+  final int? contextId;
+
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<Quote>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query('quotes', orderBy: 'created_at DESC');
+    final rows = await db.query('quotes',
+        where: _ctx, orderBy: 'created_at DESC');
     final List<Quote> result = [];
     for (final row in rows) {
       final id = row['id'] as int;
@@ -46,7 +55,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
   Future<int> insert(Quote quote, List<QuoteItem> items) async {
     final db = await _db.database;
     final id = await db.transaction((txn) async {
-      final id = await txn.insert('quotes', quote.toMap());
+      final map = quote.toMap();
+      map['context_id'] = contextId;
+      final id = await txn.insert('quotes', map);
       for (final item in items) {
         await txn.insert(
             'quote_items', item.copyWith(quoteId: id).toMap());
@@ -89,7 +100,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
     final db = await _db.database;
     final rows = await db.query(
       'quotes',
-      where: 'customer_name = ?',
+      where: '$_ctx AND customer_name = ?',
       whereArgs: [customerName],
       orderBy: 'created_at DESC',
     );
@@ -143,7 +154,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
     );
 
     final invoiceId = await db.transaction((txn) async {
-      final id = await txn.insert('invoices', invoice.toMap());
+      final invoiceMap = invoice.toMap();
+      invoiceMap['context_id'] = contextId;
+      final id = await txn.insert('invoices', invoiceMap);
       for (final qi in quote.items) {
         final ii = InvoiceItem(
           invoiceId: id,
@@ -177,7 +190,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
     final db = await _db.database;
     final rows = await db.query(
       'quotes',
-      where: 'customer_party_id = ?',
+      where: '$_ctx AND customer_party_id = ?',
       whereArgs: [partyId],
       orderBy: 'created_at DESC',
     );

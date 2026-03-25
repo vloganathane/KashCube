@@ -1295,8 +1295,41 @@ class _LineItemsCard extends StatelessWidget {
             Text('Items',
                 style: Theme.of(context).textTheme.titleMedium),
             const Divider(height: AppSpacing.base),
-            _ItemHeader(),
-            ...invoice.items.map((item) => _ItemRow(item: item)),
+            if (invoice.items.isEmpty) ...[
+              if (invoice.total > 0)
+                // Totals exist but items are missing — data integrity issue.
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.error),
+                      const SizedBox(width: AppSpacing.xs),
+                      Expanded(
+                        child: Text(
+                          'Item details are unavailable for this invoice. '
+                          'Use "Duplicate" to create a corrected copy.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.error,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  child: Text('No items', style: TextStyle(fontSize: 13)),
+                ),
+            ] else ...[
+              _ItemHeader(),
+              ...invoice.items.map((item) => _ItemRow(item: item)),
+            ],
           ],
         ),
       ),

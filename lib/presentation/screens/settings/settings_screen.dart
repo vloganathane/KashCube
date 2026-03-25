@@ -441,35 +441,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 leading: const Icon(Icons.privacy_tip_outlined),
                 title: const Text('Privacy Policy'),
                 subtitle: const Text('100% local, zero network calls'),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    useRootNavigator: false,
-                    builder: (dlgCtx) => AlertDialog(
-                      title: const Text('Privacy Policy'),
-                      content: const SingleChildScrollView(
-                        child: Text(
-                          'Kash Cube stores all data locally on your device.\n\n'
-                          '• No data is ever sent to any server.\n'
-                          '• Anonymous analytics: opt-in only,\n'
-                          '  off by default (Settings → Privacy).\n'
-                          '• No crash reporting or ad tracking.\n'
-                          '• No third-party SDKs that transmit data.\n'
-                          '• SMS is read, parsed, and stored locally.\n'
-                          '• Backups and exports stay on your device\n'
-                          '  unless you explicitly share them.\n\n'
-                          'Your financial data is yours alone.',
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dlgCtx),
-                          child: const Text('OK'),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showLegalSheet(
+                  context,
+                  title: 'Privacy Policy',
+                  content: _kPrivacyPolicy,
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.gavel_outlined),
+                title: const Text('Terms of Use'),
+                subtitle: const Text('v2.2 · Effective 16 March 2026'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showLegalSheet(
+                  context,
+                  title: 'Terms of Use & Privacy Policy',
+                  content: _kTermsOfUse,
+                ),
               ),
             ],
           ),
@@ -852,35 +840,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               leading: const Icon(Icons.privacy_tip_outlined),
               title: const Text('Privacy Policy'),
               subtitle: const Text('100% local, zero network calls'),
-              onTap: () {
-                showDialog(
-                  context: context,
-                  useRootNavigator: false,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Privacy Policy'),
-                    content: const SingleChildScrollView(
-                      child: Text(
-                        'Kash Cube stores all data locally on your device.\n\n'
-                        '• No data is ever sent to any server.\n'
-                        '• Anonymous analytics: opt-in only,\n'
-                        '  off by default (Settings → Privacy).\n'
-                        '• No crash reporting or ad tracking.\n'
-                        '• No third-party SDKs that transmit data.\n'
-                        '• SMS is read, parsed, and stored locally.\n'
-                        '• Backups and exports stay on your device\n'
-                        '  unless you explicitly share them.\n\n'
-                        'Your financial data is yours alone.',
-                      ),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              },
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showLegalSheet(
+                context,
+                title: 'Privacy Policy',
+                content: _kPrivacyPolicy,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.gavel_outlined),
+              title: const Text('Terms of Use'),
+              subtitle: const Text('v2.2 · Effective 16 March 2026'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showLegalSheet(
+                context,
+                title: 'Terms of Use & Privacy Policy',
+                content: _kTermsOfUse,
+              ),
             ),
           ],
         ),
@@ -1334,3 +1310,170 @@ class _PrivacySection extends ConsumerWidget {
     );
   }
 }
+
+// ── Legal bottom-sheet helper ─────────────────────────────────────────────────
+
+void _showLegalSheet(
+  BuildContext context, {
+  required String title,
+  required String content,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.92,
+      minChildSize: 0.5,
+      maxChildSize: 0.96,
+      builder: (_, controller) => Column(
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Theme.of(ctx).colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 4, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: ListView(
+              controller: controller,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              children: [
+                SelectableText(
+                  content,
+                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+                        height: 1.6,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Legal content ─────────────────────────────────────────────────────────────
+
+const _kPrivacyPolicy =
+    'Kash Cube — Privacy Policy\n'
+    'Version 1.1 · Last Updated: March 22, 2026\n\n'
+    'OUR COMMITMENT\n'
+    'Kash Cube is built with privacy at its core. Your financial data is yours and yours alone.\n\n'
+    'DATA STORAGE\n'
+    'All data is stored locally on your device using SQLite. There is no cloud sync, no remote servers, and no login required. Your data never leaves your device.\n\n'
+    'What we store:\n'
+    '• Transaction amounts, categories, descriptions, and dates\n'
+    '• Party names and notes (stored locally)\n'
+    '• Account and credit records\n\n'
+    'Where it is stored:\n'
+    '• Android: App-private local storage\n'
+    '• iOS: App sandbox (Application Support)\n\n'
+    'DATA WE DO NOT COLLECT\n'
+    '✗ Personal information (name, email, phone)\n'
+    '✗ Location data\n'
+    '✗ Device identifiers or advertising IDs\n'
+    '✗ Crash reports\n'
+    '✗ IP addresses\n'
+    '✗ Any financial data sent to third parties\n\n'
+    'ANALYTICS (opt-in, off by default)\n'
+    'Optional anonymous analytics via Firebase Analytics — OFF by default. Enable in Settings → Privacy → Anonymous Analytics.\n\n'
+    'When opted in, we collect:\n'
+    '• Screen navigation events (e.g. "opened Reports")\n'
+    '• Feature interaction events (e.g. "exported CSV")\n'
+    '• App session metadata from Firebase (OS version, country)\n\n'
+    'We NEVER collect (even when opted in):\n'
+    '✗ Transaction amounts, descriptions, or dates\n'
+    '✗ Party names, balances, or contact details\n'
+    '✗ SMS content\n'
+    '✗ Any personally identifiable financial information\n\n'
+    'Disabling analytics stops all event collection immediately.\n\n'
+    'PERMISSIONS\n'
+    'Required: Storage (for local SQLite database)\n'
+    'Optional: SMS read (to auto-detect bank/UPI alerts — processed on-device only)\n'
+    'Not required: Internet, Location, Contacts, Camera, Microphone\n\n'
+    'DATA SHARING\n'
+    'We do not share any data — because we do not have access to it. Your data never leaves your device, is never uploaded, and is never sold.\n\n'
+    'SECURITY\n'
+    '• Device-level security (lock screen, encryption)\n'
+    '• PIN protected with PBKDF2-HMAC-SHA256 (100,000 iterations)\n'
+    '• No data transmission = no network interception risk\n\n'
+    'YOUR RIGHTS\n'
+    '• Access: View all your data in the app at any time\n'
+    '• Delete: Uninstall the app to clear all data\n'
+    '• Export: PDF/CSV export from within the app\n'
+    '• Modify: Edit or delete any record\n\n'
+    'COMPLIANCE\n'
+    'GDPR: Compliant by design — no data collection\n'
+    'CCPA: Compliant — no data sale\n'
+    'COPPA: Compliant — no collection from anyone\n'
+    'DPDP Act 2023: Compliant\n\n'
+    'CONTACT\n'
+    'Review the code or raise an issue on the official GitHub repository. Trust, but verify.';
+
+const _kTermsOfUse =
+    'Kash Cube — Terms of Use & Privacy Policy\n'
+    'Version 2.2 (Hardened) · Effective: 16 March 2026\n\n'
+    'ACCEPTANCE OF TERMS\n'
+    'By downloading, installing, or using Kash Cube, you agree to these Terms. These Terms form a legally binding agreement between you and the developer of Kash Cube.\n\n'
+    'ELIGIBILITY\n'
+    'You must be at least 18 years old and legally capable of entering into a binding agreement.\n\n'
+    'NATURE OF THE APP\n'
+    'Kash Cube is a financial record-keeping tool for transaction logging, invoice generation, payment tracking, and GST-related calculations. It is not a substitute for professional accounting, legal, or tax services.\n\n'
+    'NO FINANCIAL, LEGAL, OR TAX ADVICE\n'
+    'Nothing in the App constitutes financial, accounting, legal, tax, or investment advice. Outputs are generated from user-entered data and may contain errors. You are solely responsible for reviewing and validating all information before relying on it.\n\n'
+    'GST COMPLIANCE DISCLAIMER\n'
+    'The App may assist with GST-related workflows but does not guarantee that any output is accurate, complete, or compliant. GST laws may change at any time. You are solely responsible for verifying GST values and filing accurate returns.\n\n'
+    'DATA & PRIVACY\n'
+    'Kash Cube is a privacy-first, local-first application. Financial records are stored on your device only. The Developer does not transmit your financial records to its servers.\n\n'
+    'You are solely responsible for data accuracy, backups, and device security. The Developer cannot recover data lost due to device failure, theft, factory reset, or uninstall.\n\n'
+    'On Android, the App may request SMS permission only to detect financial transaction notifications. SMS data is processed on-device only.\n\n'
+    'SECURITY DISCLAIMER\n'
+    'No software can be guaranteed fully secure. The Developer is not responsible for compromise caused by rooted devices, malware, or unauthorised device access.\n\n'
+    'DISCLAIMER OF WARRANTIES\n'
+    'THE APP IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTIES OF ANY KIND, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.\n\n'
+    'LIMITATION OF LIABILITY\n'
+    'To the maximum extent permitted by law, the Developer is not liable for indirect, incidental, special, or consequential damages. Aggregate liability will not exceed the amount paid by you in the 12 months preceding the claim, or INR 1 if no amount was paid.\n\n'
+    'INDEMNIFICATION\n'
+    'You agree to defend, indemnify, and hold harmless the Developer from claims arising from your misuse of the App, your content, or your violation of law or these Terms.\n\n'
+    'INTELLECTUAL PROPERTY\n'
+    'All rights in the App remain with the Developer. You receive a limited, non-exclusive, revocable licence to use the App per these Terms. You may not copy, modify, distribute, reverse engineer, or decompile the App except where prohibited by law.\n\n'
+    'PROHIBITED USES\n'
+    'You must not use the App for unlawful activity, fraud, tax evasion, money laundering, or unauthorised processing of third-party personal data.\n\n'
+    'DISPUTE RESOLUTION\n'
+    'Any dispute shall be resolved by binding arbitration under the Arbitration and Conciliation Act, 1996. Seat: Puducherry, India. Language: English. Claims must be filed within one (1) year of arising.\n\n'
+    'CLASS ACTION WAIVER\n'
+    'Disputes will be resolved on an individual basis only. You waive any right to participate in class-action or representative proceedings.\n\n'
+    'GOVERNING LAW\n'
+    'These Terms are governed by the laws of India. The courts at Puducherry shall have jurisdiction for matters not subject to arbitration.\n\n'
+    'CONTACT\n'
+    'For support or legal questions, contact the official support channel listed on the App store listing.\n\n'
+    'Last Updated: March 2026';

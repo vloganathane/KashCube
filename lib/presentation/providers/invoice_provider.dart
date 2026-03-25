@@ -176,6 +176,27 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
   }
 
   Future<void> edit(Invoice invoice, List<InvoiceItem> items) async {
+    // If the invoice was already sent/active (stock was previously deducted),
+    // reverse the old movements then re-deduct based on the updated item list.
+    // Draft edits have no prior movements, so skip for those.
+    final wasSent = invoice.status != InvoiceStatus.draft &&
+        invoice.status != InvoiceStatus.cancelled &&
+        invoice.challanId == null; // DC-linked invoices: DC owns the movement.
+    if (wasSent && invoice.id != null) {
+      await InventoryService.instance.reverseMovementsFor('invoice', invoice.id!);
+      for (final item in items) {
+        if (item.catalogItemId != null && item.qty > 0) {
+          await InventoryService.instance.deductStock(
+            item.catalogItemId!,
+            item.qty,
+            notes: 'Invoice ${invoice.invoiceNo} (edited)',
+            referenceId: invoice.id!,
+            referenceType: 'invoice',
+            businessId: invoice.businessId,
+          );
+        }
+      }
+    }
     await _repo.update(invoice, items);
     await load();
   }
@@ -287,9 +308,13 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
   });
 });
 
-/// Single invoice by id
+/// Single invoice by id — re-fetches from DB whenever the invoices list changes
+/// so the detail view stays in sync after markAsPaid / edit / delete.
 final invoiceByIdProvider =
     FutureProvider.family<Invoice?, int>((ref, id) async {
+  // Watching invoicesProvider invalidates this provider whenever the list
+  // is mutated, forcing a fresh DB read that reflects the latest state.
+  ref.watch(invoicesProvider);
   return ref.read(invoiceRepositoryProvider).getById(id);
 });
 

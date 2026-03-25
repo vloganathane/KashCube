@@ -7,6 +7,7 @@ import '../../../data/models/hsn_entry.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/services/hsn_search_service.dart';
 import '../../providers/invoice_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../providers/unit_type_provider.dart';
 
 class ItemCatalogScreen extends ConsumerStatefulWidget {
@@ -240,7 +241,7 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
 
 // ── Catalog Tile ──────────────────────────────────────────────────────────────
 
-class _CatalogTile extends StatelessWidget {
+class _CatalogTile extends ConsumerWidget {
   const _CatalogTile({
     required this.item,
     required this.pickMode,
@@ -263,27 +264,29 @@ class _CatalogTile extends StatelessWidget {
     return Theme.of(context).colorScheme.secondary;
   }
 
-  void _showActions(BuildContext context) {
+  void _showActions(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(
-                item.trackInventory
-                    ? Icons.inventory_2_outlined
-                    : Icons.inventory_2,
+            // Stock tracking is a Business-tier feature.
+            if (ref.read(subscriptionTierProvider).isBusiness)
+              ListTile(
+                leading: Icon(
+                  item.trackInventory
+                      ? Icons.inventory_2_outlined
+                      : Icons.inventory_2,
+                ),
+                title: Text(item.trackInventory
+                    ? 'Disable Stock Tracking'
+                    : 'Enable Stock Tracking'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onToggleTracking();
+                },
               ),
-              title: Text(item.trackInventory
-                  ? 'Disable Stock Tracking'
-                  : 'Enable Stock Tracking'),
-              onTap: () {
-                Navigator.pop(context);
-                onToggleTracking();
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Edit Item'),
@@ -311,7 +314,7 @@ class _CatalogTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final infoLine = [
       if (item.description != null) item.description!,
       item.unit,
@@ -389,7 +392,7 @@ class _CatalogTile extends StatelessWidget {
             ),
         ],
       ),
-      onLongPress: pickMode ? null : () => _showActions(context),
+      onLongPress: pickMode ? null : () => _showActions(context, ref),
     );
   }
 }

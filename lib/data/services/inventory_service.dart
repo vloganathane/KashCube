@@ -134,7 +134,43 @@ class InventoryService {
 
   // ── Writes ─────────────────────────────────────────────────────────────────
 
+  /// Returns true if inventory tracking is enabled for [itemId].
+  ///
+  /// When [businessId] is provided, the per-business [item_stock] value takes
+  /// precedence over the catalog-level flag (COALESCE logic mirrors the query
+  /// used in [getTrackedItems]). This is the single gate that prevents silent
+  /// stock movements for items — or users — that have not enabled tracking.
+  Future<bool> _isTracked(int itemId, {int? businessId}) async {
+    final db = await _db.database;
+    if (businessId != null) {
+      final rows = await db.rawQuery(
+        '''
+        SELECT COALESCE(ist.track_inventory, ic.track_inventory) AS tracked
+        FROM item_catalog ic
+        LEFT JOIN item_stock ist
+          ON ist.item_id = ic.id AND ist.business_id = ?
+        WHERE ic.id = ?
+        ''',
+        [businessId, itemId],
+      );
+      if (rows.isEmpty) return false;
+      return (rows.first['tracked'] as int?) == 1;
+    }
+    // Legacy fallback
+    final rows = await db.query(
+      'item_catalog',
+      columns: ['track_inventory'],
+      where: 'id = ?',
+      whereArgs: [itemId],
+    );
+    if (rows.isEmpty) return false;
+    return (rows.first['track_inventory'] as int?) == 1;
+  }
+
   /// Adds [qty] units of stock for [businessId] (or globally when null).
+  ///
+  /// No-op if the item does not have inventory tracking enabled — this prevents
+  /// silent stock movements for Free/Starter users who have no inventory access.
   Future<void> addStock(
     int itemId,
     double qty, {
@@ -144,6 +180,7 @@ class InventoryService {
     int? businessId,
   }) async {
     assert(qty > 0, 'addStock qty must be positive');
+    if (!await _isTracked(itemId, businessId: businessId)) return;
     await _applyMovement(
       itemId: itemId,
       delta: qty,
@@ -158,6 +195,9 @@ class InventoryService {
   }
 
   /// Deducts [qty] units of stock (positive qty = amount to remove).
+  ///
+  /// No-op if the item does not have inventory tracking enabled — this prevents
+  /// silent stock movements for Free/Starter users who have no inventory access.
   Future<void> deductStock(
     int itemId,
     double qty, {
@@ -167,6 +207,7 @@ class InventoryService {
     int? businessId,
   }) async {
     assert(qty > 0, 'deductStock qty must be positive');
+    if (!await _isTracked(itemId, businessId: businessId)) return;
     await _applyMovement(
       itemId: itemId,
       delta: -qty,

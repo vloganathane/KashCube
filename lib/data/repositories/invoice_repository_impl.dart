@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../../data/models/invoice.dart';
 import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
@@ -273,11 +275,20 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
           invoice.copyWith(updatedAt: DateTime.now()).toMap(),
           where: 'id = ?',
           whereArgs: [invoice.id]);
-      await txn.delete('invoice_items',
-          where: 'invoice_id = ?', whereArgs: [invoice.id]);
-      for (final item in items) {
-        await txn.insert(
-            'invoice_items', item.copyWith(invoiceId: invoice.id!).toMap());
+      // Guard: never wipe all items via an empty list — this prevents silent
+      // data loss where totals survive on the invoices row but the detail
+      // view goes blank. An invoice with zero items is never valid.
+      if (items.isNotEmpty) {
+        await txn.delete('invoice_items',
+            where: 'invoice_id = ?', whereArgs: [invoice.id]);
+        for (final item in items) {
+          await txn.insert(
+              'invoice_items', item.copyWith(invoiceId: invoice.id!).toMap());
+        }
+      } else {
+        debugPrint(
+            '[InvoiceRepo] update() called with empty items for invoice '
+            '${invoice.id} — skipping item delete/insert to preserve data.');
       }
     });
     _db.notifyChange('invoices');

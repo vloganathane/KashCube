@@ -32,6 +32,8 @@ import '../../widgets/party_picker_field.dart';
 import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
 import 'item_catalog_screen.dart';
+import '../../widgets/upgrade_prompt_sheet.dart';
+import '../settings/upgrade_screen.dart';
 
 enum DocumentType { quote, invoice, deliveryChallan, creditNote, debitNote }
 
@@ -596,11 +598,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .getById(_customerPartyId!);
           }
           final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+          final tier = ref.read(subscriptionTierProvider);
           return InvoicePdfService.instance.generateQuotePdf(
             quote,
             business: business,
             customerParty: customerParty,
             termsAndConditions: quoteTerms,
+            showFreeWatermark: tier.isFree,
+            showUpiQr: tier.isStarter,
           );
         },
       );
@@ -617,6 +622,19 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           const SnackBar(
             content: Text('Cannot save: invoice is paid and locked from editing'),
             backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Guard: never save an invoice with zero items — this would silently delete
+    // any existing invoice_items rows and leave the invoice detail blank.
+    if (_invoiceItems.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Add at least one item before saving the invoice'),
           ),
         );
       }
@@ -708,11 +726,14 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .getById(_customerPartyId!);
           }
           final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
+          final tier = ref.read(subscriptionTierProvider);
           return InvoicePdfService.instance.generateInvoicePdf(
             invoice,
             business: business,
             customerParty: customerParty,
             termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
+            showFreeWatermark: tier.isFree,
+            showUpiQr: tier.isStarter,
           );
         },
       );
@@ -1023,6 +1044,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: quoteTerms ?? SettingsKeys.defaultQuoteTerms,
+        showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
+        showUpiQr: ref.read(subscriptionTierProvider).isStarter,
       );
       
       if (!mounted) return;
@@ -1047,7 +1070,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _shareQuotePdf() async {
     if (_existingQuote == null) return;
-    
+
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'quote');
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     // Show loading indicator
     if (!mounted) return;
     showDialog(
@@ -1077,6 +1116,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: quoteTerms ?? SettingsKeys.defaultQuoteTerms,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
       );
       
       if (!mounted) return;
@@ -1109,7 +1150,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _shareInvoicePdf() async {
     if (_existingInvoice == null) return;
-    
+
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'invoice');
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     // Show loading indicator
     if (!mounted) return;
     showDialog(
@@ -1139,6 +1196,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
       );
       
       if (!mounted) return;
@@ -1201,6 +1260,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
+        showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
+        showUpiQr: ref.read(subscriptionTierProvider).isStarter,
       );
       
       if (!mounted) return;
@@ -1251,6 +1312,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
+        showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -1273,6 +1335,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _shareChallanPdf() async {
     if (_existingChallan == null) return;
+
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(context, featureName: 'delivery challan');
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     if (!mounted) return;
     showDialog(
       context: context,
@@ -1298,6 +1377,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         business: business,
         customerParty: customerParty,
         termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
+        showFreeWatermark: showWatermark,
       );
       if (!mounted) return;
       Navigator.pop(context);

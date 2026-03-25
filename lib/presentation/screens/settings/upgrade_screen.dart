@@ -71,7 +71,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KashCube Plans'),
+        title: const Text('Kash Cube Plans'),
         actions: [
           TextButton(
             onPressed: _restorePurchases,
@@ -123,7 +123,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
               'GSTR-1 JSON + Tally XML export',
               'Inventory with reorder alerts',
               'Staff payroll module',
-              'Multi-device LAN sync',
+              // 'Multi-device LAN sync', // TODO: re-enable when LAN sync is stable
             ],
             highlight: true,
           ),

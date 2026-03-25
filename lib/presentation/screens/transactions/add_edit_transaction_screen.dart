@@ -169,7 +169,12 @@ class _AddEditTransactionScreenState
     }
   }
 
+  void _restartFormTutorial() => _showFormFlowMark();
+
   void _showFormFlowMark() {
+    // Capture refs before showing overlay — avoids "ref after dispose" crash.
+    final flowNotifier = ref.read(tutorialFlowProvider.notifier);
+    final settingsRepo = ref.read(settingsRepositoryProvider);
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -240,9 +245,10 @@ class _AddEditTransactionScreenState
       pulseEnable: true,
       onFinish: () {}, // user still fills and saves; orchestrator advances in _save()
       onSkip: () {
-        ref.read(tutorialFlowProvider.notifier).abandon();
-        ref.read(settingsRepositoryProvider)
-            .set(SettingsKeys.tutorialTxFlowDone, 'true');
+        Future(() {
+          flowNotifier.abandon();
+          settingsRepo.set(SettingsKeys.tutorialTxFlowDone, 'true');
+        });
         return true;
       },
     ).show(context: context);
@@ -468,6 +474,12 @@ class _AddEditTransactionScreenState
       appBar: AppBar(
         title: Text(title),
         actions: [
+          if (!widget.isEditing)
+            IconButton(
+              icon: const Icon(Icons.help_outline_rounded),
+              tooltip: 'How to add a transaction',
+              onPressed: _restartFormTutorial,
+            ),
           if (widget.isEditing)
             IconButton(
               icon: const Icon(Icons.delete_outline),

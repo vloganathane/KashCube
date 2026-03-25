@@ -497,14 +497,14 @@ For complex forms (many required fields, non-obvious structure), a `?` help butt
 
 ### When to add
 
-| Condition | Add `?`? |
-|---|---|
-| New (non-edit) record, 4+ fields, accessed via guided flow | ✅ Yes |
-| Edit mode | ❌ No — user already knows the form |
-| Simple 2–3 field sheet/dialog | ❌ No |
-| Delivery Challan / Credit Note / Debit Note forms | ❌ No — niche, expert users |
+| Condition | Quick `?` | Detail `?` |
+|---|:---:|:---:|
+| New record, 4+ non-obvious fields, accessed via guided flow | ✅ | ✅ |
+| Edit mode | ❌ | ✅ (field ref still useful) |
+| Simple 2–3 field sheet/dialog | ❌ | ❌ |
+| Delivery Challan / Credit Note / Debit Note | ❌ | ❌ niche/expert |
 
-Currently applies to: `QuoteBuilderScreen` (new invoice / new quote).
+Currently applies to: `QuoteBuilderScreen` (Quick mode ✅) · `AddEditTransactionScreen` (Quick ✅ · Detail ⬜).
 
 ### Contextual restart pattern (`_restartFormTutorial`)
 
@@ -531,6 +531,74 @@ void _restartFormTutorial() {
 ```
 
 **UX result:** Tapping `?` at any point in the form takes the user to the *next* incomplete step, not the beginning.
+
+---
+
+## Two-Mode Form Guides: Quick + Detail
+
+### Concept
+
+Every complex form `?` button offers two complementary guide modes:
+
+| Mode | Purpose | Steps | Flow-connected? | Stateful (done flag)? |
+|------|---------|:-----:|:--------------:|:---------------------:|
+| **Quick** | Get the user to complete one real action | 3–5 | ✅ `TutorialFlowNotifier` | ✅ Yes — fires once |
+| **Detail** | Field-by-field reference / help manual | All fields | ❌ Standalone | ❌ No — always replayable |
+
+**Key distinction:** Quick mode is onboarding. Detail mode is a help manual embedded in the UI — reference material users can reopen any time they're unsure about a specific field.
+
+### `?` dropdown shape (new record, complex form)
+
+```dart
+// ? PopupMenuButton on AddEditTransactionScreen (new transaction only)
+[
+  PopupMenuItem(label: 'Quick guide'),     // 3–5 steps, flow-integrated
+  PopupMenuItem(label: 'Field reference'), // all fields, always replayable
+]
+```
+
+### Implementation pattern — `_showDetailModeMark()`
+
+Detail mode is a **standalone `TutorialCoachMark`** — not wired to `TutorialFlowNotifier`. No `advance()` calls. No settings key to persist. Same ref-capture + `Future(() {...})` rules still apply:
+
+```dart
+void _showDetailModeMark() {
+  // No flowNotifier needed — detail mode is entirely self-contained
+  TutorialCoachMark(
+    targets: [
+      TargetFocus(keyTarget: _typeChipsKey,     /* explanation */),
+      TargetFocus(keyTarget: _amountFieldKey,   /* explanation */),
+      TargetFocus(keyTarget: _accountFieldKey,  /* explanation */),
+      TargetFocus(keyTarget: _categoryFieldKey, /* explanation */),
+      TargetFocus(keyTarget: _partyFieldKey,    /* explanation */),
+      TargetFocus(keyTarget: _dateTimeKey,      /* explanation */),
+      TargetFocus(keyTarget: _paymentMethodKey, /* explanation */),
+      TargetFocus(keyTarget: _modeKey,          /* explanation */),
+      TargetFocus(keyTarget: _saveButtonKey,    /* explanation */),
+    ],
+    colorShadow: Colors.black,
+    opacityShadow: 0.85,
+    onSkip: () { return true; },  // no provider state to clean up
+    onFinish: () {},
+  ).show(context: context);
+}
+```
+
+### Detail field map — `AddEditTransactionScreen` (9 steps)
+
+| Step | Field | Key | Content |
+|------|-------|-----|---------|
+| 1 | **What happened?** chips | `_typeChipsKey` | Spent/Earned for everyday money · Lent/Borrowed for money between people · Invested/Redeemed for savings & MF |
+| 2 | **Amount** | `_amountFieldKey` | Enter in rupees — Indian comma formatting applied automatically (₹1,23,456) |
+| 3 | **Account** | `_accountFieldKey` | Which bank/wallet this came from or went to. Leave blank to record without account tracking |
+| 4 | **Category** | `_categoryFieldKey` | Affects your Reports breakdown. Tap "+ Add custom category" to create your own |
+| 5 | **Party / Merchant** | `_partyFieldKey` | Who you paid or received from. Tap the contacts icon to pick from saved parties |
+| 6 | **Date & Time** | `_dateTimeKey` | Defaults to now. Tap either to change for past or future transactions |
+| 7 | **Payment Method** | `_paymentMethodKey` | UPI, Cash, Card, Net Banking, or Wallet. Auto-updates when you pick an Account |
+| 8 | **Personal / Business** | `_modeKey` | Personal: your personal ledger. Business: records in business P&L and can appear on invoices |
+| 9 | **Add Transaction** | `_saveButtonKey` | Saves and returns. Balance, reports, and party ledger update instantly |
+
+> **New GlobalKeys required before implementing:** `_typeChipsKey`, `_accountFieldKey`, `_partyFieldKey`, `_dateTimeKey`, `_paymentMethodKey`, `_modeKey` — add alongside the existing `_amountFieldKey`, `_categoryFieldKey`, `_saveButtonKey`.
 
 ---
 
@@ -708,6 +776,88 @@ AppShell (5 tabs, per-tab Navigator)
 
 ---
 
+### Full Screen Inventory
+
+All 69 screens across 18 modules. Work through these one at a time top-to-bottom.
+
+**Legend:** ✅ Done · ⬜ Queued (item #) · 🔜 Later · — Skip · `✅ Quick · ⬜ Detail` = Quick guide done, Detail field-reference pending
+
+| # | Module | Screen | Form | Status | Plan / Reason |
+|---|--------|--------|:----:|--------|---------------|
+| 1 | transactions | `transactions_screen` | — | ✅ Done | Orientation tour + Add Transaction flow |
+| 2 | transactions | `add_edit_transaction_screen` | ✓ | ✅ Quick · ⬜ Detail | Quick guide (3 steps) ✅ · 9-step field reference ⬜ Item 18 |
+| 3 | ledger | `credits_screen` | ✓ | ✅ Done | Orientation tour + New Credit flow |
+| 4 | invoices | `invoices_screen` | — | ✅ Done | Orientation tour + New Invoice flow |
+| 5 | invoices | `quote_builder_screen` | ✓ | ✅ Done | Form spotlights + contextual `?` help |
+| 6 | bookings | `bookings_screen` | — | ⬜ Item 19 | Orientation + New Booking flow |
+| 7 | bookings | `create_booking_screen` | ✓ | ⬜ Item 19 | Form spotlights: customer → service → datetime → save |
+| 8 | invoices | `item_catalog_screen` | ✓ | ⬜ Item 20 | Add Item flow; guard `!widget.pickMode` |
+| 9 | home | `home_screen` | — | ⬜ Item 21 | Orientation tour: balance card · quick-add · tune |
+| 10 | reports | `reports_screen` | — | ⬜ Item 21 | Orientation tour: period picker · export |
+| 11 | parties | `parties_screen` | — | ⬜ Item 21 | Orientation tour: FAB · filter chips |
+| 12 | ledger | `ledger_screen` | — | 🔜 Later | Unified ledger; orientation once data exists |
+| 13 | bookings | `booking_detail_screen` | — | 🔜 Later | Post-creation result spotlight (part of Item 18) |
+| 14 | reports | `cash_flow_screen` | — | 🔜 Later | Orientation once ≥1 transaction exists |
+| 15 | gst | `gstr1_screen` | — | 🔜 Later | Orientation: "auto-populated from invoices" + Export |
+| 16 | loans | `loans_screen` | ✓ | — Skip | Low discovery ROI; power-user feature |
+| 17 | reports | `budget_screen` | ✓ | — Skip | Low ROI for new users |
+| 18 | recurring | `recurring_transactions_screen` | ✓ | — Skip | Power-user; users self-discover |
+| 19 | inventory | `inventory_screen` | ✓ | — Skip | Stock tracking; niche B2B |
+| 20 | invoices | `delivery_challans_screen` | — | — Skip | B2B niche |
+| 21 | invoices | `delivery_challan_detail_screen` | ✓ | — Skip | B2B niche |
+| 22 | invoices | `invoice_detail_screen` | ✓ | — Skip | View-only; action buttons have tooltips |
+| 23 | invoices | `quote_detail_screen` | — | — Skip | View-only |
+| 24 | invoices | `ewb_preview_screen` | — | — Skip | E-way bill; expert feature |
+| 25 | gst | `add_purchase_bill_screen` | ✓ | — Skip | Tax-expert screen |
+| 26 | gst | `purchase_bills_screen` | — | — Skip | Tax-expert screen |
+| 27 | gst | `purchase_bill_detail_screen` | — | — Skip | Tax-expert screen |
+| 28 | gst | `gstr_period_picker` | — | — Skip | Dialog/picker widget |
+| 29 | gst | `gstr3b_offset_screen` | — | — Skip | Tax-expert screen |
+| 30 | bills | `bills_screen` | ✓ | — Skip | Covered by Transactions flow |
+| 31 | bills | `bills_and_payments_screen` | ✓ | — Skip | Covered by Transactions flow |
+| 32 | parties | `party_360_screen` | — | — Skip | Summary view; users navigate naturally |
+| 33 | staff | `staff_list_screen` | — | — Skip | HR module; role-gated |
+| 34 | staff | `staff_screen` | ✓ | — Skip | HR module |
+| 35 | staff | `staff_detail_screen` | — | — Skip | HR module |
+| 36 | business | `business_hub_screen` | — | — Skip | Navigation hub |
+| 37 | business | `global_document_ledger_screen` | — | — Skip | Power feature |
+| 38 | business | `tally_export_screen` | — | — Skip | Accountant feature |
+| 39 | contacts | `contacts_hub_screen` | — | — Skip | Navigation hub; covered by Parties tour |
+| 40 | home | `action_center_screen` | — | — Skip | Overlay panel |
+| 41 | home | `customize_home_screen` | — | — Skip | One-time personalisation |
+| 42 | search | `search_screen` | — | — Skip | Universal search; self-explanatory |
+| 43 | transactions | `transactions_hub_screen` | — | — Skip | Navigation hub |
+| 44 | transactions | `transaction_detail_screen` | — | — Skip | View-only |
+| 45 | transactions | `bill_viewer_screen` | — | — Skip | Document viewer |
+| 46 | transactions | `category_management_screen` | ✓ | — Skip | Admin-level; users reach via settings |
+| 47 | settings | `settings_screen` | — | — Skip | Settings hub |
+| 48 | settings | `accounts_manage_screen` | — | — Skip | Opening balances; one-time |
+| 49 | settings | `businesses_screen` | ✓ | — Skip | Initial setup; wizard covers it |
+| 50 | settings | `document_terms_screen` | — | — Skip | Doc template settings |
+| 51 | settings | `encrypted_backup_screen` | ✓ | — Skip | Security settings |
+| 52 | settings | `fy_close_wizard_screen` | — | — Skip | Annual task |
+| 53 | settings | `manage_users_screen` | ✓ | — Skip | Multi-user admin |
+| 54 | settings | `my_personal_card_screen` | ✓ | — Skip | Profile card |
+| 55 | settings | `notification_settings_screen` | — | — Skip | Settings |
+| 56 | settings | `open_on_laptop_screen` | — | — Skip | Web companion setup |
+| 57 | settings | `pin_lock_screen` | — | — Skip | Auth flow |
+| 58 | settings | `profile_screen` | — | — Skip | Settings |
+| 59 | settings | `sms_permission_screen` | — | — Skip | One-time permission prompt |
+| 60 | settings | `storage_health_screen` | — | — Skip | Diagnostic screen |
+| 61 | settings | `template_builder_screen` | — | — Skip | Power-user |
+| 62 | settings | `template_list_screen` | — | — Skip | Power-user |
+| 63 | settings | `unit_types_screen` | ✓ | — Skip | Settings; low frequency |
+| 64 | settings | `upgrade_screen` | — | — Skip | Subscription screen |
+| 65 | settings | `user_permissions_screen` | — | — Skip | Multi-user admin |
+| 66 | auth | `setup_wizard_screen` | — | — Skip | One-time onboarding |
+| 67 | auth | `staff_pin_screen` | — | — Skip | Auth |
+| 68 | auth | `terms_gate_screen` | — | — Skip | One-time consent |
+| 69 | auth | `user_selection_screen` | — | — Skip | Auth |
+
+**Summary:** 5 done · 7 queued (Items 18–21) · 4 later · 54 skip
+
+---
+
 ## Implementation Order
 
 ### Done ✅
@@ -729,11 +879,14 @@ AppShell (5 tabs, per-tab Navigator)
 16. Fixed: all tutorial callbacks use `Future(() {...})` to prevent "modifying provider during build" error
 17. Fixed: removed `_maybeStartFlow()` auto-start from `initState` — guided flow only starts via `?` menu
 
-### Next — Business flows ⬜
-18. `BookingsScreen` add-booking flow
-19. `ItemCatalogScreen` add-item flow
+### Next — Quick win ⬜
+18. `AddEditTransactionScreen` detail mode — `_showDetailModeMark()` (9 steps, all fields) + upgrade `?` from `IconButton` to `PopupMenuButton` ("Quick guide" / "Field reference")
+
+### Business flows ⬜
+19. `BookingsScreen` add-booking flow
+20. `ItemCatalogScreen` add-item flow
 
 ### Later ⬜
-20. Orientation tours for Home, Reports, Contacts screens
-21. Override `tutorialMenuItems` on each screen as its flows are wired
-22. Add "Reset all tutorials" option under **Settings → About**
+21. Orientation tours for Home, Reports, Contacts screens
+22. Override `tutorialMenuItems` on each screen as its flows are wired
+23. Add "Reset all tutorials" option under **Settings → About**

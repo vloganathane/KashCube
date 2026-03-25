@@ -107,11 +107,14 @@ final catalogProvider =
 // ── Quotes ───────────────────────────────────────────────────────────────────
 
 class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
-  QuotesNotifier(this._repo) : super(const AsyncValue.loading()) {
+  QuotesNotifier(this._repo, {required Future<void> Function() reloadInvoices})
+      : _reloadInvoices = reloadInvoices,
+        super(const AsyncValue.loading()) {
     load();
   }
 
   final QuoteRepository _repo;
+  final Future<void> Function() _reloadInvoices;
 
   Future<void> load() async {
     state = const AsyncValue.loading();
@@ -139,6 +142,7 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
         await InvoiceNumberService.instance.nextInvoiceNo();
     final invoice = await _repo.convertToInvoice(quoteId, invoiceNo);
     await load();
+    await _reloadInvoices(); // keep invoicesProvider in sync
     return invoice;
   }
 
@@ -152,7 +156,10 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
 
 final quotesProvider =
     StateNotifierProvider<QuotesNotifier, AsyncValue<List<Quote>>>(
-  (ref) => QuotesNotifier(ref.read(quoteRepositoryProvider)),
+  (ref) => QuotesNotifier(
+    ref.read(quoteRepositoryProvider),
+    reloadInvoices: () => ref.read(invoicesProvider.notifier).load(),
+  ),
 );
 
 // ── Invoices ─────────────────────────────────────────────────────────────────

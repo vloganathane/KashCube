@@ -63,6 +63,10 @@ class QuoteRepositoryImpl implements QuoteRepository {
     await db.transaction((txn) async {
       await txn.update('quotes', quote.copyWith(updatedAt: DateTime.now()).toMap(),
           where: 'id = ?', whereArgs: [quote.id]);
+      if (items.isEmpty) {
+        debugPrint('QuoteRepositoryImpl.update: items list empty — preserving existing rows');
+        return;
+      }
       await txn
           .delete('quote_items', where: 'quote_id = ?', whereArgs: [quote.id]);
       for (final item in items) {
@@ -120,6 +124,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
     final invoice = Invoice(
       invoiceNo: invoiceNo,
       quoteId: quoteId,
+      businessId: quote.businessId,
       customerPartyId: quote.customerPartyId,
       customerName: quote.customerName,
       status: InvoiceStatus.draft,
@@ -129,6 +134,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
       taxTotal: quote.taxTotal,
       discountPct: quote.discountPct,
       total: quote.total,
+      freightAmt: quote.freightAmt,
+      insuranceAmt: quote.insuranceAmt,
+      packingAmt: quote.packingAmt,
       notes: quote.notes,
       createdAt: now,
       updatedAt: now,
@@ -146,6 +154,9 @@ class QuoteRepositoryImpl implements QuoteRepository {
           taxPct: qi.taxPct,
           discountPct: qi.discountPct,
           lineTotal: qi.lineTotal,
+          hsnCode: qi.hsnCode,
+          unit: qi.unit,
+          hsnOrSac: qi.hsnOrSac,
         );
         await txn.insert('invoice_items', ii.toMap());
       }

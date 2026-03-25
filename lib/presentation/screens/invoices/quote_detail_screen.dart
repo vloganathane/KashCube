@@ -69,10 +69,19 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   bool get _canEdit =>
       quote.status == QuoteStatus.draft || quote.status == QuoteStatus.sent;
 
-  bool get _canConvert =>
-      quote.status == QuoteStatus.draft ||
-      quote.status == QuoteStatus.sent ||
-      quote.status == QuoteStatus.accepted;
+  bool get _canConvert {
+    // Status must allow conversion.
+    final statusOk = quote.status == QuoteStatus.draft ||
+        quote.status == QuoteStatus.sent ||
+        quote.status == QuoteStatus.accepted;
+    if (!statusOk) return false;
+    // If an invoice has already been created from this quote, don't show again.
+    if (quote.id != null) {
+      final linked = ref.watch(invoiceByQuoteIdProvider(quote.id!));
+      if (linked != null) return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -291,9 +300,15 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       final invoice =
           await ref.read(quotesProvider.notifier).convertToInvoice(quote.id!);
       if (!mounted) return;
+      if (invoice == null || invoice.id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Conversion failed: could not create invoice')),
+        );
+        return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => InvoiceDetailScreen(invoiceId: invoice!.id!),
+          builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
         ),
       );
     } catch (e) {

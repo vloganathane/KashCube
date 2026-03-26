@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/purchase_bill.dart';
 import '../../data/repositories/purchase_bill_repository_impl.dart';
 import '../../data/services/inventory_service.dart';
+import '../../data/services/lot_allocation_service.dart';
 import '../../domain/repositories/purchase_bill_repository.dart';
 import 'business_provider.dart';
 import 'context_provider.dart';
@@ -54,7 +55,7 @@ class PurchaseBillsNotifier
   Future<void> add(
       PurchaseBill bill, List<PurchaseBillItem> items) async {
     final id = await _repo.insert(bill, items);
-    // Add stock for tracked catalog items on purchase bill save.
+    // Add aggregate stock + create lots for tracked catalog items.
     for (final item in items) {
       if (item.catalogItemId != null && item.qty > 0) {
         await InventoryService.instance.addStock(
@@ -65,6 +66,16 @@ class PurchaseBillsNotifier
           referenceType: 'purchase_bill',
           businessId: _businessId,
         );
+        await LotAllocationService.instance.createLot(
+          businessId: _businessId ?? 0,
+          itemId: item.catalogItemId!,
+          purchaseBillId: id,
+          lotNo: item.lotNo,
+          expiryDate: item.expiryDate,
+          mfgDate: item.mfgDate,
+          unitCost: item.unitPrice,
+          qty: item.qty,
+        );
       }
     }
     await load();
@@ -72,8 +83,10 @@ class PurchaseBillsNotifier
 
   Future<void> edit(
       PurchaseBill bill, List<PurchaseBillItem> items) async {
-    // Reverse previous stock movements then re-apply for edited items.
+    // Reverse previous stock movements + lot movements, then re-apply.
     if (bill.id != null) {
+      await LotAllocationService.instance
+          .reverseLotMovements('purchase_bill', bill.id!);
       await InventoryService.instance
           .reverseMovementsFor('purchase_bill', bill.id!);
     }
@@ -88,13 +101,25 @@ class PurchaseBillsNotifier
           referenceType: 'purchase_bill',
           businessId: _businessId,
         );
+        await LotAllocationService.instance.createLot(
+          businessId: _businessId ?? 0,
+          itemId: item.catalogItemId!,
+          purchaseBillId: bill.id ?? 0,
+          lotNo: item.lotNo,
+          expiryDate: item.expiryDate,
+          mfgDate: item.mfgDate,
+          unitCost: item.unitPrice,
+          qty: item.qty,
+        );
       }
     }
     await load();
   }
 
   Future<void> remove(int id) async {
-    // Reverse stock additions before deleting.
+    // Reverse lot movements + aggregate stock before deleting.
+    await LotAllocationService.instance
+        .reverseLotMovements('purchase_bill', id);
     await InventoryService.instance.reverseMovementsFor('purchase_bill', id);
     await _repo.delete(id);
     await load();

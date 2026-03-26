@@ -9,6 +9,7 @@ import '../../data/repositories/invoice_repository_impl.dart';
 import '../../data/repositories/item_catalog_repository_impl.dart';
 import '../../data/services/inventory_service.dart';
 import '../../data/services/invoice_number_service.dart';
+import '../../data/services/lot_allocation_service.dart';
 import '../../domain/repositories/invoice_repository.dart';
 import '../../domain/repositories/item_catalog_repository.dart';
 import 'business_provider.dart';
@@ -208,6 +209,8 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
         invoice.status != InvoiceStatus.cancelled &&
         invoice.challanId == null; // DC-linked invoices: DC owns the movement.
     if (wasSent && invoice.id != null) {
+      await LotAllocationService.instance
+          .reverseLotMovements('invoice', invoice.id!);
       await InventoryService.instance.reverseMovementsFor('invoice', invoice.id!);
       for (final item in items) {
         if (item.catalogItemId != null && item.qty > 0) {
@@ -219,6 +222,18 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
             referenceType: 'invoice',
             businessId: invoice.businessId,
           );
+          final allocs = await LotAllocationService.instance.allocateFefo(
+            businessId: invoice.businessId ?? 0,
+            itemId: item.catalogItemId!,
+            qty: item.qty,
+            referenceType: 'invoice',
+            referenceId: invoice.id!,
+            referenceLineId: item.id,
+          );
+          if (item.id != null && allocs.isNotEmpty) {
+            await LotAllocationService.instance
+                .saveAllocationToInvoiceItem(item.id!, allocs);
+          }
         }
       }
     }
@@ -227,7 +242,8 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
   }
 
   Future<void> remove(int id) async {
-    // Reverse any stock movements before deleting so inventory stays accurate.
+    // Reverse lot movements + aggregate stock before deleting.
+    await LotAllocationService.instance.reverseLotMovements('invoice', id);
     await InventoryService.instance.reverseMovementsFor('invoice', id);
     await _repo.delete(id);
     await load();
@@ -277,6 +293,18 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
             referenceType: 'invoice',
             businessId: invoice.businessId,
           );
+          final allocs = await LotAllocationService.instance.allocateFefo(
+            businessId: invoice.businessId ?? 0,
+            itemId: item.catalogItemId!,
+            qty: item.qty,
+            referenceType: 'invoice',
+            referenceId: id,
+            referenceLineId: item.id,
+          );
+          if (item.id != null && allocs.isNotEmpty) {
+            await LotAllocationService.instance
+                .saveAllocationToInvoiceItem(item.id!, allocs);
+          }
         }
       }
     }

@@ -174,6 +174,10 @@ extension ItcReversalReasonExt on ItcReversalReason {
 // PurchaseBillItem
 // ---------------------------------------------------------------------------
 
+/// Sentinel used in [PurchaseBillItem.copyWith] to distinguish `null` from
+/// "not provided" for nullable fields.
+const _sentinel = Object();
+
 class PurchaseBillItem extends Equatable {
   const PurchaseBillItem({
     this.id,
@@ -192,6 +196,9 @@ class PurchaseBillItem extends Equatable {
     this.unit = 'PCS',
     this.hsnOrSac = 'HSN',
     this.catalogItemId,
+    this.lotNo,
+    this.expiryDate,
+    this.mfgDate,
   });
 
   final int? id;
@@ -211,6 +218,12 @@ class PurchaseBillItem extends Equatable {
   final String hsnOrSac;
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
+  /// Lot / batch identifier (optional).
+  final String? lotNo;
+  /// Expiry date for this lot (optional).
+  final DateTime? expiryDate;
+  /// Manufacturing date for this lot (optional).
+  final DateTime? mfgDate;
 
   PurchaseBillItem copyWith({
     int? id,
@@ -229,6 +242,9 @@ class PurchaseBillItem extends Equatable {
     String? unit,
     String? hsnOrSac,
     int? catalogItemId,
+    Object? lotNo = _sentinel,
+    Object? expiryDate = _sentinel,
+    Object? mfgDate = _sentinel,
   }) =>
       PurchaseBillItem(
         id: id ?? this.id,
@@ -247,6 +263,12 @@ class PurchaseBillItem extends Equatable {
         unit: unit ?? this.unit,
         hsnOrSac: hsnOrSac ?? this.hsnOrSac,
         catalogItemId: catalogItemId ?? this.catalogItemId,
+        lotNo: identical(lotNo, _sentinel) ? this.lotNo : lotNo as String?,
+        expiryDate: identical(expiryDate, _sentinel)
+            ? this.expiryDate
+            : expiryDate as DateTime?,
+        mfgDate:
+            identical(mfgDate, _sentinel) ? this.mfgDate : mfgDate as DateTime?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -266,6 +288,9 @@ class PurchaseBillItem extends Equatable {
         'unit': unit,
         'hsn_or_sac': hsnOrSac,
         'catalog_item_id': catalogItemId,
+        'lot_no': lotNo,
+        'expiry_date': expiryDate?.toIso8601String().substring(0, 10),
+        'mfg_date': mfgDate?.toIso8601String().substring(0, 10),
       };
 
   factory PurchaseBillItem.fromMap(Map<String, dynamic> m) => PurchaseBillItem(
@@ -285,13 +310,20 @@ class PurchaseBillItem extends Equatable {
         unit: (m['unit'] as String?) ?? 'PCS',
         hsnOrSac: (m['hsn_or_sac'] as String?) ?? 'HSN',
         catalogItemId: m['catalog_item_id'] as int?,
+        lotNo: m['lot_no'] as String?,
+        expiryDate: m['expiry_date'] != null
+            ? DateTime.tryParse(m['expiry_date'] as String)
+            : null,
+        mfgDate: m['mfg_date'] != null
+            ? DateTime.tryParse(m['mfg_date'] as String)
+            : null,
       );
 
   @override
   List<Object?> get props => [
         id, billId, itemName, description, qty, unitPrice, taxPct,
         discountPct, lineTotal, igstAmount, cgstAmount, sgstAmount,
-        hsnCode, unit, hsnOrSac,
+        hsnCode, unit, hsnOrSac, lotNo, expiryDate, mfgDate,
       ];
 }
 

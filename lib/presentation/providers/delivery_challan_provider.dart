@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/delivery_challan.dart';
 import '../../data/repositories/delivery_challan_repository_impl.dart';
 import '../../data/services/inventory_service.dart';
+import '../../data/services/lot_allocation_service.dart';
 import '../../domain/repositories/delivery_challan_repository.dart';
 
 // ── Repository ──────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ class ChallansNotifier
 
   Future<DeliveryChallan> add(DeliveryChallan challan) async {
     final id = await _repo.insert(challan, challan.items);
-    // Deduct stock for tracked catalog items on every DC save (physical dispatch).
+    // Deduct aggregate stock + allocate lots (FEFO) on every DC save.
     for (final item in challan.items) {
       if (item.catalogItemId != null && item.qty > 0) {
         await InventoryService.instance.deductStock(
@@ -47,6 +48,14 @@ class ChallansNotifier
           referenceType: 'challan',
           businessId: challan.businessId,
         );
+        await LotAllocationService.instance.allocateFefo(
+          businessId: challan.businessId ?? 0,
+          itemId: item.catalogItemId!,
+          qty: item.qty,
+          referenceType: 'challan',
+          referenceId: id,
+          referenceLineId: item.id,
+        );
       }
     }
     await _load();
@@ -54,8 +63,10 @@ class ChallansNotifier
   }
 
   Future<DeliveryChallan> edit(DeliveryChallan challan) async {
-    // Reverse previous stock movements for this challan, then re-apply new items.
+    // Reverse previous lot + aggregate stock movements, then re-apply new items.
     if (challan.id != null) {
+      await LotAllocationService.instance
+          .reverseLotMovements('challan', challan.id!);
       await InventoryService.instance
           .reverseMovementsFor('challan', challan.id!);
     }
@@ -70,6 +81,14 @@ class ChallansNotifier
           referenceType: 'challan',
           businessId: challan.businessId,
         );
+        await LotAllocationService.instance.allocateFefo(
+          businessId: challan.businessId ?? 0,
+          itemId: item.catalogItemId!,
+          qty: item.qty,
+          referenceType: 'challan',
+          referenceId: challan.id ?? 0,
+          referenceLineId: item.id,
+        );
       }
     }
     await _load();
@@ -77,7 +96,8 @@ class ChallansNotifier
   }
 
   Future<void> remove(int id) async {
-    // Reverse stock movements before deleting so inventory stays accurate.
+    // Reverse lot movements + aggregate stock before deleting.
+    await LotAllocationService.instance.reverseLotMovements('challan', id);
     await InventoryService.instance.reverseMovementsFor('challan', id);
     await _repo.delete(id);
     await _load();

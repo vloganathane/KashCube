@@ -95,6 +95,10 @@ extension InvoiceTypeExt on InvoiceType {
 // InvoiceItem
 // ---------------------------------------------------------------------------
 
+/// Sentinel used in [InvoiceItem.copyWith] to distinguish `null` from
+/// "not provided" for nullable fields.
+const _invoiceSentinel = Object();
+
 class InvoiceItem extends Equatable {
   const InvoiceItem({
     this.id,
@@ -110,6 +114,7 @@ class InvoiceItem extends Equatable {
     this.unit = 'PCS',
     this.hsnOrSac = 'HSN',
     this.catalogItemId,
+    this.lotAllocationJson,
   });
 
   final int? id;
@@ -129,6 +134,8 @@ class InvoiceItem extends Equatable {
   final String hsnOrSac;
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
+  /// JSON snapshot of lot allocations used for this line item (FEFO).
+  final String? lotAllocationJson;
 
   InvoiceItem copyWith({
     int? id,
@@ -144,6 +151,7 @@ class InvoiceItem extends Equatable {
     String? unit,
     String? hsnOrSac,
     int? catalogItemId,
+    Object? lotAllocationJson = _invoiceSentinel,
   }) {
     return InvoiceItem(
       id: id ?? this.id,
@@ -159,6 +167,9 @@ class InvoiceItem extends Equatable {
       unit: unit ?? this.unit,
       hsnOrSac: hsnOrSac ?? this.hsnOrSac,
       catalogItemId: catalogItemId ?? this.catalogItemId,
+      lotAllocationJson: identical(lotAllocationJson, _invoiceSentinel)
+          ? this.lotAllocationJson
+          : lotAllocationJson as String?,
     );
   }
 
@@ -176,6 +187,7 @@ class InvoiceItem extends Equatable {
         'unit': unit,
         'hsn_or_sac': hsnOrSac,
         'catalog_item_id': catalogItemId,
+        'lot_allocation_json': lotAllocationJson,
       };
 
   factory InvoiceItem.fromMap(Map<String, dynamic> map) => InvoiceItem(
@@ -192,6 +204,7 @@ class InvoiceItem extends Equatable {
         unit: (map['unit'] as String?) ?? 'PCS',
         hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
         catalogItemId: map['catalog_item_id'] as int?,
+        lotAllocationJson: map['lot_allocation_json'] as String?,
       );
 
   @override

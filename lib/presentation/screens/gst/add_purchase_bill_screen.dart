@@ -32,6 +32,7 @@ class _LineItem {
     String hsnCode = '',
     String unit = 'PCS',
     String hsnOrSac = 'HSN',
+    String lotNo = '',
   })  : itemNameCtrl = TextEditingController(text: itemName ?? ''),
         qtyCtrl = TextEditingController(text: qty == qty.truncateToDouble() ? qty.toInt().toString() : qty.toString()),
         unitPriceCtrl = TextEditingController(text: unitPrice == 0 ? '' : unitPrice.toString()),
@@ -39,6 +40,7 @@ class _LineItem {
         discountPctCtrl = TextEditingController(text: discountPct == 0 ? '' : discountPct.toString()),
         hsnCodeCtrl = TextEditingController(text: hsnCode),
         unitCtrl = TextEditingController(text: unit),
+        lotNoCtrl = TextEditingController(text: lotNo),
         _hsnOrSac = hsnOrSac;
 
   final TextEditingController itemNameCtrl;
@@ -48,9 +50,14 @@ class _LineItem {
   final TextEditingController discountPctCtrl;
   final TextEditingController hsnCodeCtrl;
   final TextEditingController unitCtrl;
+  final TextEditingController lotNoCtrl;
   final String _hsnOrSac;
   /// FK to [item_catalog.id] — null for manually-typed items.
   int? catalogItemId;
+  /// Expiry date for this lot (optional).
+  DateTime? expiryDate;
+  /// Manufacturing date for this lot (optional).
+  DateTime? mfgDate;
 
   double get qty => double.tryParse(qtyCtrl.text) ?? 1;
   double get unitPrice => double.tryParse(unitPriceCtrl.text) ?? 0;
@@ -68,6 +75,7 @@ class _LineItem {
     discountPctCtrl.dispose();
     hsnCodeCtrl.dispose();
     unitCtrl.dispose();
+    lotNoCtrl.dispose();
   }
 }
 
@@ -303,6 +311,11 @@ class _AddPurchaseBillScreenState
           unit: item.unitCtrl.text.trim().isEmpty ? 'PCS' : item.unitCtrl.text.trim(),
           hsnOrSac: item._hsnOrSac,
           catalogItemId: item.catalogItemId,
+          lotNo: item.lotNoCtrl.text.trim().isEmpty
+              ? null
+              : item.lotNoCtrl.text.trim(),
+          expiryDate: item.expiryDate,
+          mfgDate: item.mfgDate,
         ));
       }
 
@@ -377,7 +390,11 @@ class _AddPurchaseBillScreenState
               hsnCode: i.hsnCode ?? '',
               unit: i.unit,
               hsnOrSac: i.hsnOrSac,
-            )..catalogItemId = i.catalogItemId));
+              lotNo: i.lotNo ?? '',
+            )
+              ..catalogItemId = i.catalogItemId
+              ..expiryDate = i.expiryDate
+              ..mfgDate = i.mfgDate));
       if (_items.isEmpty) _items.add(_LineItem());
     } catch (e) {
       if (mounted) {
@@ -1103,6 +1120,87 @@ class _LineItemCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
+
+            // Lot / Batch fields (only for catalog-linked items)
+            if (item.catalogItemId != null) ...[
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: item.lotNoCtrl,
+                      decoration: const InputDecoration(
+                          labelText: 'Batch / Lot No.', isDense: true),
+                      onChanged: (_) => onChanged(),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    flex: 2,
+                    child: InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: item.expiryDate ??
+                              DateTime.now().add(const Duration(days: 365)),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2099),
+                        );
+                        if (picked != null) {
+                          item.expiryDate = picked;
+                          onChanged();
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Expiry Date',
+                          isDense: true,
+                        ),
+                        child: Text(
+                          item.expiryDate != null
+                              ? DateFormatter.formatFull(item.expiryDate!)
+                              : 'Tap to set',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate:
+                            item.mfgDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime.now(),
+                      );
+                      if (picked != null) {
+                        item.mfgDate = picked;
+                        onChanged();
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: const InputDecoration(
+                        labelText: 'Mfg Date (optional)',
+                        isDense: true,
+                      ),
+                      child: Text(
+                        item.mfgDate != null
+                            ? DateFormatter.formatFull(item.mfgDate!)
+                            : 'Tap to set',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+            ],
 
             // Line totals chip row
             Wrap(

@@ -675,6 +675,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
         catalog_item_id INTEGER,
+        lot_allocation_json TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
@@ -996,6 +997,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         unit TEXT DEFAULT 'PCS',
         hsn_or_sac TEXT DEFAULT 'HSN',
         catalog_item_id INTEGER,
+        lot_no TEXT,
+        expiry_date TEXT,
+        mfg_date TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT,
         FOREIGN KEY (bill_id) REFERENCES purchase_bills(id) ON DELETE CASCADE
@@ -1058,6 +1062,55 @@ extension _DatabaseTableCreators on DatabaseHelper {
     ''');
     await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)');
+
+    // ── Lot tracking (Phase B) ──────────────────────────────────────────────
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS stock_lots (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id           INTEGER NOT NULL REFERENCES businesses(id),
+        item_id               INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
+        purchase_bill_id      INTEGER REFERENCES purchase_bills(id) ON DELETE SET NULL,
+        lot_no                TEXT,
+        expiry_date           TEXT,
+        mfg_date              TEXT,
+        unit_cost             REAL NOT NULL DEFAULT 0,
+        qty_in                REAL NOT NULL DEFAULT 0,
+        qty_remaining         REAL NOT NULL DEFAULT 0,
+        status                TEXT NOT NULL DEFAULT 'active',
+        notes                 TEXT,
+        created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at            TEXT,
+        deleted_at            TEXT,
+        sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version               INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id  TEXT,
+        updated_by_device_id  TEXT
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS lot_movements (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id       INTEGER NOT NULL REFERENCES businesses(id),
+        item_id           INTEGER NOT NULL REFERENCES item_catalog(id) ON DELETE CASCADE,
+        lot_id            INTEGER NOT NULL REFERENCES stock_lots(id) ON DELETE CASCADE,
+        movement_type     TEXT NOT NULL,
+        qty               REAL NOT NULL,
+        lot_qty_after     REAL NOT NULL,
+        reference_type    TEXT,
+        reference_id      INTEGER,
+        reference_line_id INTEGER,
+        notes             TEXT,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)');
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS staff (

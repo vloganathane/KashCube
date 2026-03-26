@@ -326,6 +326,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       // Promote draft → sent after a successful share.
       if (quote.status == QuoteStatus.draft && quote.id != null) {
         await ref.read(quotesProvider.notifier).markSent(quote.id!);
+        if (mounted) ref.invalidate(activityLogProvider(('quote', quote.id!)));
       }
     } catch (e) {
       if (!mounted) return;
@@ -400,6 +401,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
             quote.id!,
             reason: reason.isEmpty ? null : reason,
           );
+      if (mounted) ref.invalidate(activityLogProvider(('quote', quote.id!)));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -523,7 +525,7 @@ class _ActivityRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  DateFormatter.formatFull(log.createdAt as DateTime),
+                  DateFormatter.formatDateTime(log.createdAt as DateTime),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: cs.outline,
                       ),

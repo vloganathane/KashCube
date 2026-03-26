@@ -26,8 +26,11 @@ class AccountsNotifier extends StateNotifier<AsyncValue<List<Account>>> {
   final AccountRepository _repo;
 
   Future<void> load() async {
+    if (!mounted) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getAll());
+    final next = await AsyncValue.guard(() => _repo.getAll());
+    if (!mounted) return;
+    state = next;
   }
 
   Future<void> addAccount(Account account) async {

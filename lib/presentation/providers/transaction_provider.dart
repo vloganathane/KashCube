@@ -35,11 +35,14 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
   }
 
   Future<void> loadTransactions() async {
+    if (!mounted) return;
     state = const AsyncValue.loading();
     try {
       final transactions = await _repository.getAll();
+      if (!mounted) return;
       state = AsyncValue.data(transactions);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

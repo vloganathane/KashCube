@@ -39,13 +39,16 @@ class PurchaseBillsNotifier
   final int? _businessId;
 
   Future<void> load() async {
+    if (!mounted) return;
     if (_businessId == null) {
       state = const AsyncValue.data([]);
       return;
     }
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
+    final next = await AsyncValue.guard(
         () => _repo.fetchForBusiness(_businessId));
+    if (!mounted) return;
+    state = next;
   }
 
   Future<void> add(

@@ -126,8 +126,11 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
   final Future<void> Function() _reloadInvoices;
 
   Future<void> load() async {
+    if (!mounted) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _repo.getAll());
+    final next = await AsyncValue.guard(() => _repo.getAll());
+    if (!mounted) return;
+    state = next;
   }
 
   Future<int> add(Quote quote, List<QuoteItem> items) async {

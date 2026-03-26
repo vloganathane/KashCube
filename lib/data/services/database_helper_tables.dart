@@ -1428,3 +1428,4 @@ extension _DatabaseTableCreators on DatabaseHelper {
       'CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id, created_at DESC)',
     );
   }
+}

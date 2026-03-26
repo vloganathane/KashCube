@@ -231,6 +231,8 @@ class DatabaseHelper {
     //    references linked_business_sessions) ─────────────────────────────────
     await _createSyncAndIdentityTables(db);
 
+    await _createActivityLogTable(db);
+
     // Seed default categories + default accounts
     await _seedCategories(db);
     await _seedAccounts(db);

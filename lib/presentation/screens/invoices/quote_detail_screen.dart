@@ -237,6 +237,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 
   void _edit() {
+    final notifier = ref.read(quotesProvider.notifier);
     Navigator.of(context)
         .pushReplacement(
       MaterialPageRoute(
@@ -244,7 +245,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       ),
     )
         .then((_) {
-      ref.invalidate(quotesProvider);
+      notifier.load();
     });
   }
 

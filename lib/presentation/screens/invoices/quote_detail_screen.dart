@@ -168,10 +168,24 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     if (_canSend) {
       return Padding(
         padding: padding,
-        child: FilledButton.icon(
-          icon: const Icon(Icons.send_outlined),
-          label: const Text('Send'),
-          onPressed: _loading ? null : _sharePdf,
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('Edit'),
+                onPressed: _loading ? null : _edit,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.send_outlined),
+                label: const Text('Send'),
+                onPressed: _loading ? null : _sharePdf,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -366,32 +380,20 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 
   Future<void> _markRejected() async {
-    final ok = await showDialog<bool>(
+    final reason = await showModalBottomSheet<String>(
       context: context,
       useRootNavigator: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Mark as Rejected?'),
-        content: Text(
-            'Mark ${quote.quoteNo} as rejected? This indicates the customer declined the quote.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Mark Rejected'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      builder: (_) => const _RejectionReasonSheet(),
     );
-    if (ok != true || !mounted) return;
+    // null means the user dismissed without confirming.
+    if (reason == null || !mounted) return;
     setState(() => _loading = true);
     try {
-      await ref.read(quotesProvider.notifier).markRejected(quote.id!);
+      await ref.read(quotesProvider.notifier).markRejected(
+            quote.id!,
+            reason: reason.isEmpty ? null : reason,
+          );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -429,6 +431,140 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
 }
 
 enum _Action { edit, reject, delete }
+
+// ── Rejection Reason Sheet ────────────────────────────────────────────────────
+
+class _RejectionReasonSheet extends StatefulWidget {
+  const _RejectionReasonSheet();
+
+  @override
+  State<_RejectionReasonSheet> createState() => _RejectionReasonSheetState();
+}
+
+class _RejectionReasonSheetState extends State<_RejectionReasonSheet> {
+  static const _presets = [
+    'Price too high',
+    'Went with a competitor',
+    'Project cancelled',
+    'Budget constraints',
+    'Timeline doesn\'t work',
+    'Scope changed',
+  ];
+
+  String? _selected;
+  final _controller = TextEditingController();
+  bool get _isOther => _selected == 'Other';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Reason for rejection',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  ..._presets.map(
+                    (r) => ChoiceChip(
+                      label: Text(r),
+                      selected: _selected == r,
+                      onSelected: (_) => setState(() {
+                        _selected = r;
+                        _controller.clear();
+                      }),
+                    ),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Other'),
+                    selected: _isOther,
+                    onSelected: (_) => setState(() => _selected = 'Other'),
+                  ),
+                ],
+              ),
+              if (_isOther) ...[
+                const SizedBox(height: AppSpacing.md),
+                TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter reason…',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.base),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: cs.error,
+                      ),
+                      // Allow confirm with no reason (skip reason = empty string sentinel).
+                      onPressed: () {
+                        final reason = _isOther
+                            ? _controller.text.trim()
+                            : (_selected ?? '');
+                        Navigator.pop(context, reason);
+                      },
+                      child: const Text('Mark Rejected'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 // ── Header Card ───────────────────────────────────────────────────────────────
 

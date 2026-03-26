@@ -126,11 +126,13 @@ class QuoteRepositoryImpl implements QuoteRepository {
   }
 
   @override
-  Future<void> markRejected(int id) async {
+  Future<void> markRejected(int id, {String? reason}) async {
     final db = await _db.database;
+    final values = <String, dynamic>{'status': QuoteStatus.rejected.dbValue};
+    if (reason != null && reason.isNotEmpty) values['notes'] = reason;
     await db.update(
       'quotes',
-      {'status': QuoteStatus.rejected.dbValue},
+      values,
       where: 'id = ? AND status = ?',
       whereArgs: [id, QuoteStatus.sent.dbValue],
     );

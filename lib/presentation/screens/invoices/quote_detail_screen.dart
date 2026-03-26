@@ -12,6 +12,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/activity_log_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -150,6 +151,10 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
           if (quote.id != null) ...[
             const SizedBox(height: AppSpacing.base),
             _LinkedInvoiceCard(quoteId: quote.id!),
+          ],
+          if (quote.id != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            _ActivityCard(quoteId: quote.id!),
           ],
           const SizedBox(height: AppSpacing.xxxl),
         ],
@@ -432,6 +437,105 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
 }
 
 enum _Action { edit, reject, delete }
+
+// ── Activity Card ─────────────────────────────────────────────────────────────
+
+class _ActivityCard extends ConsumerWidget {
+  const _ActivityCard({required this.quoteId});
+  final int quoteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logsAsync = ref.watch(activityLogProvider(('quote', quoteId)));
+
+    return logsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (logs) {
+        if (logs.isEmpty) return const SizedBox.shrink();
+
+        final cs = Theme.of(context).colorScheme;
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.base),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.history_outlined,
+                        size: 18, color: cs.outline),
+                    const SizedBox(width: AppSpacing.xs),
+                    Text(
+                      'Activity',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                ...logs.map((log) => _ActivityRow(log: log)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ActivityRow extends StatelessWidget {
+  const _ActivityRow({required this.log});
+  final dynamic log; // ActivityLog
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isStatusChange =
+        log.type.dbValue == 'status_change';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Icon(
+              isStatusChange
+                  ? Icons.swap_horiz_outlined
+                  : Icons.chat_bubble_outline,
+              size: 15,
+              color: isStatusChange ? cs.primary : cs.outline,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.message as String,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  DateFormatter.formatFull(log.createdAt as DateTime),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: cs.outline,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ── Rejection Reason Sheet ────────────────────────────────────────────────────
 

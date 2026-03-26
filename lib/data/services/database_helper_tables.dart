@@ -1409,4 +1409,22 @@ extension _DatabaseTableCreators on DatabaseHelper {
       'CREATE INDEX IF NOT EXISTS idx_invoice_events_invoice ON invoice_events(invoice_id, occurred_at)',
     );
   }
-}
+
+  // ── Activity Log ──────────────────────────────────────────────────────────
+
+  Future<void> _createActivityLogTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS activity_log (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT    NOT NULL,
+        entity_id   INTEGER NOT NULL,
+        type        TEXT    NOT NULL DEFAULT 'note',
+        message     TEXT    NOT NULL,
+        meta        TEXT,
+        created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id, created_at DESC)',
+    );
+  }

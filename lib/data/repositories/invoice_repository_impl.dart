@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../data/models/activity_log.dart';
 import '../../data/models/invoice.dart';
 import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
+import '../../data/repositories/activity_log_repository_impl.dart';
 import '../../data/services/database_helper.dart';
 import '../../domain/repositories/invoice_repository.dart';
 
@@ -114,6 +116,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
   }
 
   @override
+  @override
   Future<void> markSent(int id) async {
     final db = await _db.database;
     await db.update(
@@ -123,20 +126,37 @@ class QuoteRepositoryImpl implements QuoteRepository {
       whereArgs: [id, QuoteStatus.draft.dbValue],
     );
     _db.notifyChange('quotes');
+    await ActivityLogRepositoryImpl().log(ActivityLog(
+      entityType: 'quote',
+      entityId: id,
+      type: ActivityLogType.statusChange,
+      message: 'Quote sent to customer',
+      meta: '{"from":"draft","to":"sent"}',
+      createdAt: DateTime.now(),
+    ));
   }
 
   @override
   Future<void> markRejected(int id, {String? reason}) async {
     final db = await _db.database;
-    final values = <String, dynamic>{'status': QuoteStatus.rejected.dbValue};
-    if (reason != null && reason.isNotEmpty) values['notes'] = reason;
     await db.update(
       'quotes',
-      values,
+      {'status': QuoteStatus.rejected.dbValue},
       where: 'id = ? AND status = ?',
       whereArgs: [id, QuoteStatus.sent.dbValue],
     );
     _db.notifyChange('quotes');
+    final message = reason != null && reason.isNotEmpty
+        ? 'Quote rejected — $reason'
+        : 'Quote marked as rejected';
+    await ActivityLogRepositoryImpl().log(ActivityLog(
+      entityType: 'quote',
+      entityId: id,
+      type: ActivityLogType.statusChange,
+      message: message,
+      meta: '{"from":"sent","to":"rejected"}',
+      createdAt: DateTime.now(),
+    ));
   }
 
   @override
@@ -195,6 +215,15 @@ class QuoteRepositoryImpl implements QuoteRepository {
 
     _db.notifyChange('quotes');
     _db.notifyChange('invoices');
+
+    await ActivityLogRepositoryImpl().log(ActivityLog(
+      entityType: 'quote',
+      entityId: quoteId,
+      type: ActivityLogType.statusChange,
+      message: 'Converted to invoice $invoiceNo',
+      meta: '{"from":"sent","to":"accepted","invoice_id":$invoiceId}',
+      createdAt: DateTime.now(),
+    ));
 
     return invoice.copyWith(id: invoiceId);
   }

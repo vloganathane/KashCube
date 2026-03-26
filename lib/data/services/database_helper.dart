@@ -2986,6 +2986,32 @@ class DatabaseHelper {
             'accounts: opening_balance column (replaces current_balance); linked_bank_account_id FK',
       });
     }
+
+    if (oldVersion < 79) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS activity_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_type TEXT    NOT NULL,
+            entity_id   INTEGER NOT NULL,
+            type        TEXT    NOT NULL DEFAULT 'note',
+            message     TEXT    NOT NULL,
+            meta        TEXT,
+            created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id, created_at DESC)',
+        );
+        debugPrint('[DB v79] activity_log table created');
+      } catch (e) {
+        debugPrint('[DB v79] activity_log already exists or error: \$e');
+      }
+      await db.insert('schema_version', {
+        'version': 79,
+        'description': 'activity_log: generic entity activity/audit log table',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

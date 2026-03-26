@@ -516,6 +516,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         track_inventory INTEGER NOT NULL DEFAULT 0,
         stock_qty REAL NOT NULL DEFAULT 0,
         low_stock_threshold REAL NOT NULL DEFAULT 5,
+        mrp REAL,
+        dealer_price REAL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         deleted_at TEXT,

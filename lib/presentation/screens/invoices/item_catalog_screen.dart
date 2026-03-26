@@ -417,6 +417,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _priceCtrl;
   late final TextEditingController _taxCtrl;
   late final TextEditingController _hsnCtrl;
+  late final TextEditingController _mrpCtrl;
+  late final TextEditingController _dealerPriceCtrl;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -444,6 +446,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 ? ''
                 : item.taxPct.toStringAsFixed(1)));
     _hsnCtrl = TextEditingController(text: item?.hsnCode ?? '');
+    _mrpCtrl = TextEditingController(
+        text: item?.mrp == null ? '' : item!.mrp!.toStringAsFixed(2));
+    _dealerPriceCtrl = TextEditingController(
+        text: item?.dealerPrice == null ? '' : item!.dealerPrice!.toStringAsFixed(2));
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
@@ -474,7 +480,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _skuCtrl,
       _priceCtrl,
       _taxCtrl,
-      _hsnCtrl
+      _hsnCtrl,
+      _mrpCtrl,
+      _dealerPriceCtrl,
     ]) {
       c.dispose();
     }
@@ -506,6 +514,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       trackInventory: _trackInventory,
       isBookable: _isBookable,
       durationMinutes: _isBookable ? _durationMinutes : null,
+      mrp: double.tryParse(_mrpCtrl.text),
+      dealerPrice: double.tryParse(_dealerPriceCtrl.text),
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -664,7 +674,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true),
                       decoration: const InputDecoration(
-                        labelText: 'Unit Price (₹) *',
+                        labelText: 'Selling Price (₹) *',
                         border: OutlineInputBorder(),
                         prefixText: '₹',
                       ),
@@ -684,6 +694,38 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                         labelText: 'GST %',
                         border: OutlineInputBorder(),
                         suffixText: '%',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _mrpCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'MRP (₹)',
+                        border: OutlineInputBorder(),
+                        prefixText: '₹',
+                        helperText: 'Max Retail Price (optional)',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _dealerPriceCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Dealer Price (₹)',
+                        border: OutlineInputBorder(),
+                        prefixText: '₹',
+                        helperText: 'Purchase / trade price',
                       ),
                     ),
                   ),

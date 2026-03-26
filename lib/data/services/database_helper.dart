@@ -3014,6 +3014,25 @@ class DatabaseHelper {
         'description': 'activity_log: generic entity activity/audit log table',
       });
     }
+
+    if (oldVersion < 80) {
+      try {
+        await db.execute('ALTER TABLE item_catalog ADD COLUMN mrp REAL');
+        debugPrint('[DB v80] item_catalog.mrp added');
+      } catch (e) {
+        debugPrint('[DB v80] item_catalog.mrp already exists or error: \$e');
+      }
+      try {
+        await db.execute('ALTER TABLE item_catalog ADD COLUMN dealer_price REAL');
+        debugPrint('[DB v80] item_catalog.dealer_price added');
+      } catch (e) {
+        debugPrint('[DB v80] item_catalog.dealer_price already exists or error: \$e');
+      }
+      await db.insert('schema_version', {
+        'version': 80,
+        'description': 'item_catalog: add mrp and dealer_price price variant columns',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

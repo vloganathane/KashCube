@@ -428,9 +428,11 @@ class _AddPurchaseBillScreenState
         first.itemNameCtrl.text.isEmpty &&
         first.unitPriceCtrl.text.isEmpty) {
       first.itemNameCtrl.text = picked.name;
-      if (picked.unitPrice > 0) {
-        first.unitPriceCtrl.text = picked.unitPrice.toStringAsFixed(
-            picked.unitPrice == picked.unitPrice.truncateToDouble() ? 0 : 2);
+      // For purchase bills prefer dealer price; fall back to selling price.
+      final purchasePrice = picked.dealerPrice ?? picked.unitPrice;
+      if (purchasePrice > 0) {
+        first.unitPriceCtrl.text = purchasePrice.toStringAsFixed(
+            purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2);
       }
       first.taxPctCtrl.text = picked.taxPct == picked.taxPct.truncateToDouble()
           ? picked.taxPct.toInt().toString()
@@ -441,9 +443,10 @@ class _AddPurchaseBillScreenState
     } else {
       final newItem = _LineItem();
       newItem.itemNameCtrl.text = picked.name;
-      if (picked.unitPrice > 0) {
-        newItem.unitPriceCtrl.text = picked.unitPrice.toStringAsFixed(
-            picked.unitPrice == picked.unitPrice.truncateToDouble() ? 0 : 2);
+      final purchasePrice = picked.dealerPrice ?? picked.unitPrice;
+      if (purchasePrice > 0) {
+        newItem.unitPriceCtrl.text = purchasePrice.toStringAsFixed(
+            purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2);
       }
       newItem.taxPctCtrl.text =
           picked.taxPct == picked.taxPct.truncateToDouble()

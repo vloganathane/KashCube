@@ -8,6 +8,7 @@ import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
+import '../../../core/theme/kash_cube_colors.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/tutorial_mixin.dart';
@@ -2280,6 +2281,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   unit: item.unit.toUpperCase(),
                   hsnOrSac: item.hsnOrSac,
                   catalogItemId: item.id,
+                  mrp: item.mrp,
                 );
                 setState(() {
                   // If first item is empty, replace it instead of adding new one
@@ -2452,6 +2454,7 @@ class _LineItem {
     this.unit = 'PCS',
     this.hsnOrSac = 'HSN',
     this.catalogItemId,
+    this.mrp,
   });
 
   final String itemName;
@@ -2468,6 +2471,8 @@ class _LineItem {
   final String hsnOrSac;
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
+  /// Maximum Retail Price copied from catalog; null for manually-typed items.
+  final double? mrp;
 
   _LineItem copyWith({
     String? itemName,
@@ -2480,6 +2485,7 @@ class _LineItem {
     String? unit,
     String? hsnOrSac,
     int? catalogItemId,
+    double? mrp,
   }) =>
       _LineItem(
         itemName: itemName ?? this.itemName,
@@ -2492,6 +2498,7 @@ class _LineItem {
         unit: unit ?? this.unit,
         hsnOrSac: hsnOrSac ?? this.hsnOrSac,
         catalogItemId: catalogItemId ?? this.catalogItemId,
+        mrp: mrp ?? this.mrp,
       );
 }
 
@@ -2537,6 +2544,10 @@ class _LineItemRowState extends State<_LineItemRow> {
         text: widget.item.discountPct == 0
             ? ''
             : widget.item.discountPct.toStringAsFixed(1));
+    // Rebuild when price changes so the MRP hint updates in real time.
+    if (widget.item.mrp != null) {
+      _priceCtrl.addListener(() => setState(() {}));
+    }
   }
 
   @override
@@ -2648,6 +2659,13 @@ class _LineItemRowState extends State<_LineItemRow> {
               ),
             ],
           ),
+          if (widget.item.mrp != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _MrpHint(
+              mrp: widget.item.mrp!,
+              currentPrice: double.tryParse(_priceCtrl.text) ?? widget.item.unitPrice,
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           if (widget.showTaxDiscount) ...[  
             Row(
@@ -2695,6 +2713,38 @@ class _NumField extends StatelessWidget {
       keyboardType:
           const TextInputType.numberWithOptions(decimal: true),
       onChanged: onChanged,
+    );
+  }
+}
+
+/// Small inline hint showing the item's MRP; turns red if the selling price
+/// exceeds it (selling above MRP is illegal in India).
+class _MrpHint extends StatelessWidget {
+  const _MrpHint({required this.mrp, required this.currentPrice});
+  final double mrp;
+  final double currentPrice;
+
+  @override
+  Widget build(BuildContext context) {
+    final overMrp = currentPrice > mrp;
+    final color = overMrp
+        ? Theme.of(context).extension<KashCubeColors>()!.expense
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        Icon(
+          overMrp ? Icons.warning_amber_rounded : Icons.info_outline,
+          size: 14,
+          color: color,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          overMrp
+              ? 'Above MRP (${CurrencyFormatter.format(mrp)})'
+              : 'MRP ${CurrencyFormatter.format(mrp)}',
+          style: TextStyle(fontSize: 11, color: color),
+        ),
+      ],
     );
   }
 }

@@ -46,6 +46,8 @@ class ItemCatalog extends Equatable {
     this.lowStockThreshold = 5,
     this.lastCountedQty,
     this.lastCountedAt,
+    this.mrp,
+    this.dealerPrice,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -76,6 +78,10 @@ class ItemCatalog extends Equatable {
   final double? lastCountedQty;
   /// When the last physical count was recorded.
   final DateTime? lastCountedAt;
+  /// Maximum Retail Price — legal ceiling; warn if invoice price exceeds this.
+  final double? mrp;
+  /// Dealer / trade purchase price — used as default price on purchase bills.
+  final double? dealerPrice;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -104,6 +110,8 @@ class ItemCatalog extends Equatable {
     double? lowStockThreshold,
     double? lastCountedQty,
     DateTime? lastCountedAt,
+    double? mrp,
+    double? dealerPrice,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -130,6 +138,8 @@ class ItemCatalog extends Equatable {
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       lastCountedQty: lastCountedQty ?? this.lastCountedQty,
       lastCountedAt: lastCountedAt ?? this.lastCountedAt,
+      mrp: mrp ?? this.mrp,
+      dealerPrice: dealerPrice ?? this.dealerPrice,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -156,6 +166,8 @@ class ItemCatalog extends Equatable {
         'track_inventory': trackInventory ? 1 : 0,
         'stock_qty': stockQty,
         'low_stock_threshold': lowStockThreshold,
+        if (mrp != null) 'mrp': mrp,
+        if (dealerPrice != null) 'dealer_price': dealerPrice,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -190,6 +202,8 @@ class ItemCatalog extends Equatable {
         lastCountedAt: map['last_counted_at'] != null
             ? DateTime.parse(map['last_counted_at'] as String)
             : null,
+        mrp: (map['mrp'] as num?)?.toDouble(),
+        dealerPrice: (map['dealer_price'] as num?)?.toDouble(),
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
@@ -218,6 +232,8 @@ class ItemCatalog extends Equatable {
         lowStockThreshold,
         lastCountedQty,
         lastCountedAt,
+        mrp,
+        dealerPrice,
         createdAt,
         updatedAt,
       ];

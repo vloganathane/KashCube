@@ -69,12 +69,11 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   bool get _canEdit =>
       quote.status == QuoteStatus.draft || quote.status == QuoteStatus.sent;
 
+  bool get _canSend => quote.status == QuoteStatus.draft;
+
   bool get _canConvert {
-    // Status must allow conversion.
-    final statusOk = quote.status == QuoteStatus.draft ||
-        quote.status == QuoteStatus.sent ||
-        quote.status == QuoteStatus.accepted;
-    if (!statusOk) return false;
+    // Only allow conversion from the sent state.
+    if (quote.status != QuoteStatus.sent) return false;
     // If an invoice has already been created from this quote, don't show again.
     if (quote.id != null) {
       final linked = ref.watch(invoiceByQuoteIdProvider(quote.id!));
@@ -82,6 +81,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     }
     return true;
   }
+
+  bool get _canReject => quote.status == QuoteStatus.sent;
 
   @override
   Widget build(BuildContext context) {
@@ -112,12 +113,12 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
-              if (_canConvert)
+              if (_canReject)
                 const PopupMenuItem(
-                  value: _Action.convert,
+                  value: _Action.reject,
                   child: ListTile(
-                    leading: Icon(Icons.receipt_long_outlined),
-                    title: Text('Convert to Invoice'),
+                    leading: Icon(Icons.cancel_outlined),
+                    title: Text('Mark as Rejected'),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -153,30 +154,69 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
           const SizedBox(height: AppSpacing.xxxl),
         ],
       ),
-      bottomNavigationBar: _canConvert
-          ? Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base,
-                AppSpacing.sm,
-                AppSpacing.base,
-                AppSpacing.xl,
-              ),
-              child: FilledButton.icon(
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: const Text('Convert to Invoice'),
-                onPressed: _loading ? null : _convertToInvoice,
-              ),
-            )
-          : null,
+      bottomNavigationBar: _buildBottomBar(),
     );
+  }
+
+  Widget? _buildBottomBar() {
+    const padding = EdgeInsets.fromLTRB(
+      AppSpacing.base,
+      AppSpacing.sm,
+      AppSpacing.base,
+      AppSpacing.xl,
+    );
+    if (_canSend) {
+      return Padding(
+        padding: padding,
+        child: FilledButton.icon(
+          icon: const Icon(Icons.send_outlined),
+          label: const Text('Send'),
+          onPressed: _loading ? null : _sharePdf,
+        ),
+      );
+    }
+    if (quote.status == QuoteStatus.sent) {
+      return Padding(
+        padding: padding,
+        child: Row(
+          children: [
+            if (_canConvert) ...
+              [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.receipt_long_outlined),
+                    label: const Text('Convert to Invoice'),
+                    onPressed: _loading ? null : _convertToInvoice,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+              ],
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Rejected'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+                onPressed: _loading ? null : _markRejected,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return null;
   }
 
   void _handleMenu(_Action action) {
     switch (action) {
       case _Action.edit:
         _edit();
-      case _Action.convert:
-        _convertToInvoice();
+      case _Action.reject:
+        _markRejected();
       case _Action.delete:
         _delete();
     }
@@ -263,6 +303,10 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         subject: 'Quote ${quote.quoteNo}',
         text: message,
       );
+      // Promote draft → sent after a successful share.
+      if (quote.status == QuoteStatus.draft && quote.id != null) {
+        await ref.read(quotesProvider.notifier).markSent(quote.id!);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -321,6 +365,43 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     }
   }
 
+  Future<void> _markRejected() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (_) => AlertDialog(
+        title: const Text('Mark as Rejected?'),
+        content: Text(
+            'Mark ${quote.quoteNo} as rejected? This indicates the customer declined the quote.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Mark Rejected'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _loading = true);
+    try {
+      await ref.read(quotesProvider.notifier).markRejected(quote.id!);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
@@ -347,7 +428,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 }
 
-enum _Action { edit, convert, delete }
+enum _Action { edit, reject, delete }
 
 // ── Header Card ───────────────────────────────────────────────────────────────
 

@@ -161,6 +161,12 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
     await _repo.markSent(id);
     await load();
   }
+
+  /// Mark a sent quote as [QuoteStatus.rejected]. Only transitions from sent.
+  Future<void> markRejected(int id) async {
+    await _repo.markRejected(id);
+    await load();
+  }
 }
 
 final quotesProvider =

@@ -14,6 +14,9 @@ abstract class QuoteRepository {
   /// Promote a draft quote to [QuoteStatus.sent]. No-op if already past draft.
   Future<void> markSent(int id);
 
+  /// Mark a sent quote as [QuoteStatus.rejected]. Only transitions from sent.
+  Future<void> markRejected(int id);
+
   /// All non-deleted quotes for a specific party (by [customerPartyId]). P1.8
   Future<List<Quote>> getByPartyId(int partyId);
 }

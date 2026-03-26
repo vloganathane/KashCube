@@ -126,6 +126,18 @@ class QuoteRepositoryImpl implements QuoteRepository {
   }
 
   @override
+  Future<void> markRejected(int id) async {
+    final db = await _db.database;
+    await db.update(
+      'quotes',
+      {'status': QuoteStatus.rejected.dbValue},
+      where: 'id = ? AND status = ?',
+      whereArgs: [id, QuoteStatus.sent.dbValue],
+    );
+    _db.notifyChange('quotes');
+  }
+
+  @override
   Future<Invoice> convertToInvoice(int quoteId, String invoiceNo) async {
     final db = await _db.database;
     final quote = await getById(quoteId);

@@ -30,10 +30,13 @@ class CreditsNotifier extends StateNotifier<AsyncValue<List<Credit>>> {
   }
 
   Future<void> loadActive() async {
+    if (!mounted) return;
     try {
       final credits = await _repo.getActive();
+      if (!mounted) return;
       state = AsyncValue.data(credits);
     } catch (e, st) {
+      if (!mounted) return;
       state = AsyncValue.error(e, st);
     }
   }

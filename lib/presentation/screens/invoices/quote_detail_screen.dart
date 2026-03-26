@@ -12,6 +12,7 @@ import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/services/invoice_pdf_service.dart';
 import '../../providers/business_provider.dart';
+import '../../../data/models/activity_log.dart';
 import '../../providers/activity_log_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
@@ -491,13 +492,12 @@ class _ActivityCard extends ConsumerWidget {
 
 class _ActivityRow extends StatelessWidget {
   const _ActivityRow({required this.log});
-  final dynamic log; // ActivityLog
+  final ActivityLog log;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isStatusChange =
-        log.type.dbValue == 'status_change';
+    final isStatusChange = log.type == ActivityLogType.statusChange;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),

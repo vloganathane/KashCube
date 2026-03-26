@@ -33,6 +33,7 @@ import '../../widgets/party_picker_field.dart';
 import '../../widgets/delivery_address_picker.dart';
 import 'invoice_detail_screen.dart';
 import 'item_catalog_screen.dart';
+import 'quote_detail_screen.dart';
 import '../../widgets/upgrade_prompt_sheet.dart';
 import '../settings/upgrade_screen.dart';
 
@@ -523,6 +524,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         await _saveQuote(send: send);
       }
       if (mounted && !send) {
+        if (widget.docType == DocumentType.quote) {
+          // Navigate to the quote detail screen so the user can review / send.
+          final savedId = _existingQuote?.id;
+          if (savedId != null) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => QuoteDetailScreen(quoteId: savedId),
+              ),
+            );
+            return;
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Saved'),

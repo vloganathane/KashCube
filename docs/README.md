@@ -5,15 +5,27 @@
 ```
 docs/
 ├── README.md          ← you are here
-├── user/              end-user guide
-├── product/           PRD, design, UX, monetization
-├── technical/         architecture, DB schema, privacy
-├── features/          feature specifications
-├── sync/              P2P sync, web companion, RBAC plan
-├── planning/          roadmap, setup guide
+├── codebase/          as-built docs generated from actual code
+├── architecture/      decisions, technical architecture, privacy architecture
+├── features/          feature specifications (specs, gst, commerce)
+├── product/           roadmap, research, strategy
+├── sync/              sync audits, implementations, infrastructure
+├── implementation/    audits, bugs, migrations
 ├── legal/             privacy policy, terms
-└── archive/           completed / superseded docs
+└── user/              end-user guide
 ```
+
+---
+
+## `codebase/`
+
+| Document | Description |
+|----------|-------------|
+| [README.md](./codebase/README.md) | Entry point for as-built code documentation |
+| [ARCHITECTURE_AS_BUILT.md](./codebase/ARCHITECTURE_AS_BUILT.md) | Runtime architecture and layer map from source |
+| [DATABASE_AS_BUILT.md](./codebase/DATABASE_AS_BUILT.md) | Current 56-table schema grouped by domain |
+| [STATE_AND_NAVIGATION_AS_BUILT.md](./codebase/STATE_AND_NAVIGATION_AS_BUILT.md) | Provider architecture and real navigation tree |
+| [SYNC_AND_IDENTITY_AS_BUILT.md](./codebase/SYNC_AND_IDENTITY_AS_BUILT.md) | Implemented sync/identity stack and topology |
 
 ---
 

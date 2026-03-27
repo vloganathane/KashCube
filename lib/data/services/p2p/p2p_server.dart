@@ -34,9 +34,15 @@ class P2pServer {
   static final P2pServer instance = P2pServer._();
 
   HttpServer? _server;
+  bool _staticReady = false;
 
   /// Port the server is currently bound to, or null if not running.
   int? get port => _server?.port;
+
+  /// True when the server socket is bound and static web UI is pre-warmed.
+  Future<bool> isHealthy() async {
+    return _server != null && _staticReady;
+  }
 
   // Injected at [start] time by the coordinator.
   Future<Uint8List?> Function(String identityId)? _secretForPeer;
@@ -153,6 +159,7 @@ class P2pServer {
     // Layer 1 — open routes (no HMAC)
     final openRouter = Router()
       ..get('/hello', _helloHandler)
+      ..get('/health', _healthHandler)
       ..post('/pair', _pairHandlerRoute)
       ..get('/ws',    _wsHandler());
 
@@ -165,7 +172,11 @@ class P2pServer {
         .addMiddleware(_hmacMiddleware())
         .addHandler(syncRouter.call);
 
-    // Layer 3 — static web UI (lazy extracted from assets/web_ui/)
+    // Pre-warm web UI extraction before serving requests so the first browser
+    // hit does not pay extraction latency (or see transient 500s).
+    await WebUiExtractor.instance.extractNow();
+
+    // Layer 3 — static web UI (pre-extracted from assets/web_ui/)
     final staticHandler = _buildStaticHandler();
 
     // Combined cascade
@@ -188,12 +199,14 @@ class P2pServer {
       shared: false,
       poweredByHeader: 'KashCube',
     );
+    _staticReady = true;
     debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
   }
 
   Future<void> stop() async {
     await _server?.close(force: true);
     _server = null;
+    _staticReady = false;
     _httpLogEntries.clear();
     debugPrint('[P2P] Server stopped');
   }
@@ -275,6 +288,21 @@ class P2pServer {
   Response _helloHandler(Request request) {
     return Response.ok(
       jsonEncode({'app': 'kashcube', 'proto': 1}),
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  Response _healthHandler(Request request) {
+    final healthy = _server != null && _staticReady;
+    final payload = jsonEncode({
+      'status': healthy ? 'healthy' : 'warming_up',
+      'server_bound': _server != null,
+      'static_ready': _staticReady,
+      'port': _server?.port,
+    });
+    return Response(
+      healthy ? 200 : 503,
+      body: payload,
       headers: {'content-type': 'application/json'},
     );
   }

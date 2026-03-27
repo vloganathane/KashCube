@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../p2p/p2p_server.dart';
+import 'web_ui_extractor.dart';
 
 /// Manages the wake-lock lifecycle for the web companion ("Open on Laptop").
 ///
@@ -34,6 +35,13 @@ class WebCompanionService {
   StreamSubscription<bool>? _sub;
   Timer? _releaseTimer;
   bool _wakeLockHeld = false;
+
+  /// True when the extracted web build is available locally.
+  bool get isReady => WebUiExtractor.instance.isReady;
+
+  /// Prepares the web bundle in temporary storage before the server accepts
+  /// browser requests. Safe to call repeatedly.
+  Future<void> prewarmWebUi() => WebUiExtractor.instance.extractNow();
 
   /// Subscribes to browser-connection events from [P2pServer].
   ///

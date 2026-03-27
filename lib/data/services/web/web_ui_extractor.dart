@@ -14,14 +14,31 @@ class WebUiExtractor {
   static final WebUiExtractor instance = WebUiExtractor._();
 
   String? _extractedPath;
+  bool _extracting = false;
 
   /// Returns the path to the extracted web UI directory.
   /// Extracts on first call, then caches.
   Future<String> getExtractedPath() async {
     if (_extractedPath != null) return _extractedPath!;
-    _extractedPath = await _extract();
+    await extractNow();
     return _extractedPath!;
   }
+
+  /// Eagerly extracts the bundled web UI to the temp directory.
+  ///
+  /// Safe to call repeatedly; extraction only runs when no cached path exists.
+  Future<void> extractNow() async {
+    if (_extractedPath != null || _extracting) return;
+    _extracting = true;
+    try {
+      _extractedPath = await _extract();
+    } finally {
+      _extracting = false;
+    }
+  }
+
+  bool get isReady => _extractedPath != null;
+  bool get isExtracting => _extracting;
 
   Future<String> _extract() async {
     final tmpDir  = await getTemporaryDirectory();
@@ -53,5 +70,8 @@ class WebUiExtractor {
   }
 
   /// Clears the cached path so the next call to [getExtractedPath] re-extracts.
-  void invalidate() => _extractedPath = null;
+  void invalidate() {
+    _extractedPath = null;
+    _extracting = false;
+  }
 }

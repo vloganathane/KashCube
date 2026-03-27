@@ -9,6 +9,7 @@ import '../../data/services/database_helper.dart';
 import '../../data/services/p2p/p2p_coordinator.dart';
 import '../../data/services/p2p/p2p_discovery_service.dart';
 import '../../data/services/p2p/p2p_server.dart';
+import '../../data/services/web/web_companion_service.dart';
 import '../providers/identity_provider.dart';
 import '../providers/settings_provider.dart';
 
@@ -160,6 +161,7 @@ class WebCompanionNotifier extends StateNotifier<bool> {
       final identity = await _ref.read(identityServiceProvider.future);
       final settings = _ref.read(settingsRepositoryProvider);
       final name     = await settings.get(SettingsKeys.ownerName);
+      await WebCompanionService.instance.prewarmWebUi();
       await P2pCoordinator.instance.startServerOnly(
         db:          db,
         identity:    identity,

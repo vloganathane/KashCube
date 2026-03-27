@@ -29,6 +29,7 @@ class OpenOnLaptopScreen extends ConsumerStatefulWidget {
 class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   String? _url;
   String? _error;
+  String _loadingMessage = 'Starting local server…';
   bool    _loading = true;
 
   @override
@@ -38,12 +39,36 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   }
 
   Future<void> _buildUrl() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _loadingMessage = 'Starting local server…';
+    });
 
     // Start the HTTP server (web companion mode) if it isn't running yet.
     // This works whether or not the user has LAN sync enabled — the server
     // starts in server-only mode and does NOT turn on mDNS broadcast/discovery.
     await ref.read(webCompanionProvider.notifier).ensureStarted();
+
+    if (!mounted) return;
+    setState(() {
+      _loadingMessage = 'Preparing browser view…';
+    });
+
+    // Readiness gate: wait until the server socket is bound and static web
+    // assets are ready before generating QR.
+    var healthy = await P2pCoordinator.instance.isServerHealthy();
+    for (var attempt = 0; !healthy && attempt < 15; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      healthy = await P2pCoordinator.instance.isServerHealthy();
+    }
+    if (!healthy) {
+      setState(() {
+        _error = 'Server is still warming up. Please retry in a moment.';
+        _loading = false;
+      });
+      return;
+    }
 
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
@@ -114,7 +139,19 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             const SizedBox(height: AppSpacing.xl),
 
             if (_loading)
-              const CircularProgressIndicator()
+              Column(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    _loadingMessage,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              )
             else if (_error != null)
               _ErrorCard(message: _error!, onRetry: _buildUrl)
             else ...[

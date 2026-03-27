@@ -70,6 +70,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       return;
     }
 
+    // Use the actual bound port from the running server. This may differ from
+    // AppConstants.p2pPort when startup falls back to a random free port.
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
       setState(() {

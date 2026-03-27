@@ -13,7 +13,10 @@ class AppConstants {
   static const int dbVersion = 81;
 
   // P2P LAN sync
-  /// Fixed port for the on-device HTTP server (IANA private range 49152-65535).
+  /// Preferred port for the on-device HTTP server.
+  ///
+  /// Runtime startup attempts this port first, then falls back to a random
+  /// OS-assigned free port when this one is already in use.
   static const int p2pPort = 50505;
 
   // Categories (MVP - 10 pre-defined)

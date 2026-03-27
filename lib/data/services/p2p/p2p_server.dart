@@ -19,7 +19,8 @@ import 'p2p_auth_service.dart';
 /// Lightweight HTTP server for P2P LAN sync.
 ///
 /// Lifecycle:
-///   1. Call [start] from the P2P coordinator — it binds to a random OS port.
+///   1. Call [start] from the P2P coordinator — it prefers [AppConstants.p2pPort]
+///      and falls back to a random OS-assigned port if the preferred one is busy.
 ///   2. Pass [port] to [P2pDiscoveryService.startBroadcast].
 ///   3. Call [stop] when sync is disabled or the app goes to background.
 ///
@@ -120,7 +121,11 @@ class P2pServer {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-  /// Starts the HTTP server on a random OS-assigned port.
+  /// Starts the HTTP server.
+  ///
+  /// Binding strategy:
+  ///   1) Try [AppConstants.p2pPort] first (predictable/manual URL friendly)
+  ///   2) If unavailable, retry with port `0` (OS-assigned random free port)
   ///
   /// [secretForPeer]   Async callback: given a peer's identityId, returns the
   ///                   32-byte shared secret (or null if the peer is unknown).
@@ -192,13 +197,30 @@ class P2pServer {
         .addMiddleware(_requestLogMiddleware())
         .addHandler(combined);
 
-    _server = await shelf_io.serve(
-      logged,
-      InternetAddress.anyIPv4,
-      AppConstants.p2pPort, // fixed LAN sync port — IANA private range, easy to remember
-      shared: false,
-      poweredByHeader: 'KashCube',
-    );
+    try {
+      _server = await shelf_io.serve(
+        logged,
+        InternetAddress.anyIPv4,
+        AppConstants.p2pPort,
+        shared: false,
+        poweredByHeader: 'KashCube',
+      );
+      _addHttpLog('PORT bind ${AppConstants.p2pPort} (preferred)');
+    } on SocketException catch (e) {
+      debugPrint(
+        '[P2P] Preferred port ${AppConstants.p2pPort} unavailable: $e. Retrying with random port.',
+      );
+      _server = await shelf_io.serve(
+        logged,
+        InternetAddress.anyIPv4,
+        0,
+        shared: false,
+        poweredByHeader: 'KashCube',
+      );
+      _addHttpLog(
+        'PORT fallback ${AppConstants.p2pPort} -> ${_server!.port}',
+      );
+    }
     _staticReady = true;
     debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
   }

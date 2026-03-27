@@ -1,6 +1,6 @@
 # Kash Cube — Documentation Index
 
-**Last Updated:** March 22, 2026
+**Last Updated:** March 27, 2026
 
 ```
 docs/
@@ -49,18 +49,55 @@ docs/
 
 ---
 
-## `technical/`
+## `architecture/`
 
 | Document | Description |
 |----------|-------------|
-| [TECHNICAL_ARCHITECTURE.md](./technical/TECHNICAL_ARCHITECTURE.md) | System design, patterns, tech stack |
-| [ARCHITECTURE_DECISIONS.md](./technical/ARCHITECTURE_DECISIONS.md) | ADRs — key architecture decisions (v58+) |
-| [DUAL_PRIMARY_IDENTITY_SPEC.md](./technical/DUAL_PRIMARY_IDENTITY_SPEC.md) | Dual-primary sync identity spec (v63+) |
-| [FEATURE_EXTENSION_PRINCIPLES.md](./technical/FEATURE_EXTENSION_PRINCIPLES.md) | Rules for extending the app safely |
-| [DATABASE_SCHEMA.md](./technical/DATABASE_SCHEMA.md) | Full SQLite schema and data models |
-| [PRIVACY_ARCHITECTURE.md](./technical/PRIVACY_ARCHITECTURE.md) | Privacy-first design — data residency, threat model |
-| [FOUNDATION_PERSONAL_BUSINESS.md](./technical/FOUNDATION_PERSONAL_BUSINESS.md) | Personal / business mode architecture |
-| [STORAGE_AND_DISASTER_MANAGEMENT.md](./technical/STORAGE_AND_DISASTER_MANAGEMENT.md) | Storage growth strategy and disaster recovery |
+| [README.md](./architecture/README.md) | Entry point for the formal architecture doc set |
+| [TECHNICAL_ARCHITECTURE.md](./architecture/technical/TECHNICAL_ARCHITECTURE.md) | Software architecture document and high-level design |
+| [SYSTEM_CONTEXT.md](./architecture/technical/SYSTEM_CONTEXT.md) | System boundary, actors, and trust context |
+| [COMPONENT_MODEL.md](./architecture/technical/COMPONENT_MODEL.md) | Runtime decomposition and component responsibilities |
+| [DATA_FLOW_DIAGRAMS.md](./architecture/technical/DATA_FLOW_DIAGRAMS.md) | Core runtime and business data flows |
+| [DEPLOYMENT_AND_RUNTIME_TOPOLOGY.md](./architecture/technical/DEPLOYMENT_AND_RUNTIME_TOPOLOGY.md) | Device-local deployment and runtime topology |
+| [TECHNOLOGY_STACK.md](./architecture/technical/TECHNOLOGY_STACK.md) | Current implementation-backed stack choices |
+| [QUALITY_ATTRIBUTES.md](./architecture/technical/QUALITY_ATTRIBUTES.md) | Quality scenarios and tradeoffs |
+| [ARCHITECTURE_DECISIONS.md](./architecture/decisions/ARCHITECTURE_DECISIONS.md) | ADR index plus historical sync/trust decision compendium |
+| [PRIVACY_ARCHITECTURE.md](./architecture/privacy/PRIVACY_ARCHITECTURE.md) | Privacy-first design and data residency model |
+
+---
+
+## `architecture/technical/`
+
+| Document | Description |
+|----------|-------------|
+| [TECHNICAL_ARCHITECTURE.md](./architecture/technical/TECHNICAL_ARCHITECTURE.md) | System design, runtime structure, and traceability |
+| [SYSTEM_CONTEXT.md](./architecture/technical/SYSTEM_CONTEXT.md) | System boundary, actors, and trust context |
+| [COMPONENT_MODEL.md](./architecture/technical/COMPONENT_MODEL.md) | Runtime decomposition and component responsibilities |
+| [DATA_FLOW_DIAGRAMS.md](./architecture/technical/DATA_FLOW_DIAGRAMS.md) | Core runtime and business data flows |
+| [DEPLOYMENT_AND_RUNTIME_TOPOLOGY.md](./architecture/technical/DEPLOYMENT_AND_RUNTIME_TOPOLOGY.md) | Device-local deployment and runtime topology |
+| [TECHNOLOGY_STACK.md](./architecture/technical/TECHNOLOGY_STACK.md) | Current implementation-backed stack choices |
+| [QUALITY_ATTRIBUTES.md](./architecture/technical/QUALITY_ATTRIBUTES.md) | Quality scenarios and tradeoffs |
+| [DUAL_PRIMARY_IDENTITY_SPEC.md](./architecture/technical/DUAL_PRIMARY_IDENTITY_SPEC.md) | Dual-primary sync identity spec (v63+) |
+| [DATABASE_SCHEMA.md](./architecture/technical/DATABASE_SCHEMA.md) | Full SQLite schema and data models |
+
+---
+
+## `architecture/decisions/`
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE_DECISIONS.md](./architecture/decisions/ARCHITECTURE_DECISIONS.md) | ADR index and historical decision compendium |
+| [FEATURE_EXTENSION_PRINCIPLES.md](./architecture/decisions/FEATURE_EXTENSION_PRINCIPLES.md) | Rules for extending the app safely |
+| [FOUNDATION_PERSONAL_BUSINESS.md](./architecture/decisions/FOUNDATION_PERSONAL_BUSINESS.md) | Personal / business mode architecture |
+
+---
+
+## `architecture/privacy/`
+
+| Document | Description |
+|----------|-------------|
+| [PRIVACY_ARCHITECTURE.md](./architecture/privacy/PRIVACY_ARCHITECTURE.md) | Privacy-first design — data residency, threat model |
+| [STORAGE_AND_DISASTER_MANAGEMENT.md](./architecture/privacy/STORAGE_AND_DISASTER_MANAGEMENT.md) | Storage growth strategy and disaster recovery |
 
 ---
 

@@ -8,6 +8,26 @@
 
 ---
 
+## ADR Index (Current Canonical View)
+
+The current architecture ADR set captures the major decisions already visible in the implementation-backed documentation.
+
+### Accepted ADRs
+
+1. `adr/ADR-001-local-first-sqlite-source-of-truth.md`
+2. `adr/ADR-002-riverpod-provider-graph-and-root-installers.md`
+3. `adr/ADR-003-shell-first-adaptive-navigation.md`
+4. `adr/ADR-004-event-driven-sync-refresh.md`
+5. `adr/ADR-005-defensive-startup-and-graceful-degradation.md`
+6. `adr/ADR-006-no-kashcube-backend-and-local-trust-model.md`
+
+### How to read this file
+
+- Treat the ADR files above as the canonical, current decision records.
+- Treat the remainder of this document as the historical architecture decision compendium that drove the sync, trust, and permissions direction.
+
+---
+
 ## THE MOST IMPORTANT RULE TO CHECK BEFORE READING
 
 The incoming recommendation set was excellent — but borrowed several patterns from cloud-based

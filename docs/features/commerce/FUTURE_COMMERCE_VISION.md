@@ -3,7 +3,7 @@
 **Status:** FUTURE PLANNING — implement only after core app reaches 100%  
 **Date brainstormed:** 26 March 2026  
 **Last revised:** 26 March 2026 (F2 dropped; protocol-first model adopted)  
-**Prerequisite:** All gaps in [ONE_APP_COMPLETE_BUSINESS_AUDIT.md](ONE_APP_COMPLETE_BUSINESS_AUDIT.md) closed first
+**Prerequisite:** All gaps in [ONE_APP_COMPLETE_BUSINESS_AUDIT.md](../../implementation/audits/ONE_APP_COMPLETE_BUSINESS_AUDIT.md) closed first
 
 ---
 
@@ -811,7 +811,7 @@ Missing from the current item UI for closer Commerce Mesh parity:
 
 ## Related Documents
 - [COMMERCE_MESH_SCHEMA_MAPPING.md](COMMERCE_MESH_SCHEMA_MAPPING.md) — canonical field-by-field mapping from Commerce Mesh schema to KashCube's internal item model
-- [ONE_APP_COMPLETE_BUSINESS_AUDIT.md](ONE_APP_COMPLETE_BUSINESS_AUDIT.md) — current capability gaps to close first
-- [P2P_SYNC_SPEC.md](P2P_SYNC_SPEC.md) — existing LAN/P2P sync architecture (foundation for F3)
-- [FLUTTER_WEB_COMPANION_SPEC.md](FLUTTER_WEB_COMPANION_SPEC.md) — KashCube Web (W1) local server foundation
-- [PRIVACY_ARCHITECTURE.md](PRIVACY_ARCHITECTURE.md) — all phases must respect these constraints
+- [ONE_APP_COMPLETE_BUSINESS_AUDIT.md](../../implementation/audits/ONE_APP_COMPLETE_BUSINESS_AUDIT.md) — current capability gaps to close first
+- [P2P_SYNC_SPEC.md](../../sync/implementations/P2P_SYNC_SPEC.md) — existing LAN/P2P sync architecture (foundation for F3)
+- [FLUTTER_WEB_COMPANION_SPEC.md](../specs/FLUTTER_WEB_COMPANION_SPEC.md) — KashCube Web (W1) local server foundation
+- [PRIVACY_ARCHITECTURE.md](../../architecture/privacy/PRIVACY_ARCHITECTURE.md) — all phases must respect these constraints

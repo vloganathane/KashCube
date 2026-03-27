@@ -35,14 +35,25 @@ These documents are generated from current source files under `lib/` and describ
 
 ## Documents
 
-1. `ARCHITECTURE_AS_BUILT.md`
-2. `DATABASE_AS_BUILT.md`
-3. `STATE_AND_NAVIGATION_AS_BUILT.md`
-4. `SYNC_AND_IDENTITY_AS_BUILT.md`
+### Phase 1 & 2 — Architecture, Database, State, Sync
+
+1. `ARCHITECTURE_AS_BUILT.md` — Boot gate, layer map, AppShell navigation
+2. `DATABASE_AS_BUILT.md` — All 56 SQLite tables grouped by domain, ER diagram
+3. `STATE_AND_NAVIGATION_AS_BUILT.md` — 50 provider files, 69 screen navigation tree
+4. `SYNC_AND_IDENTITY_AS_BUILT.md` — P2P LAN sync, web companion, sync engine topology
+
+### Phase 3 — Service Deep Dives
+
+5. `SMS_PIPELINE_AS_BUILT.md` — SMS parser (46 senders, 20+ regex patterns), confidence scoring, deduplication, auto-categorizer (9 expense + 5 income categories)
+6. `PDF_PIPELINE_AS_BUILT.md` — PdfLayoutEngine (9 templates, 5 page sizes), invoice/challan/statement/report PDF services, cache manager
+7. `GST_PIPELINE_AS_BUILT.md` — CGST/SGST/IGST calculator, GSTR-1 (T4/T5/T7/T9/T12/T13), GSTR-3B (Rule 88A ITC offset), e-Way Bill JSON export
+8. `BACKUP_IDENTITY_AS_BUILT.md` — Plain SQLite backup, AES-256-GCM encrypted backup (PBKDF2, lockout), Ed25519 identity keypairs, FY date arithmetic
+9. `INVOICE_NUMBERING_AS_BUILT.md` — Atomic SQLite cursor, FY prefix-change rollover, multi-device pending-number flow
 
 ## Reading Order
 
-1) Architecture → 2) Database → 3) State & Navigation → 4) Sync & Identity
+**New to the codebase:** 1 → 2 → 3 → 4  
+**Understanding a specific feature:** jump directly to the Phase 3 doc for that pipeline
 
 ---
 

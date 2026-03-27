@@ -74,7 +74,7 @@ Every competitor either requires internet to function, requires account creation
 |---|---|---|
 | Pricing | ₹2,499/yr Gold | ₹999/yr Business (62% cheaper) |
 | Personal + Business | Separate apps | Single app with mode toggle |
-| UPI SMS auto-capture | Manual entry only | Automatic, offline, 56 senders |
+| UPI SMS auto-capture | Manual entry only | Automatic, offline, 46 senders |
 | Privacy | Cloud sync; account required | 100% local; zero account |
 | Khata / udhar | Yes | Yes + lot tracking |
 | GSTR-1/3B | Yes | Yes |

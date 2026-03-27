@@ -60,7 +60,7 @@ An offline-first, all-in-one SME management app covering inventory, sales, purch
 |---|---|---|
 | **Privacy** | Shares data with 3rd parties, contains ads | 100% local, zero collection, no ads — ever |
 | **Indian tax compliance** | None | GSTR-1, GSTR-3B, E-Way Bill, ITC, HSN/SAC |
-| **UPI / SMS auto-capture** | Not present | 56 Indian sender IDs, auto-import |
+| **UPI / SMS auto-capture** | Not present | 46 sender IDs, auto-import |
 | **Indian locale** | Western numbers | ₹, `en_IN`, Indian comma grouping (₹1,23,456) |
 | **Khata / Udhar credit ledger** | Not present | Core feature |
 | **Tally XML / CA export** | CSV only | Tally XML + Excel built-in |

@@ -75,7 +75,7 @@ Evidence from Indian user reviews (60K+ reviews analysed):
 | Dimension | Spendee | KashCube |
 |---|---|---|
 | **Works 100% offline** | ❌ broken — app won't open without internet | ✅ fully offline-first |
-| **Indian bank transaction capture** | ❌ most banks unsupported | ✅ SMS auto-capture, 56 Indian sender IDs |
+| **Indian bank transaction capture** | ❌ most banks unsupported | ✅ SMS auto-capture, 46 sender IDs |
 | **Privacy** | Financial data stored on SPENDEE a.s. servers | 100% local SQLite, zero transmission |
 | **No account required** | Account mandatory for sync | Never requires an account |
 | **Business features** | Personal finance only | Full GST, invoicing, inventory, khata |

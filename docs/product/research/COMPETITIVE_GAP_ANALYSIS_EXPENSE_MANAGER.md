@@ -49,7 +49,7 @@
 | **GST compliance** | No GST awareness | KashCube has full GSTR-1/3B, e-invoicing, HSN/SAC — far ahead |
 | **Invoicing / purchase bills** | Not present | KashCube's primary B2B differentiator |
 | **Lot / batch tracking** | Not present | Unique to KashCube for inventory-heavy SMEs |
-| **UPI/SMS auto-capture depth** | Basic SMS parsing | KashCube covers 56 Indian sender IDs with confidence scoring |
+| **UPI/SMS auto-capture depth** | Basic SMS parsing | KashCube covers 46 sender IDs with confidence scoring |
 
 ---
 

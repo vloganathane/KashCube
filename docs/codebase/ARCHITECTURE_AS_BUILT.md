@@ -1,54 +1,9 @@
 # Architecture (As-Built)
 
-## 1) Runtime Boot Flow
+This file is the architecture overview and index.  
+Detailed runtime documentation now lives under `docs/codebase/architecture/`.
 
-The app startup path in `lib/main.dart` is:
-
-1. Initialize Flutter + DB factory (`initDatabaseFactory`)
-2. Try Firebase initialization (non-fatal)
-3. Initialize local notifications (mobile only)
-4. Run FY check + background job registration (mobile only)
-5. Start app with `ProviderScope`
-6. Gate through `_LockGate`
-
-### Gate Sequence (`_LockGate`)
-
-```mermaid
-flowchart TD
-  A[App Launch] --> B{Web?}
-  B -- Yes --> C[WebConnectScreen]
-  B -- No --> D{Terms accepted?}
-  D -- No --> E[TermsGateScreen]
-  D -- Yes --> F{Setup wizard done?}
-  F -- No --> G[SetupWizardScreen]
-  F -- Yes --> H{App lock enabled?}
-  H -- Yes --> I[PinLockScreen]
-  H -- No --> J{Any app users?}
-  I --> J
-  J -- No --> K[AppShell]
-  J -- Yes --> L[UserSelectionScreen]
-  L --> K
-```
-
-## 2) Shell and Navigation Model
-
-`lib/presentation/app_shell.dart` runs a **5-tab shell** with **nested navigators per tab**.
-
-- Home
-- Transactions
-- Business
-- Contacts
-- Settings
-
-Each tab has its own `NavigatorState` key, so tab-local stacks are preserved.
-
-### Shell Layout Behavior
-
-- `context.isExpanded` (`>= 840dp`): `NavigationRail`
-- Otherwise: `NavigationBar`
-- Global FAB (`SpeedDialFab`) shown only on root routes of Home/Transactions/Business tabs
-
-## 3) Layered Code Structure
+## 1) Architecture Overview
 
 ```mermaid
 flowchart LR
@@ -56,37 +11,79 @@ flowchart LR
   P --> R[Domain Repositories\nInterfaces]
   R --> RI[Data Repositories\nImplementations]
   RI --> DB[(SQLite via DatabaseHelper)]
-  RI --> S[Services\nPDF/GST/SMS/Sync/etc.]
+  RI --> S[Services\nSMS/PDF/GST/Sync/Backup]
   S --> DB
+
+  Sync[SyncEventBus] --> Auto[syncAutoRefreshInstallerProvider]
+  Auto --> P
 ```
 
-## 4) Module Inventory (High-Level)
+Core architectural traits visible in implementation:
 
-### Data Layer
+1. **Local-first persistence**: critical business state is SQLite-backed.
+2. **Provider-orchestrated UI**: runtime wiring and feature state flow through Riverpod.
+3. **Shell-first composition**: one adaptive app shell coordinates navigation + overlays.
+4. **Sync-aware freshness**: sync events invalidate targeted providers to prevent stale UI.
+5. **Defensive startup**: optional subsystem failures do not block `runApp()`.
 
-- **56 DB tables** (finance + business + sync + identity)
-- **25 repository interfaces** in domain layer
-- **25 repository implementations** in data layer
-- **64 service files** (sync, SMS, PDF, GST, backup, analytics, etc.)
+---
 
-### Presentation Layer
+## 2) Runtime Entry Snapshot
 
-- **50 provider files**
-- **69 screen files** across 20 feature folders
+Startup path:
 
-## 5) Key Architectural Decisions Visible in Code
+1. `main()` initialization (`WidgetsFlutterBinding`, DB factory, optional Firebase)
+2. Mobile pre-init side effects (notifications, FY checks, background task registration)
+3. `runApp(ProviderScope(child: KashCubeApp()))`
+4. Root installers (`syncAutoRefreshInstallerProvider`, `notificationSchedulerProvider`, `iapServiceProvider`)
+5. `_LockGate` gate sequence
+6. `AppShell` runtime orchestration
 
-1. **Local-first persistence**: all critical state originates in SQLite.
-2. **Provider-driven orchestration**: screen logic routed through Riverpod notifiers/providers.
-3. **Feature hubs**: tab hubs (`TransactionsHubScreen`, `BusinessHubScreen`) aggregate sub-flows.
-4. **Context-aware shell**: deep-link handling, SMS confirmation overlays, session/permission checks in shell layer.
-5. **Sync-integrated runtime**: sync auto-refresh provider is installed at app root to keep UI in sync with inbound merge events.
+---
 
-## 6) What Is Not “Just Docs” (Clearly Implemented)
+## 3) Documentation Map (Detailed)
 
-- Staff PIN selection and user switching screens are present and wired.
-- Linked-device, identity, and sync state tables are in schema.
-- Web companion entry (`WebConnectScreen`) is wired in launch gate.
-- FY services and notifications are actively invoked at startup.
+### A) Boot and startup internals
+- `architecture/BOOT_AND_STARTUP_AS_BUILT.md`
+  - startup sequence diagrams
+  - platform branches (web vs mobile)
+  - `_LockGate` lifecycle and resume behavior
+  - failure tolerance matrix
 
-This confirms the architecture is beyond MVP-only flows and includes production-grade local identity/sync plumbing.
+### B) Shell and navigation internals
+- `architecture/APP_SHELL_AND_NAVIGATION_AS_BUILT.md`
+  - 5-tab shell topology
+  - per-tab nested navigator strategy
+  - back-press contract and tab reset behavior
+  - deep link + SMS integration points
+
+### C) State/dataflow architecture
+- `architecture/STATE_AND_DATAFLOW_ARCHITECTURE_AS_BUILT.md`
+  - provider/repository/service dataflow
+  - sync invalidation map strategy
+  - permissions/session model
+  - settings control-plane role
+
+### D) Cross-cutting runtime behavior
+- `architecture/RUNTIME_CROSS_CUTTING_AS_BUILT.md`
+  - lifecycle safety hooks
+  - notification and sync runtime guarantees
+  - reliability/failure mitigation summary
+
+---
+
+## 4) Inventory Anchors
+
+- DB tables: see `DATABASE_AS_BUILT.md` and `DATABASE_INVENTORY_AUTO.md`
+- Provider + screen surface: see `STATE_AND_NAVIGATION_AS_BUILT.md`
+- Sync/identity topology: see `SYNC_AND_IDENTITY_AS_BUILT.md`
+- Service pipelines: see Phase 3 docs (`SMS_*`, `PDF_*`, `GST_*`, `BACKUP_*`, `INVOICE_NUMBERING_*`)
+
+---
+
+## 5) Maintenance Rule
+
+When architecture-impacting code changes land (boot sequence, shell behavior, provider orchestration, sync/runtime guarantees), update both:
+
+1. this overview index (`ARCHITECTURE_AS_BUILT.md`)
+2. the relevant deep-dive file in `docs/codebase/architecture/`

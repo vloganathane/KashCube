@@ -42,6 +42,14 @@ These documents are generated from current source files under `lib/` and describ
 3. `STATE_AND_NAVIGATION_AS_BUILT.md` — 50 provider files, 69 screen navigation tree
 4. `SYNC_AND_IDENTITY_AS_BUILT.md` — P2P LAN sync, web companion, sync engine topology
 
+#### Architecture deep-dive pack (`architecture/`)
+
+- `architecture/README.md` — entrypoint and reading guide
+- `architecture/BOOT_AND_STARTUP_AS_BUILT.md` — startup sequence, gates, lifecycle, failure tolerance
+- `architecture/APP_SHELL_AND_NAVIGATION_AS_BUILT.md` — tab shell internals, nested navigators, adaptive layout, overlays
+- `architecture/STATE_AND_DATAFLOW_ARCHITECTURE_AS_BUILT.md` — provider/repository/service orchestration and sync invalidation model
+- `architecture/RUNTIME_CROSS_CUTTING_AS_BUILT.md` — notifications, sync freshness, lifecycle reliability hooks
+
 ### Phase 3 — Service Deep Dives
 
 5. `SMS_PIPELINE_AS_BUILT.md` — SMS parser (46 senders, 20+ regex patterns), confidence scoring, deduplication, auto-categorizer (9 expense + 5 income categories)

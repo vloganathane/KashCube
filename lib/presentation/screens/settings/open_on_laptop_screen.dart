@@ -48,7 +48,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
       setState(() {
-        _error   = 'Could not start the local server.\nMake sure you are connected to Wi-Fi and try again.';
+        _error   = 'Could not start the local server. Restart the app and try again.';
         _loading = false;
       });
       return;
@@ -57,7 +57,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     final ip = await P2pDiscoveryService.getLocalIp();
     if (ip == null || ip == '0.0.0.0') {
       setState(() {
-        _error   = 'Could not detect local IP address.\nMake sure you are connected to Wi-Fi.';
+        _error   = 'Could not detect a local network address.\nConnect your phone to Wi-Fi or enable the hotspot, then try again.';
         _loading = false;
       });
       return;
@@ -137,7 +137,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             ),
             _InfoRow(
               icon: Icons.wifi_outlined,
-              label: 'Browser must be on the same Wi-Fi as your phone',
+              label: 'Browser must be on the same network — same Wi-Fi or connected to this phone\'s hotspot',
             ),
             _InfoRow(
               icon: Icons.privacy_tip_outlined,

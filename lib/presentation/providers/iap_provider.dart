@@ -5,7 +5,10 @@ import 'settings_provider.dart';
 
 /// Set to `true` when Play Console products are live and ready for billing.
 /// When `false`, IAP is completely skipped and all users stay on the free tier.
-const bool _kIapEnabled = false;
+const bool kIapEnabled = false;
+
+/// Exposes whether billing is enabled in this build.
+final iapEnabledProvider = Provider<bool>((ref) => kIapEnabled);
 
 /// Initialises [IapService] once and exposes the singleton.
 ///
@@ -13,7 +16,7 @@ const bool _kIapEnabled = false;
 /// Uses [keepAlive] so the subscription listener is never torn down.
 final iapServiceProvider = FutureProvider<IapService>((ref) async {
   ref.keepAlive();
-  if (!_kIapEnabled) return IapService.instance; // IAP disabled — skip init
+  if (!kIapEnabled) return IapService.instance; // IAP disabled — skip init
   final tierNotifier = ref.read(subscriptionTierProvider.notifier);
   final service = IapService.instance;
   await service.init(tierNotifier);

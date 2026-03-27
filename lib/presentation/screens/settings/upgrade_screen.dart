@@ -68,13 +68,14 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
   @override
   Widget build(BuildContext context) {
     final currentTier = ref.watch(subscriptionTierProvider);
+    final iapEnabled = ref.watch(iapEnabledProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Kash Cube Plans'),
         actions: [
           TextButton(
-            onPressed: _restorePurchases,
+            onPressed: iapEnabled ? _restorePurchases : null,
             child: const Text('Restore'),
           ),
         ],
@@ -86,6 +87,10 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
         ),
         children: [
           _CurrentTierBanner(tier: currentTier),
+          if (!iapEnabled) ...[
+            const SizedBox(height: AppSpacing.md),
+            const _ComingSoonBanner(),
+          ],
           const SizedBox(height: AppSpacing.xl),
 
           _PricingCard(
@@ -98,6 +103,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
             currentTier: currentTier,
             purchasingProductId: _purchasingProductId,
             onPurchase: _purchase,
+            iapEnabled: iapEnabled,
             features: const [
               'Watermark-free PDFs & documents',
               'UPI payment QR on invoices',
@@ -118,6 +124,7 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
             currentTier: currentTier,
             purchasingProductId: _purchasingProductId,
             onPurchase: _purchase,
+            iapEnabled: iapEnabled,
             features: const [
               'Everything in Starter',
               'GSTR-1 JSON + Tally XML export',
@@ -211,6 +218,7 @@ class _PricingCard extends StatelessWidget {
     required this.currentTier,
     required this.purchasingProductId,
     required this.onPurchase,
+    required this.iapEnabled,
     required this.features,
     this.highlight = false,
   });
@@ -225,6 +233,7 @@ class _PricingCard extends StatelessWidget {
   /// The product ID currently being purchased (null = none in-flight).
   final String? purchasingProductId;
   final void Function(String productId) onPurchase;
+  final bool iapEnabled;
   final List<String> features;
   final bool highlight;
 
@@ -341,28 +350,36 @@ class _PricingCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: anyBuying ? null : () => onPurchase(annualProductId),
+                onPressed: (iapEnabled && !anyBuying)
+                    ? () => onPurchase(annualProductId)
+                    : null,
                 child: buyingAnnual
                     ? const SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text('Get $annualPrice/year'),
+                    : Text(iapEnabled
+                        ? 'Get $annualPrice/year'
+                        : 'Coming soon'),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: anyBuying ? null : () => onPurchase(monthlyProductId),
+                onPressed: (iapEnabled && !anyBuying)
+                    ? () => onPurchase(monthlyProductId)
+                    : null,
                 child: buyingMonthly
                     ? const SizedBox(
                         height: 18,
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text('Try $monthlyPrice/month'),
+                    : Text(iapEnabled
+                        ? 'Try $monthlyPrice/month'
+                        : 'Coming soon'),
               ),
             ),
           ],
@@ -416,6 +433,39 @@ class _GuaranteeBanner extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComingSoonBanner extends StatelessWidget {
+  const _ComingSoonBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = context.colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: cs.tertiaryContainer,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.schedule_outlined, color: cs.onTertiaryContainer, size: 20),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Plans are coming soon. Purchases are temporarily disabled in this build.',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: cs.onTertiaryContainer,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

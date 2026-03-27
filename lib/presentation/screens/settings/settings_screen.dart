@@ -10,6 +10,7 @@ import '../../providers/analytics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
+import '../../p2p/devices_screen.dart';
 import 'accounts_manage_screen.dart';
 import 'pin_lock_screen.dart';
 import 'profile_screen.dart';
@@ -286,17 +287,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
               ),
-              // TODO(lan-sync): re-enable when LAN sync is production-ready
-              // ListTile(
-              //   leading: const Icon(Icons.devices_outlined),
-              //   title: const Text('Devices & LAN Sync'),
-              //   subtitle: const Text('Pair devices and sync over Wi-Fi'),
-              //   trailing: const Icon(Icons.chevron_right),
-              //   onTap: () => Navigator.push(
-              //     context,
-              //     MaterialPageRoute(builder: (_) => const DevicesScreen()),
-              //   ),
-              // ),
+              ListTile(
+                leading: const Icon(Icons.devices_outlined),
+                title: const Text('Devices & LAN Sync'),
+                subtitle: const Text('Pair devices and sync over Wi-Fi'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => DevicesScreen()),
+                ),
+              ),
               ListTile(
                 leading: const Icon(Icons.laptop_outlined),
                 title: const Text('Open on Laptop'),
@@ -704,17 +704,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     builder: (_) => const EncryptedBackupScreen()),
               ),
             ),
-            // TODO(lan-sync): re-enable when LAN sync is production-ready
-            // ListTile(
-            //   leading: const Icon(Icons.devices_outlined),
-            //   title: const Text('Devices & LAN Sync'),
-            //   subtitle: const Text('Pair devices and sync over Wi-Fi'),
-            //   trailing: const Icon(Icons.chevron_right),
-            //   onTap: () => Navigator.push(
-            //     context,
-            //     MaterialPageRoute(builder: (_) => const DevicesScreen()),
-            //   ),
-            // ),
+            ListTile(
+              leading: const Icon(Icons.devices_outlined),
+              title: const Text('Devices & LAN Sync'),
+              subtitle: const Text('Pair devices and sync over Wi-Fi'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => DevicesScreen()),
+              ),
+            ),
             ListTile(
               leading: const Icon(Icons.laptop_outlined),
               title: const Text('Open on Laptop'),

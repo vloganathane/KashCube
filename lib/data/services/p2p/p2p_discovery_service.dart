@@ -372,18 +372,21 @@ class P2pDiscoveryService {
     debugPrint('[P2P] $message');
   }
 
-  /// Returns the LAN IPv4 address of this device, preferring the Wi-Fi
-  /// interface so the correct IP is encoded in QR codes.
+  /// Returns the LAN IPv4 address of this device, preferring the interface
+  /// that a companion device (laptop/tablet) can actually reach.
   ///
-  /// Android exposes interfaces in arbitrary order; VPN (`tun*`), hotspot
-  /// (`ap*`, `rndis*`), and cellular (`rmnet*`) interfaces often appear
-  /// before `wlan0`, causing the QR URL to be unreachable from other devices
-  /// on the same Wi-Fi network.
+  /// Android exposes interfaces in arbitrary order; the priority ladder ensures
+  /// the best reachable address is chosen:
   ///
   /// Priority:
-  ///   1. `wlan*`  — Wi-Fi (Android)
-  ///   2. `en*`    — Wi-Fi / Ethernet (iOS / macOS)
-  ///   3. Any other non-loopback, non-virtual IPv4 (fallback for emulators etc.)
+  ///   1. `wlan*`   — Wi-Fi client OR hotspot AP when phone is NOT on a Wi-Fi
+  ///                  router (single-chip phones use `wlan0` in AP mode).
+  ///   2. `en*`     — Wi-Fi / Ethernet (iOS / macOS)
+  ///   3. `ap*`     — Dedicated hotspot AP interface (dual-virtual-NIC phones,
+  ///                  e.g. some MediaTek/Qualcomm devices running Android 10+).
+  ///   4. `rndis*`  — USB tethering (phone as USB hotspot to a PC).
+  ///   5. Any other non-loopback, non-virtual IPv4 (emulator fallback).
+  ///   90. `tun*`, `tap*`, `rmnet*`, `p2p*` — VPN / cellular / Wi-Fi Direct.
   static Future<String?> getLocalIp() async {
     try {
       final interfaces = await NetworkInterface.list(
@@ -399,16 +402,18 @@ class P2pDiscoveryService {
         final name = iface.name.toLowerCase();
         int priority;
         if (name.startsWith('wlan')) {
-          priority = 0; // Android Wi-Fi
+          priority = 0; // Android Wi-Fi client or Wi-Fi hotspot (single-chip)
         } else if (name.startsWith('en')) {
           priority = 1; // iOS/macOS Wi-Fi or Ethernet
+        } else if (name.startsWith('ap')) {
+          priority = 3; // Android dedicated hotspot AP virtual interface
+        } else if (name.startsWith('rndis')) {
+          priority = 4; // USB tethering — phone acting as USB hotspot
         } else if (name.startsWith('tun') ||
             name.startsWith('tap') ||
             name.startsWith('rmnet') ||
-            name.startsWith('rndis') ||
-            name.startsWith('ap') ||
             name.startsWith('p2p')) {
-          priority = 90; // VPN / cellular / hotspot — avoid these
+          priority = 90; // VPN / cellular / Wi-Fi Direct — avoid
         } else {
           priority = 50; // Unknown — accept as last resort
         }

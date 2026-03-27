@@ -112,6 +112,10 @@ dependencies:
   # (fires at ~9 AM even when app is closed; all logic runs on-device)
   workmanager: ^0.6.0
 
+  # Prevents CPU/screen sleep while a browser tab is connected to the LAN
+  # server (web companion "Open on Laptop").  Pure on-device API — no network.
+  wakelock_plus: ^1.2.0
+
   # Device identity for P2P sync — Android ID / iOS identifierForVendor.
   # No network calls; used only to derive a stable device_id for sync metadata.
   device_info_plus: ^10.1.0

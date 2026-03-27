@@ -14,6 +14,7 @@ import '../sync/generic_sync_query_builder.dart';
 import '../sync/sync_table_registry.dart';
 import '../sync/sync_table_state_store.dart';
 import '../sync_event_bus.dart';
+import '../web/web_companion_service.dart';
 import '../web/web_session_service.dart';
 import 'p2p_auth_service.dart';
 import 'p2p_client.dart';
@@ -224,6 +225,9 @@ class P2pCoordinator {
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
     );
+    // Arm the wake-lock service so the server keeps the CPU awake while a
+    // browser tab is open.  Idempotent — no-op if already attached.
+    WebCompanionService.instance.attach();
 
     debugPrint('[P2pCoordinator] Started on port $port');
     _startInProgress = false;
@@ -317,6 +321,8 @@ class P2pCoordinator {
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
     );
+    // Arm the wake-lock service (idempotent).
+    WebCompanionService.instance.attach();
 
     _serverOnlyMode = true;
     debugPrint('[P2pCoordinator] Server-only mode started on port ${P2pServer.instance.port}');

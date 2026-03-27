@@ -226,6 +226,12 @@ class P2pServer {
                 _browserConnectionController.add(true);
               }
             },
+            onDisposed: () {
+              _activeSession = null;
+              if (!_browserConnectionController.isClosed) {
+                _browserConnectionController.add(false);
+              }
+            },
           );
           _activeSession = session;
           session.attach();

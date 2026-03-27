@@ -15,6 +15,7 @@ import 'data/services/db_factory.dart';
 import 'data/services/fiscal_year_service.dart';
 import 'data/services/notification_service.dart';
 import 'data/services/pdf_cache_manager.dart';
+import 'data/services/web/web_companion_service.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
@@ -93,6 +94,11 @@ void main() async {
     debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
   }
 
+  // Attach the web companion wake-lock service so it starts listening for
+  // browser connection events before the first screen is rendered.
+  // Skipped on web — WakelockPlus is no-op on web and there is no LAN server.
+  if (!kIsWeb) WebCompanionService.instance.attach();
+
   runApp(const ProviderScope(child: KashCubeApp()));
 }
 
@@ -158,6 +164,13 @@ class _LockGateState extends ConsumerState<_LockGate>
       DatabaseHelper.instance.withDatabase(
         (db) => db.rawQuery('PRAGMA wal_checkpoint(PASSIVE)'),
       );
+      // Keep the CPU awake while a browser tab is connected to the LAN server.
+      WebCompanionService.instance.onAppPaused();
+    }
+    if (state == AppLifecycleState.resumed && !kIsWeb) {
+      // Release wake lock if browser is no longer connected.
+      // Called unconditionally (independent of lock state).
+      WebCompanionService.instance.onAppResumed();
     }
     if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
       // Evict stale/excess PDFs whenever the app comes back to foreground.

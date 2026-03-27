@@ -28,6 +28,7 @@ class WebBrowserSession {
     required this.schemaVersion,
     required this.deviceName,
     this.onAuthenticated,
+    this.onDisposed,
   });
 
   final WebSocketChannel channel;
@@ -47,6 +48,11 @@ class WebBrowserSession {
   /// Optional callback fired after the browser successfully authenticates.
   /// [isSession] is true when re-auth used a session token (page refresh).
   final void Function(bool isSession)? onAuthenticated;
+
+  /// Optional callback fired when this session is disposed (WS closed or
+  /// explicit disconnect).  Used by [P2pServer] to clear its session reference
+  /// and emit a disconnect event to [WebCompanionService].
+  final VoidCallback? onDisposed;
 
   final int schemaVersion;
   final String deviceName;
@@ -227,6 +233,7 @@ class WebBrowserSession {
     _pingTimer?.cancel();
     _sub?.cancel();
     try { channel.sink.close(); } catch (_) {}
+    onDisposed?.call();
     debugPrint('[WebSession] Browser session ended');
   }
 

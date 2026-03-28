@@ -630,6 +630,25 @@ Run the scripted checks first, then complete manual network/OEM validation:
   - Refresh browser tab after auth
   - Expected: reconnect via session token, no new QR required
 
+### Fillable QA Results Template
+
+Use this table during execution so release readiness is evidence-backed.
+
+| Date | Tester | Device | Android/OEM version | Network mode | Scenario | Result (Pass/Fail) | Notes / failure signature |
+|---|---|---|---|---|---|---|---|
+| YYYY-MM-DD | Name | Pixel 7 | Android 14 | Hotspot | Lifecycle 5+ min background |  |  |
+| YYYY-MM-DD | Name | Samsung S24 | One UI 6 | Hotspot | Lifecycle 5+ min background |  |  |
+| YYYY-MM-DD | Name | Xiaomi 13 | HyperOS 1.x | Hotspot | Connect + 5 min stability |  |  |
+| YYYY-MM-DD | Name | Redmi Note 12 | MIUI/HyperOS | Hotspot | Connect + 5 min stability |  |  |
+| YYYY-MM-DD | Name | Any | Any | Router Wi-Fi | Xiaomi/Redmi workaround validation |  |  |
+| YYYY-MM-DD | Name | Any | Any | Any | Port 50505 occupied fallback |  |  |
+| YYYY-MM-DD | Name | Any | Any | Any | Session refresh after AUTH |  |  |
+
+Acceptance gate:
+- Tier A (Pixel/Samsung) hotspot rows must be Pass
+- Xiaomi/Redmi must either pass hotspot or pass router Wi-Fi workaround row
+- Port fallback and session refresh rows must be Pass
+
 Definition of done for Phase 4:
 - Scripted checks pass
 - Tier A devices stable in hotspot mode

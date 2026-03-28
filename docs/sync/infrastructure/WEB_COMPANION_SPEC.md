@@ -25,7 +25,10 @@
 13. [What Is NOT Different on Web](#13-what-is-not-different-on-web)
 14. [Relationship to P2P Sync Server](#14-relationship-to-p2p-sync-server)
 15. [Implementation Order](#15-implementation-order)
-16. [Open Risks](#16-open-risks)
+16. [Responsive Desktop Layout](#16-responsive-desktop-layout)
+17. [Open Risks](#17-open-risks)
+18. [OEM Hotspot Support Matrix](#18-oem-hotspot-support-matrix)
+19. [Phase 4 QA Execution Checklist](#19-phase-4-qa-execution-checklist)
 
 ---
 
@@ -572,6 +575,65 @@ bool get isExpanded => MediaQuery.sizeOf(this).width >= 840;
 | Browser caches stale Flutter web build | Low | Version query param in URL: `?v=<schema_version>` busts cache |
 | `shelf_static` path traversal | Very Low | `shelf_static` blocks `..` internally; additional validation in route middleware |
 | Token stolen from URL in browser history | Low | Token in QR URL is single-use and expires in 5 min; history entry becomes useless immediately after use |
+
+---
+
+## 18. OEM Hotspot Support Matrix
+
+Phase 4 validation tracks hotspot reliability explicitly by OEM family.  
+Target network model remains: **phone and laptop on the same LAN**, with router Wi-Fi as preferred mode.
+
+| Device family | Hotspot mode expectation | Router Wi-Fi expectation | Current tier | User-facing guidance |
+|---|---|---|---|---|
+| Pixel (Android 13/14) | Stable | Stable | Tier A (supported) | Use normally |
+| Samsung One UI (S23/S24 class) | Stable | Stable | Tier A (supported) | Use normally |
+| Xiaomi MIUI/HyperOS | Intermittent (isolation variance) | Stable | Tier B (best effort) | If hotspot fails, move both devices to the same router Wi-Fi |
+| Redmi MIUI/HyperOS | Intermittent (isolation variance) | Stable | Tier B (best effort) | If hotspot fails, move both devices to the same router Wi-Fi |
+
+Interpretation:
+- Tier A: release blocker if unstable
+- Tier B: known OEM variance accepted for MVP with documented workaround
+
+---
+
+## 19. Phase 4 QA Execution Checklist
+
+Run the scripted checks first, then complete manual network/OEM validation:
+
+```bash
+./scripts/qa_web_companion_phase4.sh
+```
+
+### Manual checklist (record results in release notes)
+
+1. Lifecycle stability
+  - Start "Open on Laptop"
+  - Connect browser
+  - Minimise KashCube for 5+ minutes
+  - Expected: browser remains connected, no forced re-auth
+
+2. First-load readiness
+  - Open "Open on Laptop" from cold app start
+  - Expected: warm-up message appears briefly, QR shown only after readiness
+  - Expected: no first-request 500/timeouts in browser
+
+3. Port fallback
+  - Occupy port 50505 before launching feature
+  - Expected: server binds random port and QR uses the actual bound port
+
+4. OEM hotspot matrix
+  - Pixel + laptop on hotspot: verify stability
+  - Samsung + laptop on hotspot: verify stability
+  - Xiaomi/Redmi hotspot: if unstable, verify router Wi-Fi workaround succeeds
+
+5. Session refresh behavior
+  - Refresh browser tab after auth
+  - Expected: reconnect via session token, no new QR required
+
+Definition of done for Phase 4:
+- Scripted checks pass
+- Tier A devices stable in hotspot mode
+- Tier B workaround validated and documented
 
 ---
 

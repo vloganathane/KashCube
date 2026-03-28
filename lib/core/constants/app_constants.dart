@@ -17,6 +17,12 @@ class AppConstants {
   ///
   /// Runtime startup attempts this port first, then falls back to a random
   /// OS-assigned free port when this one is already in use.
+  /// Preferred port for the P2P / web-companion HTTP server.
+  ///
+  /// This is a *preferred default*, not a guarantee — if 50505 is already
+  /// bound by another process the server falls back to an OS-assigned random
+  /// port. Always read the actual bound port from [P2pServer.instance.port]
+  /// rather than referencing this constant at runtime.
   static const int p2pPort = 50505;
 
   // Categories (MVP - 10 pre-defined)

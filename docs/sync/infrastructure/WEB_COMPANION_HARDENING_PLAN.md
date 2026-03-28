@@ -20,6 +20,39 @@ This plan addresses 6 specific gaps with concrete patches, prioritized by depend
 
 ---
 
+## Implementation Status (28 March 2026)
+
+### Completed code phases
+
+1. **Phase 1 (Lifecycle foundation)** — ✅ implemented
+  - Commit: `74607f1`
+  - Delivered: wake-lock lifecycle service, browser connect/disconnect wiring, app lifecycle hooks
+
+2. **Phase 2 (Asset pre-warm + readiness gate)** — ✅ implemented
+  - Commit: `dcf0faf`
+  - Delivered: eager web UI extraction, `/health` readiness route, QR wait-until-healthy flow
+
+3. **Phase 3 (Port fallback)** — ✅ implemented
+  - Commit: `3debe25`
+  - Delivered: preferred-port bind then random fallback, runtime-port QR behavior
+
+4. **Phase 4 (Docs + scripted QA foundation)** — ✅ implemented
+  - Commit: `d9b3fbc`
+  - Delivered: OEM hotspot support matrix in spec and executable checklist script
+
+### Supporting commits
+
+- `7d9cfb3` — hardening plan document + generated plugin registrant update
+
+### Remaining work (manual / device validation)
+
+- Run real-device hotspot matrix tests (Pixel, Samsung, Xiaomi, Redmi)
+- Run 5+ minute background stability test on Android hardware
+- Run explicit port-conflict test with port 50505 occupied
+- Record outcomes in release notes / known-issues tracking
+
+---
+
 ## Gap Analysis
 
 ### Gap 1: Lifecycle — Server Dies When App Backgrounded

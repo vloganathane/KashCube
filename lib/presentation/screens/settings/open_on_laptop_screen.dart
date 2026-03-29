@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +33,14 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   String? _error;
   String _loadingMessage = 'Starting local server…';
   bool    _loading = true;
+
+  bool _diagnosticsLoading = false;
+  bool? _diagnosticsHealthy;
+  String? _diagnosticsIp;
+  int? _diagnosticsPort;
+  List<String> _diagnosticsInterfaces = const [];
+  List<String> _diagnosticsHints = const [];
+  String? _diagnosticsReport;
 
   @override
   void initState() {
@@ -74,6 +84,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     // AppConstants.p2pPort when startup falls back to a random free port.
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
+      await _refreshDiagnostics();
       setState(() {
         _error   = 'Could not start the local server. Restart the app and try again.';
         _loading = false;
@@ -83,6 +94,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
     final ip = await P2pDiscoveryService.getLocalIp();
     if (ip == null || ip == '0.0.0.0') {
+      await _refreshDiagnostics(portOverride: port);
       setState(() {
         _error   = 'Could not detect a local network address.\nConnect your phone to Wi-Fi or enable the hotspot, then try again.';
         _loading = false;
@@ -93,6 +105,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     final token = WebSessionService.instance.generateToken();
     final url   = 'http://$ip:$port?token=$token';
 
+    await _refreshDiagnostics(ipOverride: ip, portOverride: port);
+
     if (mounted) {
       setState(() {
         _url     = url;
@@ -100,6 +114,121 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       });
       trackEvent(ref, AnalyticsEvents.webCompanionQrShown);
     }
+  }
+
+  Future<void> _refreshDiagnostics({String? ipOverride, int? portOverride}) async {
+    if (!mounted) return;
+    setState(() {
+      _diagnosticsLoading = true;
+    });
+
+    final healthy = await P2pCoordinator.instance.isServerHealthy();
+    final port = portOverride ?? P2pCoordinator.instance.serverPort;
+    final ip = ipOverride ?? await P2pDiscoveryService.getLocalIp();
+    final interfaces = await _collectInterfaceSnapshot();
+    final hints = _buildNetworkHints(
+      healthy: healthy,
+      ip: ip,
+      port: port,
+      interfaces: interfaces,
+    );
+    final report = _buildDiagnosticsReport(
+      healthy: healthy,
+      ip: ip,
+      port: port,
+      interfaces: interfaces,
+      hints: hints,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _diagnosticsHealthy = healthy;
+      _diagnosticsIp = ip;
+      _diagnosticsPort = port;
+      _diagnosticsInterfaces = interfaces;
+      _diagnosticsHints = hints;
+      _diagnosticsReport = report;
+      _diagnosticsLoading = false;
+    });
+  }
+
+  Future<List<String>> _collectInterfaceSnapshot() async {
+    try {
+      final interfaces = await NetworkInterface.list(
+        type: InternetAddressType.IPv4,
+      );
+
+      final lines = <String>[];
+      for (final iface in interfaces) {
+        final addresses = iface.addresses
+            .where((a) => !a.isLoopback)
+            .map((a) => a.address)
+            .toList();
+        if (addresses.isEmpty) continue;
+        lines.add('${iface.name}: ${addresses.join(', ')}');
+      }
+      return lines;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<String> _buildNetworkHints({
+    required bool healthy,
+    required String? ip,
+    required int? port,
+    required List<String> interfaces,
+  }) {
+    final hints = <String>[];
+
+    if (!healthy || port == null) {
+      hints.add('Server is not fully ready yet. Tap "Refresh diagnostics" after a few seconds.');
+      return hints;
+    }
+
+    if (ip == null || ip == '0.0.0.0') {
+      hints.add('No reachable LAN IP detected on phone. Enable Wi-Fi or phone hotspot and retry.');
+      return hints;
+    }
+
+    hints.add('Same-device check: open http://127.0.0.1:$port on this phone. If this works, shelf is healthy.');
+    hints.add('Laptop check: open http://$ip:$port on laptop browser while both devices are on same Wi-Fi/hotspot.');
+    hints.add('If phone works but laptop fails, this is usually network isolation (guest Wi-Fi/AP isolation/VPN/firewall), not shelf.');
+
+    final hasLikelyLanIface = interfaces.any(
+      (line) => line.startsWith('wlan') || line.startsWith('en') || line.startsWith('ap'),
+    );
+    if (!hasLikelyLanIface) {
+      hints.add('No typical LAN interface found (wlan/en/ap). You may be on cellular/VPN-only path.');
+    }
+
+    return hints;
+  }
+
+  String _buildDiagnosticsReport({
+    required bool healthy,
+    required String? ip,
+    required int? port,
+    required List<String> interfaces,
+    required List<String> hints,
+  }) {
+    final lines = <String>[
+      'KashCube Web Companion Diagnostics',
+      'Time: ${DateTime.now().toIso8601String()}',
+      'Server healthy: $healthy',
+      'Bound port: ${port ?? 'unknown'}',
+      'Local IP: ${ip ?? 'unknown'}',
+      if (port != null) 'Loopback URL: http://127.0.0.1:$port',
+      if (ip != null && port != null) 'LAN URL: http://$ip:$port',
+      '',
+      'IPv4 interfaces:',
+      if (interfaces.isEmpty) '- none detected',
+      ...interfaces.map((e) => '- $e'),
+      '',
+      'Troubleshooting hints:',
+      ...hints.map((e) => '- $e'),
+    ];
+    return lines.join('\n');
   }
 
   @override
@@ -164,6 +293,18 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
                 onCopied: () => trackEvent(ref, AnalyticsEvents.webCompanionUrlCopied),
               ),
             ],
+
+            const SizedBox(height: AppSpacing.lg),
+            _NetworkDiagnosticsCard(
+              loading: _diagnosticsLoading,
+              healthy: _diagnosticsHealthy,
+              ip: _diagnosticsIp,
+              port: _diagnosticsPort,
+              interfaces: _diagnosticsInterfaces,
+              hints: _diagnosticsHints,
+              report: _diagnosticsReport,
+              onRefresh: _refreshDiagnostics,
+            ),
 
             const SizedBox(height: AppSpacing.xl),
             _InfoRow(
@@ -344,6 +485,174 @@ class _ErrorCard extends StatelessWidget {
             icon: const Icon(Icons.refresh),
             label: const Text('Retry'),
             onPressed: onRetry,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkDiagnosticsCard extends StatelessWidget {
+  const _NetworkDiagnosticsCard({
+    required this.loading,
+    required this.healthy,
+    required this.ip,
+    required this.port,
+    required this.interfaces,
+    required this.hints,
+    required this.report,
+    required this.onRefresh,
+  });
+
+  final bool loading;
+  final bool? healthy;
+  final String? ip;
+  final int? port;
+  final List<String> interfaces;
+  final List<String> hints;
+  final String? report;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusText = healthy == null
+        ? 'Unknown'
+        : (healthy! ? 'Healthy' : 'Warming up');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: context.colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(AppSpacing.sm),
+        border: Border.all(
+          color: context.colorScheme.outlineVariant,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.network_check,
+                size: 18,
+                color: context.colorScheme.primary,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Network diagnostics',
+                style: context.textTheme.titleSmall,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _DiagnosticLine(label: 'Server status', value: statusText),
+          _DiagnosticLine(
+            label: 'Bound port',
+            value: port?.toString() ?? 'unknown',
+          ),
+          _DiagnosticLine(
+            label: 'Local IP',
+            value: ip ?? 'unknown',
+          ),
+          if (port != null)
+            _DiagnosticLine(
+              label: 'Same-device URL',
+              value: 'http://127.0.0.1:$port',
+            ),
+          if (ip != null && port != null)
+            _DiagnosticLine(
+              label: 'Laptop URL',
+              value: 'http://$ip:$port',
+            ),
+          const SizedBox(height: AppSpacing.sm),
+          if (interfaces.isNotEmpty)
+            Text(
+              'Interfaces: ${interfaces.join(' | ')}',
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          if (hints.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.sm),
+            for (final hint in hints)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                child: Text(
+                  '• $hint',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                icon: loading
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh, size: 16),
+                label: const Text('Refresh diagnostics'),
+                onPressed: loading ? null : onRefresh,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                label: const Text('Copy report'),
+                onPressed: report == null
+                    ? null
+                    : () async {
+                        await Clipboard.setData(ClipboardData(text: report!));
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Diagnostics copied'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticLine extends StatelessWidget {
+  const _DiagnosticLine({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              value,
+              style: context.textTheme.bodySmall,
+            ),
           ),
         ],
       ),

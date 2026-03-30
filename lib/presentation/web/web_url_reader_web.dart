@@ -1,6 +1,8 @@
 // Web implementation — reads token from the browser's current URL.
 import 'package:web/web.dart' as web;
 
+import '../../data/services/app_logger.dart';
+
 const _kSessionId = 'kc_session_id';
 const _kWsUrl     = 'kc_ws_url';
 
@@ -8,7 +10,13 @@ Map<String, String> getUrlParams() {
   try {
     final uri = Uri.parse(web.window.location.href);
     return uri.queryParameters;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Failed to parse URL parameters',
+      category: 'web_url',
+      error: e,
+      stackTrace: st,
+    );
     return {};
   }
 }
@@ -21,7 +29,13 @@ String? getInitialToken() => getUrlParams()['token'];
 String? getOrigin() {
   try {
     return web.window.location.origin;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Failed to get window origin',
+      category: 'web_url',
+      error: e,
+      stackTrace: st,
+    );
     return null;
   }
 }
@@ -34,7 +48,13 @@ void saveSession(String sessionId, String wsUrl) {
   try {
     web.window.sessionStorage.setItem(_kSessionId, sessionId);
     web.window.sessionStorage.setItem(_kWsUrl, wsUrl);
-  } catch (_) {}
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to save session to sessionStorage',
+      category: 'web_session',
+      error: e,
+    );
+  }
 }
 
 /// Returns the stored session id, or null if not present.
@@ -42,7 +62,12 @@ String? getSavedSessionId() {
   try {
     final v = web.window.sessionStorage.getItem(_kSessionId);
     return (v == null || v.isEmpty) ? null : v;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to retrieve session ID from sessionStorage',
+      category: 'web_session',
+      error: e,
+    );
     return null;
   }
 }
@@ -52,7 +77,12 @@ String? getSavedWsUrl() {
   try {
     final v = web.window.sessionStorage.getItem(_kWsUrl);
     return (v == null || v.isEmpty) ? null : v;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to retrieve WebSocket URL from sessionStorage',
+      category: 'web_session',
+      error: e,
+    );
     return null;
   }
 }
@@ -62,5 +92,11 @@ void clearSession() {
   try {
     web.window.sessionStorage.removeItem(_kSessionId);
     web.window.sessionStorage.removeItem(_kWsUrl);
-  } catch (_) {}
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to clear session from sessionStorage',
+      category: 'web_session',
+      error: e,
+    );
+  }
 }

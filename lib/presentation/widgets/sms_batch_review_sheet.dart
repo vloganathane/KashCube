@@ -8,6 +8,7 @@ import '../../data/models/parsed_sms.dart';
 import '../../data/models/transaction.dart';
 import '../screens/transactions/add_edit_transaction_screen.dart';
 import '../../data/services/auto_categorizer.dart';
+import '../../data/services/app_logger.dart';
 import '../providers/dashboard_provider.dart';
 import '../providers/sms_provider.dart';
 import '../providers/transaction_provider.dart';
@@ -185,8 +186,14 @@ class _SmsBatchReviewSheetState extends State<SmsBatchReviewSheet> {
             .read(pendingSmsConfirmationsProvider.notifier)
             .removePending(parsed);
         savedCount++;
-      } catch (_) {
-        // Skip item on error — others continue
+      } catch (e, st) {
+        // Log and skip item on error — others continue
+        AppLogger.instance.warning(
+          'Failed to save SMS transaction from batch review',
+          category: 'sms_batch_review',
+          error: e,
+          stackTrace: st,
+        );
         errorCount++;
       } finally {
         if (mounted) setState(() => _saving.remove(parsed.smsBody));

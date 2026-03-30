@@ -102,7 +102,13 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     if (p?.staffJoinDate != null) {
       try {
         _staffJoinDate = DateTime.parse(p!.staffJoinDate!);
-      } catch (_) {}
+      } catch (e, st) {
+        AppLogger.instance.debug(
+          'Failed to parse party staff join date',
+          category: 'party_form_sheet',
+          error: e,
+        );
+      }
     }
     // Country & dial code — load from existing party if set
     if (p?.country != null) {
@@ -710,7 +716,12 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
           _email.text = contact.emails.first.address;
         }
       });
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to open contacts picker from party form',
+        category: 'party_form_sheet',
+        error: e,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

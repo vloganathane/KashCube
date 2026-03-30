@@ -9,6 +9,7 @@ import '../../core/utils/contacts_helper.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/credit.dart';
 import '../../data/models/party.dart';
+import '../../data/services/app_logger.dart';
 import '../providers/credit_provider.dart';
 import '../providers/loan_provider.dart';
 import '../providers/party_provider.dart';
@@ -413,7 +414,12 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                           if (contact == null || !mounted) return;
                           final name = contact.displayName.trim();
                           if (name.isNotEmpty) nav.pop((party: null, name: name));
-                        } catch (_) {
+                        } catch (e, st) {
+                          AppLogger.instance.warning(
+                            'Failed to open contacts picker',
+                            category: 'party_picker_field',
+                            error: e,
+                          );
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text(

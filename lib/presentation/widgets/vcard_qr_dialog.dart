@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart' show Share, XFile;
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/utils/deep_link_vcard.dart';
+import '../../data/services/app_logger.dart';
 
 /// Opens a dialog displaying [vcard] as a scannable QR code.
 ///
@@ -63,7 +64,12 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to capture QR image for vCard',
+        category: 'vcard_qr_dialog',
+        error: e,
+      );
       return null;
     }
   }

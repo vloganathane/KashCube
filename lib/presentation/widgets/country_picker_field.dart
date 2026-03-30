@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:world_countries/world_countries.dart';
 
 import '../../core/constants/app_spacing.dart';
+import '../../data/services/app_logger.dart';
 
 // ---------------------------------------------------------------------------
 // Utilities
@@ -31,7 +32,12 @@ WorldCountry? countryByName(String? name) {
     return WorldCountry.list.firstWhere(
       (c) => c.name.common == name,
     );
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Country lookup failed',
+      category: 'country_picker',
+      error: e,
+    );
     return null;
   }
 }

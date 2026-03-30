@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../data/services/app_logger.dart';
+
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../data/services/identity_service.dart';
@@ -67,7 +69,12 @@ String _buildQrPayload({
     final ip   = (uri.host.isNotEmpty && uri.host != '0.0.0.0') ? uri.host : null;
     final port = (uri.port > 0) ? uri.port : null;
     return (id: id, pk: pk, name: name, ip: ip, port: port);
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to parse P2P pairing QR payload',
+      category: 'pair_screen',
+      error: e,
+    );
     return null;
   }
 }
@@ -184,8 +191,13 @@ class _PairScreenState extends ConsumerState<PairScreen>
                 ? 'KashCube'
                 : myName.trim(),
           );
-        } catch (_) {
+        } catch (e, st) {
           // Non-fatal — back-pair will retry when mDNS resolves the peer.
+          AppLogger.instance.info(
+            'P2P back-pairing failed; will retry on mDNS resolution',
+            category: 'pair_screen',
+            error: e,
+          );
         } finally {
           client.dispose();
         }

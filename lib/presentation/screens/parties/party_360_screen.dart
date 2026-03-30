@@ -13,6 +13,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:provider' from '../../data/services/app_logger.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1400,7 +1402,13 @@ class _ContactCard extends StatelessWidget {
         ..phones = [if (party.phoneNumber != null) Phone(party.phoneNumber!)]
         ..emails = [if (party.email != null) Email(party.email!)];
       await FlutterContacts.openExternalInsert(contact);
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to open contacts app from party 360 screen',
+        category: 'party_360',
+        error: e,
+        stackTrace: st,
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Could not open contacts app.')),

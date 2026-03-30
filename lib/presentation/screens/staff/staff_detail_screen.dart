@@ -7,6 +7,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/repositories/party_repository_impl.dart';
+import '../../../data/services/app_logger.dart';
 import '../../providers/party_provider.dart';
 import '../../widgets/party_form_sheet.dart';
 import '../transactions/add_edit_transaction_screen.dart';
@@ -275,7 +276,12 @@ class _ProfileTab extends StatelessWidget {
   static String _fmtDate(String iso) {
     try {
       return DateFormat('d MMM yyyy').format(DateTime.parse(iso));
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to format staff date',
+        category: 'staff_detail',
+        error: e,
+      );
       return iso;
     }
   }

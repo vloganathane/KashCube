@@ -12,6 +12,7 @@ import '../models/business.dart';
 import '../models/invoice.dart';
 import '../models/party.dart';
 import '../models/quote.dart';
+import 'app_logger.dart';
 import 'gst_calculator.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
@@ -365,7 +366,13 @@ class InvoicePdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to load business logo',
+        category: 'invoice_pdf',
+        error: e,
+      );
+    }
     return null;
   }
 
@@ -406,7 +413,12 @@ class InvoicePdfService {
       final image = await painter.toImage(200);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to generate UPI QR code',
+        category: 'invoice_pdf',
+        error: e,
+      );
       return null;
     }
   }

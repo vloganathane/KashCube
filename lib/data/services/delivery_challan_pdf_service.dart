@@ -4,6 +4,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 
+import '../../data/services/app_logger.dart';
+
 import '../models/business.dart';
 import '../models/delivery_challan.dart';
 import '../models/party.dart';
@@ -171,7 +173,13 @@ class DeliveryChallanPdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to load business logo in delivery challan PDF',
+        category: 'delivery_challan_pdf',
+        error: e,
+      );
+    }
     return null;
   }
 }

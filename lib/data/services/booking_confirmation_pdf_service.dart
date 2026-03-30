@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../data/services/app_logger.dart';
+
 import '../models/booking.dart';
 import '../models/booking_item.dart';
 import '../models/business.dart';
@@ -190,7 +192,13 @@ class BookingConfirmationPdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to load business logo in booking confirmation PDF',
+        category: 'booking_confirmation_pdf',
+        error: e,
+      );
+    }
     return null;
   }
 }

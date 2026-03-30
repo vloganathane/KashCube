@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/delivery_challan.dart';
 import '../../data/repositories/delivery_challan_repository_impl.dart';
+import '../../data/services/app_logger.dart';
 import '../../data/services/inventory_service.dart';
 import '../../data/services/lot_allocation_service.dart';
 import '../../domain/repositories/delivery_challan_repository.dart';
@@ -135,7 +136,12 @@ final challanByInvoiceIdProvider =
       ref.watch(challansProvider).whenOrNull(data: (list) => list) ?? [];
   try {
     return all.firstWhere((c) => c.convertedInvoiceId == invoiceId);
-  } catch (_) {
+  } catch (e) {
+    AppLogger.instance.debug(
+      'Delivery challan not found by invoice ID',
+      category: 'delivery_challan_provider',
+      error: e,
+    );
     return null;
   }
 });

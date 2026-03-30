@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/my_identity.dart';
 import '../../data/repositories/identity_repository_impl.dart';
+import '../../data/services/app_logger.dart';
 import '../../data/services/database_helper.dart';
 import '../../data/services/identity_service.dart';
 import '../../domain/repositories/identity_repository.dart';
@@ -50,7 +51,12 @@ final identityInitProvider = FutureProvider<void>((ref) async {
   String defaultName;
   try {
     defaultName = kIsWeb ? 'KashCube Web' : Platform.localHostname;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to get device hostname for identity init',
+      category: 'identity_provider',
+      error: e,
+    );
     defaultName = 'Me';
   }
   await DatabaseHelper.instance.withDatabase(

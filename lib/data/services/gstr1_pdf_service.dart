@@ -14,6 +14,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import 'app_logger.dart';
+
 import 'gstr1_service.dart';
 
 class Gstr1PdfService {
@@ -430,7 +432,12 @@ class Gstr1PdfService {
       final yyyy = int.parse(code.substring(2));
       final dt = DateTime(yyyy, mm);
       return DateFormat('MMMM yyyy').format(dt);
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to parse GSTR1 period code',
+        category: 'gstr1_pdf',
+        error: e,
+      );
       return code;
     }
   }

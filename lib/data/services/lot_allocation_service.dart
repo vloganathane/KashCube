@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'app_logger.dart';
+
 import '../models/lot_movement.dart';
 import '../models/stock_lot.dart';
 import 'database_helper.dart';
@@ -50,7 +52,12 @@ class LotAllocation {
       return list
           .map((e) => LotAllocation.fromMap(e as Map<String, dynamic>))
           .toList();
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to decode lot allocation JSON',
+        category: 'lot_allocation',
+        error: e,
+      );
       return [];
     }
   }

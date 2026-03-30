@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'app_logger.dart';
+
 /// Manages ephemeral PDF files generated for invoices and quotes.
 ///
 /// PDFs are written into a `pdfs/` subdirectory of the system temp folder.
@@ -107,7 +109,12 @@ class PdfCacheManager {
         }
       }
       return total;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to calculate PDF cache size',
+        category: 'pdf_cache',
+        error: e,
+      );
       return 0;
     }
   }

@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/parsed_sms.dart';
+import 'app_logger.dart';
 
 /// Parses financial SMS from Indian banks and UPI apps.
 ///
@@ -874,8 +875,13 @@ class SmsParser {
         final year = int.parse(match.group(3)!);
         return DateTime(year, month, day);
       }
-    } catch (_) {
-      // Fall through
+    } catch (e, st) {
+      // Date parsing error — fall through
+      AppLogger.instance.debug(
+        'Failed to parse SMS date',
+        category: 'sms_parser',
+        error: e,
+      );
     }
     return null;
   }

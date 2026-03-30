@@ -14,8 +14,8 @@ class PermissionsScreen extends StatefulWidget {
 
 class _PermissionsScreenState extends State<PermissionsScreen> {
   static const _localAuth = LocalAuthentication();
-  static final bool _isAndroid =
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  
+  late final bool _isAndroid;
 
   bool _loading = true;
   PermissionStatus? _notifications;
@@ -27,6 +27,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
   @override
   void initState() {
     super.initState();
+    _isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     _refresh();
   }
 

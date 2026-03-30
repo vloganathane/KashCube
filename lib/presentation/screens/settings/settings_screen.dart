@@ -22,6 +22,7 @@ import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
 import 'fy_close_wizard_screen.dart';
 import 'notification_settings_screen.dart';
+import 'permissions_screen.dart';
 import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
@@ -1273,6 +1274,18 @@ class _PrivacySection extends ConsumerWidget {
     return _SettingsSection(
       title: 'Privacy',
       children: [
+        ListTile(
+          leading: const Icon(Icons.admin_panel_settings_outlined),
+          title: const Text('Permissions'),
+          subtitle: const Text('Check real-time permission status and troubleshoot'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const PermissionsScreen(),
+            ),
+          ),
+        ),
         consentAsync.when(
           loading: () => const ListTile(
             leading: Icon(Icons.analytics_outlined),
@@ -1411,9 +1424,22 @@ const _kPrivacyPolicy =
     '✗ Any personally identifiable financial information\n\n'
     'Disabling analytics stops all event collection immediately.\n\n'
     'PERMISSIONS\n'
-    'Required: Storage (for local SQLite database)\n'
-    'Optional: SMS read (to auto-detect bank/UPI alerts — processed on-device only)\n'
-    'Not required: Internet, Location, Contacts, Camera, Microphone\n\n'
+    'Core app storage: Local SQLite files on your device\n'
+    'Declared on Android build:\n'
+    '• Internet + network state (LAN web companion/P2P sync and optional analytics transport)\n'
+    '• Wi-Fi/multicast access (LAN discovery and local connectivity)\n'
+    '• Notifications + boot receiver + vibration (local reminders)\n'
+    '• Camera (QR scan and camera capture flows)\n'
+    '• Contacts read/write (optional import/save contact flows)\n'
+    '• Biometric/fingerprint (optional app lock)\n'
+    '• Billing/install-referrer permissions (Play Billing and install attribution)\n'
+    '• Additional platform/SDK-injected permissions used by enabled dependencies\n\n'
+    'Runtime prompts shown only when feature is used:\n'
+    '• Notifications (when enabling reminders)\n'
+    '• SMS (when enabling SMS auto-detect)\n'
+    '• Camera (when using QR/camera flows)\n'
+    '• Contacts (when importing/saving contacts)\n'
+    '• Biometric (when enabling biometric app lock)\n\n'
     'DATA SHARING\n'
     'We do not share any data — because we do not have access to it. Your data never leaves your device, is never uploaded, and is never sold.\n\n'
     'SECURITY\n'
@@ -1449,7 +1475,7 @@ const _kTermsOfUse =
     'DATA & PRIVACY\n'
     'Kash Cube is a privacy-first, local-first application. Financial records are stored on your device only. The Developer does not transmit your financial records to its servers.\n\n'
     'You are solely responsible for data accuracy, backups, and device security. The Developer cannot recover data lost due to device failure, theft, factory reset, or uninstall.\n\n'
-    'On Android, the App may request SMS permission only to detect financial transaction notifications. SMS data is processed on-device only.\n\n'
+    'On Android, the App may request optional runtime permissions for Notifications, SMS, Camera, Contacts, and Biometric features. These are requested contextually when the related feature is used. Financial and contact data is processed on-device only.\n\n'
     'SECURITY DISCLAIMER\n'
     'No software can be guaranteed fully secure. The Developer is not responsible for compromise caused by rooted devices, malware, or unauthorised device access.\n\n'
     'DISCLAIMER OF WARRANTIES\n'

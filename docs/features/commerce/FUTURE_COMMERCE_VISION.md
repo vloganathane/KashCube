@@ -28,7 +28,7 @@ This is the UPI model applied to commerce:
                      │  Bazaar Protocol (open spec, published)
                      │  - Product feed format (JSON-LD / CMP-compatible)
                      │  - Order record schema (signed JSON)
-                     │  - Transport: Nearby API / mDNS / HTTP
+                     │  - Transport: Nearby API / mDNS / HTTP / optional internet-assisted bootstrap
                      │  - Identity: Ed25519 device keys
                      │
 ┌────────────────────▼───────────────────────────────────┐
@@ -42,6 +42,8 @@ This is the UPI model applied to commerce:
 ```
 
 KashCube's total surface area in the commerce layer: **broadcast + receive.** Everything between those two points is an open ecosystem problem.
+
+**Privacy boundary:** Bazaar is offline-capable and local-first by design. Internet-assisted discovery, tunneling, signaling, or relay may exist in future only as explicit opt-in extensions and must never turn KashCube into the central custodian of seller transaction data.
 
 ---
 
@@ -109,6 +111,12 @@ Optional:
 - AI agents (ChatGPT Shopping, Perplexity) can discover the business's products
 - **Opt-in only.** Default off. No financial data in the feed — catalog names and prices only.
 - **Effort:** ~1 day.
+
+### Internet Policy for Bazaar Extensions
+- Bazaar remains useful without internet; offline and nearby modes stay first-class
+- Internet-assisted discovery, signaling, or relay are allowed only as opt-in extensions
+- KashCube must not operate a central transaction database for Bazaar commerce
+- If any metadata leaves the device for signaling, relay, or tunnel setup, that flow must be disclosed clearly to the user
 
 ---
 
@@ -385,6 +393,8 @@ Every transaction on the Bazaar Protocol flows through six independent, composab
 - **Transaction layer:** No payment processor (UPI Lite is NPCI's; cash is cash)
 - **Fulfillment layer:** No logistics network
 - **Dispute layer:** No arbitration authority (the protocol enables arbitration; communities run it)
+
+Internet-assisted bootstrap or relay, if ever introduced, must remain transport-only. It must not change these non-goals into a centralized KashCube platform.
 
 ---
 

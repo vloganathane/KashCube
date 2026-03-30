@@ -395,6 +395,18 @@ class _PartyPickerSheetState extends ConsumerState<_PartyPickerSheet> {
                               ref.read(settingsRepositoryProvider),
                         );
                         if (!proceed || !mounted) return;
+                        final granted = await requestContactsRuntimePermission();
+                        if (!granted || !mounted) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Contacts permission denied. Enable it in '
+                                'Settings to import contacts.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
                         try {
                           final contact =
                               await FlutterContacts.openExternalPick();

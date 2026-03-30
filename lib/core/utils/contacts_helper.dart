@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 
 import '../../domain/repositories/settings_repository.dart';
 
@@ -9,9 +10,8 @@ const _kContactsPickerExplained = 'contacts_picker_explained';
 /// accepted previously). After the first confirmation the dialog is never
 /// shown again.
 ///
-/// No READ_CONTACTS permission is required — [FlutterContacts.openExternalPick]
-/// uses the system picker intent (ACTION_PICK) which grants a one-time URI
-/// to only the selected contact.
+/// This dialog explains why contact access is needed before requesting the
+/// runtime contacts permission.
 Future<bool> requestContactsPickerRationale(
   BuildContext context, {
   required SettingsRepository settingsRepository,
@@ -28,9 +28,9 @@ Future<bool> requestContactsPickerRationale(
       icon: const Icon(Icons.contacts_outlined, size: 40),
       title: const Text('Import from Contacts'),
       content: const Text(
-        'Kash Cube will open your contacts app.\n\n'
-        'Only the contact you select will be imported — '
-        'your full contact list stays private on your device.',
+        'Kash Cube needs contacts access so you can pick a contact to import '
+        'or save a party into your address book.\n\n'
+        'Contact data is used only on-device.',
       ),
       actions: [
         TextButton(
@@ -50,4 +50,16 @@ Future<bool> requestContactsPickerRationale(
     return true;
   }
   return false;
+}
+
+/// Requests Android/iOS contacts runtime permission.
+///
+/// Returns `true` when permission is already granted or newly granted.
+Future<bool> requestContactsRuntimePermission() async {
+  try {
+    final granted = await FlutterContacts.requestPermission(readonly: false);
+    return granted;
+  } catch (_) {
+    return false;
+  }
 }

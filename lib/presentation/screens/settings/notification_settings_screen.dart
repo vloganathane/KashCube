@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../data/services/notification_service.dart';
 import '../../providers/settings_provider.dart';
 
 /// Screen for managing all notification and reminder preferences.
@@ -39,10 +40,31 @@ class NotificationSettingsScreen extends ConsumerWidget {
                     subtitle: const Text(
                         'Receive reminders for payments and appointments'),
                     value: globalEnabled,
-                    onChanged: (val) => ref
-                        .read(notificationSettingsProvider.notifier)
-                        .updateSetting(
-                            NotificationKeys.notificationsEnabled, val),
+                    onChanged: (val) async {
+                      if (val) {
+                        final granted =
+                            await NotificationService.instance.requestPermission();
+                        if (!granted) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Notification permission denied. Enable it from '
+                                'system settings to receive reminders.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+
+                      await ref
+                          .read(notificationSettingsProvider.notifier)
+                          .updateSetting(
+                            NotificationKeys.notificationsEnabled,
+                            val,
+                          );
+                    },
                   ),
                 ],
               ),

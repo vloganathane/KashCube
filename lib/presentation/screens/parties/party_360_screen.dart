@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../core/theme/kash_cube_colors.dart';
+import '../../../core/utils/contacts_helper.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/lifecycle_classifier.dart';
 import '../../../core/utils/phone_utils.dart';
@@ -1380,6 +1381,20 @@ class _ContactCard extends StatelessWidget {
 
   Future<void> _saveToContacts(BuildContext context) async {
     try {
+      final granted = await requestContactsRuntimePermission();
+      if (!granted) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Contacts permission denied. Enable it in Settings to save contacts.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
+      
       final contact = Contact()
         ..name = Name(last: party.name)
         ..phones = [if (party.phoneNumber != null) Phone(party.phoneNumber!)]

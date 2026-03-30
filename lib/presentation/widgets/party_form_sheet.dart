@@ -678,6 +678,18 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       );
       if (!proceed || !mounted) return;
 
+      final granted = await requestContactsRuntimePermission();
+      if (!granted || !mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Contacts permission denied. Enable it in Settings to import contacts.',
+            ),
+          ),
+        );
+        return;
+      }
+
       final contact = await FlutterContacts.openExternalPick();
       if (contact == null) return;
       setState(() {

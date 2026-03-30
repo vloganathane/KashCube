@@ -61,7 +61,6 @@ void main() async {
       // Initialise local notifications before the first frame.
       // 100% on-device — no network calls.
       await NotificationService.instance.initialize();
-      await NotificationService.instance.requestPermission();
     }
 
     // Ensure current_fy_start is in sync with today's FY.

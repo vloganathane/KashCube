@@ -105,6 +105,14 @@ class P2pServer {
   /// Current snapshot of the HTTP log (newest at end).
   List<String> get currentHttpLog => List.unmodifiable(_httpLogEntries);
 
+  /// Clears all captured HTTP request log entries and notifies listeners.
+  void clearHttpLog() {
+    _httpLogEntries.clear();
+    if (!_httpLogController.isClosed) {
+      _httpLogController.add(List.unmodifiable(_httpLogEntries));
+    }
+  }
+
   void _addHttpLog(String message) {
     final n  = DateTime.now();
     final ts = '${n.hour.toString().padLeft(2, '0')}:'
@@ -229,7 +237,7 @@ class P2pServer {
     await _server?.close(force: true);
     _server = null;
     _staticReady = false;
-    _httpLogEntries.clear();
+    clearHttpLog();
     debugPrint('[P2P] Server stopped');
   }
 

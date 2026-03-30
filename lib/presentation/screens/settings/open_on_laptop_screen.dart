@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
 import '../../../data/services/p2p/p2p_discovery_service.dart';
+import '../../../data/services/p2p/p2p_server.dart';
 import '../../../data/services/web/web_session_service.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/p2p_provider.dart';
@@ -295,15 +297,15 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             ],
 
             const SizedBox(height: AppSpacing.lg),
-            _NetworkDiagnosticsCard(
-              loading: _diagnosticsLoading,
-              healthy: _diagnosticsHealthy,
-              ip: _diagnosticsIp,
-              port: _diagnosticsPort,
-              interfaces: _diagnosticsInterfaces,
-              hints: _diagnosticsHints,
-              report: _diagnosticsReport,
-              onRefresh: _refreshDiagnostics,
+            _DiagnosticsTabs(
+              diagnosticsLoading: _diagnosticsLoading,
+              diagnosticsHealthy: _diagnosticsHealthy,
+              diagnosticsIp: _diagnosticsIp,
+              diagnosticsPort: _diagnosticsPort,
+              diagnosticsInterfaces: _diagnosticsInterfaces,
+              diagnosticsHints: _diagnosticsHints,
+              diagnosticsReport: _diagnosticsReport,
+              onRefreshDiagnostics: _refreshDiagnostics,
             ),
 
             const SizedBox(height: AppSpacing.xl),
@@ -656,6 +658,273 @@ class _DiagnosticLine extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _DiagnosticsTabs extends StatefulWidget {
+  const _DiagnosticsTabs({
+    required this.diagnosticsLoading,
+    required this.diagnosticsHealthy,
+    required this.diagnosticsIp,
+    required this.diagnosticsPort,
+    required this.diagnosticsInterfaces,
+    required this.diagnosticsHints,
+    required this.diagnosticsReport,
+    required this.onRefreshDiagnostics,
+  });
+
+  final bool diagnosticsLoading;
+  final bool? diagnosticsHealthy;
+  final String? diagnosticsIp;
+  final int? diagnosticsPort;
+  final List<String> diagnosticsInterfaces;
+  final List<String> diagnosticsHints;
+  final String? diagnosticsReport;
+  final Future<void> Function() onRefreshDiagnostics;
+
+  @override
+  State<_DiagnosticsTabs> createState() => _DiagnosticsTabsState();
+}
+
+class _DiagnosticsTabsState extends State<_DiagnosticsTabs>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(() {
+        if (mounted) setState(() {});
+      });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Network diagnostics'),
+            Tab(text: 'Web request log'),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (_tabController.index == 0)
+          _NetworkDiagnosticsCard(
+            loading: widget.diagnosticsLoading,
+            healthy: widget.diagnosticsHealthy,
+            ip: widget.diagnosticsIp,
+            port: widget.diagnosticsPort,
+            interfaces: widget.diagnosticsInterfaces,
+            hints: widget.diagnosticsHints,
+            report: widget.diagnosticsReport,
+            onRefresh: widget.onRefreshDiagnostics,
+          )
+        else
+          const _WebLogCard(),
+      ],
+    );
+  }
+}
+
+class _WebLogCard extends StatefulWidget {
+  const _WebLogCard();
+
+  @override
+  State<_WebLogCard> createState() => _WebLogCardState();
+}
+
+class _WebLogCardState extends State<_WebLogCard> {
+  static const _kAutoClearInterval = Duration(minutes: 2);
+
+  final ScrollController _scrollController = ScrollController();
+  bool _autoScroll = true;
+  bool _autoClear = false;
+  int _lastLogCount = 0;
+  Timer? _autoClearTimer;
+
+  @override
+  void dispose() {
+    _autoClearTimer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _toggleAutoClear(bool enabled) {
+    setState(() => _autoClear = enabled);
+    _autoClearTimer?.cancel();
+    if (!enabled) return;
+    _autoClearTimer = Timer.periodic(_kAutoClearInterval, (_) {
+      P2pServer.instance.clearHttpLog();
+    });
+  }
+
+  void _scrollToLatest() {
+    if (!_autoScroll || !_scrollController.hasClients) return;
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  String _buildLogReport(List<String> entries) {
+    final lines = <String>[
+      'KashCube Web Companion HTTP Log',
+      'Time: ${DateTime.now().toIso8601String()}',
+      if (entries.isEmpty) '(no requests captured yet)',
+      ...entries,
+    ];
+    return lines.join('\n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<String>>(
+      stream: P2pServer.instance.httpLogStream,
+      initialData: P2pServer.instance.currentHttpLog,
+      builder: (context, snapshot) {
+        final logs = snapshot.data ?? const <String>[];
+        final recentLogs = logs.length <= 25
+            ? logs
+            : logs.sublist(logs.length - 25);
+
+        if (recentLogs.length != _lastLogCount) {
+          _lastLogCount = recentLogs.length;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _scrollToLatest();
+          });
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.base),
+          decoration: BoxDecoration(
+            color: context.colorScheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppSpacing.sm),
+            border: Border.all(color: context.colorScheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 18,
+                    color: context.colorScheme.primary,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Web request log',
+                    style: context.textTheme.titleSmall,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Shows the latest HTTP activity reaching this phone. If this stays empty while opening from laptop, traffic is not reaching the server.',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  FilterChip(
+                    label: const Text('Auto-scroll latest'),
+                    selected: _autoScroll,
+                    onSelected: (value) {
+                      setState(() => _autoScroll = value);
+                      if (value) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          _scrollToLatest();
+                        });
+                      }
+                    },
+                  ),
+                  FilterChip(
+                    label: const Text('Auto-clear every 2 min'),
+                    selected: _autoClear,
+                    onSelected: _toggleAutoClear,
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxHeight: 220),
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: context.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppSpacing.xs),
+                ),
+                child: recentLogs.isEmpty
+                    ? Text(
+                        'No HTTP requests yet',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    : SingleChildScrollView(
+                        controller: _scrollController,
+                        child: SelectableText(
+                          recentLogs.join('\n'),
+                          style: context.textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                label: const Text('Copy web log'),
+                onPressed: () async {
+                  final report = _buildLogReport(recentLogs);
+                  await Clipboard.setData(ClipboardData(text: report));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Web log copied'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.delete_sweep_outlined, size: 16),
+                label: const Text('Clear log now'),
+                onPressed: () {
+                  P2pServer.instance.clearHttpLog();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Web log cleared'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

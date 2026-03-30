@@ -1,11 +1,11 @@
 # Privacy Architecture
 # Kash Cube - Privacy-First Design
 
-**Version:** 1.0  
-**Date:** February 24, 2026  
+**Version:** 1.1  
+**Date:** March 29, 2026  
 **Status:** Design Phase
 
-**Philosophy:** "Your data lives on YOUR phone. Forever."
+**Philosophy:** "Your data lives on YOUR phone by default. Internet use is optional, explicit, and tightly bounded."
 
 ---
 
@@ -16,29 +16,44 @@
 1. **Local-Only Storage**
    - All data stored in local SQLite database
    - No cloud sync by default
-   - No external API calls
+  - No mandatory remote backend for core app operation
 
-2. **No Data Collection**
+2. **Local-First, Not Internet-Required**
+  - Core finance and business workflows must remain usable without internet
+  - Internet-capable features are allowed only when explicitly user-enabled
+  - Remote transport must not weaken offline/LAN-first operation
+
+3. **No Data Collection**
    - Zero telemetry
    - No analytics tracking
    - No crash reporting to external services
    - No user profiling
 
-3. **No Account Required**
+4. **No Account Required**
    - No signup/login
    - No email/phone collection
    - No user identification
 
-4. **Transparent Permissions**
+5. **Transparent Permissions**
    - Only REQUEST one permission: READ_SMS
    - Clear explanation why we need it
    - App works without it (manual entry fallback)
 
-5. **User Control**
+6. **User Control**
    - User owns their data
    - Export anytime
    - Delete anytime
    - No vendor lock-in
+
+7. **No Central Data Custody**
+   - KashCube must not become the authoritative server for user financial or business records
+   - No silent upload of ledger, invoice, credit, payroll, or inventory data to KashCube-operated servers
+   - If remote transport exists, KashCube still remains local-first and device-owned
+
+8. **Metadata Disclosure**
+   - Any internet-assisted feature must disclose what leaves the device, when, and why
+   - Metadata exposure for signaling, relay, tunnel, or discovery services must be documented
+   - Users must opt in before such traffic occurs
 
 ---
 
@@ -73,7 +88,7 @@ SMS Inbox (Android)
     │ (READ_SMS permission)
     ▼
 SMS Parser (In-App)
-    │ (No network call)
+    │ (Local parse by default)
     ▼
 Transaction Object (Memory)
     │
@@ -84,11 +99,18 @@ SQLite Database (Device Storage)
 UI Display (Local)
 ```
 
-**No Cloud Path:**
+**Default rule:**
 ```
 ❌ SQLite → Network → Cloud Server
 ❌ Analytics → Firebase
 ❌ Crash Logs → Sentry
+```
+
+**Allowed only with explicit opt-in and narrow scope:**
+```
+✅ Local catalog/feed → one-button tunnel exposure
+✅ Local device ↔ peer signaling/bootstrap for remote pairing
+✅ Encrypted peer transport that does not make KashCube the data custodian
 ```
 
 ---
@@ -120,10 +142,13 @@ UI Display (Local)
 - App works without it (manual entry mode)
 - Can revoke in Android settings anytime
 
-### 3.2 No Other Permissions
+### 3.2 Other Permissions and Network Access
 
-**We Never Request:**
-- INTERNET (no network access needed)
+**Default stance:**
+- INTERNET is not required for core finance and bookkeeping workflows
+- INTERNET-enabled features, if added, must be opt-in and clearly disclosed
+
+**We Never Request by default for unrelated reasons:**
 - CAMERA (no receipt scanning in MVP)
 - LOCATION (no geo-tagging)
 - CONTACTS (no contact book access)
@@ -135,13 +160,34 @@ UI Display (Local)
 ```xml
 <manifest>
   <uses-permission android:name="android.permission.READ_SMS" />
-  
-  <!-- Explicitly declare we DON'T need internet -->
-  <uses-permission 
-    android:name="android.permission.INTERNET" 
-    tools:node="remove" />
+
+  <!-- INTERNET may exist for explicit opt-in features, but must never become
+       a mandatory dependency for core app operation. -->
+  <uses-permission android:name="android.permission.INTERNET" />
 </manifest>
 ```
+
+### 3.3 Permitted Internet Uses
+
+Internet use is acceptable only when all conditions below hold:
+
+1. The feature is explicitly user-enabled
+2. The app remains useful without that feature
+3. KashCube does not store the user's financial/business data centrally
+4. The data flow is documented in plain language
+5. Sensitive records remain end-to-end protected or device-local by design
+
+Examples of acceptable opt-in internet uses:
+- Public catalog/feed exposure initiated by the user
+- Tunnel-based access to a device-hosted catalog or web endpoint
+- Remote signaling/bootstrap for peer-to-peer sessions
+- Relay-assisted transport where KashCube is not the authoritative database
+
+Examples of forbidden uses:
+- Mandatory account-based cloud sync
+- Silent background upload of financial records
+- Central KashCube-hosted transaction ledger
+- Hidden telemetry or profiling infrastructure
 
 ---
 

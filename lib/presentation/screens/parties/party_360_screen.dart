@@ -13,8 +13,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:provider' from '../../data/services/app_logger.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -28,6 +26,7 @@ import '../../../core/utils/phone_utils.dart';
 import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/booking.dart';
 import '../../../data/models/credit.dart';
+import '../../../data/services/app_logger.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/lifecycle_info.dart';

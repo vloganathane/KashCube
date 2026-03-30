@@ -17,6 +17,7 @@ import '../../core/utils/image_compressor.dart';
 import '../../data/models/party.dart';
 import '../../data/models/party_address.dart';
 import '../../data/services/pincode_lookup_service.dart';
+import '../../data/services/app_logger.dart';
 import '../providers/party_address_provider.dart';
 import '../providers/party_provider.dart';
 import '../providers/settings_provider.dart';

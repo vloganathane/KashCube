@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'app_logger.dart';
+
 import 'database_helper.dart';
 
 /// Context-aware feature gate.
@@ -33,7 +35,13 @@ class PlanGate {
       return await DatabaseHelper.instance.withDatabase((db) async {
         return _checkLocalFeature(db, feature);
       });
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to check plan feature',
+        category: 'plan_gate',
+        error: e,
+        stackTrace: st,
+      );
       return false;
     }
   }
@@ -46,7 +54,13 @@ class PlanGate {
       return await DatabaseHelper.instance.withDatabase((db) async {
         return _localLimit(db, feature);
       });
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to get plan feature limit',
+        category: 'plan_gate',
+        error: e,
+        stackTrace: st,
+      );
       return 0;
     }
   }
@@ -124,7 +138,13 @@ class PlanGate {
         }
         return features;
       });
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to load local plan features map',
+        category: 'plan_gate',
+        error: e,
+        stackTrace: st,
+      );
       return {};
     }
   }

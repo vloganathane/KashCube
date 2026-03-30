@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
+
+import '../../../data/services/app_logger.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart' show Share, XFile;
 import 'package:sqflite/sqflite.dart';
@@ -43,7 +45,13 @@ Future<int> _dbFileSize() async {
     final dbPath = await getDatabasesPath();
     final file = File(p.join(dbPath, AppConstants.dbName));
     return await file.exists() ? await file.length() : 0;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Failed to get database file size',
+      category: 'storage_health',
+      error: e,
+      stackTrace: st,
+    );
     return 0;
   }
 }
@@ -58,7 +66,13 @@ Future<int> _billsSize() async {
       if (entity is File) total += await entity.length();
     }
     return total;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Failed to calculate bills directory size',
+      category: 'storage_health',
+      error: e,
+      stackTrace: st,
+    );
     return 0;
   }
 }

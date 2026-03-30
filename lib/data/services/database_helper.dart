@@ -7,6 +7,8 @@ import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
+import 'app_logger.dart';
+
 import '../../core/constants/app_constants.dart';
 import 'sync_event_bus.dart';
 
@@ -2148,12 +2150,24 @@ class DatabaseHelper {
         await db.execute(
           'ALTER TABLE linked_devices ADD COLUMN secondary_identity_id TEXT',
         );
-      } catch (_) {}
+      } catch (e, st) {
+        AppLogger.instance.debug(
+          'secondary_identity_id column already exists or migration not applicable',
+          category: 'db_schema',
+          error: e,
+        );
+      }
       try {
         await db.execute(
           'ALTER TABLE app_users ADD COLUMN identity_id TEXT',
         );
-      } catch (_) {}
+      } catch (e, st) {
+        AppLogger.instance.debug(
+          'identity_id column already exists or migration not applicable',
+          category: 'db_schema',
+          error: e,
+        );
+      }
 
       await db.insert('schema_version', {
         'version': 62,
@@ -3610,8 +3624,13 @@ class DatabaseHelper {
     // later than the v28 migration DDL. Silently ignored if already present.
     try {
       await db.execute('ALTER TABLE unit_types ADD COLUMN code TEXT');
-    } catch (_) {
+    } catch (e) {
       // Column already exists — ignore.
+      AppLogger.instance.debug(
+        'code column already exists in unit_types table',
+        category: 'db_schema',
+        error: e,
+      );
     }
     // [code, label, sortOrder] — code is null for non-GST units
     const units = <List<Object?>>[

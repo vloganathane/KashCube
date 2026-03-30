@@ -13,7 +13,7 @@ class PermissionsScreen extends StatefulWidget {
 }
 
 class _PermissionsScreenState extends State<PermissionsScreen> {
-  static const _localAuth = LocalAuthentication();
+  static final _localAuth = LocalAuthentication();
   
   late final bool _isAndroid;
 

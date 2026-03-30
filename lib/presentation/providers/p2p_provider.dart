@@ -151,7 +151,9 @@ class WebCompanionNotifier extends StateNotifier<bool> {
   Future<void> ensureStarted() async {
     // If the full LAN sync coordinator is already running we just piggyback.
     if (P2pCoordinator.instance.serverPort != null) {
-      if (mounted) state = true;
+      // Defer to next event-loop tick so this is safe to call from initState()
+      // (Riverpod forbids synchronous state mutations during widget tree build).
+      Future(() { if (mounted) state = true; });
       return;
     }
     if (state) return;

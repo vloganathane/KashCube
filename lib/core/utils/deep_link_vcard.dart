@@ -10,6 +10,8 @@ library;
 
 import 'dart:convert';
 
+import '../../data/services/app_logger.dart';
+
 import '../constants/app_config.dart';
 
 // ── Encode ────────────────────────────────────────────────────────────────────
@@ -47,7 +49,12 @@ String? decodeVCardUrl(String url) {
   try {
     final uri = Uri.parse(url);
     return decodeVCardUri(uri);
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to parse vCard URL',
+      category: 'deep_link_vcard',
+      error: e,
+    );
     return null;
   }
 }
@@ -64,7 +71,12 @@ String? decodeVCardUri(Uri uri) {
       return null;
     }
     return decoded;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to decode vCard URI',
+      category: 'deep_link_vcard',
+      error: e,
+    );
     return null;
   }
 }
@@ -84,7 +96,12 @@ String? decodeInstallReferrer(String referrer) {
       return null;
     }
     return decoded;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.debug(
+      'Failed to decode install referrer vCard',
+      category: 'deep_link_vcard',
+      error: e,
+    );
     return null;
   }
 }

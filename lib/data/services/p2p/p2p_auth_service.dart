@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart' as pkg_crypto;
 import 'package:cryptography/cryptography.dart';
 
+import '../app_logger.dart';
+
 /// Handles all cryptographic operations for P2P LAN sync.
 ///
 /// Responsibilities:
@@ -167,7 +169,12 @@ class P2pAuthService {
     DateTime ts;
     try {
       ts = DateTime.parse(receivedTs).toUtc();
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to parse P2P request timestamp',
+        category: 'p2p_auth',
+        error: e,
+      );
       return false;
     }
     final skew = DateTime.now().toUtc().difference(ts).abs();

@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../models/item_catalog.dart';
 import '../models/stock_movement.dart';
+import 'app_logger.dart';
 import 'database_helper.dart';
 
 /// Service for inventory stock tracking.
@@ -494,8 +495,13 @@ class InventoryService {
         'WHERE track_inventory = 1 AND stock_qty <= low_stock_threshold',
       );
       return (result.first['c'] as int? ?? 0);
-    } catch (_) {
+    } catch (e, st) {
       // Fallback for pre-v55 databases.
+      AppLogger.instance.debug(
+        'item_stock table not available; using item_catalog fallback',
+        category: 'inventory',
+        error: e,
+      );
       final result = await db.rawQuery(
         'SELECT COUNT(*) AS c FROM item_catalog '
         'WHERE is_active = 1 AND track_inventory = 1 '
@@ -522,8 +528,13 @@ class InventoryService {
         [limit],
       );
       return rows.map((r) => r['name'] as String).toList();
-    } catch (_) {
+    } catch (e, st) {
       // Fallback for pre-v55 databases.
+      AppLogger.instance.debug(
+        'item_stock table not available; using item_catalog fallback',
+        category: 'inventory',
+        error: e,
+      );
       final rows = await db.rawQuery(
         'SELECT name FROM item_catalog '
         'WHERE is_active = 1 AND track_inventory = 1 '

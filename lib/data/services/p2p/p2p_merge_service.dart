@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../app_logger.dart';
+
 import '../sync/sync_table_registry.dart';
 
 /// Tables that participate in P2P LAN sync.
@@ -281,7 +283,12 @@ class P2pMergeService {
     if (value == null) return null;
     try {
       return DateTime.parse(value as String).toUtc();
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to parse sync merge timestamp',
+        category: 'p2p_merge',
+        error: e,
+      );
       return null;
     }
   }

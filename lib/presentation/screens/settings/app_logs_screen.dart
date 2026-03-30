@@ -45,16 +45,16 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
   Future<void> _clearLogs() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Clear logs?'),
         content: const Text('This will remove all locally stored diagnostics logs.'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
             child: const Text('Clear'),
           ),
         ],

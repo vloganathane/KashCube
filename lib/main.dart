@@ -3,7 +3,8 @@ import 'dart:ui';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+  show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -34,103 +35,108 @@ import 'presentation/screens/settings/pin_lock_screen.dart';
 import 'presentation/web/web_connect_screen.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  await runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  // Set the correct SQLite backend (WASM on web, native on Android).
-  await initDatabaseFactory();
-  await AppLogger.instance.initialize();
+      // Set the correct SQLite backend (WASM on web, native on Android).
+      await initDatabaseFactory();
+      await AppLogger.instance.initialize();
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    AppLogger.instance.recordFlutterError(details);
-  };
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        AppLogger.instance.recordFlutterError(details);
+      };
 
-  PlatformDispatcher.instance.onError = (error, stack) {
-    AppLogger.instance.fatal(
-      'Unhandled platform dispatcher error',
-      category: 'platform',
-      error: error,
-      stackTrace: stack,
-    );
-    return true;
-  };
+      PlatformDispatcher.instance.onError = (error, stack) {
+        AppLogger.instance.fatal(
+          'Unhandled platform dispatcher error',
+          category: 'platform',
+          error: error,
+          stackTrace: stack,
+        );
+        return true;
+      };
 
-  // Firebase Analytics — opt-in anonymous analytics (no financial data).
-  // Runs on Android and web (Flutter Web companion). Gracefully skipped if
-  // config files are missing. See docs/technical/FIREBASE_SETUP.md.
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    // On web, analytics is always enabled (browser session, no financial data).
-    // On Android, respect the user's consent preference.
-    if (!kIsWeb) {
-      final repo = SettingsRepositoryImpl();
-      final consentVal = await repo.get(SettingsKeys.analyticsConsent);
-      await FirebaseAnalytics.instance
-          .setAnalyticsCollectionEnabled(consentVal == 'true');
-    }
-  } catch (e) {
-    // Not fatal — analytics simply stays disabled until configured.
-    AppLogger.instance.warning(
-      'Firebase init skipped (not configured)',
-      category: 'startup',
-      error: e,
-    );
-    debugPrint('[main] Firebase init skipped (not configured): $e');
-  }
+      // Firebase Analytics — opt-in anonymous analytics (no financial data).
+      // Currently configured for Android + web only.
+      final firebaseSupported =
+          kIsWeb || defaultTargetPlatform == TargetPlatform.android;
+      if (firebaseSupported) {
+        try {
+          await Firebase.initializeApp(
+            options: DefaultFirebaseOptions.currentPlatform,
+          );
+          // On web, analytics is always enabled (browser session, no financial data).
+          // On Android, respect the user's consent preference.
+          if (!kIsWeb) {
+            final repo = SettingsRepositoryImpl();
+            final consentVal = await repo.get(SettingsKeys.analyticsConsent);
+            await FirebaseAnalytics.instance
+                .setAnalyticsCollectionEnabled(consentVal == 'true');
+          }
+        } catch (e) {
+          // Not fatal — analytics simply stays disabled until configured.
+          AppLogger.instance.warning(
+            'Firebase init skipped (not configured)',
+            category: 'startup',
+            error: e,
+          );
+          debugPrint('[main] Firebase init skipped (not configured): $e');
+        }
+      }
 
-  // All pre-runApp initialisation is wrapped in a try/catch so that a failure
-  // in notification setup, WorkManager registration, or DB migration never
-  // leaves the app stuck on the native splash screen.
-  try {
-    if (!kIsWeb) {
-      // Initialise local notifications before the first frame.
-      // 100% on-device — no network calls.
-      await NotificationService.instance.initialize();
-    }
+      // All pre-runApp initialisation is wrapped in a try/catch so that a failure
+      // in notification setup, WorkManager registration, or DB migration never
+      // leaves the app stuck on the native splash screen.
+      try {
+        if (!kIsWeb) {
+          // Initialise local notifications before the first frame.
+          // 100% on-device — no network calls.
+          await NotificationService.instance.initialize();
+        }
 
-    // Ensure current_fy_start is in sync with today's FY.
-    // This also triggers isResetDue() to return true if the FY has flipped
-    // since the last launch, so invoice numbers reset correctly.
-    await FiscalYearService.instance.ensureCurrentFYStart();
+        // Ensure current_fy_start is in sync with today's FY.
+        // This also triggers isResetDue() to return true if the FY has flipped
+        // since the last launch, so invoice numbers reset correctly.
+        await FiscalYearService.instance.ensureCurrentFYStart();
 
-    if (!kIsWeb) {
-      // Show year-end notifications if the FY is within 7 days of ending
-      // or if the old FY was never closed after the new year started.
-      await NotificationService.instance.checkAndShowYearEndAlerts();
+        if (!kIsWeb) {
+          // Show year-end notifications if the FY is within 7 days of ending
+          // or if the old FY was never closed after the new year started.
+          await NotificationService.instance.checkAndShowYearEndAlerts();
 
-      // Backup reminder if no encrypted backup in 30 days (or ever).
-      await NotificationService.instance.checkAndShowBackupReminder();
+          // Backup reminder if no encrypted backup in 30 days (or ever).
+          await NotificationService.instance.checkAndShowBackupReminder();
 
-      // Register daily Action Center background task (fires ~9 AM via WorkManager).
-      // Non-fatal if WorkManager is unavailable on this device.
-      await registerActionCenterDailyTask();
+          // Register daily Action Center background task (fires ~9 AM via WorkManager).
+          // Non-fatal if WorkManager is unavailable on this device.
+          await registerActionCenterDailyTask();
 
-      // Register daily low-stock inventory alert task.
-      await registerLowStockDailyTask();
+          // Register daily low-stock inventory alert task.
+          await registerLowStockDailyTask();
 
-      // Re-register auto-backup task if the user had it enabled.
-      // WorkManager tasks can be cleared by OS updates; this restores the schedule.
-      await maybeRestoreAutoBackupTask();
-    }
-  } catch (e, st) {
-    // Non-fatal: log and proceed. The app UI handles DB errors at the feature
-    // level; a failure here must never prevent runApp() from being called.
-    AppLogger.instance.error(
-      'Pre-init error (non-fatal)',
-      category: 'startup',
-      error: e,
-      stackTrace: st,
-    );
-    debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
-  }
+          // Re-register auto-backup task if the user had it enabled.
+          // WorkManager tasks can be cleared by OS updates; this restores the schedule.
+          await maybeRestoreAutoBackupTask();
+        }
+      } catch (e, st) {
+        // Non-fatal: log and proceed. The app UI handles DB errors at the feature
+        // level; a failure here must never prevent runApp() from being called.
+        AppLogger.instance.error(
+          'Pre-init error (non-fatal)',
+          category: 'startup',
+          error: e,
+          stackTrace: st,
+        );
+        debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
+      }
 
-  // Attach the web companion wake-lock service so it starts listening for
-  // browser connection events before the first screen is rendered.
-  // Skipped on web — WakelockPlus is no-op on web and there is no LAN server.
-  if (!kIsWeb) WebCompanionService.instance.attach();
+      // Attach the web companion wake-lock service so it starts listening for
+      // browser connection events before the first screen is rendered.
+      // Skipped on web — WakelockPlus is no-op on web and there is no LAN server.
+      if (!kIsWeb) WebCompanionService.instance.attach();
 
-  runZonedGuarded(
-    () {
       runApp(const ProviderScope(child: KashCubeApp()));
     },
     (error, stack) {

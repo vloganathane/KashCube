@@ -6,6 +6,8 @@ import 'package:bonsoir/bonsoir.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_logger.dart';
+
 import '../../models/peer_device.dart';
 
 /// mDNS service type advertised and scanned for KashCube P2P sync.
@@ -202,9 +204,14 @@ class P2pDiscoveryService {
       // Peer is alive — update lastSeenAt.
       final updated = peer.copyWith(lastSeenAt: DateTime.now());
       _peers[identityId] = updated;
-    } catch (_) {
+    } catch (e, st) {
       // Any error (connection refused, timeout, socket exception) means the
       // server is unreachable — treat as gone.
+      AppLogger.instance.debug(
+        'Peer probe failed',
+        category: 'p2p_discovery',
+        error: e,
+      );
       _evictStalePeer(identityId, peer, 'probe failed');
     } finally {
       client.close(force: true);
@@ -434,7 +441,13 @@ class P2pDiscoveryService {
 
       debugPrint('[getLocalIp] selected → $best (priority $bestPriority)');
       return best;
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to get local IP address',
+        category: 'p2p_discovery',
+        error: e,
+      );
+    }
     return null;
   }
 
@@ -452,7 +465,13 @@ class P2pDiscoveryService {
         final info = await plugin.macOsInfo;
         return info.computerName;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to get device name',
+        category: 'p2p_discovery',
+        error: e,
+      );
+    }
     return 'KashCube Device';
   }
 

@@ -102,7 +102,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     if (p?.staffJoinDate != null) {
       try {
         _staffJoinDate = DateTime.parse(p!.staffJoinDate!);
-      } catch (e, st) {
+      } catch (e) {
         AppLogger.instance.debug(
           'Failed to parse party staff join date',
           category: 'party_form_sheet',

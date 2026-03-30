@@ -444,6 +444,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
         stackTrace: st,
       );
     }
+  }
 }
 
 enum _MenuAction { edit, ewayBill, delete }

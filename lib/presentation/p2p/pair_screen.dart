@@ -69,7 +69,7 @@ String _buildQrPayload({
     final ip   = (uri.host.isNotEmpty && uri.host != '0.0.0.0') ? uri.host : null;
     final port = (uri.port > 0) ? uri.port : null;
     return (id: id, pk: pk, name: name, ip: ip, port: port);
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to parse P2P pairing QR payload',
       category: 'pair_screen',
@@ -191,7 +191,7 @@ class _PairScreenState extends ConsumerState<PairScreen>
                 ? 'KashCube'
                 : myName.trim(),
           );
-        } catch (e, st) {
+        } catch (e) {
           // Non-fatal — back-pair will retry when mDNS resolves the peer.
           AppLogger.instance.info(
             'P2P back-pairing failed; will retry on mDNS resolution',

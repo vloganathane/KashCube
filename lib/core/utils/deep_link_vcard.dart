@@ -49,7 +49,7 @@ String? decodeVCardUrl(String url) {
   try {
     final uri = Uri.parse(url);
     return decodeVCardUri(uri);
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to parse vCard URL',
       category: 'deep_link_vcard',

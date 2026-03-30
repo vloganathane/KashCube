@@ -64,7 +64,7 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to capture QR image for vCard',
         category: 'vcard_qr_dialog',

@@ -32,7 +32,7 @@ WorldCountry? countryByName(String? name) {
     return WorldCountry.list.firstWhere(
       (c) => c.name.common == name,
     );
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Country lookup failed',
       category: 'country_picker',

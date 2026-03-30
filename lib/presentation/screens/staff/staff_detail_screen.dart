@@ -276,7 +276,7 @@ class _ProfileTab extends StatelessWidget {
   static String _fmtDate(String iso) {
     try {
       return DateFormat('d MMM yyyy').format(DateTime.parse(iso));
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to format staff date',
         category: 'staff_detail',

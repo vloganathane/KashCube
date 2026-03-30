@@ -7,6 +7,8 @@
 
 import 'dart:convert';
 
+import '../../data/services/app_logger.dart';
+
 // ─── Widget IDs ──────────────────────────────────────────────────────────────
 
 /// Stable string identifiers for every configurable home-screen section.
@@ -133,7 +135,12 @@ class HomeWidgetConfig {
       }
 
       return decoded..sort((a, b) => a.order.compareTo(b.order));
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to decode home widget config from preferences',
+        category: 'home_widget_config',
+        error: e,
+      );
       return List.of(HomeWidgetId.defaults);
     }
   }

@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../data/services/app_logger.dart';
+
 /// Compresses a picked image to fit within a 150 KB budget.
 ///
 /// Reads via [XFile.readAsBytes()] — the only cross-platform, sandbox-safe
@@ -59,7 +61,13 @@ Future<String> compressPickedImage(XFile xfile) async {
       final dest     = File('${dir.path}/$fileName');
       await dest.writeAsBytes(bytes);
       return dest.path;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to save image to docs directory',
+        category: 'image_compressor',
+        error: e,
+        stackTrace: st,
+      );
       return xfile.path;
     }
   }

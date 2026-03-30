@@ -263,8 +263,13 @@ class _LockGateState extends ConsumerState<_LockGate>
       if (authenticated && mounted) {
         setState(() => _isLocked = false);
       }
-    } catch (_) {
+    } catch (e, st) {
       // Biometric failed or cancelled — user can enter PIN manually
+      AppLogger.instance.debug(
+        'Biometric unlock attempt failed or cancelled',
+        category: 'biometric_auth',
+        error: e,
+      );
     }
   }
 

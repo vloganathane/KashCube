@@ -1,0 +1,13 @@
+lib/data/services/database_helper.dart:2150:      } catch (_) {}
+lib/data/services/database_helper.dart:2155:      } catch (_) {}
+lib/data/services/web/web_browser_session.dart:235:    try { channel.sink.close(); } catch (_) {}
+lib/data/services/invoice_pdf_service.dart:368:    } catch (_) {}
+lib/data/services/delivery_challan_pdf_service.dart:174:    } catch (_) {}
+lib/data/services/p2p/p2p_discovery_service.dart:437:    } catch (_) {}
+lib/data/services/p2p/p2p_discovery_service.dart:455:    } catch (_) {}
+lib/data/services/booking_confirmation_pdf_service.dart:193:    } catch (_) {}
+lib/presentation/app_shell.dart:139:    } catch (_) {}
+lib/presentation/web/web_url_reader_web.dart:37:  } catch (_) {}
+lib/presentation/web/web_url_reader_web.dart:65:  } catch (_) {}
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:431:    } catch (_) {}
+lib/presentation/widgets/party_form_sheet.dart:105:      } catch (_) {}

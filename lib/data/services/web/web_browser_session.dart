@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../app_logger.dart';
 import '../database_helper.dart';
 import '../sync/generic_sync_query_builder.dart';
 import '../sync/sync_table_registry.dart';
@@ -232,7 +233,16 @@ class WebBrowserSession {
     _disposed = true;
     _pingTimer?.cancel();
     _sub?.cancel();
-    try { channel.sink.close(); } catch (_) {}
+    try {
+      channel.sink.close();
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Web session close failed',
+        category: 'web_session',
+        error: e,
+        stackTrace: st,
+      );
+    }
     onDisposed?.call();
     debugPrint('[WebSession] Browser session ended');
   }

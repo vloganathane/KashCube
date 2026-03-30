@@ -1,0 +1,704 @@
+lib/core/utils/vcard_builder.dart:93:    name: biz.ownerName?.isNotEmpty == true ? biz.ownerName! : biz.name,
+lib/core/utils/lifecycle_classifier.dart:75:          final overdueDays = today.difference(_date(inv.dueDate!)).inDays;
+lib/core/utils/lifecycle_classifier.dart:260:            ? 'Next EMI ${_formatDate(l.nextEmiDate!)}'
+lib/core/utils/lifecycle_classifier.dart:272:          ? 'First EMI ${_formatDate(l.nextEmiDate!)}'
+lib/core/utils/business_flow_chain_builder.dart:268:              c.booking!.startDatetime.isBefore(now) &&
+lib/core/theme/kash_cube_colors.dart:87:    if (other is! KashCubeColors) return this;
+lib/data/repositories/item_catalog_repository_impl.dart:128:        itemId: item.id!,
+lib/data/repositories/purchase_bill_repository_impl.dart:73:          item.copyWith(billId: bill.id!).toMap(),
+lib/data/repositories/delivery_challan_repository_impl.dart:80:          item.copyWith(challanId: challan.id!).toMap(),
+lib/data/repositories/scheduled_payment_repository_impl.dart:142:      total += p.frequency!.toMonthly(p.amount);
+lib/data/repositories/scheduled_payment_repository_impl.dart:154:      final monthly = p.frequency!.toMonthly(p.amount);
+lib/data/repositories/loan_repository_impl.dart:148:        frequency: loan.repaymentFrequency!,
+lib/data/repositories/loan_repository_impl.dart:149:        installmentAmount: loan.emiAmount!,
+lib/data/repositories/loan_repository_impl.dart:150:        totalInstallments: loan.totalEmis!,
+lib/data/repositories/invoice_repository_impl.dart:87:            'quote_items', item.copyWith(quoteId: quote.id!).toMap());
+lib/data/repositories/invoice_repository_impl.dart:353:              'invoice_items', item.copyWith(invoiceId: invoice.id!).toMap());
+lib/data/models/invoice.dart:370:    return ewbValidUntil!.isAfter(DateTime.now());
+lib/data/models/invoice.dart:376:      dueDate!.isBefore(DateTime.now()) &&
+lib/data/models/cash_flow_event.dart:149:        date: inv.dueDate!,
+lib/data/models/cash_flow_event.dart:204:        date: c.dueDate!,
+lib/data/models/cash_flow_event.dart:260:        date: l.nextEmiDate!,
+lib/data/models/trusted_peer.dart:63:          'last_synced_at': lastSyncedAt!.toIso8601String(),
+lib/data/models/booking.dart:251:    return endDatetime!.difference(startDatetime).inHours >= 24;
+lib/data/models/booking.dart:264:    if (durationMinutes! >= 1440) {
+lib/data/models/booking.dart:265:      final nights = (durationMinutes! / 1440).round();
+lib/data/models/booking.dart:268:    if (durationMinutes! < 60) {
+lib/data/models/booking.dart:271:    final hours = durationMinutes! / 60;
+lib/data/models/stock_lot.dart:74:    return expiryDate!.difference(DateTime.now()).inDays;
+lib/data/models/notification_template.dart:75:          '$dateStr at $timeStr. See you then!\n— $sender';
+lib/data/models/notification_template.dart:79:        'Looking forward to seeing you!\n— $sender';
+lib/data/models/party_financial_summary.dart:111:        .map((i) => i.dueDate!);
+lib/data/models/party_financial_summary.dart:126:        .map((c) => c.dueDate!);
+lib/data/models/party_financial_summary.dart:141:        .map((l) => l.nextEmiDate!);
+lib/data/models/item_stock.dart:56:          'last_counted_at': lastCountedAt!.toIso8601String(),
+lib/data/models/scheduled_payment.dart:157:    final paid = lastPaidDate!;
+lib/data/models/bill.dart:90:    final paid = lastPaidDate!;
+lib/data/services/database_helper.dart:42:    return _database!;
+lib/data/services/pdf_document_data.dart:340:      (transporterName == null || transporterName!.isEmpty) &&
+lib/data/services/pdf_document_data.dart:341:      (vehicleNo == null || vehicleNo!.isEmpty) &&
+lib/data/services/pdf_document_data.dart:427:  /// Primary footer sentence, e.g. 'Thank you for your business!' for invoices,
+lib/data/services/web/web_ui_extractor.dart:24:    return _extractedPath!;
+lib/data/services/web/web_session_service.dart:45:    return _activeToken!;
+lib/data/services/web/web_session_service.dart:85:      DateTime.now().isBefore(_expiresAt!);
+lib/data/services/invoice_pdf_service.dart:161:      footerNote: 'Thank you for your business!',
+lib/data/services/invoice_pdf_service.dart:172:        invoice.deliveryAddress!,
+lib/data/services/invoice_pdf_service.dart:174:        invoice.deliveryCity!,
+lib/data/services/invoice_pdf_service.dart:176:        invoice.deliveryState!,
+lib/data/services/invoice_pdf_service.dart:178:        invoice.deliveryPincode!,
+lib/data/services/invoice_pdf_service.dart:220:        ? 'This quote is valid until ${_shortDate(quote.validUntil!)}.'
+lib/data/services/invoice_pdf_service.dart:362:    if (business.logoPath == null || business.logoPath!.isEmpty) return null;
+lib/data/services/invoice_pdf_service.dart:364:      final file = File(business.logoPath!);
+lib/data/services/invoice_pdf_service.dart:377:    final pa = Uri.encodeComponent(business.upiId!);
+lib/data/services/gstr1_service.dart:684:                    receiverGstin: inv.customerGstin!,
+lib/data/services/gstr1_service.dart:720:              receiverGstin: inv.customerGstin!,
+lib/data/services/gstr1_service.dart:728:                  ? _fmtDate(DateTime.tryParse(inv.originalInvoiceDate!) ??
+lib/data/services/lot_allocation_service.dart:98:      lotNo: lotNo?.trim().isNotEmpty == true ? lotNo!.trim() : null,
+lib/data/services/bulk_reminder_service.dart:87:        buf.write(' (due ${DateFormat('d MMM yyyy').format(item.dueDate!)})');
+lib/data/services/bulk_reminder_service.dart:94:    buf.writeln(' Thank you!');
+lib/data/services/delivery_challan_pdf_service.dart:117:        challan.deliveryAddress!,
+lib/data/services/delivery_challan_pdf_service.dart:119:        challan.deliveryCity!,
+lib/data/services/delivery_challan_pdf_service.dart:121:        challan.deliveryState!,
+lib/data/services/delivery_challan_pdf_service.dart:123:        challan.deliveryPincode!,
+lib/data/services/delivery_challan_pdf_service.dart:168:    if (business.logoPath == null || business.logoPath!.isEmpty) return null;
+lib/data/services/delivery_challan_pdf_service.dart:170:      final file = File(business.logoPath!);
+lib/data/services/party_statement_pdf_service.dart:203:                    pw.Text(party.address!, style: small),
+lib/data/services/p2p/p2p_discovery_service.dart:100:    await _broadcast!.ready;
+lib/data/services/p2p/p2p_discovery_service.dart:101:    await _broadcast!.start();
+lib/data/services/p2p/p2p_discovery_service.dart:110:      await _broadcast!.stop();
+lib/data/services/p2p/p2p_discovery_service.dart:133:    await _discovery!.ready;
+lib/data/services/p2p/p2p_discovery_service.dart:135:    _discovery!.eventStream!.listen(
+lib/data/services/p2p/p2p_discovery_service.dart:140:    await _discovery!.start();
+lib/data/services/p2p/p2p_discovery_service.dart:161:      await _discovery!.stop();
+lib/data/services/p2p/p2p_discovery_service.dart:232:        event.service?.resolve(_discovery!.serviceResolver);
+lib/data/services/p2p/p2p_coordinator.dart:185:    final port = P2pServer.instance.port!;
+lib/data/services/p2p/p2p_coordinator.dart:194:        identityId:   _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:205:        localIdentityId: _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:250:            peerIdentityId: _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:255:              _webLastPushedAt[plan.tableName] = state.lastSyncedAt!;
+lib/data/services/p2p/p2p_coordinator.dart:258:              _webLastPushedVersion[plan.tableName] = state.lastVersion!;
+lib/data/services/p2p/p2p_coordinator.dart:438:        identityId:   _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:445:        myIdentityId:      _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:539:          deviceId:   _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:693:        deviceKey:       _deviceKeyBytes!,
+lib/data/services/p2p/p2p_coordinator.dart:727:    final rows = await queryLocalChangesForTest(_db!, table, afterVersion);
+lib/data/services/p2p/p2p_coordinator.dart:739:      db:         _db!,
+lib/data/services/p2p/p2p_coordinator.dart:742:      deviceId:   _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:874:                peerIdentityId: _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:887:                  peerIdentityId: _identityId!,
+lib/data/services/p2p/p2p_coordinator.dart:952:      deviceId:   _identityId!,
+lib/data/services/p2p/p2p_server.dart:229:        'PORT fallback ${AppConstants.p2pPort} -> ${_server!.port}',
+lib/data/services/p2p/p2p_server.dart:233:    debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
+lib/data/services/p2p/p2p_server.dart:265:            schemaVersion:   _webSchemaVersion!,
+lib/data/services/p2p/p2p_server.dart:266:            deviceName:      _webDeviceName!,
+lib/data/services/p2p/p2p_server.dart:309:      final response = await cached!(request);
+lib/data/services/p2p/p2p_server.dart:351:    final accepted = await _pairHandler!(identityId, publicKey, displayName, proof);
+lib/data/services/p2p/p2p_server.dart:370:    final result = await _pullHandler!(table, afterVersion);
+lib/data/services/p2p/p2p_server.dart:386:    await _pushHandler!(table, rows);
+lib/data/services/p2p/p2p_server.dart:431:        final secret = await _secretForPeer!(identityId);
+lib/data/services/eway_bill_service.dart:335:        ? business!.gstNo!.trim().toUpperCase()
+lib/data/services/eway_bill_service.dart:342:        ? challan.customerGstin!.trim().toUpperCase()
+lib/data/services/eway_bill_service.dart:344:            ? customerParty!.gstin!.trim().toUpperCase()
+lib/data/services/eway_bill_service.dart:456:        ? business!.gstNo!.trim().toUpperCase()
+lib/data/services/eway_bill_service.dart:463:        ? invoice.customerGstin!.trim().toUpperCase()
+lib/data/services/eway_bill_service.dart:465:            ? customerParty!.gstin!.trim().toUpperCase()
+lib/data/services/booking_confirmation_pdf_service.dart:72:          booking.endDatetime!.difference(booking.startDatetime).inDays;
+lib/data/services/booking_confirmation_pdf_service.dart:74:          'Period: ${fmt.format(booking.startDatetime)} – ${fmt.format(booking.endDatetime!)}');
+lib/data/services/booking_confirmation_pdf_service.dart:79:        final mins = booking.durationMinutes!;
+lib/data/services/booking_confirmation_pdf_service.dart:89:      notesParts.add(booking.notes!);
+lib/data/services/booking_confirmation_pdf_service.dart:147:      footerNote: 'Thank you for your booking! We look forward to serving you.',
+lib/data/services/booking_confirmation_pdf_service.dart:187:    if (business.logoPath == null || business.logoPath!.isEmpty) return null;
+lib/data/services/booking_confirmation_pdf_service.dart:189:      final file = File(business.logoPath!);
+lib/data/services/pdf_layout_engine.dart:139:        _buildTransport(data.transport!),
+lib/data/services/pdf_layout_engine.dart:211:            seller.address!,
+lib/data/services/pdf_layout_engine.dart:285:          data.termsAndConditions!.isNotEmpty) ...<pw.Widget>[
+lib/data/services/pdf_layout_engine.dart:288:        pw.Text(data.termsAndConditions!, style: ts8),
+lib/data/services/pdf_layout_engine.dart:372:            'Due: ${DateFormatter.formatFull(data.dueDate!)}',
+lib/data/services/pdf_layout_engine.dart:377:            'Valid Until: ${DateFormatter.formatFull(data.validUntil!)}',
+lib/data/services/pdf_layout_engine.dart:446:                      data.subTypeLabel!,
+lib/data/services/pdf_layout_engine.dart:466:                      'Due: ${DateFormatter.formatFull(data.dueDate!)}',
+lib/data/services/pdf_layout_engine.dart:471:                      'Valid Until: ${DateFormatter.formatFull(data.validUntil!)}',
+lib/data/services/pdf_layout_engine.dart:581:          pw.Expanded(child: _partyBox('SHIP TO', _partyLines(data.shipTo!, includeEmail: false))),
+lib/data/services/pdf_layout_engine.dart:647:              data.placeOfSupply!.isNotEmpty) ...[
+lib/data/services/pdf_layout_engine.dart:648:            _metaRow('Place of Supply', data.placeOfSupply!),
+lib/data/services/pdf_layout_engine.dart:672:            pw.Text(data.notes!, style: const pw.TextStyle(fontSize: 9)),
+lib/data/services/pdf_layout_engine.dart:1063:      entries['Transporter'] = t.transporterName!;
+lib/data/services/pdf_layout_engine.dart:1066:      entries['Vehicle No.'] = t.vehicleNo!;
+lib/data/services/pdf_layout_engine.dart:1069:      entries['Mode'] = _modeLabel(t.transportMode!);
+lib/data/services/pdf_layout_engine.dart:1075:      entries['Dispatch Date'] = DateFormatter.formatFull(t.dispatchDate!);
+lib/data/services/pdf_layout_engine.dart:1176:                          data.notes!.isNotEmpty) ...[
+lib/data/services/pdf_layout_engine.dart:1227:            data.termsAndConditions!.isNotEmpty) ...[
+lib/data/services/pdf_layout_engine.dart:1242:            data.termsAndConditions!,
+lib/data/services/pdf_layout_engine.dart:1268:                        pw.MemoryImage(data.upiQrBytes!),
+lib/data/services/identity_service.dart:114:      final seed = await _keyPair!.extractPrivateKeyBytes();
+lib/data/services/identity_service.dart:119:    final pubKey = await _keyPair!.extractPublicKey();
+lib/data/services/identity_service.dart:121:    await settings.set(SettingsKeys.primaryPublicKey, _publicKeyBase64!);
+lib/data/services/identity_service.dart:142:      final seed = await _identityKeyPair!.extractPrivateKeyBytes();
+lib/data/services/identity_service.dart:146:    final pubKey = await _identityKeyPair!.extractPublicKey();
+lib/data/services/identity_service.dart:226:    return _algo.sign(message, keyPair: _keyPair!);
+lib/data/services/identity_service.dart:234:    return _algo.sign(message, keyPair: _identityKeyPair!);
+lib/presentation/web/web_connect_screen.dart:171:                      sync.errorMsg!,
+lib/presentation/providers/action_center_provider.dart:75:  if (creditsAsync.hasError) return AsyncError(creditsAsync.error!, creditsAsync.stackTrace!);
+lib/presentation/providers/action_center_provider.dart:76:  if (loansAsync.hasError)   return AsyncError(loansAsync.error!, loansAsync.stackTrace!);
+lib/presentation/providers/action_center_provider.dart:77:  if (invoicesAsync.hasError) return AsyncError(invoicesAsync.error!, invoicesAsync.stackTrace!);
+lib/presentation/providers/delivery_challan_provider.dart:44:          item.catalogItemId!,
+lib/presentation/providers/delivery_challan_provider.dart:53:          itemId: item.catalogItemId!,
+lib/presentation/providers/delivery_challan_provider.dart:69:          .reverseLotMovements('challan', challan.id!);
+lib/presentation/providers/delivery_challan_provider.dart:71:          .reverseMovementsFor('challan', challan.id!);
+lib/presentation/providers/delivery_challan_provider.dart:77:          item.catalogItemId!,
+lib/presentation/providers/delivery_challan_provider.dart:86:          itemId: item.catalogItemId!,
+lib/presentation/providers/web_sync_provider.dart:97:      await _channel!.ready;
+lib/presentation/providers/web_sync_provider.dart:99:      _sub = _channel!.stream.listen(
+lib/presentation/providers/web_sync_provider.dart:106:      _channel!.sink.add(jsonEncode({
+lib/presentation/providers/web_sync_provider.dart:166:      url_reader.saveSession(sessionId, _wsUrl!);
+lib/presentation/providers/web_sync_provider.dart:368:      if (row is! Map) continue;
+lib/presentation/providers/scheduled_payment_provider.dart:130:        final monthly = p.frequency!.toMonthly(p.amount);
+lib/presentation/providers/scheduled_payment_provider.dart:176:        final monthly = p.frequency!.toMonthly(p.amount);
+lib/presentation/providers/scheduled_payment_provider.dart:200:        final monthly = p.frequency!.toMonthly(p.amount);
+lib/presentation/providers/scheduled_payment_provider.dart:261:              ? PaymentMethod.fromDb(current.paymentMethod!)
+lib/presentation/providers/template_preview_provider.dart:174:    footerNote: 'Thank you for your business!',
+lib/presentation/providers/booking_provider.dart:110:      id = booking.id!;
+lib/presentation/providers/purchase_bill_provider.dart:62:          item.catalogItemId!,
+lib/presentation/providers/purchase_bill_provider.dart:71:          itemId: item.catalogItemId!,
+lib/presentation/providers/purchase_bill_provider.dart:89:          .reverseLotMovements('purchase_bill', bill.id!);
+lib/presentation/providers/purchase_bill_provider.dart:91:          .reverseMovementsFor('purchase_bill', bill.id!);
+lib/presentation/providers/purchase_bill_provider.dart:97:          item.catalogItemId!,
+lib/presentation/providers/purchase_bill_provider.dart:106:          itemId: item.catalogItemId!,
+lib/presentation/providers/app_user_provider.dart:98:        .getPermission(userId: user.id!, module: arg.module, businessId: arg.businessId);
+lib/presentation/providers/recurring_provider.dart:160:            ? PaymentMethod.fromDb(item.paymentMethod!)
+lib/presentation/providers/invoice_provider.dart:213:          .reverseLotMovements('invoice', invoice.id!);
+lib/presentation/providers/invoice_provider.dart:214:      await InventoryService.instance.reverseMovementsFor('invoice', invoice.id!);
+lib/presentation/providers/invoice_provider.dart:218:            item.catalogItemId!,
+lib/presentation/providers/invoice_provider.dart:221:            referenceId: invoice.id!,
+lib/presentation/providers/invoice_provider.dart:227:            itemId: item.catalogItemId!,
+lib/presentation/providers/invoice_provider.dart:230:            referenceId: invoice.id!,
+lib/presentation/providers/invoice_provider.dart:235:                .saveAllocationToInvoiceItem(item.id!, allocs);
+lib/presentation/providers/invoice_provider.dart:289:            item.catalogItemId!,
+lib/presentation/providers/invoice_provider.dart:298:            itemId: item.catalogItemId!,
+lib/presentation/providers/invoice_provider.dart:306:                .saveAllocationToInvoiceItem(item.id!, allocs);
+lib/presentation/providers/business_flow_provider.dart:86:      .map((p) => ref.read(businessFlowChainsProvider(p.id!).future))
+lib/presentation/screens/loans/loans_screen.dart:343:                          'Overdue!',
+lib/presentation/screens/loans/loans_screen.dart:374:                        'Due ${DateFormatter.format(loan.dueDate!)}',
+lib/presentation/screens/loans/loans_screen.dart:486:                  value: DateFormatter.format(loan.dueDate!)),
+lib/presentation/screens/loans/loans_screen.dart:491:                    '${loan.interestRate!.toStringAsFixed(1)}% (${loan.interestType.label})',
+lib/presentation/screens/loans/loans_screen.dart:497:                    '${CurrencyFormatter.format(loan.emiAmount ?? 0)} / ${loan.repaymentFrequency!.label}',
+lib/presentation/screens/loans/loans_screen.dart:563:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/loans/loans_screen.dart:567:        .recordPayment(widget.loan.id!, amount);
+lib/presentation/screens/loans/loans_screen.dart:596:                  .deleteLoan(widget.loan.id!);
+lib/presentation/screens/loans/loans_screen.dart:617:    final paymentsAsync = ref.watch(loanPaymentsProvider(loan.id!));
+lib/presentation/screens/loans/loans_screen.dart:731:          payment.id!,
+lib/presentation/screens/loans/loans_screen.dart:736:        .addPaymentAmount(loan.id!, payment.amount);
+lib/presentation/screens/loans/loans_screen.dart:738:    ref.invalidate(loanPaymentsProvider(loan.id!));
+lib/presentation/screens/loans/loans_screen.dart:770:        .markUnpaid(payment.id!);
+lib/presentation/screens/loans/loans_screen.dart:773:        .reversePaymentAmount(loan.id!, payment.paidAmount);
+lib/presentation/screens/loans/loans_screen.dart:775:    ref.invalidate(loanPaymentsProvider(loan.id!));
+lib/presentation/screens/loans/loans_screen.dart:836:            loan.interestRate!.toStringAsFixed(1);
+lib/presentation/screens/loans/loans_screen.dart:840:        _emiAmountController.text = loan.emiAmount!.toStringAsFixed(0);
+lib/presentation/screens/loans/loans_screen.dart:846:        _notesController.text = loan.notes!;
+lib/presentation/screens/loans/loans_screen.dart:1080:                      ? DateFormatter.format(_dueDate!)
+lib/presentation/screens/loans/loans_screen.dart:1154:                      '${_repaymentFrequency!.label} Instalment Amount *',
+lib/presentation/screens/loans/loans_screen.dart:1207:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/loans/loans_screen.dart:1227:      final existing = widget.loan!;
+lib/presentation/screens/settings/encrypted_backup_screen.dart:87:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/settings/encrypted_backup_screen.dart:102:        context.showSnackBar('Backup exported — keep your passphrase safe!');
+lib/presentation/screens/settings/encrypted_backup_screen.dart:309:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/settings/encrypted_backup_screen.dart:317:          .importEncrypted(_selectedPath!, _passCtrl.text.trim());
+lib/presentation/screens/settings/encrypted_backup_screen.dart:514:                _attemptsRemaining! < _maxAttempts) ...[
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:366:    final s = summary!;
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:510:                  '${CurrencyFormatter.format(s!.outstanding)} is still unpaid. '
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:526:                  '${s!.openCreditCount} credit${s.openCreditCount > 1 ? 's' : ''} '
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:553:                      'You\'re all set to close!',
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:740:            '${summary?.fyLabel ?? 'FY'} Closed!',
+lib/presentation/screens/settings/fy_close_wizard_screen.dart:846:                      ? 'Last backup: ${_fmtDate(_lastBackup!)}'
+lib/presentation/screens/settings/settings_screen.dart:1076:                              profile.name!,
+lib/presentation/screens/settings/settings_screen.dart:1084:                                profile.phone!,
+lib/presentation/screens/settings/accounts_manage_screen.dart:93:                          .setActive(account.id!, active: val),
+lib/presentation/screens/settings/accounts_manage_screen.dart:133:      parts.add('Opening: ${CurrencyFormatter.format(a.openingBalance!)}');
+lib/presentation/screens/settings/accounts_manage_screen.dart:136:      parts.add('Limit: ${CurrencyFormatter.format(a.creditLimit!)}');
+lib/presentation/screens/settings/accounts_manage_screen.dart:219:          _formatBalance(a.openingBalance!);
+lib/presentation/screens/settings/accounts_manage_screen.dart:223:          _formatBalance(a.creditLimit!);
+lib/presentation/screens/settings/unit_types_screen.dart:211:            if (_formKey.currentState!.validate()) {
+lib/presentation/screens/settings/manage_users_screen.dart:89:      await ref.read(appUsersProvider.notifier).deactivate(user.id!);
+lib/presentation/screens/settings/manage_users_screen.dart:226:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/settings/manage_users_screen.dart:236:        final existing = widget.existing!;
+lib/presentation/screens/settings/manage_users_screen.dart:258:          linkedPartyId = _selectedParty!.id!;
+lib/presentation/screens/settings/manage_users_screen.dart:377:              onChanged: (v) => setState(() => _role = v!),
+lib/presentation/screens/settings/user_permissions_screen.dart:39:        .getPermissionsForUser(widget.user.id!);
+lib/presentation/screens/settings/user_permissions_screen.dart:65:    final permissions = _perms!.entries.map((e) => UserPermission(
+lib/presentation/screens/settings/user_permissions_screen.dart:66:          userId:     widget.user.id!,
+lib/presentation/screens/settings/user_permissions_screen.dart:76:            userId:     widget.user.id!,
+lib/presentation/screens/settings/user_permissions_screen.dart:81:      ref.invalidate(userPermissionsProvider(widget.user.id!));
+lib/presentation/screens/settings/user_permissions_screen.dart:116:                        perm: _perms![module]!,
+lib/presentation/screens/settings/user_permissions_screen.dart:118:                            setState(() => _perms![module] = updated),
+lib/presentation/screens/settings/pin_lock_screen.dart:232:                  _errorMessage!,
+lib/presentation/screens/settings/open_on_laptop_screen.dart:289:              _ErrorCard(message: _error!, onRetry: _buildUrl)
+lib/presentation/screens/settings/open_on_laptop_screen.dart:291:              _QrCard(url: _url!),
+lib/presentation/screens/settings/open_on_laptop_screen.dart:294:                url: _url!,
+lib/presentation/screens/settings/open_on_laptop_screen.dart:522:        : (healthy! ? 'Healthy' : 'Warming up');
+lib/presentation/screens/settings/open_on_laptop_screen.dart:613:                        await Clipboard.setData(ClipboardData(text: report!));
+lib/presentation/screens/settings/businesses_screen.dart:56:                      .activate(businesses[i].id!),
+lib/presentation/screens/settings/businesses_screen.dart:107:      await ref.read(businessesProvider.notifier).remove(b.id!);
+lib/presentation/screens/settings/businesses_screen.dart:182:                      label: '+91 ${business.phone!}'),
+lib/presentation/screens/settings/businesses_screen.dart:202:                        ? business.ownerName!
+lib/presentation/screens/settings/businesses_screen.dart:234:        backgroundImage: FileImage(File(logoPath!)),
+lib/presentation/screens/settings/businesses_screen.dart:357:    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+lib/presentation/screens/settings/businesses_screen.dart:389:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/settings/businesses_screen.dart:585:                            _selectedCountry!.name.common == 'India')
+lib/presentation/screens/settings/businesses_screen.dart:694:              if (widget.business == null || !widget.business!.isActive)
+lib/presentation/screens/settings/businesses_screen.dart:750:                      image: FileImage(File(logoPath!)),
+lib/presentation/screens/settings/permissions_screen.dart:82:                  status: _notifications!,
+lib/presentation/screens/settings/permissions_screen.dart:90:                  status: _sms!,
+lib/presentation/screens/settings/permissions_screen.dart:98:                  status: _camera!,
+lib/presentation/screens/settings/permissions_screen.dart:106:                  status: _contacts!,
+lib/presentation/screens/settings/permissions_screen.dart:178:        onOpenSettings!.call();
+lib/presentation/screens/settings/storage_health_screen.dart:148:        : DateTime.now().difference(stats.lastBackup!).inDays;
+lib/presentation/screens/settings/storage_health_screen.dart:269:                              : 'Last backup: ${dateFormat.format(stats.lastBackup!)}',
+lib/presentation/screens/settings/my_personal_card_screen.dart:91:    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+lib/presentation/screens/settings/my_personal_card_screen.dart:159:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/settings/my_personal_card_screen.dart:337:                                _selectedCountry!.name.common == 'India')
+lib/presentation/screens/settings/my_personal_card_screen.dart:512:                      image: FileImage(File(photoPath!)),
+lib/presentation/screens/settings/template_builder_screen.dart:90:      return widget.existing!.copyWith(
+lib/presentation/screens/home/action_center_screen.dart:617:                        item.subtitle!,
+lib/presentation/screens/home/action_center_screen.dart:626:                        !item.lifecycleInfo!.stage.isTerminal) ...
+lib/presentation/screens/home/action_center_screen.dart:629:                        LifecycleTag(info: item.lifecycleInfo!),
+lib/presentation/screens/home/action_center_screen.dart:972:                  badge!,
+lib/presentation/screens/home/action_center_screen.dart:1004:            Text('All clear!',
+lib/presentation/screens/home/home_screen.dart:70:  String get tutorialTitle => 'Welcome to Kash Cube! 👋';
+lib/presentation/screens/home/home_screen.dart:74:      'Your privacy-first financial tracker is ready! Let me show you around '
+lib/presentation/screens/home/home_screen.dart:712:                        ? _name!
+lib/presentation/screens/home/home_screen.dart:795:                                  ? biz.ownerName!
+lib/presentation/screens/home/home_screen.dart:1455:                    sublabel!,
+lib/presentation/screens/home/home_screen.dart:1963:                    transactionId: transactionId!,
+lib/presentation/screens/home/home_screen.dart:2219:                builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+lib/presentation/screens/home/home_screen.dart:2650:          .recordPayment(item.loan.id!, amt);
+lib/presentation/screens/ledger/credits_screen.dart:200:                title: 'Due recorded!',
+lib/presentation/screens/ledger/credits_screen.dart:351:                c.dueDate!.isBefore(DateTime.now()))
+lib/presentation/screens/ledger/credits_screen.dart:414:            .recordPayment(credit.id!, amt);
+lib/presentation/screens/ledger/credits_screen.dart:444:          .deleteCredit(credit.id!);
+lib/presentation/screens/ledger/credits_screen.dart:577:        credit.dueDate!.isBefore(now);
+lib/presentation/screens/ledger/credits_screen.dart:615:              'Due ${DateFormatter.format(credit.dueDate!)}',
+lib/presentation/screens/ledger/credits_screen.dart:1115:                      ? DateFormatter.format(_dueDate!)
+lib/presentation/screens/ledger/credits_screen.dart:1145:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/ledger/credits_screen.dart:1156:        final updated = widget.credit!.copyWith(
+lib/presentation/screens/ledger/credits_screen.dart:1160:          pendingAmount: amount - widget.credit!.paidAmount,
+lib/presentation/screens/ledger/credits_screen.dart:1166:          customerId: _selectedCustomerId ?? widget.credit!.customerId,
+lib/presentation/screens/ledger/ledger_screen.dart:236:        return balance >= _minBalance!;
+lib/presentation/screens/ledger/ledger_screen.dart:242:        return balance <= _maxBalance!;
+lib/presentation/screens/ledger/ledger_screen.dart:246:      filtered = filtered.where((e) => e.transactionCount >= _minTransactionCount!).toList();
+lib/presentation/screens/ledger/ledger_screen.dart:406:      _minBalanceController.text = _minBalance!.toStringAsFixed(0);
+lib/presentation/screens/ledger/ledger_screen.dart:409:      _maxBalanceController.text = _maxBalance!.toStringAsFixed(0);
+lib/presentation/screens/ledger/ledger_screen.dart:642:                            'Last: ${DateFormatter.format(entry.lastTransactionDate!)} · ${entry.transactionCount} txn${entry.transactionCount == 1 ? '' : 's'}',
+lib/presentation/screens/gst/purchase_bills_screen.dart:126:        builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
+lib/presentation/screens/gst/purchase_bills_screen.dart:261:            Text(detail!,
+lib/presentation/screens/gst/gstr1_screen.dart:86:        businessId: business.id!,
+lib/presentation/screens/gst/gstr1_screen.dart:91:      _tabController!.animateTo(0);
+lib/presentation/screens/gst/gstr1_screen.dart:235:                tabController: _tabController!,
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:87:            billId: bill.id!,
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:113:              sourcePath: bill.attachmentPath!,
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:114:              originalFileName: bill.attachmentPath!.split('/').last,
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:155:    await ref.read(purchaseBillsProvider.notifier).remove(bill.id!);
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:241:            _NotesCard(notes: bill.notes!),
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:303:                  value: DateFormatter.formatFull(bill.dueDate!)),
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:305:              _InfoRow(label: 'GSTIN', value: bill.vendorGstin!),
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:308:                  label: 'Place of Supply', value: bill.placeOfSupply!),
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:411:                                      item.hsnCode!.isNotEmpty)
+lib/presentation/screens/gst/purchase_bill_detail_screen.dart:658:                                      transactionId: txn.id!),
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:209:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:236:          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:242:          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:247:        final ext = _pendingBill!.fileName.contains('.')
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:248:            ? '.${_pendingBill!.fileName.split('.').last.toLowerCase()}'
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:252:        await File(_pendingBill!.filePath).copy(destPath);
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:259:        businessId: business.id!,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:326:          paidAmount: _existingBill!.paidAmount,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:327:          status: _existingBill!.status,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:328:          itcAvailed: _existingBill!.itcAvailed,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:329:          createdAt: _existingBill!.createdAt,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:360:          .fetchById(widget.billId!);
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:478:      ref.read(catalogProvider.notifier).trackUsage(picked.id!);
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:595:                  _vendorGstinCtrl.text = party.gstin!;
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:815:      final fileName = _existingAttachmentPath!.split('/').last;
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:818:        filePath: _existingAttachmentPath!,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:827:      final isPdf = _pendingBill!.fileName.toLowerCase().endsWith('.pdf');
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:829:        filePath: _pendingBill!.filePath,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:830:        fileName: _pendingBill!.fileName,
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:1161:                              ? DateFormatter.formatFull(item.expiryDate!)
+lib/presentation/screens/gst/add_purchase_bill_screen.dart:1194:                            ? DateFormatter.formatFull(item.mfgDate!)
+lib/presentation/screens/gst/gstr3b_offset_screen.dart:96:        businessId: business.id!,
+lib/presentation/screens/gst/gstr3b_offset_screen.dart:190:                onPressed: () => _exportXls(workbookAsync!.value!),
+lib/presentation/screens/gst/gstr3b_offset_screen.dart:195:                onPressed: () => _exportPdf(workbookAsync!.value!),
+lib/presentation/screens/bookings/booking_detail_screen.dart:160:            _NotesCard(notes: booking.notes!),
+lib/presentation/screens/bookings/booking_detail_screen.dart:185:              await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:210:            await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:255:                    .markAsCompleted(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:264:                    .getItems(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:323:                    .linkInvoice(booking.id!, invoiceId);
+lib/presentation/screens/bookings/booking_detail_screen.dart:352:                builder: (_) => InvoiceDetailScreen(invoiceId: booking.invoiceId!),
+lib/presentation/screens/bookings/booking_detail_screen.dart:365:          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+lib/presentation/screens/bookings/booking_detail_screen.dart:368:          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+lib/presentation/screens/bookings/booking_detail_screen.dart:372:          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:414:          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+lib/presentation/screens/bookings/booking_detail_screen.dart:417:          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+lib/presentation/screens/bookings/booking_detail_screen.dart:421:          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:482:            await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:501:            ref.read(bookingsProvider.notifier).markReminderSent(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:533:      await ref.read(bookingsProvider.notifier).markAsCancelled(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:562:      await ref.read(bookingsProvider.notifier).markAsNoShow(booking.id!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:611:          bookingId: booking.id!,
+lib/presentation/screens/bookings/booking_detail_screen.dart:689:                booking.bookingRef!,
+lib/presentation/screens/bookings/booking_detail_screen.dart:720:      final end = DateFormat('d MMM yyyy').format(booking.endDatetime!);
+lib/presentation/screens/bookings/booking_detail_screen.dart:795:                          party!.phoneNumber!,
+lib/presentation/screens/bookings/booking_detail_screen.dart:861:    final itemsAsync = ref.watch(bookingItemsProvider(booking.id!));
+lib/presentation/screens/bookings/booking_detail_screen.dart:917:                                      item.sacCode!.isNotEmpty) ...[
+lib/presentation/screens/bookings/booking_detail_screen.dart:1077:              _LinkedInvoiceRow(invoiceId: booking.invoiceId!),
+lib/presentation/screens/bookings/create_booking_screen.dart:80:          (_) => _loadItemsForEdit(widget.booking!.id!),
+lib/presentation/screens/bookings/create_booking_screen.dart:90:    final booking = widget.booking!;
+lib/presentation/screens/bookings/create_booking_screen.dart:99:      _endTime = TimeOfDay.fromDateTime(booking.endDatetime!);
+lib/presentation/screens/bookings/create_booking_screen.dart:161:    final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+lib/presentation/screens/bookings/create_booking_screen.dart:184:        final b = widget.booking!;
+lib/presentation/screens/bookings/create_booking_screen.dart:273:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/bookings/create_booking_screen.dart:302:        _endDate!.year, _endDate!.month, _endDate!.day, t.hour, t.minute,
+lib/presentation/screens/bookings/create_booking_screen.dart:372:          await ref.read(invoiceByIdProvider(widget.booking!.invoiceId!).future);
+lib/presentation/screens/bookings/create_booking_screen.dart:622:                                ? DateFormat('d MMM yyyy').format(_endDate!)
+lib/presentation/screens/bookings/create_booking_screen.dart:634:                                ? _endTime!.format(context)
+lib/presentation/screens/bookings/create_booking_screen.dart:1127:                                ? '${CurrencyFormatter.format(service.unitPrice)} • ${_formatDuration(service.durationMinutes!)}'
+lib/presentation/screens/bookings/bookings_screen.dart:391:              builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+lib/presentation/screens/bookings/bookings_screen.dart:469:      final end = DateFormat('d MMM').format(booking.endDatetime!);
+lib/presentation/screens/bookings/bookings_screen.dart:545:            await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
+lib/presentation/screens/bookings/bookings_screen.dart:553:            await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+lib/presentation/screens/bookings/bookings_screen.dart:598:              booking.id!,
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:147:                  _NotesCard(notes: challan.notes!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:167:                          invoiceId: challan.convertedInvoiceId!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:236:          .dispatch(challan.id!, dispatchDate: now);
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:250:      await ref.read(challansProvider.notifier).markReturned(challan.id!);
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:271:          .convertToInvoice(challan.id!, invoiceNo);
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:276:            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:302:          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:305:          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:341:          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:344:          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:362:    await ref.read(challansProvider.notifier).remove(challan.id!);
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:532:                challan.customerGstin!.isNotEmpty)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:533:              _Row('Customer GSTIN', challan.customerGstin!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:535:                challan.placeOfSupply!.isNotEmpty)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:536:              _Row('Place of Supply', challan.placeOfSupply!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:539:                  DateFormatter.formatFull(challan.dispatchDate!)),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:542:                  DateFormatter.formatFull(challan.expectedReturnDate!)),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:544:              _Row('EWB No.', challan.ewbNo!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:635:                                item.description!.isNotEmpty)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:636:                              Text(item.description!,
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:734:                challan.transporterName!.isNotEmpty)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:735:              _Row('Transporter', challan.transporterName!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:737:              _Row('Vehicle No.', challan.vehicleNo!),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:739:                challan.transportMode!.isNotEmpty)
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:740:              _Row('Mode', _modeLabel(challan.transportMode!)),
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:837:      _mode = widget.challan.transportMode!;
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:840:      _vehicleCtrl.text = widget.challan.vehicleNo!;
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:843:      _transporterNameCtrl.text = widget.challan.transporterName!;
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:874:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/invoices/delivery_challan_detail_screen.dart:915:          name: transport.transporterName!,
+lib/presentation/screens/invoices/item_catalog_screen.dart:238:      await ref.read(catalogProvider.notifier).remove(item.id!);
+lib/presentation/screens/invoices/item_catalog_screen.dart:450:        text: item?.mrp == null ? '' : item!.mrp!.toStringAsFixed(2));
+lib/presentation/screens/invoices/item_catalog_screen.dart:452:        text: item?.dealerPrice == null ? '' : item!.dealerPrice!.toStringAsFixed(2));
+lib/presentation/screens/invoices/item_catalog_screen.dart:493:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:245:            _PaymentHistoryCard(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:249:            _NotesCard(notes: invoice.notes!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:253:            _LinkedQuoteCard(quoteId: invoice.quoteId!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:257:            _LinkedBookingCard(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:261:            _LinkedChallanCard(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:265:            _LinkedCreditNotesCard(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:331:      ref.invalidate(invoiceByIdProvider(invoice.id!));
+lib/presentation/screens/invoices/invoice_detail_screen.dart:397:        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:403:        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:473:        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:479:        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:505:          onSent: () => ref.read(invoicesProvider.notifier).markSent(invoice.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:522:          invoiceId: invoice.id!,
+lib/presentation/screens/invoices/invoice_detail_screen.dart:541:        final party = await parties.getById(invoice.customerPartyId!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:562:                .markReminderSent(invoice.id!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:597:      await ref.read(invoicesProvider.notifier).remove(invoice.id!);
+lib/presentation/screens/invoices/invoice_detail_screen.dart:735:      _mode = widget.invoice.transportMode!;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:738:      _vehicleCtrl.text = widget.invoice.vehicleNo!;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:741:      _transporterNameCtrl.text = widget.invoice.transporterName!;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:744:      _transporterGstinCtrl.text = widget.invoice.transporterGstin!;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:776:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/invoices/invoice_detail_screen.dart:804:          widget.invoice.id!,
+lib/presentation/screens/invoices/invoice_detail_screen.dart:828:          name: transport.transporterName!,
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1240:                  value: DateFormatter.format(invoice.dueDate!)),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1391:                    Text(item.description!,
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1546:            builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1635:            builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1723:            builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:1827:                        InvoiceDetailScreen(invoiceId: note.id!),
+lib/presentation/screens/invoices/invoice_detail_screen.dart:2020:        ? DateFormatter.format(invoice.dueDate!) 
+lib/presentation/screens/invoices/invoice_detail_screen.dart:2026:        'Thank you for your business!\n'
+lib/presentation/screens/invoices/invoice_detail_screen.dart:2109:                              transactionId: txn.id!,
+lib/presentation/screens/invoices/delivery_challans_screen.dart:169:                DeliveryChallanDetailScreen(challanId: challan.id!),
+lib/presentation/screens/invoices/delivery_challans_screen.dart:342:        : 'No ${filter!.label.toLowerCase()} challans.';
+lib/presentation/screens/invoices/ewb_preview_screen.dart:168:                      value: transport.vehicleNo!,
+lib/presentation/screens/invoices/ewb_preview_screen.dart:174:                      value: transport.transporterName!,
+lib/presentation/screens/invoices/ewb_preview_screen.dart:180:                      value: transport.transporterGstin!,
+lib/presentation/screens/invoices/invoices_screen.dart:193:                title: 'Invoice created!',
+lib/presentation/screens/invoices/invoices_screen.dart:462:            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/invoices_screen.dart:574:                      '  ·  Due ${DateFormatter.format(invoice.dueDate!)}',
+lib/presentation/screens/invoices/invoices_screen.dart:625:      await ref.read(invoicesProvider.notifier).remove(invoice.id!);
+lib/presentation/screens/invoices/invoices_screen.dart:717:            builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
+lib/presentation/screens/invoices/invoices_screen.dart:783:                      'Valid till ${DateFormatter.format(quote.validUntil!)}',
+lib/presentation/screens/invoices/invoices_screen.dart:833:      await ref.read(quotesProvider.notifier).remove(quote.id!);
+lib/presentation/screens/invoices/quote_detail_screen.dart:81:      final linked = ref.watch(invoiceByQuoteIdProvider(quote.id!));
+lib/presentation/screens/invoices/quote_detail_screen.dart:150:            _NotesCard(notes: quote.notes!),
+lib/presentation/screens/invoices/quote_detail_screen.dart:154:            _LinkedInvoiceCard(quoteId: quote.id!),
+lib/presentation/screens/invoices/quote_detail_screen.dart:158:            _ActivityCard(quoteId: quote.id!),
+lib/presentation/screens/invoices/quote_detail_screen.dart:263:          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
+lib/presentation/screens/invoices/quote_detail_screen.dart:305:          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
+lib/presentation/screens/invoices/quote_detail_screen.dart:329:        await ref.read(quotesProvider.notifier).markSent(quote.id!);
+lib/presentation/screens/invoices/quote_detail_screen.dart:330:        if (mounted) ref.invalidate(activityLogProvider(('quote', quote.id!)));
+lib/presentation/screens/invoices/quote_detail_screen.dart:367:          await ref.read(quotesProvider.notifier).convertToInvoice(quote.id!);
+lib/presentation/screens/invoices/quote_detail_screen.dart:377:          builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/quote_detail_screen.dart:402:            quote.id!,
+lib/presentation/screens/invoices/quote_detail_screen.dart:405:      if (mounted) ref.invalidate(activityLogProvider(('quote', quote.id!)));
+lib/presentation/screens/invoices/quote_detail_screen.dart:436:    await ref.read(quotesProvider.notifier).remove(quote.id!);
+lib/presentation/screens/invoices/quote_detail_screen.dart:739:                value: DateFormatter.formatFull(quote.validUntil!),
+lib/presentation/screens/invoices/quote_detail_screen.dart:843:                                item.description!.isNotEmpty)
+lib/presentation/screens/invoices/quote_detail_screen.dart:845:                                item.description!,
+lib/presentation/screens/invoices/quote_detail_screen.dart:1014:            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/quote_builder_screen.dart:153:        _initFromSourceInvoice(widget.sourceInvoice!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:230:        await ref.read(quoteRepositoryProvider).getById(widget.quoteId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:268:        await ref.read(invoiceRepositoryProvider).getById(widget.invoiceId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:349:        .getById(widget.challanId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:495:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/invoices/quote_builder_screen.dart:585:      savedId = quote.id!;
+lib/presentation/screens/invoices/quote_builder_screen.dart:613:                .getById(_customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:633:        (_existingInvoice!.status == InvoiceStatus.paid ||
+lib/presentation/screens/invoices/quote_builder_screen.dart:634:            _existingInvoice!.status == InvoiceStatus.partiallyPaid)) {
+lib/presentation/screens/invoices/quote_builder_screen.dart:713:      savedId = invoice.id!;
+lib/presentation/screens/invoices/quote_builder_screen.dart:741:                .getById(_customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:807:      savedId = challan.id!;
+lib/presentation/screens/invoices/quote_builder_screen.dart:810:      savedId = saved.id!;
+lib/presentation/screens/invoices/quote_builder_screen.dart:1009:        .convertToInvoice(_existingQuote!.id!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1036:        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1042:        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1048:        _existingQuote!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1108:        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1114:        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1120:        _existingQuote!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1134:      final due = _existingQuote!.validUntil;
+lib/presentation/screens/invoices/quote_builder_screen.dart:1135:      final message = 'Hi ${_existingQuote!.customerName},\n\n'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1136:          'Quote ${_existingQuote!.quoteNo} for ${CurrencyFormatter.format(_existingQuote!.total)}'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1142:        subject: 'Quote ${_existingQuote!.quoteNo}',
+lib/presentation/screens/invoices/quote_builder_screen.dart:1146:      await ref.read(quotesProvider.notifier).markSent(_existingQuote!.id!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1188:        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1194:        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1200:        _existingInvoice!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1214:      final due = _existingInvoice!.dueDate;
+lib/presentation/screens/invoices/quote_builder_screen.dart:1215:      final message = 'Hi ${_existingInvoice!.customerName},\n\n'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1216:          'Invoice ${_existingInvoice!.invoiceNo} for ${CurrencyFormatter.format(_existingInvoice!.total)}'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1222:        subject: 'Invoice ${_existingInvoice!.invoiceNo}',
+lib/presentation/screens/invoices/quote_builder_screen.dart:1226:      await ref.read(invoicesProvider.notifier).markSent(_existingInvoice!.id!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1252:        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1258:        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1264:        _existingInvoice!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1307:            .getById(_existingChallan!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1313:            .getById(_existingChallan!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1316:        _existingChallan!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1372:            .getById(_existingChallan!.businessId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1378:            .getById(_existingChallan!.customerPartyId!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1381:        _existingChallan!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:1390:      final message = 'Hi ${_existingChallan!.customerName},\n\n'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1391:          'Delivery Challan ${_existingChallan!.challanNo} '
+lib/presentation/screens/invoices/quote_builder_screen.dart:1392:          '(${_existingChallan!.items.length} item(s)).\n\n'
+lib/presentation/screens/invoices/quote_builder_screen.dart:1396:        subject: 'Delivery Challan ${_existingChallan!.challanNo}',
+lib/presentation/screens/invoices/quote_builder_screen.dart:1432:          .convertToInvoice(_existingChallan!.id!, invoiceNo);
+lib/presentation/screens/invoices/quote_builder_screen.dart:1439:          builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+lib/presentation/screens/invoices/quote_builder_screen.dart:1819:      title = isEdit ? _existingChallan!.challanNo : 'New Challan';
+lib/presentation/screens/invoices/quote_builder_screen.dart:1950:                  (p) => p!.name.trim().toLowerCase() == name.trim().toLowerCase(),
+lib/presentation/screens/invoices/quote_builder_screen.dart:1961:                        .getByPartyId(party.id!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:2167:                onChanged: (v) => setState(() => _challanPurpose = v!),
+lib/presentation/screens/invoices/quote_builder_screen.dart:2200:                      onChanged: (v) => setState(() => _transportMode = v!),
+lib/presentation/screens/invoices/quote_builder_screen.dart:2301:                      .trackUsage(item.id!);
+lib/presentation/screens/invoices/quote_builder_screen.dart:2665:              mrp: widget.item.mrp!,
+lib/presentation/screens/invoices/quote_builder_screen.dart:2980:                          'Delivery: ${selectedAddress!.label}',
+lib/presentation/screens/invoices/quote_builder_screen.dart:2986:                        if (selectedAddress!.displayLine.isNotEmpty)
+lib/presentation/screens/invoices/quote_builder_screen.dart:2988:                            selectedAddress!.displayLine,
+lib/presentation/screens/auth/staff_pin_screen.dart:76:    ref.read(appUserRepositoryProvider).recordLogin(widget.user.id!);
+lib/presentation/screens/auth/staff_pin_screen.dart:151:                _errorMessage!,
+lib/presentation/screens/auth/staff_pin_screen.dart:225:                    label!,
+lib/presentation/screens/business/global_document_ledger_screen.dart:76:            i.dueDate!.isBefore(now))
+lib/presentation/screens/search/search_screen.dart:668:            MaterialPageRoute(builder: (_) => TransactionDetailScreen(transactionId: txn.id!)),
+lib/presentation/screens/search/search_screen.dart:724:            MaterialPageRoute(builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!)),
+lib/presentation/screens/search/search_screen.dart:847:            MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: booking.id!)),
+lib/presentation/screens/search/search_screen.dart:910:            builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
+lib/presentation/screens/search/search_screen.dart:1066:                builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!)),
+lib/presentation/screens/search/search_screen.dart:1169:                builder: (_) => QuoteDetailScreen(quoteId: quote.id!)),
+lib/presentation/screens/transactions/transactions_screen.dart:265:                title: 'Your transaction is saved!',
+lib/presentation/screens/transactions/transactions_screen.dart:344:            : DateTime(_dateTo!.year, _dateTo!.month, _dateTo!.day, 23, 59, 59);
+lib/presentation/screens/transactions/transactions_screen.dart:592:                                            transactionId: txn.id!,
+lib/presentation/screens/transactions/transactions_screen.dart:832:                                  transactionId: txn.id!,
+lib/presentation/screens/transactions/transactions_screen.dart:1176:                          : DateFormatter.format(_dateFrom!),
+lib/presentation/screens/transactions/transactions_screen.dart:1203:                          : DateFormatter.format(_dateTo!),
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:147:        _interestRateController.text = txn.interestRate!.toStringAsFixed(1);
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:150:      _loadExistingBill(txn.id!);
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:159:        _partyNameController.text = widget.initialPartyName!;
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:162:        final rawAmount = widget.initialAmount!.toStringAsFixed(
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:163:          widget.initialAmount! == widget.initialAmount!.roundToDouble() ? 0 : 2,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:168:        _notesController.text = widget.initialDescription!;
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:680:              if (formKey.currentState!.validate()) {
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1114:    final suggestion = _activeSuggestion!;
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1195:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1265:            ? widget.transaction!.id!
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1321:          .deleteTransaction(widget.transaction!.id!);
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1340:            filePath: _existingBill!.filePath,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1341:            fileName: _existingBill!.fileName,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1342:            isPdf: _existingBill!.isPdf,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1343:            fileSize: _existingBill!.fileSize,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1352:      final isPdf = _pendingBill!.fileName.toLowerCase().endsWith('.pdf');
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1362:            filePath: _pendingBill!.filePath,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1363:            fileName: _pendingBill!.fileName,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1404:        sourcePath: _pendingBill!.filePath,
+lib/presentation/screens/transactions/add_edit_transaction_screen.dart:1405:        originalFileName: _pendingBill!.fileName,
+lib/presentation/screens/transactions/category_management_screen.dart:102:              if (formKey.currentState!.validate()) {
+lib/presentation/screens/transactions/transaction_detail_screen.dart:136:                    value: transaction.partyName!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:162:                    value: transaction.upiApp!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:168:                    value: transaction.upiRefNo!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:174:                    value: transaction.referenceId!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:180:                    value: transaction.notes!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:186:                    value: transaction.tags!.join(', '),
+lib/presentation/screens/transactions/transaction_detail_screen.dart:219:                                invoiceId: transaction.linkedInvoiceId!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:279:                  _BillSection(transactionId: transaction.id!),
+lib/presentation/screens/transactions/transaction_detail_screen.dart:303:                      transaction.smsBody!,
+lib/presentation/screens/transactions/transaction_detail_screen.dart:317:                      'Created ${DateFormatter.formatDateTime(transaction.createdAt!)}',
+lib/presentation/screens/transactions/transaction_detail_screen.dart:329:                        'Updated ${DateFormatter.formatDateTime(transaction.updatedAt!)}',
+lib/presentation/screens/transactions/transaction_detail_screen.dart:403:          .deleteTransaction(transaction.id!);
+lib/presentation/screens/transactions/transaction_detail_screen.dart:408:          onDeleted!();
+lib/presentation/screens/bills/bills_screen.dart:161:    ref.read(scheduledBillsProvider.notifier).markPaid(bill.id!);
+lib/presentation/screens/bills/bills_screen.dart:183:              ref.read(scheduledBillsProvider.notifier).deleteBill(bill.id!);
+lib/presentation/screens/bills/bills_screen.dart:662:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/bills/bills_and_payments_screen.dart:439:              _Row('Payment', item.paymentMethod!),
+lib/presentation/screens/bills/bills_and_payments_screen.dart:443:              _Row('Last paid', _dateFmt.format(item.lastPaidDate!)),
+lib/presentation/screens/bills/bills_and_payments_screen.dart:445:              _Row('Notes', item.notes!),
+lib/presentation/screens/bills/bills_and_payments_screen.dart:521:                      ref.read(scheduledPaymentsProvider.notifier).remove(item.id!);
+lib/presentation/screens/bills/bills_and_payments_screen.dart:932:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/inventory/inventory_screen.dart:140:          .recordPhysicalCount(item.id!, actualQty, notes: notes);
+lib/presentation/screens/inventory/inventory_screen.dart:152:      await notifier.addStock(item.id!, qty, notes: notes);
+lib/presentation/screens/inventory/inventory_screen.dart:154:      await notifier.deductStock(item.id!, qty, notes: notes);
+lib/presentation/screens/inventory/inventory_screen.dart:156:      await notifier.setStock(item.id!, qty, notes: notes);
+lib/presentation/screens/inventory/inventory_screen.dart:291:                  ? 'No low-stock items — all good!'
+lib/presentation/screens/inventory/inventory_screen.dart:399:                    'Counted ${DateFormat('d MMM').format(item.lastCountedAt!)}',
+lib/presentation/screens/inventory/inventory_screen.dart:405:                      '  ·  ${item.lastCountedQty!.toStringAsFixed(item.lastCountedQty! % 1 == 0 ? 0 : 1)} ${item.unit}',
+lib/presentation/screens/inventory/inventory_screen.dart:559:            if (!_form.currentState!.validate()) return;
+lib/presentation/screens/inventory/inventory_screen.dart:712:            if (!_form.currentState!.validate()) return;
+lib/presentation/screens/inventory/inventory_screen.dart:733:    final movementsAsync = ref.watch(stockMovementsProvider(item.id!));
+lib/presentation/screens/parties/party_360_screen.dart:233:        ? bookingRepo.getByCustomer(party!.id!)
+lib/presentation/screens/parties/party_360_screen.dart:466:              summary.earliestDueDate!
+lib/presentation/screens/parties/party_360_screen.dart:469:              label: 'Payment due ${_shortDate(summary.earliestDueDate!)}',
+lib/presentation/screens/parties/party_360_screen.dart:599:                    builder: (_) => InvoiceDetailScreen(invoiceId: h.invoice.id!),
+lib/presentation/screens/parties/party_360_screen.dart:608:                    builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
+lib/presentation/screens/parties/party_360_screen.dart:618:                        challanId: h.challan.id!),
+lib/presentation/screens/parties/party_360_screen.dart:630:                    builder: (_) => BookingDetailScreen(bookingId: h.booking.id!),
+lib/presentation/screens/parties/party_360_screen.dart:713:            (lastReminder == null || daysSinceLast! >= 7);
+lib/presentation/screens/parties/party_360_screen.dart:856:                          InvoiceDetailScreen(invoiceId: h.invoice.id!),
+lib/presentation/screens/parties/party_360_screen.dart:865:                      builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
+lib/presentation/screens/parties/party_360_screen.dart:875:                          challanId: h.challan.id!),
+lib/presentation/screens/parties/party_360_screen.dart:885:                          BookingDetailScreen(bookingId: h.booking.id!),
+lib/presentation/screens/parties/party_360_screen.dart:940:                          invoiceId: chains[i].invoice!.id!),
+lib/presentation/screens/parties/party_360_screen.dart:1287:            '+${party.dialCode ?? '91'} ${party.phoneNumber!}'),
+lib/presentation/screens/parties/party_360_screen.dart:1290:        MapEntry(Icons.badge_outlined, 'GSTIN: ${party.gstin!}'),
+lib/presentation/screens/parties/party_360_screen.dart:1329:                        final uri = PhoneUtils.telUri(party.phoneNumber!,
+lib/presentation/screens/parties/party_360_screen.dart:1340:                        final uri = PhoneUtils.waUri(party.phoneNumber!,
+lib/presentation/screens/parties/party_360_screen.dart:1351:                        final uri = PhoneUtils.smsUri(party.phoneNumber!,
+lib/presentation/screens/parties/party_360_screen.dart:1484:            i.dueDate!.isBefore(now))
+lib/presentation/screens/parties/party_360_screen.dart:1781:            LifecycleTag(info: lifecycleInfo!),
+lib/presentation/screens/parties/party_360_screen.dart:1972:            LifecycleTag(info: lifecycleInfo!),
+lib/presentation/screens/parties/party_360_screen.dart:2158:          'amount. Please let me know when you can settle. Thank you!';
+lib/presentation/screens/parties/party_360_screen.dart:2166:          inv.dueDate!.isBefore(now) &&
+lib/presentation/screens/parties/party_360_screen.dart:2170:        buf.write(' (Due: ${_fullDate(inv.dueDate!)})');
+lib/presentation/screens/parties/party_360_screen.dart:2184:      ..write('Kindly settle at your earliest convenience. Thank you!');
+lib/presentation/screens/parties/party_360_screen.dart:2253:                          inv.dueDate!.isBefore(now) &&
+lib/presentation/screens/parties/party_360_screen.dart:2276:                                      'Due: ${_fullDate(inv.dueDate!)}${isOverdue ? '  ⚠️ OVERDUE' : ''}',
+lib/presentation/screens/parties/parties_screen.dart:200:                ref.read(partiesProvider.notifier).remove(party.id!);
+lib/presentation/screens/parties/parties_screen.dart:277:                Text('+91 ${party.phoneNumber!}',
+lib/presentation/screens/staff/staff_detail_screen.dart:205:                          staff.staffRole!,
+lib/presentation/screens/staff/staff_detail_screen.dart:212:                          '${CurrencyFormatter.format(staff.staffSalary!)} / ${_typeLabel(staff.staffSalaryType)}',
+lib/presentation/screens/staff/staff_detail_screen.dart:239:              ? _fmtDate(staff.staffJoinDate!)
+lib/presentation/screens/staff/staff_detail_screen.dart:246:            '${CurrencyFormatter.format(staff.staffSalary!)} per ${_typeLabel(staff.staffSalaryType)}',
+lib/presentation/screens/staff/staff_detail_screen.dart:254:              staff.notes!,
+lib/presentation/screens/staff/staff_detail_screen.dart:313:    if (value == null || value!.isEmpty) return const SizedBox.shrink();
+lib/presentation/screens/staff/staff_detail_screen.dart:327:              value!,
+lib/presentation/screens/staff/staff_detail_screen.dart:359:      partyId: staff.id!,
+lib/presentation/screens/staff/staff_detail_screen.dart:613:        txn.notes?.isNotEmpty == true ? txn.notes! : txn.category,
+lib/presentation/screens/staff/staff_screen.dart:104:      await ref.read(staffProvider.notifier).deactivate(staff.id!);
+lib/presentation/screens/staff/staff_screen.dart:299:    final salaryAsync = ref.watch(salaryPaymentsProvider(staff.id!));
+lib/presentation/screens/staff/staff_screen.dart:322:                        Text(staff.designation!,
+lib/presentation/screens/staff/staff_screen.dart:360:                  _InfoChip(label: staff.phone!, icon: Icons.phone_outlined),
+lib/presentation/screens/staff/staff_screen.dart:362:                  _InfoChip(label: staff.department!, icon: Icons.business_outlined),
+lib/presentation/screens/staff/staff_screen.dart:365:                    label: 'Joined ${dateFormat.format(staff.joinDate!)}',
+lib/presentation/screens/staff/staff_screen.dart:407:                              ? 'Paid ${dateFormat.format(p.paidDate!)}'
+lib/presentation/screens/staff/staff_screen.dart:456:      final s = widget.existing!;
+lib/presentation/screens/staff/staff_screen.dart:477:    if (!_form.currentState!.validate()) return;
+lib/presentation/screens/staff/staff_screen.dart:602:                      onChanged: (v) => setState(() => _salaryType = v!),
+lib/presentation/screens/staff/staff_screen.dart:689:    if (!_form.currentState!.validate()) return;
+lib/presentation/screens/staff/staff_screen.dart:691:      staffId: widget.staff.id!,
+lib/presentation/screens/staff/staff_screen.dart:704:    await ref.read(salaryPaymentsProvider(widget.staff.id!).notifier).record(payment);
+lib/presentation/screens/staff/staff_screen.dart:772:                      onChanged: (v) => setState(() => _month = v!),
+lib/presentation/screens/staff/staff_screen.dart:787:                      onChanged: (v) => setState(() => _year = v!),
+lib/presentation/screens/staff/staff_list_screen.dart:59:        builder: (_) => StaffDetailScreen(staffPartyId: staff.id!),
+lib/presentation/screens/staff/staff_list_screen.dart:190:    final role = staff.staffRole?.isNotEmpty == true ? staff.staffRole! : 'Staff';
+lib/presentation/screens/staff/staff_list_screen.dart:192:        ? CurrencyFormatter.format(staff.staffSalary!)
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:146:                    .toggleActive(item.id!, val);
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:189:                _DetailRow(label: 'Party', value: item.partyName!),
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:193:                  value: item.paymentMethod!,
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:196:                _DetailRow(label: 'Notes', value: item.notes!),
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:200:                  value: _dateFormat.format(item.lastGenerated!),
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:244:                              .remove(item.id!);
+lib/presentation/screens/recurring/recurring_transactions_screen.dart:488:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/reports/reports_screen.dart:696:                        prev: prevPnl!.netProfitLoss,
+lib/presentation/screens/reports/reports_screen.dart:767:              prev: prevAmount!,
+lib/presentation/screens/reports/reports_screen.dart:2220:                      stats.topService!,
+lib/presentation/screens/reports/reports_screen.dart:2679:                  prev: prevRate!,
+lib/presentation/screens/reports/reports_screen.dart:2721:        ? prevPnl!.totalExpense / prevMonthDays
+lib/presentation/screens/reports/reports_screen.dart:2825:                  ? t.partyName!
+lib/presentation/screens/reports/reports_screen.dart:3161:                              tx.partyName!.isNotEmpty)
+lib/presentation/screens/reports/reports_screen.dart:3162:                          ? tx.partyName!
+lib/presentation/screens/reports/reports_screen.dart:3288:                    allTimeNet! >= 0
+lib/presentation/screens/reports/budget_screen.dart:209:                          .delete(budget.id!);
+lib/presentation/screens/reports/budget_screen.dart:532:      _selectedCategory = widget.existing!.category;
+lib/presentation/screens/reports/budget_screen.dart:534:          widget.existing!.budgetAmount.toStringAsFixed(0);
+lib/presentation/screens/reports/budget_screen.dart:545:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/screens/reports/budget_screen.dart:558:      category: _selectedCategory!,
+lib/presentation/p2p/pair_screen.dart:560:          'Paired!',
+lib/presentation/widgets/sms_confirmation_sheet.dart:175:                      value: parsed.partyName!,
+lib/presentation/widgets/sms_confirmation_sheet.dart:187:                      value: parsed.upiApp!,
+lib/presentation/widgets/sms_confirmation_sheet.dart:193:                      value: parsed.upiRefNo!,
+lib/presentation/widgets/party_form_sheet.dart:104:        _staffJoinDate = DateTime.parse(p!.staffJoinDate!);
+lib/presentation/widgets/party_form_sheet.dart:109:      _selectedCountry = countryByName(p!.country);
+lib/presentation/widgets/party_form_sheet.dart:122:        _selectedCountry == null || _selectedCountry!.name.common == 'India';
+lib/presentation/widgets/party_form_sheet.dart:154:    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+lib/presentation/widgets/party_form_sheet.dart:311:                            _selectedCountry!.name.common == 'India';
+lib/presentation/widgets/party_form_sheet.dart:390:                            _selectedCountry!.name.common == 'India')
+lib/presentation/widgets/party_form_sheet.dart:457:                  partyId: widget.existing!.id!,
+lib/presentation/widgets/party_form_sheet.dart:628:                ? DateFormat('d MMM yyyy').format(_staffJoinDate!)
+lib/presentation/widgets/party_form_sheet.dart:806:    if (!_formKey.currentState!.validate()) return;
+lib/presentation/widgets/party_form_sheet.dart:844:          ? DateFormat('yyyy-MM-dd').format(_staffJoinDate!)
+lib/presentation/widgets/party_form_sheet.dart:894:        selectedCountry == null || selectedCountry!.name.common == 'India';
+lib/presentation/widgets/party_form_sheet.dart:982:                      selectedCountry!.name.common == 'India')
+lib/presentation/widgets/party_form_sheet.dart:1131:    await ref.read(partyAddressRepositoryProvider).delete(addr.id!);
+lib/presentation/widgets/party_form_sheet.dart:1203:                            .setDefault(widget.partyId, addr.id!);
+lib/presentation/widgets/party_form_sheet.dart:1287:              File(imagePath!),
+lib/presentation/widgets/vcard_qr_dialog.dart:156:                          widget.subtitle!.isNotEmpty)
+lib/presentation/widgets/vcard_qr_dialog.dart:158:                          widget.subtitle!,
+lib/presentation/widgets/flow_chain_tile.dart:110:                    chain.invoice!,
+lib/presentation/widgets/party_picker_field.dart:90:        ? allParties.where((p) => widget.filterTypes!.contains(p.partyType)).toList()
+lib/presentation/widgets/party_picker_field.dart:295:        ? allParties.where((p) => widget.filterTypes!.contains(p.partyType)).toList()
+lib/presentation/widgets/party_picker_field.dart:461:                            ? Text('+91 ${party.phoneNumber!}')
+lib/presentation/widgets/delivery_address_picker.dart:157:                    partyId: widget.partyId!,
+lib/presentation/widgets/delivery_address_picker.dart:333:            ? Text(sublabel!, maxLines: 2, overflow: TextOverflow.ellipsis)
+lib/presentation/widgets/delivery_address_picker.dart:390:        _selectedCountry == null || _selectedCountry!.name.common == 'India';
+lib/presentation/widgets/delivery_address_picker.dart:476:                  _selectedCountry!.name.common == 'India')
+lib/presentation/widgets/reminder_bottom_sheet.dart:200:              await comm.sendWhatsApp(widget.item.partyPhone!, msg);
+lib/presentation/widgets/reminder_bottom_sheet.dart:203:              await comm.sendSMS(widget.item.partyPhone!, msg);
+lib/presentation/widgets/reminder_bottom_sheet.dart:208:              widget.item.partyEmail!, subject, msg);
+lib/presentation/widgets/indian_state_dropdown.dart:57:      (s) => s!.toLowerCase() == current.toLowerCase(),
+lib/presentation/widgets/sms_batch_review_sheet.dart:114:                        'All caught up!',
+lib/presentation/widgets/sms_batch_review_sheet.dart:349:                    parsed.partyName!,
+lib/presentation/widgets/bill_picker.dart:138:          filePath: file.path!,
+lib/presentation/widgets/bill_picker.dart:277:                          _formatFileSize(fileSize!),

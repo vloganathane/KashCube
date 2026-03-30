@@ -12,6 +12,7 @@ import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
 import '../../p2p/devices_screen.dart';
 import 'accounts_manage_screen.dart';
+import 'app_logs_screen.dart';
 import 'pin_lock_screen.dart';
 import 'profile_screen.dart';
 import 'businesses_screen.dart';
@@ -307,6 +308,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const OpenOnLaptopScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('Diagnostics Logs'),
+                subtitle: const Text('View, copy, and share recent app logs'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AppLogsScreen(),
                   ),
                 ),
               ),
@@ -724,6 +737,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 context,
                 MaterialPageRoute(
                     builder: (_) => const OpenOnLaptopScreen()),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: const Text('Diagnostics Logs'),
+              subtitle: const Text('View, copy, and share recent app logs'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AppLogsScreen()),
               ),
             ),
           ],

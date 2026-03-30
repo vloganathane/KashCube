@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,6 +13,7 @@ import 'firebase_options.dart';
 import 'core/theme/kash_cube_theme.dart';
 import 'data/repositories/settings_repository_impl.dart';
 import 'data/services/action_center_background_service.dart';
+import 'data/services/app_logger.dart';
 import 'data/services/database_helper.dart';
 import 'data/services/db_factory.dart';
 import 'data/services/fiscal_year_service.dart';
@@ -29,11 +33,27 @@ import 'presentation/screens/auth/user_selection_screen.dart';
 import 'presentation/screens/settings/pin_lock_screen.dart';
 import 'presentation/web/web_connect_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Set the correct SQLite backend (WASM on web, native on Android).
   await initDatabaseFactory();
+  await AppLogger.instance.initialize();
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    AppLogger.instance.recordFlutterError(details);
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLogger.instance.fatal(
+      'Unhandled platform dispatcher error',
+      category: 'platform',
+      error: error,
+      stackTrace: stack,
+    );
+    return true;
+  };
 
   // Firebase Analytics — opt-in anonymous analytics (no financial data).
   // Runs on Android and web (Flutter Web companion). Gracefully skipped if
@@ -50,6 +70,11 @@ void main() async {
     }
   } catch (e) {
     // Not fatal — analytics simply stays disabled until configured.
+    AppLogger.instance.warning(
+      'Firebase init skipped (not configured)',
+      category: 'startup',
+      error: e,
+    );
     debugPrint('[main] Firebase init skipped (not configured): $e');
   }
 
@@ -90,6 +115,12 @@ void main() async {
   } catch (e, st) {
     // Non-fatal: log and proceed. The app UI handles DB errors at the feature
     // level; a failure here must never prevent runApp() from being called.
+    AppLogger.instance.error(
+      'Pre-init error (non-fatal)',
+      category: 'startup',
+      error: e,
+      stackTrace: st,
+    );
     debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
   }
 
@@ -98,7 +129,19 @@ void main() async {
   // Skipped on web — WakelockPlus is no-op on web and there is no LAN server.
   if (!kIsWeb) WebCompanionService.instance.attach();
 
-  runApp(const ProviderScope(child: KashCubeApp()));
+  runZonedGuarded(
+    () {
+      runApp(const ProviderScope(child: KashCubeApp()));
+    },
+    (error, stack) {
+      AppLogger.instance.fatal(
+        'Unhandled zone error',
+        category: 'zone',
+        error: error,
+        stackTrace: stack,
+      );
+    },
+  );
 }
 
 /// Root widget for Kash Cube.

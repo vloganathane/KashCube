@@ -1,0 +1,3 @@
+lib/data/services/web/web_browser_session.dart:72:      onError: (_) => dispose(),
+lib/presentation/app_shell.dart:142:    _appLinks.uriLinkStream.listen(_handleIncomingUri, onError: (_) {});
+lib/presentation/providers/web_sync_provider.dart:102:        onError: (_) => _onDisconnected(),

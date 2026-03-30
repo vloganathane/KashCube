@@ -17,6 +17,7 @@ import '../core/utils/vcard_builder.dart' show parseVCard;
 import '../data/models/parsed_sms.dart';
 import '../data/models/party.dart';
 import '../data/models/transaction.dart';
+import '../data/services/app_logger.dart';
 import '../data/services/sms_parser.dart';
 import 'providers/app_user_provider.dart';
 import 'providers/deep_link_provider.dart';
@@ -136,10 +137,27 @@ class _AppShellState extends ConsumerState<AppShell> {
     try {
       final initial = await _appLinks.getInitialLink();
       if (initial != null) _handleIncomingUri(initial);
-    } catch (_) {}
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to read initial deep link',
+        category: 'deep_link',
+        error: e,
+        stackTrace: st,
+      );
+    }
 
     // 3️⃣  Stream — link arrives while app is already running.
-    _appLinks.uriLinkStream.listen(_handleIncomingUri, onError: (_) {});
+    _appLinks.uriLinkStream.listen(
+      _handleIncomingUri,
+      onError: (e, st) {
+        AppLogger.instance.warning(
+          'Deep link stream error',
+          category: 'deep_link',
+          error: e,
+          stackTrace: st,
+        );
+      },
+    );
   }
 
   void _handleIncomingUri(Uri uri) {
@@ -166,8 +184,15 @@ class _AppShellState extends ConsumerState<AppShell> {
           ref.read(pendingDeepLinkVCardProvider.notifier).state = vcard;
         }
       }
-    } catch (_) {
-      // Play Store not available (sideload / emulator) — ignore silently.
+    } catch (e, st) {
+      // Play Store may be unavailable (sideload / emulator). Keep non-fatal,
+      // but log for post-release diagnostics.
+      AppLogger.instance.info(
+        'Install referrer unavailable',
+        category: 'deep_link',
+        error: e,
+        stackTrace: st,
+      );
     }
   }
 

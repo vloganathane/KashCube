@@ -232,6 +232,7 @@ class DatabaseHelper {
     await _createSyncAndIdentityTables(db);
 
     await _createActivityLogTable(db);
+    await _createAppLogsTable(db);
 
     // Seed default categories + default accounts
     await _seedCategories(db);
@@ -239,8 +240,8 @@ class DatabaseHelper {
     await _seedFySettings(db);
 
     await db.insert('schema_version', {
-      'version': 69,
-      'description': 'Full v69 schema (fresh install)',
+      'version': 82,
+      'description': 'Full v82 schema (fresh install)',
       'applied_at': DateTime.now().toIso8601String(),
     });
 
@@ -3136,6 +3137,38 @@ class DatabaseHelper {
             'Lot tracking: stock_lots + lot_movements tables; lot columns on purchase_bill_items and invoice_items',
       });
     }
+
+    if (oldVersion < 82) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS app_logs (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp    TEXT    NOT NULL DEFAULT (datetime('now')),
+            level        TEXT    NOT NULL,
+            category     TEXT,
+            message      TEXT    NOT NULL,
+            error        TEXT,
+            stack_trace  TEXT,
+            context_json TEXT
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_app_logs_time ON app_logs(timestamp DESC)',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level, timestamp DESC)',
+        );
+        debugPrint('[DB v82] app_logs table created');
+      } catch (e) {
+        debugPrint('[DB v82] app_logs already exists or error: $e');
+      }
+
+      await db.insert('schema_version', {
+        'version': 82,
+        'description':
+            'Diagnostics logging: app_logs table + indexes for in-app error reporting',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -3706,6 +3739,57 @@ class DatabaseHelper {
       whereArgs: [id],
     );
     notifyChange('unit_types');
+  }
+
+  // ── App Diagnostics Logs ───────────────────────────────────────────────────
+
+  Future<int> insertAppLog({
+    required String level,
+    required String message,
+    String? category,
+    String? error,
+    String? stackTrace,
+    String? contextJson,
+    int maxRows = 1000,
+  }) async {
+    final db = await database;
+    final id = await db.insert('app_logs', {
+      'timestamp': DateTime.now().toIso8601String(),
+      'level': level,
+      'category': category,
+      'message': message,
+      'error': error,
+      'stack_trace': stackTrace,
+      'context_json': contextJson,
+    });
+
+    // Keep only the most recent [maxRows] rows.
+    await db.execute('''
+      DELETE FROM app_logs
+      WHERE id NOT IN (
+        SELECT id FROM app_logs ORDER BY id DESC LIMIT $maxRows
+      )
+    ''');
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> getRecentAppLogs({
+    int limit = 200,
+    String? level,
+  }) async {
+    final db = await database;
+    return db.query(
+      'app_logs',
+      where: level == null ? null : 'level = ?',
+      whereArgs: level == null ? null : [level],
+      orderBy: 'id DESC',
+      limit: limit,
+    );
+  }
+
+  Future<int> clearAppLogs() async {
+    final db = await database;
+    return db.delete('app_logs');
   }
 
   // ── e-Way Bill ──────────────────────────────────────────────────────────────

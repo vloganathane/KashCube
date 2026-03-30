@@ -1483,4 +1483,25 @@ extension _DatabaseTableCreators on DatabaseHelper {
       'CREATE INDEX IF NOT EXISTS idx_activity_log_entity ON activity_log(entity_type, entity_id, created_at DESC)',
     );
   }
+
+  Future<void> _createAppLogsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_logs (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp    TEXT    NOT NULL DEFAULT (datetime('now')),
+        level        TEXT    NOT NULL,
+        category     TEXT,
+        message      TEXT    NOT NULL,
+        error        TEXT,
+        stack_trace  TEXT,
+        context_json TEXT
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_time ON app_logs(timestamp DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level, timestamp DESC)',
+    );
+  }
 }

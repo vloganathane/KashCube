@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../data/services/app_logger.dart';
+
 import '../models/transaction.dart';
 
 /// Service for managing payment method preferences per customer.
@@ -23,7 +25,12 @@ class PaymentPreferencesService {
       return PaymentMethod.values.firstWhere(
         (m) => m.name == methodName,
       );
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to parse payment method enum',
+        category: 'payment_preferences',
+        error: e,
+      );
       return null;
     }
   }

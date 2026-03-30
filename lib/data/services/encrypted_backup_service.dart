@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../core/constants/app_constants.dart';
+import 'app_logger.dart';
 
 // ---------------------------------------------------------------------------
 // Encrypted .kashcube Backup Format
@@ -344,7 +345,12 @@ class EncryptedBackupService {
       final encrypter = enc.Encrypter(enc.AES(aesKey, mode: enc.AESMode.gcm));
       plaintext =
           encrypter.decryptBytes(enc.Encrypted(Uint8List.fromList(ciphertextWithTag)), iv: aesIv);
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Backup decryption failed',
+        category: 'encrypted_backup',
+        error: e,
+      );
       await _recordFailure();
       throw const BackupAuthException();
     }

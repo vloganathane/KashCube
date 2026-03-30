@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 
+import '../../data/services/app_logger.dart';
+
 import '../../domain/repositories/settings_repository.dart';
 
 const _kContactsPickerExplained = 'contacts_picker_explained';
@@ -59,7 +61,13 @@ Future<bool> requestContactsRuntimePermission() async {
   try {
     final granted = await FlutterContacts.requestPermission(readonly: false);
     return granted;
-  } catch (_) {
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Contacts runtime permission request failed',
+      category: 'contacts_helper',
+      error: e,
+      stackTrace: st,
+    );
     return false;
   }
 }

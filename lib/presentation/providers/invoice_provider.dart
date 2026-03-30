@@ -7,6 +7,7 @@ import '../../data/models/quote.dart';
 import '../../data/models/transaction.dart';
 import '../../data/repositories/invoice_repository_impl.dart';
 import '../../data/repositories/item_catalog_repository_impl.dart';
+import '../../data/services/app_logger.dart';
 import '../../data/services/inventory_service.dart';
 import '../../data/services/invoice_number_service.dart';
 import '../../data/services/lot_allocation_service.dart';
@@ -370,7 +371,12 @@ final invoiceByIdProvider =
         data: (list) {
           try {
             return list.firstWhere((inv) => inv.id == id);
-          } catch (_) {
+          } catch (e) {
+            AppLogger.instance.debug(
+              'Invoice not found in list',
+              category: 'invoice_provider',
+              error: e,
+            );
             return null;
           }
         },
@@ -421,7 +427,12 @@ final quoteByIdProvider =
         data: (list) {
           try {
             return list.firstWhere((q) => q.id == id);
-          } catch (_) {
+          } catch (e) {
+            AppLogger.instance.debug(
+              'Quote not found in list',
+              category: 'invoice_provider',
+              error: e,
+            );
             return null;
           }
         },
@@ -438,7 +449,12 @@ final quoteFromListByIdProvider = Provider.family<Quote?, int>((ref, id) {
       ref.watch(quotesProvider).whenOrNull(data: (list) => list) ?? [];
   try {
     return all.firstWhere((q) => q.id == id);
-  } catch (_) {
+  } catch (e) {
+    AppLogger.instance.debug(
+      'Quote not found in synchronous list lookup',
+      category: 'invoice_provider',
+      error: e,
+    );
     return null;
   }
 });
@@ -450,7 +466,12 @@ final invoiceByQuoteIdProvider = Provider.family<Invoice?, int>((ref, quoteId) {
       ref.watch(invoicesProvider).whenOrNull(data: (list) => list) ?? [];
   try {
     return all.firstWhere((inv) => inv.quoteId == quoteId);
-  } catch (_) {
+  } catch (e) {
+    AppLogger.instance.debug(
+      'Invoice not found by quote ID',
+      category: 'invoice_provider',
+      error: e,
+    );
     return null;
   }
 });

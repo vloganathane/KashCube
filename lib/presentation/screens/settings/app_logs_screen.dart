@@ -83,12 +83,23 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
     for (final row in _logs) {
       final ts = row['timestamp']?.toString() ?? '';
       final level = row['level']?.toString() ?? '';
+      final source = row['source']?.toString() ?? 'app';
       final category = row['category']?.toString() ?? 'app';
+      final eventName = row['event_name']?.toString();
+      final sessionId = row['session_id']?.toString();
       final message = row['message']?.toString() ?? '';
       final err = row['error']?.toString();
       final stack = row['stack_trace']?.toString();
       final ctx = row['context_json']?.toString();
-      buffer.writeln('[$ts] [$level] [$category] $message');
+      final header = StringBuffer()
+        ..write('[$ts] [$level] [$source] [$category]');
+      if (eventName != null && eventName.isNotEmpty) {
+        header.write(' [$eventName]');
+      }
+      buffer.writeln('${header.toString()} $message');
+      if (sessionId != null && sessionId.isNotEmpty) {
+        buffer.writeln('session_id: $sessionId');
+      }
       if (err != null && err.isNotEmpty) buffer.writeln('error: $err');
       if (stack != null && stack.isNotEmpty) buffer.writeln('stack: $stack');
       if (ctx != null && ctx.isNotEmpty) buffer.writeln('context: $ctx');
@@ -200,7 +211,9 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
                             final ts = _formatTimestamp(
                               row['timestamp']?.toString() ?? '',
                             );
+                            final source = row['source']?.toString() ?? 'app';
                             final level = row['level']?.toString() ?? 'info';
+                            final eventName = row['event_name']?.toString();
                             final message = row['message']?.toString() ?? '';
                             final category = row['category']?.toString() ?? 'app';
                             final error = row['error']?.toString();
@@ -208,7 +221,9 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
                             return Card(
                               child: ListTile(
                                 leading: Icon(
-                                  level == 'error' || level == 'fatal'
+                                  source == 'terminal' || source == 'debug_print'
+                                      ? Icons.terminal_outlined
+                                      : level == 'error' || level == 'fatal'
                                       ? Icons.error_outline
                                       : level == 'warning'
                                           ? Icons.warning_amber_outlined
@@ -216,7 +231,8 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
                                 ),
                                 title: Text(message),
                                 subtitle: Text(
-                                  '$ts · $level · $category'
+                                  '$ts · $source · $level · $category'
+                                  '${(eventName != null && eventName.isNotEmpty) ? ' · $eventName' : ''}'
                                   '${(error != null && error.isNotEmpty) ? '\n$error' : ''}',
                                 ),
                                 isThreeLine: error != null && error.isNotEmpty,

@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
-  show TargetPlatform, defaultTargetPlatform, kIsWeb;
+  show TargetPlatform, defaultTargetPlatform, debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -25,6 +25,7 @@ import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/notification_provider.dart';
+import 'presentation/providers/p2p_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_auto_refresh_provider.dart';
 import 'presentation/providers/terms_provider.dart';
@@ -43,6 +44,18 @@ Future<void> main() async {
       await initDatabaseFactory();
       await AppLogger.instance.initialize();
 
+      final originalDebugPrint = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {
+        originalDebugPrint(message, wrapWidth: wrapWidth);
+        if (message == null || AppLogger.shouldSkipTerminalCapture()) return;
+        unawaited(
+          AppLogger.instance.recordTerminalLine(
+            message,
+            source: 'debug_print',
+          ),
+        );
+      };
+
       FlutterError.onError = (details) {
         FlutterError.presentError(details);
         AppLogger.instance.recordFlutterError(details);
@@ -57,6 +70,14 @@ Future<void> main() async {
         );
         return true;
       };
+
+      await AppLogger.instance.event(
+        'app_start',
+        category: 'startup',
+        context: {
+          'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+        },
+      );
 
       // Firebase Analytics — opt-in anonymous analytics (no financial data).
       // Currently configured for Android + web only.
@@ -80,9 +101,9 @@ Future<void> main() async {
           AppLogger.instance.warning(
             'Firebase init skipped (not configured)',
             category: 'startup',
+            eventName: 'firebase_init_skipped',
             error: e,
           );
-          debugPrint('[main] Firebase init skipped (not configured): $e');
         }
       }
 
@@ -126,10 +147,10 @@ Future<void> main() async {
         AppLogger.instance.error(
           'Pre-init error (non-fatal)',
           category: 'startup',
+          eventName: 'startup_preinit_error',
           error: e,
           stackTrace: st,
         );
-        debugPrint('[main] Pre-init error (non-fatal): $e\n$st');
       }
 
       // Attach the web companion wake-lock service so it starts listening for
@@ -143,10 +164,23 @@ Future<void> main() async {
       AppLogger.instance.fatal(
         'Unhandled zone error',
         category: 'zone',
+        eventName: 'zone_error',
         error: error,
         stackTrace: stack,
       );
     },
+    zoneSpecification: ZoneSpecification(
+      print: (self, parent, zone, line) {
+        parent.print(zone, line);
+        if (AppLogger.shouldSkipTerminalCapture(zone)) return;
+        unawaited(
+          AppLogger.instance.recordTerminalLine(
+            line,
+            source: 'print',
+          ),
+        );
+      },
+    ),
   );
 }
 
@@ -165,6 +199,10 @@ class KashCubeApp extends ConsumerWidget {
     // Initialise Play Billing so the subscription listener is live from startup.
     // Skip on web — in_app_purchase is Android/iOS only.
     if (!kIsWeb) ref.watch(iapServiceProvider);
+
+    // Start HTTP server at app init so /health & other endpoints are always available.
+    // Server persists for the app lifetime, not tied to screen visibility.
+    if (!kIsWeb) ref.watch(httpServerInitProvider);
 
     return MaterialApp(
       title: 'Kash Cube',

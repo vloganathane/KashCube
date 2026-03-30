@@ -184,6 +184,35 @@ final webCompanionProvider =
   (ref) => WebCompanionNotifier(ref),
 );
 
+// ── HTTP Server Auto-Init ───────────────────────────────────────────────────
+
+/// Automatically starts the HTTP server once at app launch.
+///
+/// The server persists for the entire app lifetime, ensuring that
+/// endpoints like /health remain accessible globally (not just when
+/// the "Open on Laptop" screen is visible). Non-fatal if server fails
+/// to start (e.g., port already in use); "Open on Laptop" screen can
+/// retry via ensureStarted().
+final httpServerInitProvider = FutureProvider<void>((ref) async {
+  try {
+    final db       = await DatabaseHelper.instance.database;
+    await ref.read(identityInitProvider.future);
+    final identity = await ref.read(identityServiceProvider.future);
+    final settings = ref.read(settingsRepositoryProvider);
+    final name     = await settings.get(SettingsKeys.ownerName);
+    
+    await P2pCoordinator.instance.startServerOnly(
+      db:          db,
+      identity:    identity,
+      displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
+    );
+    debugPrint('[HttpServerInit] Server started on port ${P2pServer.instance.port}');
+  } catch (e) {
+    debugPrint('[HttpServerInit] Failed to start server: $e');
+    // Non-fatal — allows app to continue; /health can be retried later.
+  }
+});
+
 // ── Diagnostics ─────────────────────────────────────────────────────────────
 
 /// Live mDNS event log — replays current entries then streams updates.

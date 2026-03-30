@@ -1490,7 +1490,10 @@ extension _DatabaseTableCreators on DatabaseHelper {
         id           INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp    TEXT    NOT NULL DEFAULT (datetime('now')),
         level        TEXT    NOT NULL,
+        source       TEXT    NOT NULL DEFAULT 'app',
         category     TEXT,
+        event_name   TEXT,
+        session_id   TEXT,
         message      TEXT    NOT NULL,
         error        TEXT,
         stack_trace  TEXT,
@@ -1502,6 +1505,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level, timestamp DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_session_time ON app_logs(session_id, timestamp DESC)',
     );
   }
 }

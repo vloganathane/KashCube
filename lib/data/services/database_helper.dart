@@ -20,6 +20,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   Database? _database;
+  bool _appLogSchemaEnsured = false;
 
   /// Returns the database instance, creating it if needed.
   ///
@@ -84,6 +85,7 @@ class DatabaseHelper {
     // PRAGMA journal_mode returns a result set — sqflite on Android
     // rejects execute() for any statement that produces output rows.
     await db.rawQuery('PRAGMA journal_mode=WAL');
+    await ensureAppLogSchema(db: db);
 
     await _runIntegrityCheck(db);
     // Rolling daily snapshot — only if integrity passed.
@@ -3159,7 +3161,10 @@ class DatabaseHelper {
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp    TEXT    NOT NULL DEFAULT (datetime('now')),
             level        TEXT    NOT NULL,
+            source       TEXT    NOT NULL DEFAULT 'app',
             category     TEXT,
+            event_name   TEXT,
+            session_id   TEXT,
             message      TEXT    NOT NULL,
             error        TEXT,
             stack_trace  TEXT,
@@ -3172,6 +3177,9 @@ class DatabaseHelper {
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level, timestamp DESC)',
         );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_app_logs_session_time ON app_logs(session_id, timestamp DESC)',
+        );
         debugPrint('[DB v82] app_logs table created');
       } catch (e) {
         debugPrint('[DB v82] app_logs already exists or error: $e');
@@ -3181,6 +3189,31 @@ class DatabaseHelper {
         'version': 82,
         'description':
             'Diagnostics logging: app_logs table + indexes for in-app error reporting',
+      });
+    }
+
+    if (oldVersion < 83) {
+      try {
+        await db.execute(
+          "ALTER TABLE app_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'app'",
+        );
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE app_logs ADD COLUMN event_name TEXT');
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE app_logs ADD COLUMN session_id TEXT');
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_app_logs_session_time ON app_logs(session_id, timestamp DESC)',
+        );
+      } catch (_) {}
+
+      await db.insert('schema_version', {
+        'version': 83,
+        'description':
+            'Unified diagnostics timeline: source, event_name, and session_id on app_logs',
       });
     }
   }
@@ -3765,17 +3798,26 @@ class DatabaseHelper {
   Future<int> insertAppLog({
     required String level,
     required String message,
+    String source = 'app',
     String? category,
+    String? eventName,
+    String? sessionId,
     String? error,
     String? stackTrace,
     String? contextJson,
     int maxRows = 1000,
   }) async {
     final db = await database;
+    if (!_appLogSchemaEnsured) {
+      await ensureAppLogSchema(db: db);
+    }
     final id = await db.insert('app_logs', {
       'timestamp': DateTime.now().toIso8601String(),
       'level': level,
+      'source': source,
       'category': category,
+      'event_name': eventName,
+      'session_id': sessionId,
       'message': message,
       'error': error,
       'stack_trace': stackTrace,
@@ -3809,6 +3851,61 @@ class DatabaseHelper {
   Future<int> clearAppLogs() async {
     final db = await database;
     return db.delete('app_logs');
+  }
+
+  Future<void> ensureAppLogSchema({Database? db}) async {
+    if (_appLogSchemaEnsured) return;
+    final databaseRef = db ?? await database;
+
+    await databaseRef.execute('''
+      CREATE TABLE IF NOT EXISTS app_logs (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp    TEXT    NOT NULL DEFAULT (datetime('now')),
+        level        TEXT    NOT NULL,
+        source       TEXT    NOT NULL DEFAULT 'app',
+        category     TEXT,
+        event_name   TEXT,
+        session_id   TEXT,
+        message      TEXT    NOT NULL,
+        error        TEXT,
+        stack_trace  TEXT,
+        context_json TEXT
+      )
+    ''');
+
+    final columns = await databaseRef.rawQuery('PRAGMA table_info(app_logs)');
+    final columnNames = columns
+        .map((row) => row['name']?.toString() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toSet();
+
+    if (!columnNames.contains('source')) {
+      await databaseRef.execute(
+        "ALTER TABLE app_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'app'",
+      );
+    }
+    if (!columnNames.contains('event_name')) {
+      await databaseRef.execute(
+        'ALTER TABLE app_logs ADD COLUMN event_name TEXT',
+      );
+    }
+    if (!columnNames.contains('session_id')) {
+      await databaseRef.execute(
+        'ALTER TABLE app_logs ADD COLUMN session_id TEXT',
+      );
+    }
+
+    await databaseRef.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_time ON app_logs(timestamp DESC)',
+    );
+    await databaseRef.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level, timestamp DESC)',
+    );
+    await databaseRef.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_logs_session_time ON app_logs(session_id, timestamp DESC)',
+    );
+
+    _appLogSchemaEnsured = true;
   }
 
   // ── e-Way Bill ──────────────────────────────────────────────────────────────

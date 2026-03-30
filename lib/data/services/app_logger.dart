@@ -28,7 +28,7 @@ class AppLogger {
       lineLength: 120,
       colors: false,
       printEmojis: false,
-      printTime: true,
+      dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
     ),
   );
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/repositories/identity_repository_impl.dart';
+import '../../../data/services/app_logger.dart';
 import '../../../data/services/identity_service.dart';
 import '../../providers/identity_provider.dart';
 import '../../providers/settings_provider.dart';
@@ -61,8 +62,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           String? qrPayload;
           try {
             qrPayload = IdentityService.instance.identityQrPayload();
-          } catch (_) {
+          } catch (e, st) {
             // identity not yet loaded in memory
+            AppLogger.instance.debug(
+              'Identity QR payload generation failed',
+              category: 'profile_screen',
+              error: e,
+            );
           }
 
           return ListView(

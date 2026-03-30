@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../data/services/app_logger.dart';
+
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
 import '../../../core/extensions/context_extensions.dart';
@@ -417,7 +419,13 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
     try {
       final result = await OpenFile.open(xFile.path);
       return result.type == ResultType.done;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to open delivery challan PDF file',
+        category: 'delivery_challan_detail',
+        error: e,
+        stackTrace: st,
+      );
       return false;
     }
   }
@@ -428,8 +436,14 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
         [xFile],
         subject: subject,
       );
-    } catch (_) {}
-  }
+    } catch (e, st) {
+      AppLogger.instance.warning(
+        'Failed to share delivery challan PDF file',
+        category: 'delivery_challan_detail',
+        error: e,
+        stackTrace: st,
+      );
+    }
 }
 
 enum _MenuAction { edit, ewayBill, delete }

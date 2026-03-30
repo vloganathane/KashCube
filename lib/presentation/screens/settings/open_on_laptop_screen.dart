@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../data/services/app_logger.dart';
+
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
@@ -170,7 +172,12 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         lines.add('${iface.name}: ${addresses.join(', ')}');
       }
       return lines;
-    } catch (_) {
+    } catch (e, st) {
+      AppLogger.instance.debug(
+        'Failed to enumerate network interfaces',
+        category: 'open_on_laptop',
+        error: e,
+      );
       return const [];
     }
   }

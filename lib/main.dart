@@ -41,8 +41,12 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
 
       // Set the correct SQLite backend (WASM on web, native on Android).
+      // Fast no-op on Android; only does real work on web.
       await initDatabaseFactory();
-      await AppLogger.instance.initialize();
+
+      // ── Synchronous handler setup (no I/O) ─────────────────────────────
+      // These are cheap assignments — register them before the first frame so
+      // any widget-build errors or platform errors are captured from day 0.
 
       final originalDebugPrint = debugPrint;
       debugPrint = (String? message, {int? wrapWidth}) {
@@ -71,16 +75,26 @@ Future<void> main() async {
         return true;
       };
 
-      await AppLogger.instance.event(
-        'app_start',
-        category: 'startup',
-        context: {
-          'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
-        },
-      );
+      // Attach the web companion stream listener before the first screen so
+      // no browser-connection events are missed.
+      if (!kIsWeb) WebCompanionService.instance.attach();
 
-      // Firebase Analytics — opt-in anonymous analytics (no financial data).
-      // Currently configured for Android + web only.
+      // ── runApp() — get the Flutter canvas visible immediately ───────────
+      //
+      // All heavy async I/O (DB open, VACUUM, integrity check, Firebase init,
+      // notification scheduling) runs AFTER this point.  Because Dart's async
+      // model is cooperative, each `await` below yields back to the event loop
+      // which lets Flutter schedule and render frames concurrently.  The user
+      // sees the loading spinner in _LockGate instead of the system's black
+      // NormalTheme window background.
+      runApp(const ProviderScope(child: KashCubeApp()));
+
+      // ── Heavy async init — runs after first frame is scheduled ──────────
+
+      // Firebase Analytics — initialised first (fast, no DB) so the SDK is
+      // ready before any user interaction can trigger an event.
+      // Privacy-first: analytics is immediately disabled after init so that
+      // no events fire until the DB consent check below confirms opt-in.
       final firebaseSupported =
           kIsWeb || defaultTargetPlatform == TargetPlatform.android;
       if (firebaseSupported) {
@@ -88,13 +102,10 @@ Future<void> main() async {
           await Firebase.initializeApp(
             options: DefaultFirebaseOptions.currentPlatform,
           );
-          // On web, analytics is always enabled (browser session, no financial data).
-          // On Android, respect the user's consent preference.
+          // Disable collection by default; re-enabled below if user consented.
           if (!kIsWeb) {
-            final repo = SettingsRepositoryImpl();
-            final consentVal = await repo.get(SettingsKeys.analyticsConsent);
             await FirebaseAnalytics.instance
-                .setAnalyticsCollectionEnabled(consentVal == 'true');
+                .setAnalyticsCollectionEnabled(false);
           }
         } catch (e) {
           // Not fatal — analytics simply stays disabled until configured.
@@ -107,13 +118,44 @@ Future<void> main() async {
         }
       }
 
-      // All pre-runApp initialisation is wrapped in a try/catch so that a failure
-      // in notification setup, WorkManager registration, or DB migration never
-      // leaves the app stuck on the native splash screen.
+      // Open the database and warm the logger.  This is the first DB I/O;
+      // on a fresh install it runs _onCreate + VACUUM + integrity check which
+      // can take 1–3 s on real hardware — running it here (after runApp) means
+      // the splash/loading spinner is visible rather than a black screen.
+      await AppLogger.instance.initialize();
+
+      await AppLogger.instance.event(
+        'app_start',
+        category: 'startup',
+        context: {
+          'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
+        },
+      );
+
+      // Now that the DB is open, check the user's analytics consent and
+      // restore the correct collection state.
+      if (firebaseSupported && !kIsWeb) {
+        try {
+          final repo = SettingsRepositoryImpl();
+          final consentVal = await repo.get(SettingsKeys.analyticsConsent);
+          await FirebaseAnalytics.instance
+              .setAnalyticsCollectionEnabled(consentVal == 'true');
+        } catch (e) {
+          // Non-fatal — analytics stays disabled.
+          AppLogger.instance.warning(
+            'Analytics consent restore failed',
+            category: 'startup',
+            eventName: 'analytics_consent_restore_failed',
+            error: e,
+          );
+        }
+      }
+
+      // All remaining post-runApp initialisation is wrapped in a try/catch so
+      // that a failure never leaves the app stuck after the canvas is visible.
       try {
         if (!kIsWeb) {
-          // Initialise local notifications before the first frame.
-          // 100% on-device — no network calls.
+          // Initialise local notifications (100% on-device, no network calls).
           await NotificationService.instance.initialize();
         }
 
@@ -142,23 +184,14 @@ Future<void> main() async {
           await maybeRestoreAutoBackupTask();
         }
       } catch (e, st) {
-        // Non-fatal: log and proceed. The app UI handles DB errors at the feature
-        // level; a failure here must never prevent runApp() from being called.
         AppLogger.instance.error(
-          'Pre-init error (non-fatal)',
+          'Post-init error (non-fatal)',
           category: 'startup',
-          eventName: 'startup_preinit_error',
+          eventName: 'startup_postinit_error',
           error: e,
           stackTrace: st,
         );
       }
-
-      // Attach the web companion wake-lock service so it starts listening for
-      // browser connection events before the first screen is rendered.
-      // Skipped on web — WakelockPlus is no-op on web and there is no LAN server.
-      if (!kIsWeb) WebCompanionService.instance.attach();
-
-      runApp(const ProviderScope(child: KashCubeApp()));
     },
     (error, stack) {
       AppLogger.instance.fatal(

@@ -186,31 +186,55 @@ class _PermissionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Card(
-      child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.md,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _label,
-              style: TextStyle(
-                color: _isGranted ? cs.primary : cs.error,
-                fontWeight: FontWeight.w600,
-              ),
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Icon(icon),
             ),
-            if (!_isGranted)
-              Row(
-                mainAxisSize: MainAxisSize.min,
+            const SizedBox(width: AppSpacing.base),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: _action,
-                    child: Text(_actionLabel),
-                    ),
+                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodyLarge),
                 ],
               ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  _label,
+                  style: TextStyle(
+                    color: _isGranted ? cs.primary : cs.error,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (!_isGranted)
+                  TextButton(
+                    onPressed: _action,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                      ),
+                      minimumSize: const Size(48, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(_actionLabel),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

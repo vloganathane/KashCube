@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,31 +16,77 @@ class AppLogsScreen extends StatefulWidget {
   State<AppLogsScreen> createState() => _AppLogsScreenState();
 }
 
-class _AppLogsScreenState extends State<AppLogsScreen> {
+class _AppLogsScreenState extends State<AppLogsScreen>
+    with WidgetsBindingObserver {
   static const _limit = 250;
   static const _all = 'all';
+  static const _autoRefreshInterval = Duration(seconds: 2);
 
   bool _loading = true;
+  bool _refreshInFlight = false;
   String _selectedLevel = _all;
   List<Map<String, dynamic>> _logs = const [];
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadLogs();
+    _startAutoRefresh();
   }
 
-  Future<void> _loadLogs() async {
-    setState(() => _loading = true);
-    final rows = await DatabaseHelper.instance.getRecentAppLogs(
-      limit: _limit,
-      level: _selectedLevel == _all ? null : _selectedLevel,
-    );
-    if (!mounted) return;
-    setState(() {
-      _logs = rows;
-      _loading = false;
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startAutoRefresh();
+      unawaited(_loadLogs(showLoading: false));
+      return;
+    }
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _stopAutoRefresh();
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopAutoRefresh();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    _autoRefreshTimer ??= Timer.periodic(_autoRefreshInterval, (_) {
+      unawaited(_loadLogs(showLoading: false));
     });
+  }
+
+  void _stopAutoRefresh() {
+    _autoRefreshTimer?.cancel();
+    _autoRefreshTimer = null;
+  }
+
+  Future<void> _loadLogs({bool showLoading = true}) async {
+    if (_refreshInFlight) return;
+    _refreshInFlight = true;
+    if (showLoading && mounted) {
+      setState(() => _loading = true);
+    }
+    try {
+      final rows = await DatabaseHelper.instance.getRecentAppLogs(
+        limit: _limit,
+        level: _selectedLevel == _all ? null : _selectedLevel,
+      );
+      if (!mounted) return;
+      setState(() {
+        _logs = rows;
+        _loading = false;
+      });
+    } finally {
+      _refreshInFlight = false;
+    }
   }
 
   Future<void> _clearLogs() async {
@@ -204,7 +251,7 @@ class _AppLogsScreenState extends State<AppLogsScreen> {
                             horizontal: AppSpacing.base,
                           ),
                           itemCount: _logs.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (_, index) =>
                               const SizedBox(height: AppSpacing.sm),
                           itemBuilder: (context, index) {
                             final row = _logs[index];

@@ -9,6 +9,7 @@ assets/assets/logo.png
 assets/FontManifest.json
 assets/fonts/MaterialIcons-Regular.otf
 assets/NOTICES
+assets/packages/wakelock_plus/assets/no_sleep.js
 assets/packages/world_flags/shaders/waved_flag.frag
 assets/shaders/ink_sparkle.frag
 assets/shaders/stretch_effect.frag

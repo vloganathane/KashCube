@@ -244,8 +244,8 @@ class DatabaseHelper {
     await _seedFySettings(db);
 
     await db.insert('schema_version', {
-      'version': 82,
-      'description': 'Full v82 schema (fresh install)',
+      'version': AppConstants.dbVersion,
+      'description': 'Full v${AppConstants.dbVersion} schema (fresh install)',
       'applied_at': DateTime.now().toIso8601String(),
     });
 

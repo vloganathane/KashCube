@@ -243,6 +243,7 @@ class _WebQrCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final payload = qrPayload.trim();
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
       decoration: BoxDecoration(
@@ -263,18 +264,48 @@ class _WebQrCard extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: QrImageView(
-              data: qrPayload,
-              version: QrVersions.auto,
-              size: 180,
-              gapless: false,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-              ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-              ),
-            ),
+            child: payload.isEmpty
+                ? const SizedBox(
+                    width: 180,
+                    height: 180,
+                    child: Center(
+                      child: Text('Waiting for challenge...'),
+                    ),
+                  )
+                : QrImageView(
+                    data: payload,
+                    version: QrVersions.auto,
+                    size: 180,
+                    gapless: false,
+                    errorStateBuilder: (context, error) => SizedBox(
+                      width: 180,
+                      height: 180,
+                      child: Center(
+                        child: Text(
+                          'QR render failed',
+                          style: Theme.of(context).textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Colors.black,
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Colors.black,
+                    ),
+                  ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            payload.isEmpty
+                ? 'Awaiting AUTH_CHALLENGE payload'
+                : 'Challenge ready (${payload.length} chars)',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
           ),
         ],
       ),

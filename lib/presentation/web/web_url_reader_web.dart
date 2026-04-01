@@ -40,6 +40,22 @@ String? getOrigin() {
   }
 }
 
+/// Returns full browser URL (href) on web, e.g.
+/// http://192.168.1.6:50505/?token=...
+String? getCurrentUrl() {
+  try {
+    return web.window.location.href;
+  } catch (e, st) {
+    AppLogger.instance.warning(
+      'Failed to get current URL',
+      category: 'web_url',
+      error: e,
+      stackTrace: st,
+    );
+    return null;
+  }
+}
+
 // ── Session token persistence (survives page refresh, cleared on tab close) ─
 
 /// Saves [sessionId] and [wsUrl] to sessionStorage so a page refresh can

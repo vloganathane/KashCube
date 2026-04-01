@@ -8,6 +8,9 @@ String? getInitialToken() => null;
 /// Returns the http:// origin of the current page. Always null on non-web.
 String? getOrigin() => null;
 
+/// Returns full browser URL. Always null on non-web.
+String? getCurrentUrl() => null;
+
 // ── Session storage stubs (no-ops on native) ────────────────────────────────
 void saveSession(String sessionId, String wsUrl) {}
 String? getSavedSessionId() => null;

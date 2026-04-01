@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
@@ -11,13 +12,16 @@ import 'web_url_reader_stub.dart'
     if (dart.library.js_interop) 'web_url_reader_web.dart'
     as url_reader;
 
-/// Entry screen shown on browser (`kIsWeb = true`) when connected via QR.
+/// Entry screen shown on browser (`kIsWeb = true`) for web companion auth.
 ///
 /// Flow:
-///   1. Browser loads `http://<phone-ip>:<port>?token=<token>`.
-///   2. This screen extracts token from URL and connects to WebSocket.
-///   3. On AUTH_OK → navigates to [AppShell].
-///   4. If no token in URL → shows manual URL input.
+///   1. Browser loads `http://<phone-ip>:<port>`.
+///   2. This screen opens `/ws` and requests an AUTH_CHALLENGE.
+///   3. Browser renders the QR payload returned by the phone server.
+///   4. User scans it using KashCube on the phone.
+///   5. On AUTH_OK → navigates to [AppShell].
+///
+/// Legacy token URLs remain supported for fallback/debug paths.
 class WebConnectScreen extends ConsumerStatefulWidget {
   const WebConnectScreen({super.key});
 
@@ -32,6 +36,9 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
   @override
   void initState() {
     super.initState();
+    _urlController.addListener(() {
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _tryAutoConnect());
   }
 
@@ -59,33 +66,46 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
       return;
     }
 
-    // 2. Fall back to QR token from the URL (first load).
+    // 2. Fall back to QR token from the URL (legacy flow) or start a new
+    // browser-auth challenge on plain LAN URLs.
     final token  = url_reader.getInitialToken();
     final origin = url_reader.getOrigin(); // 'http://192.168.1.8:60567'
-    if (token == null || origin == null) return;
+    if (token != null) {
+      if (origin == null) {
+        _showError('Could not determine the current browser origin.');
+        return;
+      }
+      final wsUrl = '${origin.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
+      trackEvent(ref, AnalyticsEvents.webBrowserAutoConnected);
+      ref.read(webSyncProvider.notifier).connect(wsUrl, token);
+      return;
+    }
 
-    trackEvent(ref, AnalyticsEvents.webBrowserAutoConnected);
-    final wsUrl = '${origin.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
-    ref.read(webSyncProvider.notifier).connect(wsUrl, token);
+    if (origin != null) {
+      final wsUrl = '${origin.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
+      ref.read(webSyncProvider.notifier).beginBrowserAuth(wsUrl);
+    }
   }
 
   Future<void> _connectManual() async {
     final raw = _urlController.text.trim();
     if (raw.isEmpty) return;
 
-    // Accept: http://192.168.x.x:port?token=... or ws://...
+    // Accept plain LAN URL, token URL, or ws://...
     try {
       Uri uri = Uri.parse(raw);
       final token = uri.queryParameters['token'];
-      if (token == null) {
-        _showError('URL must contain a ?token= parameter');
-        return;
-      }
       trackEvent(ref, AnalyticsEvents.webBrowserManualConnect);
       final wsUri = uri.replace(scheme: 'ws', path: '/ws', query: '');
-      await ref.read(webSyncProvider.notifier).connect(
+      if (token != null) {
+        await ref.read(webSyncProvider.notifier).connect(
+              wsUri.toString(),
+              token,
+            );
+        return;
+      }
+      await ref.read(webSyncProvider.notifier).beginBrowserAuth(
             wsUri.toString(),
-            token,
           );
     } catch (e) {
       _showError('Invalid URL: $e');
@@ -136,27 +156,43 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'Open on your phone:',
+                  'Open KashCube in your browser',
                   style: context.textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Settings → Open on Laptop → scan the QR code',
+                  'Then scan the QR below with KashCube on your phone to approve this browser.',
                   style: context.textTheme.bodyMedium?.copyWith(
                     color: context.colorScheme.onSurfaceVariant,
                   ),
                   textAlign: TextAlign.center,
                 ),
+                if (sync.authQrPayload != null) ...[
+                  const SizedBox(height: AppSpacing.xl),
+                  _WebQrCard(qrPayload: sync.authQrPayload!),
+                ],
                 const SizedBox(height: AppSpacing.xxl),
                 if (sync.state == WsConnState.connecting)
-                  const CircularProgressIndicator()
+                  Column(
+                    children: [
+                      const CircularProgressIndicator(),
+                      if (sync.awaitingApproval) ...[
+                        const SizedBox(height: AppSpacing.base),
+                        Text(
+                          'Waiting for phone approval…',
+                          style: context.textTheme.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ],
+                  )
                 else ...[
                   TextField(
                     controller:  _urlController,
                     decoration: InputDecoration(
-                      labelText:  'Or paste URL from phone',
-                      hintText:   'http://192.168.x.x:PORT?token=...',
+                      labelText:  'Or paste phone URL',
+                      hintText:   'http://192.168.x.x:PORT',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.arrow_forward),
@@ -183,7 +219,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                         color: context.colorScheme.onSurfaceVariant),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
-                      'Data stays on your local Wi-Fi — never sent to the internet',
+                      'Browser auth stays on your local Wi-Fi — never sent to the internet',
                       style: context.textTheme.bodySmall?.copyWith(
                         color: context.colorScheme.onSurfaceVariant,
                       ),
@@ -194,6 +230,53 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WebQrCard extends StatelessWidget {
+  const _WebQrCard({required this.qrPayload});
+
+  final String qrPayload;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.base),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Scan This With KashCube',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: QrImageView(
+              data: qrPayload,
+              version: QrVersions.auto,
+              size: 180,
+              gapless: false,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -19,6 +19,8 @@ import '../web/web_url_reader_stub.dart'
 
 enum WsConnState { disconnected, connecting, connected }
 
+const _webSyncNoChange = Object();
+
 class WebSyncState {
   const WebSyncState({
     this.state        = WsConnState.disconnected,
@@ -26,6 +28,8 @@ class WebSyncState {
     this.errorMsg,
     this.syncedTables = const {},
     this.syncComplete = false,
+    this.authQrPayload,
+    this.awaitingApproval = false,
   });
   final WsConnState state;
   final String?     deviceName;
@@ -36,20 +40,32 @@ class WebSyncState {
 
   /// True once every discovered pull table has received is_final: true.
   final bool syncComplete;
+  final String? authQrPayload;
+  final bool awaitingApproval;
 
   WebSyncState copyWith({
     WsConnState? state,
-    String?      deviceName,
-    String?      errorMsg,
+    Object?      deviceName = _webSyncNoChange,
+    Object?      errorMsg = _webSyncNoChange,
     Set<String>? syncedTables,
     bool?        syncComplete,
+    Object?      authQrPayload = _webSyncNoChange,
+    bool?        awaitingApproval,
   }) =>
       WebSyncState(
         state:        state        ?? this.state,
-        deviceName:   deviceName   ?? this.deviceName,
-        errorMsg:     errorMsg     ?? this.errorMsg,
+        deviceName: identical(deviceName, _webSyncNoChange)
+            ? this.deviceName
+            : deviceName as String?,
+        errorMsg: identical(errorMsg, _webSyncNoChange)
+            ? this.errorMsg
+            : errorMsg as String?,
         syncedTables: syncedTables ?? this.syncedTables,
         syncComplete: syncComplete ?? this.syncComplete,
+        authQrPayload: identical(authQrPayload, _webSyncNoChange)
+            ? this.authQrPayload
+            : authQrPayload as String?,
+        awaitingApproval: awaitingApproval ?? this.awaitingApproval,
       );
 }
 
@@ -115,6 +131,41 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
   }
 
+  Future<void> beginBrowserAuth(String wsUrl) async {
+    if (state.state == WsConnState.connecting ||
+        state.state == WsConnState.connected) {
+      return;
+    }
+
+    state = state.copyWith(
+      state: WsConnState.connecting,
+      errorMsg: '',
+      authQrPayload: null,
+      awaitingApproval: true,
+    );
+    _wsUrl = wsUrl;
+
+    try {
+      final uri = Uri.parse(wsUrl);
+      _channel = WebSocketChannel.connect(uri);
+      await _channel!.ready;
+
+      _sub = _channel!.stream.listen(
+        _onMessage,
+        onDone: _onDisconnected,
+        onError: (_) => _onDisconnected(),
+      );
+
+      _channel!.sink.add(jsonEncode({'type': 'AUTH_BEGIN'}));
+    } catch (e) {
+      state = state.copyWith(
+        state: WsConnState.disconnected,
+        errorMsg: 'Connection failed: $e',
+        awaitingApproval: false,
+      );
+    }
+  }
+
   void _onMessage(dynamic raw) {
     try {
       final msg  = jsonDecode(raw as String) as Map<String, dynamic>;
@@ -123,12 +174,17 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         case 'AUTH_OK':
           unawaited(_handleAuthOk(msg));
           break;
+        case 'AUTH_CHALLENGE':
+          _handleAuthChallenge(msg);
+          break;
         case 'AUTH_FAIL':
           // Clear saved session so the user is prompted to scan a new QR.
           url_reader.clearSession();
           state = state.copyWith(
             state:    WsConnState.disconnected,
             errorMsg: 'Authentication failed — scan a new QR code',
+            authQrPayload: null,
+            awaitingApproval: false,
           );
           disconnect();
           break;
@@ -191,10 +247,21 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       syncedTables: {},
       syncComplete: _pullTables.isEmpty,
       errorMsg:     '',
+      authQrPayload: null,
+      awaitingApproval: false,
     );
 
     _pullAllTables();
     _startWriteLoop();
+  }
+
+  void _handleAuthChallenge(Map<String, dynamic> msg) {
+    state = state.copyWith(
+      state: WsConnState.connecting,
+      authQrPayload: msg['qr_payload'] as String?,
+      awaitingApproval: true,
+      errorMsg: '',
+    );
   }
 
   /// Sends PULL requests for all whitelisted tables after AUTH_OK.
@@ -418,6 +485,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     state = state.copyWith(
       state:      WsConnState.disconnected,
       deviceName: null,
+      authQrPayload: null,
+      awaitingApproval: false,
     );
   }
 

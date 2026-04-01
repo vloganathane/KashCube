@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../app_logger.dart';
+import 'web_companion_auth_qr.dart';
 import '../database_helper.dart';
 import '../sync/generic_sync_query_builder.dart';
 import '../sync/sync_table_registry.dart';
+import 'web_session_service.dart';
 
 /// Manages a single browser's WebSocket session.
 ///
@@ -62,9 +65,15 @@ class WebBrowserSession {
   StreamSubscription<dynamic>? _sub;
   bool _disposed = false;
   final Map<String, SyncTablePlan> _syncPlans = {};
+  String? _pendingBrowserSessionId;
+  String? _pendingChallenge;
+  DateTime? _pendingExpiresAt;
 
   static const _pingInterval = Duration(seconds: 25);
+  static const _pendingAuthTtl = Duration(minutes: 5);
+  static final Random _rng = Random.secure();
   Timer? _pingTimer;
+  Timer? _authTimer;
 
   void attach() {
     _sub = channel.stream.listen(
@@ -74,7 +83,7 @@ class WebBrowserSession {
     );
     // Give the browser 10 seconds to authenticate.
     Future<void>.delayed(const Duration(seconds: 10), () {
-      if (!_authenticated && !_disposed) {
+      if (!_authenticated && !_disposed && _pendingBrowserSessionId == null) {
         _sendRaw({'type': 'AUTH_FAIL', 'reason': 'timeout'});
         dispose();
       }
@@ -90,6 +99,9 @@ class WebBrowserSession {
         case 'AUTH':
         case 'SESSION_AUTH':
           _handleAuth(msg, isSession: type == 'SESSION_AUTH');
+          break;
+        case 'AUTH_BEGIN':
+          _handleAuthBegin();
           break;
         case 'PULL':
           _handlePull(msg);
@@ -120,8 +132,79 @@ class WebBrowserSession {
       dispose();
       return;
     }
+    _pendingBrowserSessionId = null;
+    _pendingChallenge = null;
+    _pendingExpiresAt = null;
+    _authTimer?.cancel();
+    _completeAuthentication(
+      sessionId: getSessionToken(),
+      isSession: isSession,
+    );
+  }
+
+  void _handleAuthBegin() {
+    if (_authenticated || _disposed) return;
+
+    final sessionId = _randomToken(16);
+    final challenge = _randomToken(32);
+    final expiresAt = DateTime.now().add(_pendingAuthTtl);
+    _pendingBrowserSessionId = sessionId;
+    _pendingChallenge = challenge;
+    _pendingExpiresAt = expiresAt;
+
+    _authTimer?.cancel();
+    _authTimer = Timer(_pendingAuthTtl, () {
+      if (!_authenticated && !_disposed) {
+        _sendRaw({'type': 'AUTH_FAIL', 'reason': 'approval_timeout'});
+        dispose();
+      }
+    });
+
+    _sendRaw({
+      'type': 'AUTH_CHALLENGE',
+      'browser_session_id': sessionId,
+      'expires_at': expiresAt.toIso8601String(),
+      'qr_payload': buildWebCompanionAuthQr(
+        sessionId: sessionId,
+        challenge: challenge,
+      ),
+    });
+    debugPrint('[WebSession] Browser auth challenge issued, expires at $expiresAt');
+  }
+
+  bool approvePendingAuth(String sessionId, String challenge) {
+    if (_disposed || _authenticated) return false;
+    if (_pendingBrowserSessionId == null || _pendingChallenge == null) {
+      return false;
+    }
+    final expiresAt = _pendingExpiresAt;
+    if (expiresAt == null || DateTime.now().isAfter(expiresAt)) {
+      return false;
+    }
+    if (!_constantTimeEquals(sessionId, _pendingBrowserSessionId!)) {
+      return false;
+    }
+    if (!_constantTimeEquals(challenge, _pendingChallenge!)) {
+      return false;
+    }
+
+    _pendingBrowserSessionId = null;
+    _pendingChallenge = null;
+    _pendingExpiresAt = null;
+    _authTimer?.cancel();
+    final issuedSessionId = WebSessionService.instance.issueSessionToken();
+    _completeAuthentication(
+      sessionId: issuedSessionId,
+      isSession: false,
+    );
+    return true;
+  }
+
+  void _completeAuthentication({
+    required String? sessionId,
+    required bool isSession,
+  }) {
     _authenticated = true;
-    final sessionId = getSessionToken();
     _sendRaw({
       'type':           'AUTH_OK',
       'device_name':    deviceName,
@@ -231,6 +314,7 @@ class WebBrowserSession {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _authTimer?.cancel();
     _pingTimer?.cancel();
     _sub?.cancel();
     try {
@@ -245,6 +329,20 @@ class WebBrowserSession {
     }
     onDisposed?.call();
     debugPrint('[WebSession] Browser session ended');
+  }
+
+  static String _randomToken(int byteLength) {
+    final bytes = List<int>.generate(byteLength, (_) => _rng.nextInt(256));
+    return base64Url.encode(bytes).replaceAll('=', '');
+  }
+
+  static bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var result = 0;
+    for (var i = 0; i < a.length; i++) {
+      result |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return result == 0;
   }
 
   // ── DB helper ─────────────────────────────────────────────────────────────

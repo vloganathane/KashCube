@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show ByteData, rootBundle;
 import 'package:path_provider/path_provider.dart';
 
 /// Extracts `assets/web_ui/` from the Flutter asset bundle to a temporary
@@ -61,7 +61,7 @@ class WebUiExtractor {
     for (final relativePath in files) {
       final file = File('${outDir.path}/$relativePath');
       file.parent.createSync(recursive: true);
-      final bytes = await rootBundle.load('assets/web_ui/$relativePath');
+      final bytes = await _loadAssetBytes(relativePath);
       file.writeAsBytesSync(bytes.buffer.asUint8List());
     }
 
@@ -73,5 +73,30 @@ class WebUiExtractor {
   void invalidate() {
     _extractedPath = null;
     _extracting = false;
+  }
+
+  Future<ByteData> _loadAssetBytes(String relativePath) async {
+    final primaryKey = 'assets/web_ui/$relativePath';
+    try {
+      return await rootBundle.load(primaryKey);
+    } on FlutterError {
+      // Some web-bundle package assets are flattened by Flutter into
+      // package-style keys on mobile, e.g. packages/wakelock_plus/...
+      if (relativePath.startsWith('assets/packages/')) {
+        final packageKey = relativePath.replaceFirst('assets/', '');
+        try {
+          return await rootBundle.load(packageKey);
+        } on FlutterError {
+          // no_sleep.js is optional for wakelock on web UI; serve an empty
+          // fallback to keep the embedded HTTP server booting.
+          if (packageKey.endsWith('/no_sleep.js')) {
+            debugPrint('[WebUiExtractor] Optional asset missing: $packageKey. Using empty fallback file.');
+            return ByteData(0);
+          }
+          rethrow;
+        }
+      }
+      rethrow;
+    }
   }
 }

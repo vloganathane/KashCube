@@ -78,6 +78,15 @@ class WebSessionService {
   /// The current session token to include in AUTH_OK — null before first auth.
   String? get sessionToken => _sessionToken;
 
+  /// Issues a fresh browser session token and returns it.
+  ///
+  /// Used by the browser-initiated QR approval flow where there is no
+  /// consumable URL token to validate first.
+  String issueSessionToken() {
+    _issueSessionToken();
+    return _sessionToken!;
+  }
+
   /// Returns whether there is an unused, unexpired QR token available.
   bool get hasValidToken =>
       _activeToken != null &&

@@ -22,7 +22,11 @@ class AppLogger {
 
   static const int _maxRows = 1000;
   static const int _maxTextLen = 4000;
+  static const int _terminalDedupWindowMs = 400;
   final String _sessionId = DateTime.now().microsecondsSinceEpoch.toString();
+  Future<void> _terminalWriteQueue = Future<void>.value();
+  String? _lastTerminalMessage;
+  int _lastTerminalAtMs = 0;
 
   // Talker is used as runtime logging backend (console output + formatting).
   // SQLite persistence remains the source of truth for Diagnostics Logs UI.
@@ -219,16 +223,32 @@ class AppLogger {
   }) async {
     final trimmed = line.trim();
     if (trimmed.isEmpty) return;
-    await _persistLog(
-      level: AppLogLevel.info,
-      source: source,
-      category: 'terminal',
-      eventName: 'terminal_line',
-      message: _truncate(_redact(trimmed)),
-      error: null,
-      stackTrace: null,
-      contextJson: null,
-    );
+    final safe = _truncate(_redact(trimmed));
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+
+    // `debugPrint` and Zone `print` can emit the same line back-to-back.
+    // Drop near-duplicate terminal lines to prevent noisy diagnostics and
+    // reduce SQLite write pressure during startup bursts.
+    final isDuplicate =
+        _lastTerminalMessage == safe &&
+        nowMs - _lastTerminalAtMs <= _terminalDedupWindowMs;
+    if (isDuplicate) return;
+    _lastTerminalMessage = safe;
+    _lastTerminalAtMs = nowMs;
+
+    // Serialize terminal writes to avoid many concurrent inserts hitting the
+    // same SQLite connection in a single frame.
+    _terminalWriteQueue = _terminalWriteQueue.then((_) => _persistLog(
+          level: AppLogLevel.info,
+          source: source,
+          category: 'terminal',
+          eventName: 'terminal_line',
+          message: safe,
+          error: null,
+          stackTrace: null,
+          contextJson: null,
+        ));
+    await _terminalWriteQueue;
   }
 
   Future<void> _log({

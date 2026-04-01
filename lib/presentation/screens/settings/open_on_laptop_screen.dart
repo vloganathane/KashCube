@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../data/services/app_logger.dart';
 
@@ -13,17 +13,12 @@ import '../../../core/extensions/context_extensions.dart';
 import '../../../data/services/p2p/p2p_coordinator.dart';
 import '../../../data/services/p2p/p2p_discovery_service.dart';
 import '../../../data/services/p2p/p2p_server.dart';
-import '../../../data/services/web/web_session_service.dart';
+import '../../../data/services/web/web_companion_auth_qr.dart';
 import '../../providers/analytics_provider.dart';
 import '../../providers/p2p_provider.dart';
 
-/// Shows a QR code that lets the user open KashCube on a laptop browser.
-///
-/// QR payload: `http://<phone-ip>:<port>?token=<session_token>`
-///
-/// The token is:
-///   - 32 random bytes (256-bit, single-use, expires in 5 minutes)
-///   - Consumed on first successful WebSocket AUTH
+/// Shows the LAN URL for the browser companion and lets the phone scan the
+/// browser's approval QR.
 class OpenOnLaptopScreen extends ConsumerStatefulWidget {
   const OpenOnLaptopScreen({super.key});
 
@@ -70,7 +65,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     });
 
     // Readiness gate: wait until the server socket is bound and static web
-    // assets are ready before generating QR.
+    // assets are ready before showing the LAN URL.
     var healthy = await P2pCoordinator.instance.isServerHealthy();
     for (var attempt = 0; !healthy && attempt < 15; attempt++) {
       await Future<void>.delayed(const Duration(milliseconds: 350));
@@ -106,8 +101,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       return;
     }
 
-    final token = WebSessionService.instance.generateToken();
-    final url   = 'http://$ip:$port?token=$token';
+    final url = 'http://$ip:$port';
 
     await _refreshDiagnostics(ipOverride: ip, portOverride: port);
 
@@ -118,6 +112,53 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       });
       trackEvent(ref, AnalyticsEvents.webCompanionQrShown);
     }
+  }
+
+  Future<void> _scanBrowserQr() async {
+    final parsed = await Navigator.of(context).push<({String sessionId, String challenge})>(
+      MaterialPageRoute(
+        builder: (_) => const _BrowserApprovalScannerScreen(),
+      ),
+    );
+    if (!mounted || parsed == null) return;
+
+    final approved = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Approve Browser'),
+            content: const Text(
+              'Allow this browser tab to open KashCube on your local network?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Approve'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!approved) return;
+
+    final ok = P2pCoordinator.instance.approveBrowserSession(
+      sessionId: parsed.sessionId,
+      challenge: parsed.challenge,
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Browser approved. The laptop should open now.'
+              : 'Approval failed. Refresh the browser page and scan again.',
+        ),
+      ),
+    );
   }
 
   Future<void> _refreshDiagnostics({String? ipOverride, int? portOverride}) async {
@@ -172,7 +213,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         lines.add('${iface.name}: ${addresses.join(', ')}');
       }
       return lines;
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to enumerate network interfaces',
         category: 'open_on_laptop',
@@ -253,7 +294,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh QR',
+            tooltip: 'Refresh server',
             onPressed: _buildUrl,
           ),
         ],
@@ -264,13 +305,13 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
           children: [
             const SizedBox(height: AppSpacing.base),
             Text(
-              'Scan with your laptop camera',
+              'Open this URL on your laptop',
               style: context.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Or type the URL in your browser. Works on the same Wi-Fi only.',
+              'The browser page will show a QR code. Scan that QR with KashCube on this phone to approve access.',
               style: context.textTheme.bodySmall?.copyWith(
                 color: context.colorScheme.onSurfaceVariant,
               ),
@@ -295,11 +336,15 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             else if (_error != null)
               _ErrorCard(message: _error!, onRetry: _buildUrl)
             else ...[
-              _QrCard(url: _url!),
-              const SizedBox(height: AppSpacing.md),
               _UrlChip(
                 url: _url!,
                 onCopied: () => trackEvent(ref, AnalyticsEvents.webCompanionUrlCopied),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton.icon(
+                onPressed: _scanBrowserQr,
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Scan Browser QR'),
               ),
             ],
 
@@ -321,8 +366,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
               label: 'Keep KashCube open on your phone while using the browser view',
             ),
             _InfoRow(
-              icon: Icons.timer_outlined,
-              label: 'QR expires in 5 minutes — tap ↻ to refresh',
+              icon: Icons.language_outlined,
+              label: 'Open the plain LAN URL on your laptop browser first',
             ),
             _InfoRow(
               icon: Icons.wifi_outlined,
@@ -334,7 +379,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             ),
             _InfoRow(
               icon: Icons.lock_outline,
-              label: 'Single-use token — scan once, then re-generate',
+              label: 'Browser access is granted only after you scan and approve its QR',
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -363,45 +408,85 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
 // ── Sub-widgets ─────────────────────────────────────────────────────────────
 
-class _QrCard extends StatelessWidget {
-  const _QrCard({required this.url});
-  final String url;
+class _BrowserApprovalScannerScreen extends StatefulWidget {
+  const _BrowserApprovalScannerScreen();
+
+  @override
+  State<_BrowserApprovalScannerScreen> createState() =>
+      _BrowserApprovalScannerScreenState();
+}
+
+class _BrowserApprovalScannerScreenState
+    extends State<_BrowserApprovalScannerScreen> {
+  final _controller = MobileScannerController();
+  bool _handled = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_handled) return;
+    final raw = capture.barcodes.firstOrNull?.rawValue;
+    if (raw == null) return;
+    final parsed = parseWebCompanionAuthQr(raw);
+    if (parsed == null) return;
+    _handled = true;
+    _controller.stop();
+    Navigator.of(context).pop(parsed);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final size = (constraints.maxWidth - AppSpacing.base * 2)
-            .clamp(200.0, 320.0);
-        return Container(
-          decoration: BoxDecoration(
-            color:        Colors.white,
-            borderRadius: BorderRadius.circular(AppSpacing.base),
-            boxShadow: [
-              BoxShadow(
-                color:      Colors.black.withValues(alpha: 0.08),
-                blurRadius: 12,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Scan Browser QR')),
+      body: Stack(
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: _onDetect,
+          ),
+          Center(
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: context.colorScheme.primary,
+                  width: 3,
+                ),
+                borderRadius: BorderRadius.circular(AppSpacing.base),
               ),
-            ],
-          ),
-          padding: const EdgeInsets.all(AppSpacing.base),
-          child: QrImageView(
-            data:                 url,
-            version:              QrVersions.auto,
-            size:                 size,
-            errorCorrectionLevel: QrErrorCorrectLevel.L,
-            backgroundColor:      Colors.white,
-            eyeStyle: QrEyeStyle(
-              eyeShape: QrEyeShape.square,
-              color:    context.colorScheme.primary,
-            ),
-            dataModuleStyle: const QrDataModuleStyle(
-              dataModuleShape: QrDataModuleShape.square,
-              color:           Colors.black87,
             ),
           ),
-        );
-      },
+          Positioned(
+            bottom: AppSpacing.xxl,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(AppSpacing.xl),
+                ),
+                child: Text(
+                  'Point your camera at the QR shown in the browser',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -597,7 +682,9 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
               ),
           ],
           const SizedBox(height: AppSpacing.sm),
-          Row(
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: [
               OutlinedButton.icon(
                 icon: loading
@@ -610,7 +697,6 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
                 label: const Text('Refresh diagnostics'),
                 onPressed: loading ? null : onRefresh,
               ),
-              const SizedBox(width: AppSpacing.sm),
               OutlinedButton.icon(
                 icon: const Icon(Icons.copy_outlined, size: 16),
                 label: const Text('Copy report'),

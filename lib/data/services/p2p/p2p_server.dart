@@ -86,6 +86,15 @@ class P2pServer {
 
   bool get hasBrowserConnected => _activeSession != null;
 
+  bool approveBrowserSession({
+    required String sessionId,
+    required String challenge,
+  }) {
+    final session = _activeSession;
+    if (session == null) return false;
+    return session.approvePendingAuth(sessionId, challenge);
+  }
+
   // ── Browser connection events ─────────────────────────────────────────────
 
   /// Emits `true` when a browser authenticates (AUTH_OK sent).

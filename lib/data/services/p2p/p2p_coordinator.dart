@@ -128,6 +128,16 @@ class P2pCoordinator {
   /// Readiness probe used by the "Open on Laptop" screen before showing QR.
   Future<bool> isServerHealthy() => P2pServer.instance.isHealthy();
 
+  bool approveBrowserSession({
+    required String sessionId,
+    required String challenge,
+  }) {
+    return P2pServer.instance.approveBrowserSession(
+      sessionId: sessionId,
+      challenge: challenge,
+    );
+  }
+
   /// Loads the Ed25519 private key seed from [IdentityService] — used as a
   /// fallback in [pairWithPeer] when the coordinator has not been started yet.
   Future<Uint8List> _loadDeviceKeyBytes() async {

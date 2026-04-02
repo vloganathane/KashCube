@@ -183,6 +183,8 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                         style: context.textTheme.bodyMedium,
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: AppSpacing.base),
+                      _AuthProgressTimeline(sync: sync),
                       if (sync.awaitingApproval) ...[
                         const SizedBox(height: AppSpacing.base),
                         Text(
@@ -236,6 +238,64 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AuthProgressTimeline extends StatelessWidget {
+  const _AuthProgressTimeline({required this.sync});
+
+  final WebSyncState sync;
+
+  @override
+  Widget build(BuildContext context) {
+    final steps = <(String, bool)>[
+      ('Phone server reachable',
+          sync.authPhase.index >= WebAuthPhase.serverReachable.index),
+      ('WebSocket connected',
+          sync.authPhase.index >= WebAuthPhase.wsReachable.index),
+      ('Auth challenge ready',
+          sync.authPhase.index >= WebAuthPhase.challengeReceived.index),
+      ('Browser approved',
+          sync.authPhase.index >= WebAuthPhase.approved.index),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: context.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final step in steps)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Icon(
+                    step.$2 ? Icons.check_circle : Icons.radio_button_unchecked,
+                    size: 16,
+                    color: step.$2
+                        ? context.colorScheme.primary
+                        : context.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    step.$1,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: step.$2
+                          ? context.colorScheme.onSurface
+                          : context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

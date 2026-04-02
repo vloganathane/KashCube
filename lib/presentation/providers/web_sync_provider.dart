@@ -17,16 +17,28 @@ import '../web/web_url_reader_stub.dart'
 import '../web/web_media_upload_stub.dart'
   if (dart.library.js_interop) '../web/web_media_upload_web.dart'
   as web_media_upload;
+import '../web/web_preflight_probe_stub.dart'
+  if (dart.library.js_interop) '../web/web_preflight_probe_web.dart'
+  as web_preflight_probe;
 
 // ── WebSocket connection state ─────────────────────────────────────────────
 
 enum WsConnState { disconnected, connecting, connected }
+
+enum WebAuthPhase {
+  idle,
+  serverReachable,
+  wsReachable,
+  challengeReceived,
+  approved,
+}
 
 const _webSyncNoChange = Object();
 
 class WebSyncState {
   const WebSyncState({
     this.state        = WsConnState.disconnected,
+    this.authPhase    = WebAuthPhase.idle,
     this.deviceName,
     this.errorMsg,
     this.progressMsg,
@@ -36,6 +48,7 @@ class WebSyncState {
     this.awaitingApproval = false,
   });
   final WsConnState state;
+  final WebAuthPhase authPhase;
   final String?     deviceName;
   final String?     errorMsg;
   final String?     progressMsg;
@@ -50,6 +63,7 @@ class WebSyncState {
 
   WebSyncState copyWith({
     WsConnState? state,
+    WebAuthPhase? authPhase,
     Object?      deviceName = _webSyncNoChange,
     Object?      errorMsg = _webSyncNoChange,
     Object?      progressMsg = _webSyncNoChange,
@@ -60,6 +74,7 @@ class WebSyncState {
   }) =>
       WebSyncState(
         state:        state        ?? this.state,
+        authPhase: authPhase ?? this.authPhase,
         deviceName: identical(deviceName, _webSyncNoChange)
             ? this.deviceName
             : deviceName as String?,
@@ -115,6 +130,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     state = state.copyWith(
       state: WsConnState.connecting,
+      authPhase: WebAuthPhase.idle,
       errorMsg: '',
       progressMsg: 'Opening secure local channel…',
       authQrPayload: null,
@@ -123,9 +139,30 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _wsUrl = wsUrl;
 
     try {
+      final preflight = await web_preflight_probe.probePhoneHealth(wsUrl);
+      if (!preflight.reachable) {
+        state = state.copyWith(
+          state: WsConnState.disconnected,
+          authPhase: WebAuthPhase.idle,
+          errorMsg: preflight.errorMessage,
+          progressMsg: 'Phone server is not reachable',
+          awaitingApproval: false,
+        );
+        return;
+      }
+
+      state = state.copyWith(
+        authPhase: WebAuthPhase.serverReachable,
+        progressMsg: 'Phone server reachable. Opening WebSocket…',
+      );
+
       final uri = Uri.parse(wsUrl);
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
+
+      state = state.copyWith(
+        authPhase: WebAuthPhase.wsReachable,
+      );
 
       _sub = _channel!.stream.listen(
         _onMessage,
@@ -143,6 +180,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     } catch (e) {
       state = state.copyWith(
         state:    WsConnState.disconnected,
+        authPhase: WebAuthPhase.idle,
         errorMsg: 'Connection failed: $e',
         progressMsg: 'Could not open local channel',
       );
@@ -157,6 +195,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     state = state.copyWith(
       state: WsConnState.connecting,
+      authPhase: WebAuthPhase.idle,
       errorMsg: '',
       progressMsg: 'Opening secure local channel…',
       authQrPayload: null,
@@ -165,9 +204,30 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _wsUrl = wsUrl;
 
     try {
+      final preflight = await web_preflight_probe.probePhoneHealth(wsUrl);
+      if (!preflight.reachable) {
+        state = state.copyWith(
+          state: WsConnState.disconnected,
+          authPhase: WebAuthPhase.idle,
+          errorMsg: preflight.errorMessage,
+          progressMsg: 'Phone server is not reachable',
+          awaitingApproval: false,
+        );
+        return;
+      }
+
+      state = state.copyWith(
+        authPhase: WebAuthPhase.serverReachable,
+        progressMsg: 'Phone server reachable. Opening WebSocket…',
+      );
+
       final uri = Uri.parse(wsUrl);
       _channel = WebSocketChannel.connect(uri);
       await _channel!.ready;
+
+      state = state.copyWith(
+        authPhase: WebAuthPhase.wsReachable,
+      );
 
       _sub = _channel!.stream.listen(
         _onMessage,
@@ -181,6 +241,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     } catch (e) {
       state = state.copyWith(
         state: WsConnState.disconnected,
+        authPhase: WebAuthPhase.idle,
         errorMsg: 'Connection failed: $e',
         progressMsg: 'Could not open local channel',
         awaitingApproval: false,
@@ -227,6 +288,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           url_reader.clearSession();
           state = state.copyWith(
             state:    WsConnState.disconnected,
+              authPhase: WebAuthPhase.idle,
             errorMsg: 'Authentication failed — scan a new QR code',
             progressMsg: 'Authentication failed',
             authQrPayload: null,
@@ -289,6 +351,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     state = state.copyWith(
       state:        WsConnState.connected,
+      authPhase: WebAuthPhase.approved,
       deviceName:   msg['device_name'] as String?,
       syncedTables: {},
       syncComplete: _pullTables.isEmpty,
@@ -307,6 +370,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   void _handleAuthChallenge(Map<String, dynamic> msg) {
     state = state.copyWith(
       state: WsConnState.connecting,
+      authPhase: WebAuthPhase.challengeReceived,
       authQrPayload: msg['qr_payload'] as String?,
       awaitingApproval: true,
       progressMsg: 'Scan this QR with your phone, then approve',
@@ -535,6 +599,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   void _onDisconnected() {
     state = state.copyWith(
       state:      WsConnState.disconnected,
+      authPhase: WebAuthPhase.idle,
       deviceName: null,
       progressMsg: 'Disconnected',
       authQrPayload: null,

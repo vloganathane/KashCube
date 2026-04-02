@@ -236,6 +236,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         state TEXT,
         pincode TEXT,
         business_card_image_path TEXT,
+        business_card_media_id TEXT,
         website TEXT,
         whatsapp TEXT,
         linkedin TEXT,
@@ -259,6 +260,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_parties_name ON parties(name)');
     await db.execute('CREATE INDEX idx_parties_phone ON parties(phone_number)');
     await db.execute('CREATE INDEX idx_parties_type ON parties(party_type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_parties_business_card_media ON parties(business_card_media_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_parties_context ON parties(context_id)');
 
     await db.execute('''
@@ -472,6 +474,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         email TEXT,
         gst_no TEXT,
         logo_path TEXT,
+        logo_media_id TEXT,
         is_active INTEGER NOT NULL DEFAULT 0,
         owner_name TEXT,
         website TEXT,
@@ -492,7 +495,31 @@ extension _DatabaseTableCreators on DatabaseHelper {
       )
     ''');
     await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_businesses_logo_media ON businesses(logo_media_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_businesses_context ON businesses(context_id)');
+
+    await db.execute('''
+      CREATE TABLE media_assets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        media_id TEXT NOT NULL UNIQUE,
+        sha256 TEXT NOT NULL,
+        mime_type TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        origin TEXT NOT NULL DEFAULT 'phone',
+        local_path TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        updated_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_media_id ON media_assets(media_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_sha256 ON media_assets(sha256)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_context ON media_assets(context_id)');
 
     await db.execute('''
       CREATE TABLE item_catalog (

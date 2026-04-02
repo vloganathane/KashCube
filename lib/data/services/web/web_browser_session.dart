@@ -68,6 +68,8 @@ class WebBrowserSession {
   String? _pendingBrowserSessionId;
   String? _pendingChallenge;
   DateTime? _pendingExpiresAt;
+  DateTime? _attachedAt;
+  DateTime? _challengeIssuedAt;
 
   static const _pingInterval = Duration(seconds: 25);
   static const _pendingAuthTtl = Duration(minutes: 5);
@@ -76,6 +78,16 @@ class WebBrowserSession {
   Timer? _authTimer;
 
   void attach() {
+    _attachedAt = DateTime.now();
+    unawaited(AppLogger.instance.info(
+      'Web companion timing trace',
+      category: 'web_companion_timing',
+      eventName: 'web_companion_timing',
+      context: {
+        'stage': 'ws_attached',
+      },
+    ));
+
     _sub = channel.stream.listen(
       _onMessage,
       onDone:  dispose,
@@ -151,6 +163,7 @@ class WebBrowserSession {
     _pendingBrowserSessionId = sessionId;
     _pendingChallenge = challenge;
     _pendingExpiresAt = expiresAt;
+    _challengeIssuedAt = DateTime.now();
 
     _authTimer?.cancel();
     _authTimer = Timer(_pendingAuthTtl, () {
@@ -169,6 +182,18 @@ class WebBrowserSession {
         challenge: challenge,
       ),
     });
+    final wsToChallengeMs = _attachedAt == null
+        ? null
+        : _challengeIssuedAt!.difference(_attachedAt!).inMilliseconds;
+    unawaited(AppLogger.instance.info(
+      'Web companion timing trace',
+      category: 'web_companion_timing',
+      eventName: 'web_companion_timing',
+      context: {
+        'stage': 'auth_challenge_issued',
+        'ws_to_challenge_ms': wsToChallengeMs,
+      },
+    ));
     debugPrint('[WebSession] Browser auth challenge issued, expires at $expiresAt');
   }
 
@@ -192,6 +217,20 @@ class WebBrowserSession {
     _pendingChallenge = null;
     _pendingExpiresAt = null;
     _authTimer?.cancel();
+    final approvedAt = DateTime.now();
+    final challengeToApproveMs = _challengeIssuedAt == null
+        ? null
+        : approvedAt.difference(_challengeIssuedAt!).inMilliseconds;
+    unawaited(AppLogger.instance.info(
+      'Web companion timing trace',
+      category: 'web_companion_timing',
+      eventName: 'web_companion_timing',
+      context: {
+        'stage': 'phone_approval_received',
+        'challenge_to_approve_ms': challengeToApproveMs,
+      },
+    ));
+
     final issuedSessionId = WebSessionService.instance.issueSessionToken();
     _completeAuthentication(
       sessionId: issuedSessionId,
@@ -204,6 +243,14 @@ class WebBrowserSession {
     required String? sessionId,
     required bool isSession,
   }) {
+    final now = DateTime.now();
+    final wsToAuthOkMs = _attachedAt == null
+        ? null
+        : now.difference(_attachedAt!).inMilliseconds;
+    final challengeToAuthOkMs = _challengeIssuedAt == null
+        ? null
+        : now.difference(_challengeIssuedAt!).inMilliseconds;
+
     _authenticated = true;
     _sendRaw({
       'type':           'AUTH_OK',
@@ -211,6 +258,17 @@ class WebBrowserSession {
       'schema_version': schemaVersion,
       'session_id': ?sessionId,
     });
+    unawaited(AppLogger.instance.info(
+      'Web companion timing trace',
+      category: 'web_companion_timing',
+      eventName: 'web_companion_timing',
+      context: {
+        'stage': 'auth_ok_sent',
+        'auth_mode': isSession ? 'session' : 'qr',
+        'ws_to_auth_ok_ms': wsToAuthOkMs,
+        'challenge_to_auth_ok_ms': challengeToAuthOkMs,
+      },
+    ));
     onAuthenticated?.call(isSession);
     _startPing();
     unawaited(_sendSyncPlan());

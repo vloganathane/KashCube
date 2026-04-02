@@ -60,6 +60,7 @@ abstract final class AppTables {
 
   // ── Business & settings ───────────────────────────────────────────────────
   static const String businesses          = 'businesses';
+  static const String mediaAssets         = 'media_assets';
   static const String settings            = 'settings';
 
   // ── Users, RBAC & subscription ────────────────────────────────────────────

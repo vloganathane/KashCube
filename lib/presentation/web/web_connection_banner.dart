@@ -27,9 +27,64 @@ class WebConnectionBanner extends ConsumerWidget {
     return Column(
       children: [
         Expanded(child: child),
-        if (!connected)
+        if (connected)
+          _ConnectedBanner(deviceName: sync.deviceName)
+        else
           _DisconnectedBanner(deviceName: sync.deviceName),
       ],
+    );
+  }
+}
+
+class _ConnectedBanner extends ConsumerWidget {
+  const _ConnectedBanner({this.deviceName});
+  final String? deviceName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final name = deviceName ?? 'Phone';
+    return Material(
+      color: context.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.sm,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.lan,
+              size: 16,
+              color: context.colorScheme.onPrimaryContainer,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                'Connected to $name',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onPrimaryContainer,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                ref.read(webSyncProvider.notifier).logout();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const WebConnectScreen(),
+                  ),
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: context.colorScheme.onPrimaryContainer,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

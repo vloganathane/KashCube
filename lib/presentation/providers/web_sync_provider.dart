@@ -26,6 +26,7 @@ class WebSyncState {
     this.state        = WsConnState.disconnected,
     this.deviceName,
     this.errorMsg,
+    this.progressMsg,
     this.syncedTables = const {},
     this.syncComplete = false,
     this.authQrPayload,
@@ -34,6 +35,7 @@ class WebSyncState {
   final WsConnState state;
   final String?     deviceName;
   final String?     errorMsg;
+  final String?     progressMsg;
 
   /// Tables that have received their final ROWS frame from the phone.
   final Set<String> syncedTables;
@@ -47,6 +49,7 @@ class WebSyncState {
     WsConnState? state,
     Object?      deviceName = _webSyncNoChange,
     Object?      errorMsg = _webSyncNoChange,
+    Object?      progressMsg = _webSyncNoChange,
     Set<String>? syncedTables,
     bool?        syncComplete,
     Object?      authQrPayload = _webSyncNoChange,
@@ -60,6 +63,9 @@ class WebSyncState {
         errorMsg: identical(errorMsg, _webSyncNoChange)
             ? this.errorMsg
             : errorMsg as String?,
+        progressMsg: identical(progressMsg, _webSyncNoChange)
+          ? this.progressMsg
+          : progressMsg as String?,
         syncedTables: syncedTables ?? this.syncedTables,
         syncComplete: syncComplete ?? this.syncComplete,
         authQrPayload: identical(authQrPayload, _webSyncNoChange)
@@ -104,7 +110,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     if (state.state == WsConnState.connecting ||
         state.state == WsConnState.connected) { return; }
 
-    state = state.copyWith(state: WsConnState.connecting);
+    state = state.copyWith(
+      state: WsConnState.connecting,
+      errorMsg: '',
+      progressMsg: 'Opening secure local channel…',
+      authQrPayload: null,
+      awaitingApproval: false,
+    );
     _wsUrl = wsUrl;
 
     try {
@@ -118,6 +130,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         onError: (_) => _onDisconnected(),
       );
 
+      state = state.copyWith(progressMsg: 'Authenticating browser session…');
+
       // Send AUTH or SESSION_AUTH depending on credential type.
       _channel!.sink.add(jsonEncode({
         'type':  isSession ? 'SESSION_AUTH' : 'AUTH',
@@ -127,6 +141,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       state = state.copyWith(
         state:    WsConnState.disconnected,
         errorMsg: 'Connection failed: $e',
+        progressMsg: 'Could not open local channel',
       );
     }
   }
@@ -140,6 +155,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     state = state.copyWith(
       state: WsConnState.connecting,
       errorMsg: '',
+      progressMsg: 'Opening secure local channel…',
       authQrPayload: null,
       awaitingApproval: true,
     );
@@ -156,11 +172,14 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         onError: (_) => _onDisconnected(),
       );
 
+      state = state.copyWith(progressMsg: 'Requesting phone approval QR…');
+
       _channel!.sink.add(jsonEncode({'type': 'AUTH_BEGIN'}));
     } catch (e) {
       state = state.copyWith(
         state: WsConnState.disconnected,
         errorMsg: 'Connection failed: $e',
+        progressMsg: 'Could not open local channel',
         awaitingApproval: false,
       );
     }
@@ -183,6 +202,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           state = state.copyWith(
             state:    WsConnState.disconnected,
             errorMsg: 'Authentication failed — scan a new QR code',
+            progressMsg: 'Authentication failed',
             authQrPayload: null,
             awaitingApproval: false,
           );
@@ -247,6 +267,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       syncedTables: {},
       syncComplete: _pullTables.isEmpty,
       errorMsg:     '',
+      progressMsg: _pullTables.isEmpty
+          ? 'Connected'
+          : 'Connected. Syncing local data…',
       authQrPayload: null,
       awaitingApproval: false,
     );
@@ -260,6 +283,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       state: WsConnState.connecting,
       authQrPayload: msg['qr_payload'] as String?,
       awaitingApproval: true,
+      progressMsg: 'Scan this QR with your phone, then approve',
       errorMsg: '',
     );
   }
@@ -321,6 +345,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       state = state.copyWith(
         syncedTables: updated,
         syncComplete: done,
+        progressMsg: done ? 'Connected and synced' : 'Syncing local data…',
       );
       debugPrint('[WebSync] Table synced: $table (all done: $done)');
     }
@@ -485,9 +510,17 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     state = state.copyWith(
       state:      WsConnState.disconnected,
       deviceName: null,
+      progressMsg: 'Disconnected',
       authQrPayload: null,
       awaitingApproval: false,
     );
+  }
+
+  /// Explicit user logout from browser side.
+  /// Clears session-storage token and closes the socket.
+  void logout() {
+    url_reader.clearSession();
+    disconnect();
   }
 
   void disconnect() {

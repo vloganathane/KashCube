@@ -53,6 +53,7 @@ class Party extends Equatable {
     this.updatedAt,
     this.deletedAt,
     this.businessCardImagePath,
+    this.businessCardMediaId,
     this.website,
     this.whatsapp,
     this.linkedin,
@@ -100,6 +101,8 @@ class Party extends Equatable {
   final DateTime? deletedAt;
   /// Local file-system path to a business card photo/scan. Never transmitted.
   final String? businessCardImagePath;
+  /// Stable media identifier shared across devices/web for the card image.
+  final String? businessCardMediaId;
   final String? website;
   final String? whatsapp;
   final String? linkedin;
@@ -155,6 +158,7 @@ class Party extends Equatable {
     DateTime? updatedAt,
     DateTime? deletedAt,
     String? businessCardImagePath,
+    String? businessCardMediaId,
     String? website,
     String? whatsapp,
     String? linkedin,
@@ -188,6 +192,7 @@ class Party extends Equatable {
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
       businessCardImagePath: businessCardImagePath ?? this.businessCardImagePath,
+      businessCardMediaId: businessCardMediaId ?? this.businessCardMediaId,
       website: website ?? this.website,
       whatsapp: whatsapp ?? this.whatsapp,
       linkedin: linkedin ?? this.linkedin,
@@ -224,6 +229,7 @@ class Party extends Equatable {
       'updated_at': updatedAt?.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
       'business_card_image_path': businessCardImagePath,
+      'business_card_media_id': businessCardMediaId,
       'website': website,
       'whatsapp': whatsapp,
       'linkedin': linkedin,
@@ -263,6 +269,7 @@ class Party extends Equatable {
       updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
       deletedAt: map['deleted_at'] != null ? DateTime.parse(map['deleted_at'] as String) : null,
       businessCardImagePath: map['business_card_image_path'] as String?,
+      businessCardMediaId: map['business_card_media_id'] as String?,
       website: map['website'] as String?,
       whatsapp: map['whatsapp'] as String?,
       linkedin: map['linkedin'] as String?,
@@ -275,5 +282,12 @@ class Party extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, partyType, partyContext, businessCardImagePath];
+  List<Object?> get props => [
+        id,
+        name,
+        partyType,
+        partyContext,
+        businessCardImagePath,
+        businessCardMediaId,
+      ];
 }

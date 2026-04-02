@@ -33,6 +33,14 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   String _loadingMessage = 'Starting local server…';
   bool    _loading = true;
 
+  DateTime? _traceStartedAt;
+  DateTime? _traceServerReadyAt;
+  DateTime? _traceUrlReadyAt;
+  DateTime? _traceScanStartedAt;
+  DateTime? _traceScanDetectedAt;
+  DateTime? _traceApprovedAt;
+  bool _traceConnectionLogged = false;
+
   bool _diagnosticsLoading = false;
   bool? _diagnosticsHealthy;
   String? _diagnosticsIp;
@@ -47,7 +55,63 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     _buildUrl();
   }
 
+  int? _msBetween(DateTime? from, DateTime? to) {
+    if (from == null || to == null) return null;
+    return to.difference(from).inMilliseconds;
+  }
+
+  void _logTiming(
+    String stage, {
+    Map<String, Object?> extra = const {},
+    AppLogLevel level = AppLogLevel.info,
+  }) {
+    final now = DateTime.now();
+    final context = <String, Object?>{
+      'stage': stage,
+      'since_start_ms': _msBetween(_traceStartedAt, now),
+      'since_server_ready_ms': _msBetween(_traceServerReadyAt, now),
+      ...extra,
+    };
+
+    switch (level) {
+      case AppLogLevel.warning:
+        unawaited(AppLogger.instance.warning(
+          'Web companion timing trace',
+          category: 'web_companion_timing',
+          eventName: 'web_companion_timing',
+          context: context,
+        ));
+        return;
+      case AppLogLevel.error:
+      case AppLogLevel.fatal:
+        unawaited(AppLogger.instance.error(
+          'Web companion timing trace',
+          category: 'web_companion_timing',
+          eventName: 'web_companion_timing',
+          context: context,
+        ));
+        return;
+      default:
+        unawaited(AppLogger.instance.info(
+          'Web companion timing trace',
+          category: 'web_companion_timing',
+          eventName: 'web_companion_timing',
+          context: context,
+        ));
+        return;
+    }
+  }
+
   Future<void> _buildUrl() async {
+    _traceStartedAt = DateTime.now();
+    _traceServerReadyAt = null;
+    _traceUrlReadyAt = null;
+    _traceScanStartedAt = null;
+    _traceScanDetectedAt = null;
+    _traceApprovedAt = null;
+    _traceConnectionLogged = false;
+    _logTiming('open_on_laptop_started');
+
     setState(() {
       _loading = true;
       _error = null;
@@ -58,6 +122,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     // This works whether or not the user has LAN sync enabled — the server
     // starts in server-only mode and does NOT turn on mDNS broadcast/discovery.
     await ref.read(webCompanionProvider.notifier).ensureStarted();
+    _logTiming('server_start_requested');
 
     if (!mounted) return;
     setState(() {
@@ -72,17 +137,27 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       healthy = await P2pCoordinator.instance.isServerHealthy();
     }
     if (!healthy) {
+      _logTiming(
+        'server_warmup_timeout',
+        level: AppLogLevel.warning,
+      );
       setState(() {
         _error = 'Server is still warming up. Please retry in a moment.';
         _loading = false;
       });
       return;
     }
+    _traceServerReadyAt = DateTime.now();
+    _logTiming('server_ready');
 
     // Use the actual bound port from the running server. This may differ from
     // AppConstants.p2pPort when startup falls back to a random free port.
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
+      _logTiming(
+        'server_port_missing',
+        level: AppLogLevel.warning,
+      );
       await _refreshDiagnostics();
       setState(() {
         _error   = 'Could not start the local server. Restart the app and try again.';
@@ -93,6 +168,11 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
     final ip = await P2pDiscoveryService.getLocalIp();
     if (ip == null || ip == '0.0.0.0') {
+      _logTiming(
+        'local_ip_unavailable',
+        level: AppLogLevel.warning,
+        extra: {'port': port},
+      );
       await _refreshDiagnostics(portOverride: port);
       setState(() {
         _error   = 'Could not detect a local network address.\nConnect your phone to Wi-Fi or enable the hotspot, then try again.';
@@ -110,17 +190,36 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         _url     = url;
         _loading = false;
       });
+      _traceUrlReadyAt = DateTime.now();
+      _logTiming(
+        'url_ready',
+        extra: {
+          'port': port,
+          'url_ready_ms': _msBetween(_traceStartedAt, _traceUrlReadyAt),
+        },
+      );
       trackEvent(ref, AnalyticsEvents.webCompanionQrShown);
     }
   }
 
   Future<void> _scanBrowserQr() async {
+    _traceScanStartedAt = DateTime.now();
+    _logTiming('scanner_opened');
+
     final parsed = await Navigator.of(context).push<({String sessionId, String challenge})>(
       MaterialPageRoute(
         builder: (_) => const _BrowserApprovalScannerScreen(),
       ),
     );
     if (!mounted || parsed == null) return;
+
+    _traceScanDetectedAt = DateTime.now();
+    _logTiming(
+      'qr_scanned',
+      extra: {
+        'scan_ms': _msBetween(_traceScanStartedAt, _traceScanDetectedAt),
+      },
+    );
 
     final approved = await showDialog<bool>(
           context: context,
@@ -144,9 +243,21 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
         false;
     if (!approved) return;
 
+    _traceApprovedAt = DateTime.now();
+    _logTiming(
+      'approval_confirmed',
+      extra: {
+        'approve_dialog_ms': _msBetween(_traceScanDetectedAt, _traceApprovedAt),
+      },
+    );
+
     final ok = P2pCoordinator.instance.approveBrowserSession(
       sessionId: parsed.sessionId,
       challenge: parsed.challenge,
+    );
+    _logTiming(
+      ok ? 'approval_sent_ok' : 'approval_sent_failed',
+      level: ok ? AppLogLevel.info : AppLogLevel.warning,
     );
 
     if (!mounted) return;
@@ -285,7 +396,23 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   Widget build(BuildContext context) {
     // Fire once each time a browser successfully authenticates.
     ref.listen<AsyncValue<bool>>(browserConnectionEventProvider, (_, next) {
-      next.whenData((_) => trackEvent(ref, AnalyticsEvents.webCompanionBrowserConnected));
+      next.whenData((connected) {
+        if (!connected) return;
+        trackEvent(ref, AnalyticsEvents.webCompanionBrowserConnected);
+
+        if (_traceConnectionLogged) return;
+        _traceConnectionLogged = true;
+        final now = DateTime.now();
+        _logTiming(
+          'browser_connected',
+          extra: {
+            'total_connect_ms': _msBetween(_traceStartedAt, now),
+            'url_to_connect_ms': _msBetween(_traceUrlReadyAt, now),
+            'scan_to_connect_ms': _msBetween(_traceScanDetectedAt, now),
+            'approve_to_connect_ms': _msBetween(_traceApprovedAt, now),
+          },
+        );
+      });
     });
 
     return Scaffold(

@@ -16,6 +16,7 @@ class Business extends Equatable {
     this.email,
     this.gstNo,
     this.logoPath,
+    this.logoMediaId,
     this.isActive = false,
     this.ownerName,
     this.website,
@@ -43,6 +44,9 @@ class Business extends Equatable {
 
   /// Absolute path to a locally stored logo image.
   final String? logoPath;
+
+  /// Stable media identifier shared across devices/web for business logo.
+  final String? logoMediaId;
 
   /// Whether this is the currently active business for invoicing.
   final bool isActive;
@@ -86,6 +90,7 @@ class Business extends Equatable {
     String? email,
     String? gstNo,
     String? logoPath,
+    String? logoMediaId,
     bool? isActive,
     String? ownerName,
     String? website,
@@ -109,6 +114,7 @@ class Business extends Equatable {
         email: email ?? this.email,
         gstNo: gstNo ?? this.gstNo,
         logoPath: logoPath ?? this.logoPath,
+        logoMediaId: logoMediaId ?? this.logoMediaId,
         isActive: isActive ?? this.isActive,
         ownerName: ownerName ?? this.ownerName,
         website: website ?? this.website,
@@ -133,6 +139,7 @@ class Business extends Equatable {
         'email': email,
         'gst_no': gstNo,
         'logo_path': logoPath,
+        'logo_media_id': logoMediaId,
         'is_active': isActive ? 1 : 0,
         'owner_name': ownerName,
         'website': website,
@@ -157,6 +164,7 @@ class Business extends Equatable {
         email: map['email'] as String?,
         gstNo: map['gst_no'] as String?,
         logoPath: map['logo_path'] as String?,
+        logoMediaId: map['logo_media_id'] as String?,
         isActive: (map['is_active'] as int? ?? 0) == 1,
         ownerName: map['owner_name'] as String?,
         website: map['website'] as String?,
@@ -169,5 +177,5 @@ class Business extends Equatable {
       );
 
   @override
-  List<Object?> get props => [id, name, gstNo, phone, isActive, upiId];
+  List<Object?> get props => [id, name, gstNo, phone, isActive, upiId, logoMediaId];
 }

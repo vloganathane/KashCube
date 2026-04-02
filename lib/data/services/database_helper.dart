@@ -3216,6 +3216,71 @@ class DatabaseHelper {
             'Unified diagnostics timeline: source, event_name, and session_id on app_logs',
       });
     }
+
+    if (oldVersion < 84) {
+      try {
+        await db.execute('ALTER TABLE businesses ADD COLUMN logo_media_id TEXT');
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_businesses_logo_media ON businesses(logo_media_id)',
+        );
+      } catch (_) {}
+
+      try {
+        await db.execute(
+          'ALTER TABLE parties ADD COLUMN business_card_media_id TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_parties_business_card_media ON parties(business_card_media_id)',
+        );
+      } catch (_) {}
+
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS media_assets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            media_id TEXT NOT NULL UNIQUE,
+            sha256 TEXT NOT NULL,
+            mime_type TEXT NOT NULL,
+            byte_size INTEGER NOT NULL,
+            origin TEXT NOT NULL DEFAULT 'phone',
+            local_path TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT,
+            deleted_at TEXT,
+            sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+            version              INTEGER NOT NULL DEFAULT 0,
+            created_by_device_id TEXT,
+            updated_by_device_id TEXT,
+            context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
+          )
+        ''');
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_media_assets_media_id ON media_assets(media_id)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_media_assets_sha256 ON media_assets(sha256)',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_media_assets_context ON media_assets(context_id)',
+        );
+      } catch (_) {}
+
+      await db.insert('schema_version', {
+        'version': 84,
+        'description':
+            'Media sync foundation: media_assets table + businesses/parties media reference columns',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

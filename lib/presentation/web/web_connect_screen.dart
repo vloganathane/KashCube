@@ -177,6 +177,12 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                   Column(
                     children: [
                       const CircularProgressIndicator(),
+                      const SizedBox(height: AppSpacing.base),
+                      Text(
+                        sync.progressMsg ?? 'Connecting…',
+                        style: context.textTheme.bodyMedium,
+                        textAlign: TextAlign.center,
+                      ),
                       if (sync.awaitingApproval) ...[
                         const SizedBox(height: AppSpacing.base),
                         Text(

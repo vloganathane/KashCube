@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_spacing.dart';
 import '../../core/extensions/context_extensions.dart';
 import '../../data/models/peer_device.dart';
@@ -129,6 +131,8 @@ class DevicesScreen extends ConsumerWidget {
               ),
             ),
           ),
+
+          if (enabled) const _ManualPeerConnectCard(),
 
           peersAsync.when(
             data: (peers) => peers.isEmpty
@@ -423,6 +427,218 @@ class _PeerTile extends StatelessWidget {
               ),
               child: const Text('Pair'),
             ),
+    );
+  }
+}
+
+class _ManualPeerConnectCard extends ConsumerStatefulWidget {
+  const _ManualPeerConnectCard();
+
+  @override
+  ConsumerState<_ManualPeerConnectCard> createState() =>
+      _ManualPeerConnectCardState();
+}
+
+class _ManualPeerConnectCardState extends ConsumerState<_ManualPeerConnectCard> {
+  static const _kFavoritesKey = 'p2p_manual_peer_favorites';
+
+  final _hostController = TextEditingController();
+  final _portController = TextEditingController(
+    text: '${AppConstants.p2pPort}',
+  );
+
+  bool _connecting = false;
+  List<String> _favorites = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  @override
+  void dispose() {
+    _hostController.dispose();
+    _portController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getStringList(_kFavoritesKey) ?? const [];
+    if (!mounted) return;
+    setState(() {
+      _favorites = saved;
+    });
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kFavoritesKey, _favorites);
+  }
+
+  Future<void> _connect({String? preset}) async {
+    if (_connecting) return;
+
+    String host;
+    int port;
+    if (preset != null) {
+      final sep = preset.lastIndexOf(':');
+      if (sep <= 0 || sep >= preset.length - 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid favorite entry')),
+        );
+        return;
+      }
+      host = preset.substring(0, sep);
+      final parsed = int.tryParse(preset.substring(sep + 1));
+      if (parsed == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid favorite port')),
+        );
+        return;
+      }
+      port = parsed;
+    } else {
+      host = _hostController.text.trim();
+      port = int.tryParse(_portController.text.trim()) ?? -1;
+    }
+
+    if (host.isEmpty || port <= 0 || port > 65535) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid IP and port')),
+      );
+      return;
+    }
+
+    setState(() {
+      _connecting = true;
+    });
+
+    final peer = await P2pDiscoveryService.instance.discoverManualTarget(
+      ip: host,
+      port: port,
+      localIdentityId: P2pCoordinator.instance.localIdentityId,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _connecting = false;
+    });
+
+    if (peer == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No KashCube peer at $host:$port')),
+      );
+      return;
+    }
+
+    final key = '$host:$port';
+    if (!_favorites.contains(key)) {
+      setState(() {
+        _favorites = [key, ..._favorites].take(10).toList();
+      });
+      await _saveFavorites();
+      if (!mounted) return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Found ${peer.displayName} at ${peer.host}:${peer.port}')),
+    );
+  }
+
+  Future<void> _removeFavorite(String fav) async {
+    setState(() {
+      _favorites = _favorites.where((f) => f != fav).toList();
+    });
+    await _saveFavorites();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.base,
+        0,
+        AppSpacing.base,
+        AppSpacing.base,
+      ),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Manual Connect (Fallback)',
+                style: context.textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Use IP:port when nearby discovery does not find peers.',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _hostController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Target IP',
+                        hintText: '192.168.1.42',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextField(
+                      controller: _portController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Port',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.tonal(
+                    onPressed: _connecting ? null : _connect,
+                    child: _connecting
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Connect'),
+                  ),
+                ],
+              ),
+              if (_favorites.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: _favorites
+                      .map(
+                        (fav) => InputChip(
+                          label: Text(fav),
+                          onPressed: () => _connect(preset: fav),
+                          onDeleted: () => _removeFavorite(fav),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

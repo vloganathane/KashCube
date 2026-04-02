@@ -130,6 +130,9 @@ class P2pCoordinator {
   /// Port the embedded HTTP server is listening on (null when not running).
   int? get serverPort => P2pServer.instance.port;
 
+  /// Local identity id currently active in the coordinator.
+  String? get localIdentityId => _identityId;
+
   /// Readiness probe used by the "Open on Laptop" screen before showing QR.
   Future<bool> isServerHealthy() => P2pServer.instance.isHealthy();
 
@@ -191,6 +194,8 @@ class P2pCoordinator {
 
     // Start the HTTP server — provides pull/push endpoints for remote peers.
     await P2pServer.instance.start(
+      localIdentityId: _identityId!,
+      localDisplayName: displayName,
       secretForPeer:  _secretForPeer,
       onPull:         _handlePull,
       onPush:         _handlePush,
@@ -330,6 +335,8 @@ class P2pCoordinator {
     _startWebPushLoop();
 
     await P2pServer.instance.start(
+      localIdentityId: _identityId!,
+      localDisplayName: displayName,
       secretForPeer:  _secretForPeer,
       onPull:         _handlePull,
       onPush:         _handlePush,

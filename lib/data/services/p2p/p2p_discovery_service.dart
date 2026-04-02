@@ -7,6 +7,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 
 import '../app_logger.dart';
+import '../../../core/constants/app_constants.dart';
 
 import '../../models/peer_device.dart';
 
@@ -44,6 +45,17 @@ class P2pDiscoveryService {
   Timer? _stalenessTimer;
   static const _kProbeInterval  = Duration(seconds: 30);
   static const _kProbeTimeout   = Duration(seconds: 4);
+  static const _kProbeFailureThreshold = 3;
+  static const _kLegacyScanDelay = Duration(seconds: 2);
+  static const _kLegacyProbeTimeout = Duration(milliseconds: 900);
+  static const _kLegacyScanBatchSize = 24;
+
+  Timer? _legacyScanTimer;
+  bool _legacyScanInFlight = false;
+
+  // Track consecutive probe failures per identity to avoid evicting healthy
+  // peers on one transient timeout/jitter event.
+  final _probeFailureCounts = <String, int>{};
 
   // Peers indexed by identityId for O(1) lookup during updates/removals.
   final _peers = <String, PeerDevice>{};
@@ -151,6 +163,15 @@ class P2pDiscoveryService {
     // 30 seconds and evicting any that fail to respond.
     _stalenessTimer?.cancel();
     _stalenessTimer = Timer.periodic(_kProbeInterval, (_) => _probeAllPeers());
+
+    // LocalSend-style fallback: if multicast yields no peers shortly after
+    // start, run a lightweight /24 HTTP probe on the default port.
+    _legacyScanTimer?.cancel();
+    _legacyScanTimer = Timer(_kLegacyScanDelay, () {
+      if (_peers.isEmpty) {
+        unawaited(_runLegacyHttpScan(localIdentityId, onTrusted));
+      }
+    });
     } finally {
       _startingDiscovery = false;
     }
@@ -159,13 +180,178 @@ class P2pDiscoveryService {
   Future<void> stopDiscovery() async {
     _stalenessTimer?.cancel();
     _stalenessTimer = null;
+    _legacyScanTimer?.cancel();
+    _legacyScanTimer = null;
     if (_discovery != null) {
       await _discovery!.stop();
       _discovery = null;
       _peers.clear();
+      _probeFailureCounts.clear();
       _emit();
       _logEvent('DISCOVERY stopped');
     }
+  }
+
+  Future<void> _runLegacyHttpScan(
+    String localIdentityId,
+    bool Function(String identityId)? onTrusted,
+  ) async {
+    if (_legacyScanInFlight) return;
+    _legacyScanInFlight = true;
+    try {
+      final localIp = await getLocalIp();
+      if (localIp == null) {
+        _logEvent('LEGACY scan skipped  reason=no_local_ip');
+        return;
+      }
+
+      final octets = localIp.split('.');
+      if (octets.length != 4) {
+        _logEvent('LEGACY scan skipped  reason=non_ipv4  ip=$localIp');
+        return;
+      }
+
+      final subnet = '${octets[0]}.${octets[1]}.${octets[2]}';
+      final localHost = int.tryParse(octets[3]);
+      if (localHost == null) {
+        _logEvent('LEGACY scan skipped  reason=bad_ipv4  ip=$localIp');
+        return;
+      }
+
+      _logEvent(
+        'LEGACY scan start  subnet=$subnet.0/24  port=${AppConstants.p2pPort}',
+      );
+
+      final targets = <String>[];
+      for (var i = 1; i <= 254; i++) {
+        if (i == localHost) continue;
+        targets.add('$subnet.$i');
+      }
+
+      var found = 0;
+      for (var i = 0; i < targets.length; i += _kLegacyScanBatchSize) {
+        final end = (i + _kLegacyScanBatchSize > targets.length)
+            ? targets.length
+            : i + _kLegacyScanBatchSize;
+        final batch = targets.sublist(i, end);
+
+        final results = await Future.wait(
+          batch.map((ip) => _probeLegacyTarget(
+                ip: ip,
+                localIdentityId: localIdentityId,
+                port: AppConstants.p2pPort,
+                onTrusted: onTrusted,
+              )),
+        );
+
+        for (final peer in results.whereType<PeerDevice>()) {
+          _peers[peer.identityId] = peer;
+          found++;
+          _emit();
+          _logEvent(
+            'LEGACY resolved  id=${peer.identityId}  '
+            'name="${peer.displayName}"  addr=${peer.host}:${peer.port}',
+          );
+        }
+
+        if (_discovery == null) break;
+      }
+
+      if (found == 0) {
+        _logEvent('LEGACY scan complete  no peers found');
+      } else {
+        _logEvent('LEGACY scan complete  peers_found=$found');
+      }
+    } finally {
+      _legacyScanInFlight = false;
+    }
+  }
+
+  Future<PeerDevice?> _probeLegacyTarget({
+    required String ip,
+    required String? localIdentityId,
+    required int port,
+    required bool Function(String identityId)? onTrusted,
+  }) async {
+    final client = HttpClient()
+      ..connectionTimeout = _kLegacyProbeTimeout;
+
+    try {
+      final uri = Uri.parse('http://$ip:$port/discover');
+      final request = await client.getUrl(uri).timeout(_kLegacyProbeTimeout);
+      final response = await request.close().timeout(_kLegacyProbeTimeout);
+      if (response.statusCode >= 400) return null;
+
+      final body = await response
+          .transform(const Utf8Decoder())
+          .join()
+          .timeout(_kLegacyProbeTimeout);
+      final json = jsonDecode(body);
+      if (json is! Map) return null;
+      if (json['app'] != 'kashcube') return null;
+
+      final identityId = json['identity_id'] as String?;
+      final displayName = json['display_name'] as String?;
+      final discoveredPort = (json['port'] as num?)?.toInt() ?? port;
+
+      if (identityId == null || displayName == null) return null;
+      if (localIdentityId != null && identityId == localIdentityId) return null;
+
+      // Preserve existing peer on mDNS path if already present.
+      final existing = _peers[identityId];
+      if (existing != null) {
+        return existing.copyWith(
+          host: ip,
+          port: discoveredPort,
+          displayName: displayName,
+          isTrusted: onTrusted?.call(identityId) ?? existing.isTrusted,
+          lastSeenAt: DateTime.now(),
+        );
+      }
+
+      return PeerDevice(
+        identityId: identityId,
+        displayName: displayName,
+        host: ip,
+        port: discoveredPort,
+        isTrusted: onTrusted?.call(identityId) ?? false,
+        lastSeenAt: DateTime.now(),
+      );
+    } catch (_) {
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Manual fallback discovery for a known target IP/port.
+  ///
+  /// This probes `/discover` and, on success, merges the discovered device
+  /// into the same in-memory peer list used by mDNS discovery.
+  Future<PeerDevice?> discoverManualTarget({
+    required String ip,
+    required int port,
+    String? localIdentityId,
+    bool Function(String identityId)? onTrusted,
+  }) async {
+    final peer = await _probeLegacyTarget(
+      ip: ip,
+      localIdentityId: localIdentityId,
+      port: port,
+      onTrusted: onTrusted,
+    );
+    if (peer == null) {
+      _logEvent('MANUAL discover failed  target=$ip:$port');
+      return null;
+    }
+
+    _peers[peer.identityId] = peer;
+    _emit();
+    _logEvent(
+      'MANUAL discovered  id=${peer.identityId}  '
+      'name="${peer.displayName}"  addr=${peer.host}:${peer.port}',
+    );
+    return peer;
   }
 
   /// Probes every currently-tracked peer's `/hello` endpoint.
@@ -200,19 +386,32 @@ class P2pDiscoveryService {
       final json = jsonDecode(body);
       if (json is! Map || json['app'] != 'kashcube') {
         _evictStalePeer(identityId, peer, 'unexpected hello body');
+        _probeFailureCounts.remove(identityId);
+        return;
       }
       // Peer is alive — update lastSeenAt.
       final updated = peer.copyWith(lastSeenAt: DateTime.now());
       _peers[identityId] = updated;
-    } catch (e, st) {
+      _probeFailureCounts.remove(identityId);
+    } catch (e) {
       // Any error (connection refused, timeout, socket exception) means the
-      // server is unreachable — treat as gone.
+      // server might be unreachable. We only evict after repeated failures to
+      // tolerate transient LAN hiccups.
       AppLogger.instance.debug(
         'Peer probe failed',
         category: 'p2p_discovery',
         error: e,
       );
-      _evictStalePeer(identityId, peer, 'probe failed');
+      final failures = (_probeFailureCounts[identityId] ?? 0) + 1;
+      _probeFailureCounts[identityId] = failures;
+      _logEvent(
+        'PROBE failed  id=$identityId  name="${peer.displayName}"  '
+        'count=$failures/$_kProbeFailureThreshold',
+      );
+      if (failures >= _kProbeFailureThreshold) {
+        _evictStalePeer(identityId, peer, 'probe failed x$failures');
+        _probeFailureCounts.remove(identityId);
+      }
     } finally {
       client.close(force: true);
     }
@@ -220,6 +419,7 @@ class P2pDiscoveryService {
 
   void _evictStalePeer(String identityId, PeerDevice peer, String reason) {
     if (_peers.remove(identityId) != null) {
+      _probeFailureCounts.remove(identityId);
       _emit();
       _logEvent('EVICTED stale peer  id=$identityId  name="${peer.displayName}"  reason=$reason');
     }
@@ -250,6 +450,7 @@ class P2pDiscoveryService {
       case BonsoirDiscoveryEventType.discoveryServiceLost:
         final id = event.service?.attributes[_kKeyIdentityId];
         if (id != null && _peers.remove(id) != null) {
+          _probeFailureCounts.remove(id);
           _emit();
           _logEvent('LOST  id=$id');
         }
@@ -441,7 +642,7 @@ class P2pDiscoveryService {
 
       debugPrint('[getLocalIp] selected → $best (priority $bestPriority)');
       return best;
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to get local IP address',
         category: 'p2p_discovery',
@@ -465,7 +666,7 @@ class P2pDiscoveryService {
         final info = await plugin.macOsInfo;
         return info.computerName;
       }
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to get device name',
         category: 'p2p_discovery',

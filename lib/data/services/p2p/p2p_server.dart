@@ -54,6 +54,10 @@ class P2pServer {
   Future<bool> Function(String identityId, String publicKeyBase64,
       String displayName, String proof)? _pairHandler;
 
+    // Local identity metadata for legacy HTTP discovery fallback.
+    String? _localIdentityId;
+    String? _localDisplayName;
+
   // ── Web companion ─────────────────────────────────────────────────────────
 
   String? _webDeviceName;
@@ -161,6 +165,8 @@ class P2pServer {
   ///                   [afterVersion].
   /// [onPush]          Callback that persists incoming [rows] for [table].
   Future<void> start({
+    required String localIdentityId,
+    required String localDisplayName,
     required Future<Uint8List?> Function(String identityId) secretForPeer,
     required Future<Map<String, dynamic>> Function(
             String table, int afterVersion)
@@ -178,6 +184,8 @@ class P2pServer {
     _pullHandler   = onPull;
     _pushHandler   = onPush;
     _pairHandler   = onPairRequest;
+    _localIdentityId = localIdentityId;
+    _localDisplayName = localDisplayName;
 
     // ── Route groups ──────────────────────────────────────────────────────
     //
@@ -193,6 +201,7 @@ class P2pServer {
     final openRouter = Router()
       ..get('/hello', _helloHandler)
       ..get('/health', _healthHandler)
+      ..get('/discover', _discoverHandler)
       ..post('/pair', _pairHandlerRoute)
       ..post('/media/upload', _mediaUploadRoute)
       ..get('/ws',    _wsHandler());
@@ -354,6 +363,28 @@ class P2pServer {
     return Response(
       healthy ? 200 : 503,
       body: payload,
+      headers: {'content-type': 'application/json'},
+    );
+  }
+
+  Response _discoverHandler(Request request) {
+    final identityId = _localIdentityId;
+    final displayName = _localDisplayName;
+    if (identityId == null || displayName == null) {
+      return Response(
+        503,
+        body: jsonEncode({'error': 'discover metadata unavailable'}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+
+    return Response.ok(
+      jsonEncode({
+        'app': 'kashcube',
+        'identity_id': identityId,
+        'display_name': displayName,
+        'port': _server?.port,
+      }),
       headers: {'content-type': 'application/json'},
     );
   }

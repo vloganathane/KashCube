@@ -1,0 +1,50 @@
+name: Build Windows Installer
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+
+      - name: Read app version from pubspec
+        id: app_version
+        shell: powershell
+        run: |
+          $line = (Select-String -Path pubspec.yaml -Pattern '^version:\s*').Line
+          if (-not $line) { throw 'version not found in pubspec.yaml' }
+          $version = ($line -replace '^version:\s*', '')
+          $semver = $version.Split('+')[0]
+          "value=$semver" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: powershell
+        run: |
+          iscc /DMyAppVersion=${{ steps.app_version.outputs.value }} installer\windows.iss
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kash-cube-windows-installer
+          path: dist/*.exe

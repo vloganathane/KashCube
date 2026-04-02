@@ -22,7 +22,7 @@ migrate_working_dir/
 .vscode/
 
 # GitHub Copilot instructions (not needed in repo yet)
-.github/
+.github/copilot-instructions.md
 
 # Flutter/Dart/Pub related
 **/doc/api/

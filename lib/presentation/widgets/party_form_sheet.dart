@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -21,6 +22,7 @@ import '../../data/services/app_logger.dart';
 import '../providers/party_address_provider.dart';
 import '../providers/party_provider.dart';
 import '../providers/settings_provider.dart';
+import '../providers/web_sync_provider.dart';
 import 'country_picker_field.dart';
 import 'indian_state_dropdown.dart';
 
@@ -62,6 +64,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   late PartyType _type;
   late String _partyContext;
   String? _businessCardImagePath;
+  String? _businessCardMediaId;
   // Staff-specific
   late final TextEditingController _staffRole;
   late final TextEditingController _staffSalary;
@@ -94,6 +97,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _type = p?.partyType ?? PartyType.personal;
     _partyContext = p?.partyContext ?? 'personal';
     _businessCardImagePath = p?.businessCardImagePath;
+    _businessCardMediaId = p?.businessCardMediaId;
     // Staff fields
     _staffRole = TextEditingController(text: p?.staffRole ?? '');
     _staffSalary = TextEditingController(
@@ -534,7 +538,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
               _BusinessCardPicker(
                 imagePath: _businessCardImagePath,
                 onPick: _pickBusinessCard,
-                onRemove: () => setState(() => _businessCardImagePath = null),
+                onRemove: () => setState(() {
+                  _businessCardImagePath = null;
+                  _businessCardMediaId = null;
+                }),
               ),
               const SizedBox(height: AppSpacing.xl),
 
@@ -672,8 +679,36 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       maxWidth: 1600,
     );
     if (picked != null && mounted) {
+      if (kIsWeb) {
+        try {
+          final bytes = await picked.readAsBytes();
+          final mediaId = await ref.read(webSyncProvider.notifier).uploadMediaBytes(
+                bytes: bytes,
+                fileName: picked.name,
+                mimeType: picked.mimeType ?? 'image/jpeg',
+              );
+          if (mediaId == null) {
+            throw Exception('No active web-companion session for media upload');
+          }
+          setState(() {
+            _businessCardMediaId = mediaId;
+            _businessCardImagePath = null;
+          });
+          return;
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Business card upload failed: $e')),
+          );
+          return;
+        }
+      }
+
       final compressed = await compressPickedImage(picked);
-      setState(() => _businessCardImagePath = compressed);
+      setState(() {
+        _businessCardImagePath = compressed;
+        _businessCardMediaId = null;
+      });
     }
   }
 
@@ -686,7 +721,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       if (!proceed || !mounted) return;
 
       final granted = await requestContactsRuntimePermission();
-      if (!granted || !mounted) {
+      if (!mounted) return;
+      if (!granted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -717,7 +753,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
           _email.text = contact.emails.first.address;
         }
       });
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.warning(
         'Failed to open contacts picker from party form',
         category: 'party_form_sheet',
@@ -838,6 +874,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       instagram:
           _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
       businessCardImagePath: _businessCardImagePath,
+        businessCardMediaId: _businessCardMediaId,
       totalTransactions: existing?.totalTransactions ?? 0,
       totalTransactionAmount: existing?.totalTransactionAmount ?? 0,
       totalCreditGiven: existing?.totalCreditGiven ?? 0,

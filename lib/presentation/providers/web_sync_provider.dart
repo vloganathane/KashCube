@@ -14,6 +14,9 @@ import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
     if (dart.library.js_interop) '../web/web_url_reader_web.dart'
     as url_reader;
+import '../web/web_media_upload_stub.dart'
+  if (dart.library.js_interop) '../web/web_media_upload_web.dart'
+  as web_media_upload;
 
 // ── WebSocket connection state ─────────────────────────────────────────────
 
@@ -183,6 +186,29 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         awaitingApproval: false,
       );
     }
+  }
+
+  /// Uploads a media blob to the connected phone over local HTTP and returns
+  /// the assigned media_id, or null if upload cannot proceed.
+  Future<String?> uploadMediaBytes({
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final wsUrl = _wsUrl;
+    final sessionToken = url_reader.getSavedSessionId();
+    if (wsUrl == null || sessionToken == null || sessionToken.isEmpty) {
+      return null;
+    }
+
+    final result = await web_media_upload.uploadMedia(
+      wsUrl: wsUrl,
+      sessionToken: sessionToken,
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    return result['media_id'] as String?;
   }
 
   void _onMessage(dynamic raw) {

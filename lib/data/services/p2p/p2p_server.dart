@@ -59,6 +59,11 @@ class P2pServer {
   String? _webDeviceName;
   int?    _webSchemaVersion;
   Future<void> Function(String table, Map<String, dynamic> row)? _webOnWrite;
+  Future<Map<String, dynamic>> Function({
+    required String fileName,
+    required String mimeType,
+    required Uint8List bytes,
+  })? _webOnMediaUpload;
   WebBrowserSession? _activeSession;
 
   /// Call this (after [start]) to enable the browser web companion routes.
@@ -70,10 +75,16 @@ class P2pServer {
     required String deviceName,
     required int    schemaVersion,
     required Future<void> Function(String table, Map<String, dynamic> row) onWrite,
+    required Future<Map<String, dynamic>> Function({
+      required String fileName,
+      required String mimeType,
+      required Uint8List bytes,
+    }) onMediaUpload,
   }) {
     _webDeviceName    = deviceName;
     _webSchemaVersion = schemaVersion;
     _webOnWrite       = onWrite;
+    _webOnMediaUpload = onMediaUpload;
     debugPrint('[P2P] Web companion enabled for $deviceName');
   }
 
@@ -183,6 +194,7 @@ class P2pServer {
       ..get('/hello', _helloHandler)
       ..get('/health', _healthHandler)
       ..post('/pair', _pairHandlerRoute)
+      ..post('/media/upload', _mediaUploadRoute)
       ..get('/ws',    _wsHandler());
 
     // Layer 2 — HMAC-gated P2P sync routes
@@ -394,6 +406,80 @@ class P2pServer {
 
     await _pushHandler!(table, rows);
     return Response.ok(jsonEncode({'ok': true}));
+  }
+
+  Future<Response> _mediaUploadRoute(Request request) async {
+    if (_webOnMediaUpload == null) {
+      return Response(
+        503,
+        body: jsonEncode({'error': 'media upload not available'}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+
+    final sessionToken = request.headers['x-kash-session'];
+    if (sessionToken == null ||
+        !WebSessionService.instance.validateSession(sessionToken)) {
+      return Response(
+        401,
+        body: jsonEncode({'error': 'unauthorized'}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
+
+    try {
+      final body = await _readBody(request);
+      final fileName = (body['file_name'] as String?)?.trim();
+      final mimeType = (body['mime_type'] as String?)?.trim();
+      final bytesB64 = body['bytes_b64'] as String?;
+
+      if (fileName == null ||
+          fileName.isEmpty ||
+          mimeType == null ||
+          mimeType.isEmpty ||
+          bytesB64 == null ||
+          bytesB64.isEmpty) {
+        return Response(
+          400,
+          body: jsonEncode({'error': 'missing fields'}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final bytes = base64Decode(bytesB64);
+      if (bytes.isEmpty) {
+        return Response(
+          400,
+          body: jsonEncode({'error': 'empty payload'}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      // 5 MB safety cap for v1 upload path.
+      if (bytes.length > 5 * 1024 * 1024) {
+        return Response(
+          413,
+          body: jsonEncode({'error': 'payload too large'}),
+          headers: {'content-type': 'application/json'},
+        );
+      }
+
+      final result = await _webOnMediaUpload!(
+        fileName: fileName,
+        mimeType: mimeType,
+        bytes: Uint8List.fromList(bytes),
+      );
+      return Response.ok(
+        jsonEncode({'ok': true, ...result}),
+        headers: {'content-type': 'application/json'},
+      );
+    } catch (e) {
+      return Response(
+        500,
+        body: jsonEncode({'error': 'media upload failed', 'details': '$e'}),
+        headers: {'content-type': 'application/json'},
+      );
+    }
   }
 
   // ── Request-log middleware ────────────────────────────────────────────────

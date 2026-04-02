@@ -1,10 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 
+import '../../../core/constants/app_tables.dart';
 import '../../models/peer_device.dart';
 import '../../models/trusted_peer.dart';
 import '../../../core/constants/app_constants.dart';
@@ -237,6 +242,7 @@ class P2pCoordinator {
       deviceName:    displayName,
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
+      onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service so the server keeps the CPU awake while a
     // browser tab is open.  Idempotent — no-op if already attached.
@@ -304,6 +310,7 @@ class P2pCoordinator {
         deviceName:    displayName,
         schemaVersion: AppConstants.dbVersion,
         onWrite:       _handleWebWrite,
+        onMediaUpload: _handleWebMediaUpload,
       );
       return;
     }
@@ -333,6 +340,7 @@ class P2pCoordinator {
       deviceName:    displayName,
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
+      onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service (idempotent).
     WebCompanionService.instance.attach();
@@ -815,6 +823,7 @@ class P2pCoordinator {
       deviceName:    deviceName,
       schemaVersion: schemaVersion,
       onWrite:       _handleWebWrite,
+      onMediaUpload: _handleWebMediaUpload,
     );
   }
 
@@ -990,7 +999,120 @@ class P2pCoordinator {
       normalized['version'] ??= 0;
     }
 
+    if (table == AppTables.businesses && columns.contains('logo_path')) {
+      final mediaId = normalized['logo_media_id']?.toString();
+      final logoPath = normalized['logo_path']?.toString();
+      if (mediaId != null && mediaId.isNotEmpty && (logoPath == null || logoPath.isEmpty)) {
+        final resolved = await _resolveMediaPath(db, mediaId);
+        if (resolved != null) {
+          normalized['logo_path'] = resolved;
+        }
+      }
+    }
+
+    if (table == AppTables.parties && columns.contains('business_card_image_path')) {
+      final mediaId = normalized['business_card_media_id']?.toString();
+      final imagePath = normalized['business_card_image_path']?.toString();
+      if (mediaId != null && mediaId.isNotEmpty && (imagePath == null || imagePath.isEmpty)) {
+        final resolved = await _resolveMediaPath(db, mediaId);
+        if (resolved != null) {
+          normalized['business_card_image_path'] = resolved;
+        }
+      }
+    }
+
     return normalized;
+  }
+
+  Future<String?> _resolveMediaPath(Database db, String mediaId) async {
+    final rows = await db.query(
+      AppTables.mediaAssets,
+      columns: ['local_path'],
+      where: 'media_id = ? AND deleted_at IS NULL',
+      whereArgs: [mediaId],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['local_path'] as String?;
+  }
+
+  Future<Map<String, dynamic>> _handleWebMediaUpload({
+    required String fileName,
+    required String mimeType,
+    required Uint8List bytes,
+  }) async {
+    final db = _db ?? await DatabaseHelper.instance.database;
+    final now = DateTime.now().toUtc();
+    final sha = sha256.convert(bytes).toString();
+
+    final existing = await db.query(
+      AppTables.mediaAssets,
+      columns: ['media_id', 'local_path', 'sha256', 'byte_size', 'mime_type'],
+      where: 'sha256 = ? AND byte_size = ? AND deleted_at IS NULL',
+      whereArgs: [sha, bytes.length],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.first;
+      final existingPath = row['local_path'] as String?;
+      if (existingPath != null && File(existingPath).existsSync()) {
+        return {
+          'media_id': row['media_id'],
+          'local_path': existingPath,
+          'sha256': row['sha256'],
+          'byte_size': row['byte_size'],
+          'mime_type': row['mime_type'],
+          'deduped': true,
+        };
+      }
+    }
+
+    final dir = await getApplicationDocumentsDirectory();
+    final mediaDir = Directory(p.join(dir.path, 'media_assets'));
+    if (!await mediaDir.exists()) {
+      await mediaDir.create(recursive: true);
+    }
+
+    final ext = _guessMediaExtension(fileName: fileName, mimeType: mimeType);
+    final mediaId = _newSyncId();
+    final localPath = p.join(mediaDir.path, '$mediaId$ext');
+    await File(localPath).writeAsBytes(bytes, flush: true);
+
+    await db.insert(
+      AppTables.mediaAssets,
+      {
+        'media_id': mediaId,
+        'sha256': sha,
+        'mime_type': mimeType,
+        'byte_size': bytes.length,
+        'origin': 'web',
+        'local_path': localPath,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.abort,
+    );
+
+    DatabaseHelper.instance.notifyChange(AppTables.mediaAssets);
+
+    return {
+      'media_id': mediaId,
+      'local_path': localPath,
+      'sha256': sha,
+      'byte_size': bytes.length,
+      'mime_type': mimeType,
+      'deduped': false,
+    };
+  }
+
+  String _guessMediaExtension({required String fileName, required String mimeType}) {
+    final lowerName = fileName.toLowerCase();
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return '.jpg';
+    if (lowerName.endsWith('.png')) return '.png';
+    if (lowerName.endsWith('.webp')) return '.webp';
+    if (mimeType.contains('png')) return '.png';
+    if (mimeType.contains('webp')) return '.webp';
+    return '.jpg';
   }
 
   String _newSyncId() {

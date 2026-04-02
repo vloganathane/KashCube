@@ -16,6 +16,7 @@ import '../../../core/utils/vcard_builder.dart';
 import '../../../data/models/business.dart';
 import '../../../data/services/pincode_lookup_service.dart';
 import '../../providers/business_provider.dart';
+import '../../providers/web_sync_provider.dart';
 import '../../widgets/country_picker_field.dart';
 import '../../widgets/indian_state_dropdown.dart';
 import '../../widgets/vcard_qr_dialog.dart';
@@ -274,16 +275,16 @@ class _Badge extends StatelessWidget {
 
 // ── Business Form Sheet ───────────────────────────────────────────────────────
 
-class _BusinessFormSheet extends StatefulWidget {
+class _BusinessFormSheet extends ConsumerStatefulWidget {
   const _BusinessFormSheet({this.business, required this.onSave});
   final Business? business;
   final Future<void> Function(Business, bool setActive) onSave;
 
   @override
-  State<_BusinessFormSheet> createState() => _BusinessFormSheetState();
+  ConsumerState<_BusinessFormSheet> createState() => _BusinessFormSheetState();
 }
 
-class _BusinessFormSheetState extends State<_BusinessFormSheet> {
+class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _ownerName;
@@ -300,6 +301,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
   late final TextEditingController _instagram;
   late final TextEditingController _upiId;
   String? _logoPath;
+  String? _logoMediaId;
   bool _setActive = false;
   bool _saving = false;
   bool _onlineExpanded = false;
@@ -326,6 +328,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
     _instagram = TextEditingController(text: b?.instagram ?? '');
     _upiId     = TextEditingController(text: b?.upiId ?? '');
     _logoPath = b?.logoPath;
+    _logoMediaId = b?.logoMediaId;
     _setActive = b?.isActive ?? false;
     // Country & dial code — load from existing business if set
     if (b?.country != null) _selectedCountry = countryByName(b!.country);
@@ -380,8 +383,36 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       imageQuality: 85,
     );
     if (xfile != null) {
+      if (kIsWeb) {
+        try {
+          final bytes = await xfile.readAsBytes();
+          final mediaId = await ref.read(webSyncProvider.notifier).uploadMediaBytes(
+                bytes: bytes,
+                fileName: xfile.name,
+                mimeType: xfile.mimeType ?? 'image/jpeg',
+              );
+          if (mediaId == null) {
+            throw Exception('No active web-companion session for media upload');
+          }
+          setState(() {
+            _logoMediaId = mediaId;
+            _logoPath = null;
+          });
+          return;
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logo upload failed: $e')),
+          );
+          return;
+        }
+      }
+
       final compressed = await compressPickedImage(xfile);
-      setState(() => _logoPath = compressed);
+      setState(() {
+        _logoPath = compressed;
+        _logoMediaId = null;
+      });
     }
   }
 
@@ -408,6 +439,7 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
       logoPath: _logoPath,
+      logoMediaId: _logoMediaId,
       website: nullIfEmpty(_website),
       whatsapp: nullIfEmpty(_whatsapp),
       linkedin: nullIfEmpty(_linkedin),
@@ -459,7 +491,10 @@ class _BusinessFormSheetState extends State<_BusinessFormSheet> {
               _LogoPicker(
                 logoPath: _logoPath,
                 onPick: _pickLogo,
-                onRemove: () => setState(() => _logoPath = null),
+                onRemove: () => setState(() {
+                  _logoPath = null;
+                  _logoMediaId = null;
+                }),
               ),
               const SizedBox(height: AppSpacing.base),
 

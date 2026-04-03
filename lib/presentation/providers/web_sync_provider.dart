@@ -110,8 +110,12 @@ class WebSyncState {
 /// All existing repositories read from [DatabaseHelper.instance.database]
 /// unchanged — zero repo-layer changes required.
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
-  WebSyncNotifier({bool preferWebRtcTransport = false})
+  WebSyncNotifier({
+    bool preferWebRtcTransport = false,
+    WebRtcPeerOpsMode peerOpsMode = WebRtcPeerOpsMode.noop,
+  })
       : _preferWebRtcTransport = preferWebRtcTransport,
+        _peerOpsMode = peerOpsMode,
         super(const WebSyncState());
 
   SyncTransportChannel? _channel;
@@ -122,6 +126,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   bool _registrySnapshotLogged = false;
   String? _wsUrl; // remembered for session reconnect logging
   final bool _preferWebRtcTransport;
+  final WebRtcPeerOpsMode _peerOpsMode;
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
@@ -133,9 +138,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final List<Map<String, dynamic>> _remoteIceCandidates = <Map<String, dynamic>>[];
 
   WebRtcPeerOpsFactory _buildWebRtcPeerOpsFactory() {
-    // Placeholder selection hook. The real flutter_webrtc implementation is
-    // injected here once plugin-backed peer ops are enabled by policy.
-    return (sessionId) => FlutterWebRtcPeerOpsShell(sessionId: sessionId);
+    return buildWebRtcPeerOpsFactory(_peerOpsMode);
   }
 
   /// Connect with a QR token (first load) or a session token (page refresh).

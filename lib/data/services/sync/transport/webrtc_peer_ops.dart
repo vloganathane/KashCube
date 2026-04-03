@@ -10,6 +10,20 @@ abstract class WebRtcPeerOps {
 
 typedef WebRtcPeerOpsFactory = WebRtcPeerOps Function(String sessionId);
 
+enum WebRtcPeerOpsMode {
+  noop,
+  flutterShell,
+}
+
+WebRtcPeerOpsFactory buildWebRtcPeerOpsFactory(WebRtcPeerOpsMode mode) {
+  switch (mode) {
+    case WebRtcPeerOpsMode.noop:
+      return (_) => NoopWebRtcPeerOps();
+    case WebRtcPeerOpsMode.flutterShell:
+      return (sessionId) => FlutterWebRtcPeerOpsShell(sessionId: sessionId);
+  }
+}
+
 class NoopWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> setLocalOfferSdp(String sdp) async {}

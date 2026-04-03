@@ -14,6 +14,10 @@ import '../sync/transport/sync_signaling_messages.dart';
 import '../sync/sync_table_registry.dart';
 import 'web_session_service.dart';
 
+typedef WebSignalFrameHandler = Future<List<Map<String, dynamic>>> Function(
+  Map<String, dynamic> frame,
+);
+
 /// Manages a single browser's WebSocket session.
 ///
 /// Lifecycle:
@@ -30,6 +34,7 @@ class WebBrowserSession {
     required this.validateSession,
     required this.getSessionToken,
     required this.onWrite,
+    this.onSignalFrame,
     required this.schemaVersion,
     required this.deviceName,
     this.onAuthenticated,
@@ -49,6 +54,13 @@ class WebBrowserSession {
 
   /// Called when browser writes a row — phone persists it.
   final Future<void> Function(String table, Map<String, dynamic> row) onWrite;
+
+  /// Optional handler for WebRTC signaling frames from browser.
+  ///
+  /// If set, SIGNAL_* frames are delegated to this callback and each returned
+  /// frame is sent back to the browser. If unset, the session responds with
+  /// SIGNAL_UNSUPPORTED.
+  final WebSignalFrameHandler? onSignalFrame;
 
   /// Optional callback fired after the browser successfully authenticates.
   /// [isSession] is true when re-auth used a session token (page refresh).
@@ -131,11 +143,7 @@ class WebBrowserSession {
         case SyncSignalingMessages.signalOffer:
         case SyncSignalingMessages.signalAnswer:
         case SyncSignalingMessages.signalIceCandidate:
-          _sendRaw({
-            'type': SyncSignalingMessages.signalUnsupported,
-            'reason': 'WebRTC signaling not implemented on server session',
-            'source_type': type,
-          });
+          unawaited(_handleSignalFrame(type, msg));
           break;
         default:
           debugPrint('[WebSession] Unknown message type: $type');
@@ -355,6 +363,40 @@ class WebBrowserSession {
       _sendRaw({'type': SyncSignalingMessages.push, 'table': table, 'rows': [row]});
     } catch (e) {
       debugPrint('[WebSession] Write error for $table: $e');
+    }
+  }
+
+  Future<void> _handleSignalFrame(
+    String type,
+    Map<String, dynamic> msg,
+  ) async {
+    if (!_authenticated) return;
+
+    final handler = onSignalFrame;
+    if (handler == null) {
+      _sendRaw({
+        'type': SyncSignalingMessages.signalUnsupported,
+        'reason': 'WebRTC signaling handler not configured',
+        'source_type': type,
+      });
+      return;
+    }
+
+    final frame = Map<String, dynamic>.from(msg)
+      ..['type'] = type;
+
+    try {
+      final responses = await handler(frame);
+      for (final response in responses) {
+        _sendRaw(response);
+      }
+    } catch (e) {
+      debugPrint('[WebSession] Signal frame error ($type): $e');
+      _sendRaw({
+        'type': SyncSignalingMessages.signalUnsupported,
+        'reason': 'WebRTC signaling handler error',
+        'source_type': type,
+      });
     }
   }
 

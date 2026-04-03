@@ -16,6 +16,7 @@ import '../../../core/constants/app_constants.dart';
 import '../database_helper.dart';
 import '../identity_service.dart';
 import '../sync/generic_sync_query_builder.dart';
+import '../sync/transport/sync_signaling_messages.dart';
 import '../sync/sync_table_registry.dart';
 import '../sync/sync_table_state_store.dart';
 import '../sync_event_bus.dart';
@@ -247,6 +248,7 @@ class P2pCoordinator {
       deviceName:    displayName,
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
+      onSignalFrame: _handleWebSignalFrame,
       onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service so the server keeps the CPU awake while a
@@ -315,6 +317,7 @@ class P2pCoordinator {
         deviceName:    displayName,
         schemaVersion: AppConstants.dbVersion,
         onWrite:       _handleWebWrite,
+        onSignalFrame: _handleWebSignalFrame,
         onMediaUpload: _handleWebMediaUpload,
       );
       return;
@@ -347,6 +350,7 @@ class P2pCoordinator {
       deviceName:    displayName,
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
+      onSignalFrame: _handleWebSignalFrame,
       onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service (idempotent).
@@ -830,6 +834,7 @@ class P2pCoordinator {
       deviceName:    deviceName,
       schemaVersion: schemaVersion,
       onWrite:       _handleWebWrite,
+      onSignalFrame: _handleWebSignalFrame,
       onMediaUpload: _handleWebMediaUpload,
     );
   }
@@ -982,6 +987,23 @@ class P2pCoordinator {
     DatabaseHelper.instance.notifyChange(table);
     // Push the merged row back to the browser session if active.
     WebSessionService.instance.activeSession?.pushRows(table, [normalized]);
+  }
+
+  Future<List<Map<String, dynamic>>> _handleWebSignalFrame(
+    Map<String, dynamic> frame,
+  ) async {
+    final type = (frame['type'] as String? ?? '').toUpperCase();
+    debugPrint('[P2pCoordinator] Web signaling frame received: $type');
+
+    // Next slice will translate these frames into local WebRTC offer/answer/ICE
+    // processing and return concrete signaling responses.
+    return [
+      {
+        'type': SyncSignalingMessages.signalUnsupported,
+        'reason': 'WebRTC signaling flow not implemented yet in coordinator',
+        'source_type': type,
+      },
+    ];
   }
 
   Future<Map<String, dynamic>> _normalizeIncomingWebRow(

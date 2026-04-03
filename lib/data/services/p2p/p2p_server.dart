@@ -63,6 +63,8 @@ class P2pServer {
   String? _webDeviceName;
   int?    _webSchemaVersion;
   Future<void> Function(String table, Map<String, dynamic> row)? _webOnWrite;
+  Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)?
+      _webOnSignalFrame;
   Future<Map<String, dynamic>> Function({
     required String fileName,
     required String mimeType,
@@ -79,6 +81,7 @@ class P2pServer {
     required String deviceName,
     required int    schemaVersion,
     required Future<void> Function(String table, Map<String, dynamic> row) onWrite,
+    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)? onSignalFrame,
     required Future<Map<String, dynamic>> Function({
       required String fileName,
       required String mimeType,
@@ -88,6 +91,7 @@ class P2pServer {
     _webDeviceName    = deviceName;
     _webSchemaVersion = schemaVersion;
     _webOnWrite       = onWrite;
+    _webOnSignalFrame = onSignalFrame;
     _webOnMediaUpload = onMediaUpload;
     debugPrint('[P2P] Web companion enabled for $deviceName');
   }
@@ -292,6 +296,7 @@ class P2pServer {
             validateSession: WebSessionService.instance.validateSession,
             getSessionToken: () => WebSessionService.instance.sessionToken,
             onWrite:         _webOnWrite ?? (_, p2) async {},
+            onSignalFrame:   _webOnSignalFrame,
             schemaVersion:   _webSchemaVersion!,
             deviceName:      _webDeviceName!,
             onAuthenticated: (_) {

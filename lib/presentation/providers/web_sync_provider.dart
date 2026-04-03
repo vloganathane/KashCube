@@ -10,7 +10,7 @@ import '../../data/services/database_helper.dart';
 import '../../data/services/sync/generic_sync_query_builder.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
-import '../../data/services/sync/transport/websocket_sync_transport_channel.dart';
+import '../../data/services/sync/transport/sync_transport_policy.dart';
 import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
     if (dart.library.js_interop) '../web/web_url_reader_web.dart'
@@ -105,7 +105,9 @@ class WebSyncState {
 /// All existing repositories read from [DatabaseHelper.instance.database]
 /// unchanged — zero repo-layer changes required.
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
-  WebSyncNotifier() : super(const WebSyncState());
+  WebSyncNotifier({bool preferWebRtcTransport = false})
+      : _preferWebRtcTransport = preferWebRtcTransport,
+        super(const WebSyncState());
 
   SyncTransportChannel? _channel;
   StreamSubscription<dynamic>? _sub;
@@ -114,6 +116,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   bool _writeLoopInFlight = false;
   bool _registrySnapshotLogged = false;
   String? _wsUrl; // remembered for session reconnect logging
+  final bool _preferWebRtcTransport;
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
@@ -158,9 +161,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       );
 
       final uri = Uri.parse(wsUrl);
-      final channel = WebSocketSyncTransportChannel();
-      await channel.connect(uri);
-      _channel = channel;
+      _channel = await _connectTransport(uri);
 
       state = state.copyWith(
         authPhase: WebAuthPhase.wsReachable,
@@ -224,9 +225,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       );
 
       final uri = Uri.parse(wsUrl);
-      final channel = WebSocketSyncTransportChannel();
-      await channel.connect(uri);
-      _channel = channel;
+      _channel = await _connectTransport(uri);
 
       state = state.copyWith(
         authPhase: WebAuthPhase.wsReachable,
@@ -249,6 +248,24 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         progressMsg: 'Could not open local channel',
         awaitingApproval: false,
       );
+    }
+  }
+
+  Future<SyncTransportChannel> _connectTransport(Uri uri) async {
+    final preferred = SyncTransportPolicy.pick(
+      preferWebRtc: _preferWebRtcTransport,
+    );
+    final preferredChannel = SyncTransportPolicy.create(preferred);
+    try {
+      await preferredChannel.connect(uri);
+      return preferredChannel;
+    } catch (e) {
+      if (preferred != SyncTransportKind.webRtc) rethrow;
+      debugPrint('[WebSync] WebRTC transport unavailable, falling back to WebSocket: $e');
+
+      final fallback = SyncTransportPolicy.create(SyncTransportKind.webSocket);
+      await fallback.connect(uri);
+      return fallback;
     }
   }
 

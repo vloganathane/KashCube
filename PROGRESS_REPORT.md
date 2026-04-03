@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M3 Progression (Slice 17: Payload Callback Scaffold)
 
-**Commit:** pending (current working tree)
+**Commit:** `e56a0ed` — Add WebRTC payload callback scaffolding
 
 Completed initial payload-path activation scaffold:
 1. Added `payloadFrames` stream and `sendDataChannelFrame()` to `WebRtcPeerOps`

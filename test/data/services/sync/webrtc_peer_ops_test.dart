@@ -59,12 +59,14 @@ void main() {
         channel: channel,
       );
       final eventsFuture = ops.runtimeEvents.take(3).toList();
+      final payloadFuture = ops.payloadFrames.first;
 
       await ops.createPeerSession();
       await ops.setLocalOfferSdp('offer-sdp');
       await ops.setRemoteAnswerSdp('answer-sdp');
       await ops.addRemoteIceCandidate({'candidate': 'ice-1'});
       await ops.ensureDataChannel();
+      await ops.sendDataChannelFrame('{"type":"SYNC"}');
       MethodChannelWebRtcPeerOps.dispatchRuntimeEventForTest({
         'session_id': 'sess-101',
         'event': 'PEER_SESSION_CREATED',
@@ -73,6 +75,10 @@ void main() {
         'session_id': 'sess-101',
         'event': 'DATA_CHANNEL_READY',
       });
+      MethodChannelWebRtcPeerOps.dispatchPayloadFrameForTest({
+        'session_id': 'sess-101',
+        'frame': '{"type":"SYNC"}',
+      });
       await ops.closePeerSession();
       MethodChannelWebRtcPeerOps.dispatchRuntimeEventForTest({
         'session_id': 'sess-101',
@@ -80,6 +86,7 @@ void main() {
       });
 
       final events = await eventsFuture;
+      final payloadFrame = await payloadFuture;
 
       expect(calls.map((c) => c.method), <String>[
         'createPeerSession',
@@ -87,6 +94,7 @@ void main() {
         'setRemoteAnswerSdp',
         'addRemoteIceCandidate',
         'ensureDataChannel',
+        'sendDataChannelFrame',
         'closePeerSession',
       ]);
 
@@ -109,6 +117,7 @@ void main() {
           WebRtcPeerRuntimeEventType.peerSessionClosed,
         ],
       );
+      expect(payloadFrame, '{"type":"SYNC"}');
     });
   });
 
@@ -119,6 +128,8 @@ void main() {
 
       await ops.createPeerSession();
       await ops.ensureDataChannel();
+      await ops.sendDataChannelFrame('{"type":"PING"}');
+      ops.emitInboundPayloadFrame('{"type":"PONG"}');
       await ops.closePeerSession();
 
       final events = await eventsFuture;
@@ -131,6 +142,7 @@ void main() {
         ],
       );
       expect(events.map((e) => e.sessionId).toSet(), {'sess-shell'});
+      expect(ops.sentDataChannelFrames, ['{"type":"PING"}']);
     });
   });
 }

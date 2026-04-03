@@ -20,6 +20,7 @@ class MainActivity : FlutterActivity() {
     private val installReferrerChannelName = "com.kashcube/install_referrer"
     private val webRtcPeerOpsChannelName = "kashcube/webrtc_peer_ops"
     private val webRtcRuntimeEventMethod = "onRuntimeEvent"
+    private val webRtcDataChannelFrameMethod = "onDataChannelFrame"
 
     private val peerStateBySession = mutableMapOf<String, PeerSessionState>()
     private var webRtcPeerOpsChannel: MethodChannel? = null
@@ -28,6 +29,7 @@ class MainActivity : FlutterActivity() {
         var localOfferSdp: String? = null,
         var remoteAnswerSdp: String? = null,
         val remoteIceCandidates: MutableList<Map<String, Any?>> = mutableListOf(),
+        val outboundFrames: MutableList<String> = mutableListOf(),
         var dataChannelEnsured: Boolean = false,
     )
 
@@ -157,6 +159,27 @@ class MainActivity : FlutterActivity() {
                 result.success(null)
             }
 
+            "sendDataChannelFrame" -> {
+                val state = peerStateBySession[sessionId]
+                if (state == null) {
+                    result.error("SESSION_NOT_FOUND", "Call createPeerSession first", null)
+                    return
+                }
+                if (!state.dataChannelEnsured) {
+                    result.error("DATA_CHANNEL_NOT_READY", "Call ensureDataChannel first", null)
+                    return
+                }
+                val frame = args["frame"] as? String
+                if (frame.isNullOrBlank()) {
+                    result.error("MISSING_FRAME", "frame is required", null)
+                    return
+                }
+                state.outboundFrames.add(frame)
+                logPeerState("sendDataChannelFrame", sessionId, state)
+                emitDataChannelFrame(sessionId, frame)
+                result.success(null)
+            }
+
             else -> result.notImplemented()
         }
     }
@@ -167,7 +190,8 @@ class MainActivity : FlutterActivity() {
             "action=$action session=$sessionId hasOffer=${!state.localOfferSdp.isNullOrBlank()} " +
                 "hasAnswer=${!state.remoteAnswerSdp.isNullOrBlank()} " +
                 "iceCount=${state.remoteIceCandidates.size} " +
-                "dataChannel=${state.dataChannelEnsured}",
+                "dataChannel=${state.dataChannelEnsured} " +
+                "outboundFrames=${state.outboundFrames.size}",
         )
     }
 
@@ -177,6 +201,16 @@ class MainActivity : FlutterActivity() {
             mapOf(
                 "session_id" to sessionId,
                 "event" to event,
+            ),
+        )
+    }
+
+    private fun emitDataChannelFrame(sessionId: String, frame: String) {
+        webRtcPeerOpsChannel?.invokeMethod(
+            webRtcDataChannelFrameMethod,
+            mapOf(
+                "session_id" to sessionId,
+                "frame" to frame,
             ),
         )
     }

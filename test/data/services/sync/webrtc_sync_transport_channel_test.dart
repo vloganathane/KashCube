@@ -36,12 +36,18 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
       <Map<String, dynamic>>[];
   final StreamController<WebRtcPeerRuntimeEvent> _events =
       StreamController<WebRtcPeerRuntimeEvent>.broadcast();
+  final StreamController<String> _payloadFrames =
+      StreamController<String>.broadcast();
+  final List<String> sentDataChannelFrames = <String>[];
   int ensureDataChannelCount = 0;
   int createPeerSessionCount = 0;
   int closePeerSessionCount = 0;
 
   @override
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents => _events.stream;
+
+  @override
+  Stream<String> get payloadFrames => _payloadFrames.stream;
 
   @override
   Future<void> createPeerSession() async {
@@ -71,6 +77,11 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   }
 
   @override
+  Future<void> sendDataChannelFrame(String frame) async {
+    sentDataChannelFrames.add(frame);
+  }
+
+  @override
   Future<void> closePeerSession() async {
     closePeerSessionCount += 1;
     _events.add(
@@ -79,6 +90,7 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
         type: WebRtcPeerRuntimeEventType.peerSessionClosed,
       ),
     );
+    await _payloadFrames.close();
     await _events.close();
   }
 
@@ -90,6 +102,10 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> setRemoteAnswerSdp(String sdp) async {
     remoteAnswerSdp = sdp;
+  }
+
+  void emitInboundPayloadFrame(String frame) {
+    _payloadFrames.add(frame);
   }
 }
 
@@ -227,6 +243,7 @@ void main() {
         ..applyRemoteAnswerSdp('answer-buffered')
         ..addRemoteIceCandidate({'candidate': 'ice-buffered'});
       final peerOps = _FakeWebRtcPeerOps();
+      await bridge.sendFrame('{"type":"SYNC","table":"transactions"}');
 
       await bridge.attachPeerOps(peerOps);
 
@@ -235,6 +252,7 @@ void main() {
       expect(peerOps.remoteIceCandidates, hasLength(1));
       expect(peerOps.ensureDataChannelCount, 1);
       expect(peerOps.createPeerSessionCount, 1);
+      expect(peerOps.sentDataChannelFrames, ['{"type":"SYNC","table":"transactions"}']);
 
       await bridge.close();
       expect(peerOps.closePeerSessionCount, 1);
@@ -250,6 +268,22 @@ void main() {
 
       expect(bridge.remoteIceCandidates, hasLength(1));
       expect(peerOps.remoteIceCandidates, hasLength(1));
+    });
+
+    test('bridge forwards inbound payload frames from peer ops', () async {
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007b');
+      final peerOps = _FakeWebRtcPeerOps();
+      final inboundFuture = bridge.inboundFrames.first;
+
+      await bridge.attachPeerOps(peerOps);
+      peerOps.emitInboundPayloadFrame('{"type":"ROWS","table":"transactions"}');
+
+      expect(
+        await inboundFuture,
+        '{"type":"ROWS","table":"transactions"}',
+      );
+
+      await bridge.close();
     });
 
     test('registering bridge shell auto-attaches default peer ops', () async {

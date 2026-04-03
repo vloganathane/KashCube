@@ -24,8 +24,10 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
   String? _remoteAnswerSdp;
   WebRtcPeerOps? _peerOps;
   StreamSubscription<WebRtcPeerRuntimeEvent>? _peerRuntimeSub;
+  StreamSubscription<String>? _peerPayloadSub;
   bool _dataChannelEnsured = false;
   bool _closed = false;
+  int _forwardedOutboundFrameCount = 0;
 
   bool get isClosed => _closed;
   bool get hasPeerOps => _peerOps != null;
@@ -41,6 +43,7 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     }
 
     await _peerRuntimeSub?.cancel();
+    await _peerPayloadSub?.cancel();
     _peerRuntimeSub = peerOps.runtimeEvents.listen((event) {
       if (_closed || event.sessionId != sessionId) {
         return;
@@ -51,6 +54,12 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
           ...event.toJson(),
         }),
       );
+    });
+    _peerPayloadSub = peerOps.payloadFrames.listen((frame) {
+      if (_closed || frame.isEmpty) {
+        return;
+      }
+      _inbound.add(frame);
     });
 
     _peerOps = peerOps;
@@ -77,6 +86,11 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     if (!_dataChannelEnsured) {
       _dataChannelEnsured = true;
       await peerOps.ensureDataChannel();
+    }
+
+    for (final frame in _outboundFrames.skip(_forwardedOutboundFrameCount)) {
+      await peerOps.sendDataChannelFrame(frame);
+      _forwardedOutboundFrameCount += 1;
     }
   }
 
@@ -133,6 +147,11 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       throw StateError('WebRTC bridge is closed for session $sessionId');
     }
     _outboundFrames.add(jsonFrame);
+    final peerOps = _peerOps;
+    if (peerOps != null) {
+      await peerOps.sendDataChannelFrame(jsonFrame);
+      _forwardedOutboundFrameCount += 1;
+    }
   }
 
   @override
@@ -144,6 +163,8 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
 
     await _peerRuntimeSub?.cancel();
     _peerRuntimeSub = null;
+    await _peerPayloadSub?.cancel();
+    _peerPayloadSub = null;
 
     final peerOps = _peerOps;
     _peerOps = null;

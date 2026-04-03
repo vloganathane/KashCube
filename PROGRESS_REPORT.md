@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**Platform-mode runtime events now have a real native-to-Dart callback path** over the shared WebRTC method channel. M3 data-plane activation is progressing on top of that callback surface.
+**Data-channel payload scaffolding is now in place** with outbound frame forwarding and inbound callback loopback through the native bridge. M3 is moving from lifecycle-only signaling into payload-path activation.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,16 +34,49 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 64% complete
+3. M3: 70% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
 2. M2 closure: complete
-3. M3 closure: 2-3 slices
+3. M3 closure: 1-2 slices
 
-### Latest Work — M3 Progression (Slice 16: Native Runtime Callback Path)
+### Latest Work — M3 Progression (Slice 17: Payload Callback Scaffold)
+
+**Commit:** pending (current working tree)
+
+Completed initial payload-path activation scaffold:
+1. Added `payloadFrames` stream and `sendDataChannelFrame()` to `WebRtcPeerOps`
+2. Bridge shell now:
+  - forwards buffered/live outbound frames to attached peer ops
+  - forwards inbound payload frames from peer ops into bridge inbound stream
+3. Android native channel now supports:
+  - `sendDataChannelFrame`
+  - `onDataChannelFrame` callback into Dart
+4. Platform mode now has loopback-safe payload callback delivery for staged data-channel flow
+5. Added focused tests for:
+  - method-channel payload invocation
+  - callback-driven payload receipt
+  - bridge forwarding of outbound and inbound payload frames
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 64% -> 70%
+
+Estimated completion (updated):
+1. M3 closure: 1-2 slices
+
+---
+
+### Previous Work — M3 Progression (Slice 16: Native Runtime Callback Path)
 
 **Commit:** `b4bb5ce` — Add native callback path for WebRTC runtime events
 

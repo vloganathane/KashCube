@@ -40,6 +40,8 @@ class WebRtcPeerRuntimeEvent {
 abstract class WebRtcPeerOps {
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents;
 
+  Stream<String> get payloadFrames;
+
   Future<void> createPeerSession();
 
   Future<void> setLocalOfferSdp(String sdp);
@@ -49,6 +51,8 @@ abstract class WebRtcPeerOps {
   Future<void> addRemoteIceCandidate(Map<String, dynamic> candidate);
 
   Future<void> ensureDataChannel();
+
+  Future<void> sendDataChannelFrame(String frame);
 
   Future<void> closePeerSession();
 }
@@ -92,6 +96,9 @@ class NoopWebRtcPeerOps implements WebRtcPeerOps {
       const Stream<WebRtcPeerRuntimeEvent>.empty();
 
   @override
+  Stream<String> get payloadFrames => const Stream<String>.empty();
+
+  @override
   Future<void> createPeerSession() async {}
 
   @override
@@ -105,6 +112,9 @@ class NoopWebRtcPeerOps implements WebRtcPeerOps {
 
   @override
   Future<void> ensureDataChannel() async {}
+
+  @override
+  Future<void> sendDataChannelFrame(String frame) async {}
 
   @override
   Future<void> closePeerSession() async {}
@@ -123,9 +133,12 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
   String? remoteAnswerSdp;
   final List<Map<String, dynamic>> remoteIceCandidates =
       <Map<String, dynamic>>[];
+    final List<String> sentDataChannelFrames = <String>[];
   final List<String> operationLog = <String>[];
   final StreamController<WebRtcPeerRuntimeEvent> _runtimeEventsController =
       StreamController<WebRtcPeerRuntimeEvent>.broadcast();
+    final StreamController<String> _payloadFramesController =
+      StreamController<String>.broadcast();
   bool dataChannelEnsured = false;
   bool sessionCreated = false;
   bool sessionClosed = false;
@@ -133,6 +146,9 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
   @override
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents =>
       _runtimeEventsController.stream;
+
+  @override
+  Stream<String> get payloadFrames => _payloadFramesController.stream;
 
   @override
   Future<void> createPeerSession() async {
@@ -177,6 +193,23 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
   }
 
   @override
+  Future<void> sendDataChannelFrame(String frame) async {
+    if (frame.isEmpty) {
+      return;
+    }
+    sentDataChannelFrames.add(frame);
+    operationLog.add('sendDataChannelFrame');
+  }
+
+  @visibleForTesting
+  void emitInboundPayloadFrame(String frame) {
+    if (frame.isEmpty || _payloadFramesController.isClosed) {
+      return;
+    }
+    _payloadFramesController.add(frame);
+  }
+
+  @override
   Future<void> closePeerSession() async {
     sessionClosed = true;
     operationLog.add('closePeerSession');
@@ -186,6 +219,7 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
         type: WebRtcPeerRuntimeEventType.peerSessionClosed,
       ),
     );
+    await _payloadFramesController.close();
     await _runtimeEventsController.close();
   }
 }
@@ -206,21 +240,29 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
 
   static const String _defaultChannelName = 'kashcube/webrtc_peer_ops';
   static const String _runtimeEventMethod = 'onRuntimeEvent';
+    static const String _dataChannelFrameMethod = 'onDataChannelFrame';
   static final MethodChannel _sharedChannel =
       const MethodChannel(_defaultChannelName);
   static final Map<String, StreamController<WebRtcPeerRuntimeEvent>>
       _runtimeEventControllers =
       <String, StreamController<WebRtcPeerRuntimeEvent>>{};
+    static final Map<String, StreamController<String>> _payloadControllers =
+      <String, StreamController<String>>{};
   static bool _methodCallHandlerInstalled = false;
 
   final String sessionId;
   final MethodChannel _channel;
   final StreamController<WebRtcPeerRuntimeEvent> _runtimeEventsController =
       StreamController<WebRtcPeerRuntimeEvent>.broadcast();
+    final StreamController<String> _payloadFramesController =
+      StreamController<String>.broadcast();
 
   @override
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents =>
       _runtimeEventsController.stream;
+
+    @override
+    Stream<String> get payloadFrames => _payloadFramesController.stream;
 
   static void _ensureMethodCallHandler() {
     if (_methodCallHandlerInstalled) {
@@ -231,15 +273,22 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   }
 
   static Future<void> _handleMethodCall(MethodCall call) async {
-    if (call.method != _runtimeEventMethod) {
-      return;
-    }
-
     final args = call.arguments;
     if (args is! Map) {
       return;
     }
-    _dispatchRuntimeEvent(Map<String, dynamic>.from(args));
+
+    final payload = Map<String, dynamic>.from(args);
+    switch (call.method) {
+      case _runtimeEventMethod:
+        _dispatchRuntimeEvent(payload);
+        break;
+      case _dataChannelFrameMethod:
+        _dispatchPayloadFrame(payload);
+        break;
+      default:
+        break;
+    }
   }
 
   static void _dispatchRuntimeEvent(Map<String, dynamic> payload) {
@@ -265,8 +314,24 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
 
     if (eventType == WebRtcPeerRuntimeEventType.peerSessionClosed) {
       _runtimeEventControllers.remove(sessionId);
+      _payloadControllers.remove(sessionId);
       unawaited(controller.close());
     }
+  }
+
+  static void _dispatchPayloadFrame(Map<String, dynamic> payload) {
+    final sessionId = payload['session_id']?.toString();
+    final frame = payload['frame']?.toString();
+    if (sessionId == null || sessionId.isEmpty || frame == null || frame.isEmpty) {
+      return;
+    }
+
+    final controller = _payloadControllers[sessionId];
+    if (controller == null || controller.isClosed) {
+      return;
+    }
+
+    controller.add(frame);
   }
 
   static WebRtcPeerRuntimeEventType? _parseRuntimeEventType(String raw) {
@@ -287,8 +352,15 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
     _dispatchRuntimeEvent(payload);
   }
 
+  @visibleForTesting
+  static void dispatchPayloadFrameForTest(Map<String, dynamic> payload) {
+    _dispatchPayloadFrame(payload);
+  }
+
   @override
   Future<void> createPeerSession() async {
+    _runtimeEventControllers[sessionId] = _runtimeEventsController;
+    _payloadControllers[sessionId] = _payloadFramesController;
     await _invoke('createPeerSession', const <String, dynamic>{});
   }
 
@@ -310,6 +382,11 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() async {
     await _invoke('ensureDataChannel', const <String, dynamic>{});
+  }
+
+  @override
+  Future<void> sendDataChannelFrame(String frame) async {
+    await _invoke('sendDataChannelFrame', <String, dynamic>{'frame': frame});
   }
 
   @override

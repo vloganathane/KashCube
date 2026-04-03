@@ -10,6 +10,7 @@ import '../app_logger.dart';
 import 'web_companion_auth_qr.dart';
 import '../database_helper.dart';
 import '../sync/generic_sync_query_builder.dart';
+import '../sync/transport/sync_signaling_messages.dart';
 import '../sync/sync_table_registry.dart';
 import 'web_session_service.dart';
 
@@ -108,24 +109,33 @@ class WebBrowserSession {
       final msg  = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
-        case 'AUTH':
-        case 'SESSION_AUTH':
-          _handleAuth(msg, isSession: type == 'SESSION_AUTH');
+        case SyncSignalingMessages.auth:
+        case SyncSignalingMessages.sessionAuth:
+          _handleAuth(msg, isSession: type == SyncSignalingMessages.sessionAuth);
           break;
-        case 'AUTH_BEGIN':
+        case SyncSignalingMessages.authBegin:
           _handleAuthBegin();
           break;
-        case 'PULL':
+        case SyncSignalingMessages.pull:
           _handlePull(msg);
           break;
-        case 'WRITE':
+        case SyncSignalingMessages.write:
           _handleWrite(msg);
           break;
-        case 'PING':
-          _sendRaw({'type': 'PONG'});
+        case SyncSignalingMessages.ping:
+          _sendRaw({'type': SyncSignalingMessages.pong});
           break;
-        case 'PONG':
+        case SyncSignalingMessages.pong:
           // Browser keepalive acknowledgment for server-initiated ping.
+          break;
+        case SyncSignalingMessages.signalOffer:
+        case SyncSignalingMessages.signalAnswer:
+        case SyncSignalingMessages.signalIceCandidate:
+          _sendRaw({
+            'type': SyncSignalingMessages.signalUnsupported,
+            'reason': 'WebRTC signaling not implemented on server session',
+            'source_type': type,
+          });
           break;
         default:
           debugPrint('[WebSession] Unknown message type: $type');
@@ -253,7 +263,7 @@ class WebBrowserSession {
 
     _authenticated = true;
     _sendRaw({
-      'type':           'AUTH_OK',
+      'type':           SyncSignalingMessages.authOk,
       'device_name':    deviceName,
       'schema_version': schemaVersion,
       'session_id': ?sessionId,
@@ -287,7 +297,7 @@ class WebBrowserSession {
                 'key':  p.keyColumn,
               })
           .toList();
-      _sendRaw({'type': 'SYNC_PLAN', 'tables': tables});
+        _sendRaw({'type': SyncSignalingMessages.syncPlan, 'tables': tables});
     } catch (e) {
       debugPrint('[WebSession] Failed to send sync plan: $e');
     }
@@ -312,7 +322,7 @@ class WebBrowserSession {
         );
         final isFinal = rows.isEmpty || (i + batchSize >= rows.length);
         _sendRaw({
-          'type':     'ROWS',
+          'type':     SyncSignalingMessages.rows,
           'table':    table,
           'rows':     batch,
           'is_final': isFinal,
@@ -340,9 +350,9 @@ class WebBrowserSession {
 
     try {
       await onWrite(table, row);
-      _sendRaw({'type': 'WRITE_OK', 'sync_id': syncId});
+      _sendRaw({'type': SyncSignalingMessages.writeOk, 'sync_id': syncId});
       // Echo back as PUSH so browser has the canonical row.
-      _sendRaw({'type': 'PUSH', 'table': table, 'rows': [row]});
+      _sendRaw({'type': SyncSignalingMessages.push, 'table': table, 'rows': [row]});
     } catch (e) {
       debugPrint('[WebSession] Write error for $table: $e');
     }
@@ -351,7 +361,7 @@ class WebBrowserSession {
   /// Pushes a live update to the browser (called when phone writes a row).
   void pushRows(String table, List<Map<String, dynamic>> rows) {
     if (!_authenticated || _disposed) return;
-    _sendRaw({'type': 'PUSH', 'table': table, 'rows': rows});
+    _sendRaw({'type': SyncSignalingMessages.push, 'table': table, 'rows': rows});
   }
 
   void _sendRaw(Map<String, dynamic> payload) {
@@ -365,7 +375,7 @@ class WebBrowserSession {
 
   void _startPing() {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
-      if (!_disposed) _sendRaw({'type': 'PING'});
+      if (!_disposed) _sendRaw({'type': SyncSignalingMessages.ping});
     });
   }
 

@@ -8,6 +8,7 @@ import 'package:sqflite/sqflite.dart';
 
 import '../../data/services/database_helper.dart';
 import '../../data/services/sync/generic_sync_query_builder.dart';
+import '../../data/services/sync/transport/sync_signaling_messages.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
@@ -297,13 +298,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final msg  = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
-        case 'AUTH_OK':
+        case SyncSignalingMessages.authOk:
           unawaited(_handleAuthOk(msg));
           break;
-        case 'AUTH_CHALLENGE':
+        case SyncSignalingMessages.authChallenge:
           _handleAuthChallenge(msg);
           break;
-        case 'AUTH_FAIL':
+        case SyncSignalingMessages.authFail:
           // Clear saved session so the user is prompted to scan a new QR.
           url_reader.clearSession();
           state = state.copyWith(
@@ -316,22 +317,28 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           );
           disconnect();
           break;
-        case 'PING':
+        case SyncSignalingMessages.ping:
           _channel?.sendJson({'type': 'PONG'});
           break;
-        case 'PONG':
+        case SyncSignalingMessages.pong:
           // Keepalive acknowledgment for browser-initiated ping (if enabled).
           break;
-        case 'ROWS':
+        case SyncSignalingMessages.rows:
           _handleRows(msg);
           break;
-        case 'PUSH':
+        case SyncSignalingMessages.push:
           _handlePush(msg);
           break;
-        case 'WRITE_OK':
+        case SyncSignalingMessages.writeOk:
           break;
-        case 'SYNC_PLAN':
+        case SyncSignalingMessages.syncPlan:
           _handleSyncPlan(msg);
+          break;
+        case SyncSignalingMessages.signalOffer:
+        case SyncSignalingMessages.signalAnswer:
+        case SyncSignalingMessages.signalIceCandidate:
+        case SyncSignalingMessages.signalUnsupported:
+          debugPrint('[WebSync] Signaling frame received ($type) - WebRTC flow not enabled yet');
           break;
         default:
           break;

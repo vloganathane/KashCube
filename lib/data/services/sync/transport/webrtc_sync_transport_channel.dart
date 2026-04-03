@@ -140,12 +140,18 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   WebRtcSyncTransportChannel({
     WebRtcPeerOpsFactory? peerOpsFactory,
     SyncTransportChannel? controlPlaneChannel,
+    Duration heartbeatInterval = const Duration(seconds: 15),
+    Duration heartbeatTimeout = const Duration(seconds: 45),
   }) : _peerOpsFactory = peerOpsFactory ?? ((_) => NoopWebRtcPeerOps()),
-       _controlPlaneChannel = controlPlaneChannel ?? WebSocketSyncTransportChannel();
+       _controlPlaneChannel = controlPlaneChannel ?? WebSocketSyncTransportChannel(),
+       _heartbeatInterval = heartbeatInterval,
+       _heartbeatTimeout = heartbeatTimeout;
 
   final WebRtcNegotiationMailbox _mailbox = WebRtcNegotiationMailbox.instance;
   final WebRtcPeerOpsFactory _peerOpsFactory;
   final SyncTransportChannel _controlPlaneChannel;
+  final Duration _heartbeatInterval;
+  final Duration _heartbeatTimeout;
   final Map<String, WebRtcPeerRuntime> _runtimeBySession =
       <String, WebRtcPeerRuntime>{};
   final Map<String, WebRtcDataChannelBridge> _bridgeBySession =
@@ -153,6 +159,10 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   final StreamController<dynamic> _inboundController =
       StreamController<dynamic>.broadcast();
   StreamSubscription<dynamic>? _controlPlaneSub;
+  Timer? _heartbeatTimer;
+  DateTime? _lastHeartbeatSentAt;
+  bool _awaitingHeartbeatPong = false;
+  bool _heartbeatTimeoutEmitted = false;
 
   String? _activeSessionId;
 
@@ -304,8 +314,10 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     await _controlPlaneChannel.connect(uri);
     await _controlPlaneSub?.cancel();
     _controlPlaneSub = _controlPlaneChannel.stream.listen((raw) {
+      _onInboundControlPlaneFrame(raw);
       _inboundController.add(raw);
     });
+    _startHeartbeat();
   }
 
   @override
@@ -383,9 +395,76 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     for (final sessionId in sessions) {
       await unregisterDataChannelBridge(sessionId);
     }
+    _stopHeartbeat();
     await _controlPlaneSub?.cancel();
     _controlPlaneSub = null;
     await _controlPlaneChannel.close();
     await _inboundController.close();
+  }
+
+  void _startHeartbeat() {
+    _stopHeartbeat();
+    _awaitingHeartbeatPong = false;
+    _heartbeatTimeoutEmitted = false;
+    _lastHeartbeatSentAt = null;
+
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
+      final now = DateTime.now();
+      if (_awaitingHeartbeatPong && _lastHeartbeatSentAt != null) {
+        final elapsed = now.difference(_lastHeartbeatSentAt!);
+        if (elapsed >= _heartbeatTimeout && !_heartbeatTimeoutEmitted) {
+          _heartbeatTimeoutEmitted = true;
+          _inboundController.add(
+            jsonEncode(<String, dynamic>{
+              'type': SyncSignalingMessages.signalError,
+              'code': 'HEARTBEAT_TIMEOUT',
+              'reason': 'Control plane heartbeat timeout',
+            }),
+          );
+          debugPrint('[WebRtcSyncTransportChannel] Heartbeat timeout detected');
+        }
+      }
+
+      _controlPlaneChannel.sendJson(<String, dynamic>{
+        'type': SyncSignalingMessages.ping,
+      });
+      _awaitingHeartbeatPong = true;
+      _lastHeartbeatSentAt = now;
+    });
+  }
+
+  void _stopHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _awaitingHeartbeatPong = false;
+    _heartbeatTimeoutEmitted = false;
+    _lastHeartbeatSentAt = null;
+  }
+
+  void _onInboundControlPlaneFrame(dynamic raw) {
+    final type = _extractFrameType(raw);
+    if (type == SyncSignalingMessages.pong) {
+      _awaitingHeartbeatPong = false;
+      _heartbeatTimeoutEmitted = false;
+    }
+  }
+
+  String? _extractFrameType(dynamic raw) {
+    if (raw is! String || raw.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        return null;
+      }
+      final type = decoded['type']?.toString();
+      if (type == null || type.isEmpty) {
+        return null;
+      }
+      return type.toUpperCase();
+    } catch (_) {
+      return null;
+    }
   }
 }

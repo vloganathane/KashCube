@@ -494,6 +494,76 @@ void main() {
       await channel.close();
     });
 
+    test('sends periodic heartbeat ping over control plane', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(
+        controlPlaneChannel: controlPlane,
+        heartbeatInterval: const Duration(milliseconds: 10),
+        heartbeatTimeout: const Duration(milliseconds: 50),
+      );
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8085/ws'));
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+
+      expect(
+        controlPlane.sentPayloads.any(
+          (payload) => payload['type'] == SyncSignalingMessages.ping,
+        ),
+        isTrue,
+      );
+
+      await channel.close();
+    });
+
+    test('emits heartbeat timeout signaling error when pong is missing', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(
+        controlPlaneChannel: controlPlane,
+        heartbeatInterval: const Duration(milliseconds: 10),
+        heartbeatTimeout: const Duration(milliseconds: 20),
+      );
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8086/ws'));
+
+      final timeoutFrameFuture = channel.stream
+          .where((frame) => frame is String)
+          .cast<String>()
+          .firstWhere((frame) => frame.contains('"HEARTBEAT_TIMEOUT"'));
+
+      final timeoutFrame = await timeoutFrameFuture;
+      expect(timeoutFrame, contains('"type":"SIGNAL_ERROR"'));
+
+      await channel.close();
+    });
+
+    test('allows heartbeat timeout to re-arm after pong arrives', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(
+        controlPlaneChannel: controlPlane,
+        heartbeatInterval: const Duration(milliseconds: 10),
+        heartbeatTimeout: const Duration(milliseconds: 20),
+      );
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8087/ws'));
+
+      final timeoutFrameFuture = channel.stream
+          .where((frame) => frame is String)
+          .cast<String>()
+          .firstWhere((frame) => frame.contains('"HEARTBEAT_TIMEOUT"'));
+      await timeoutFrameFuture;
+
+      controlPlane.emitInbound('{"type":"PONG"}');
+
+      final secondTimeoutFrameFuture = channel.stream
+          .where((frame) => frame is String)
+          .cast<String>()
+          .firstWhere((frame) => frame.contains('"HEARTBEAT_TIMEOUT"'));
+
+      expect(await secondTimeoutFrameFuture, contains('"HEARTBEAT_TIMEOUT"'));
+
+      await channel.close();
+    });
+
     test('custom peer ops factory can attach flutter_webrtc shell placeholder', () async {
       FlutterWebRtcPeerOpsShell? createdPeerOps;
       final channel = WebRtcSyncTransportChannel(

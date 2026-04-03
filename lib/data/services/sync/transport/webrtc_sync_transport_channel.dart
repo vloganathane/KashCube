@@ -23,12 +23,84 @@ class WebRtcNegotiationSnapshot {
   bool get hasIceCandidates => remoteIceCandidates.isNotEmpty;
 }
 
+class WebRtcPeerRuntimeState {
+  const WebRtcPeerRuntimeState({
+    required this.sessionId,
+    this.localOfferSdp,
+    this.remoteAnswerSdp,
+    this.remoteIceCandidates = const <Map<String, dynamic>>[],
+  });
+
+  final String sessionId;
+  final String? localOfferSdp;
+  final String? remoteAnswerSdp;
+  final List<Map<String, dynamic>> remoteIceCandidates;
+
+  bool get hasOffer => localOfferSdp != null && localOfferSdp!.isNotEmpty;
+  bool get hasAnswer => remoteAnswerSdp != null && remoteAnswerSdp!.isNotEmpty;
+  int get remoteIceCount => remoteIceCandidates.length;
+}
+
+abstract class WebRtcPeerRuntime {
+  String get sessionId;
+
+  WebRtcPeerRuntimeState get state;
+
+  void applyLocalOffer(String sdp);
+
+  void applyRemoteAnswer(String sdp);
+
+  void addRemoteIceCandidate(Map<String, dynamic> candidate);
+}
+
+class InMemoryWebRtcPeerRuntime implements WebRtcPeerRuntime {
+  InMemoryWebRtcPeerRuntime({required this.sessionId});
+
+  @override
+  final String sessionId;
+
+  String? _localOfferSdp;
+  String? _remoteAnswerSdp;
+  final List<Map<String, dynamic>> _remoteIceCandidates =
+      <Map<String, dynamic>>[];
+
+  @override
+  WebRtcPeerRuntimeState get state => WebRtcPeerRuntimeState(
+    sessionId: sessionId,
+    localOfferSdp: _localOfferSdp,
+    remoteAnswerSdp: _remoteAnswerSdp,
+    remoteIceCandidates: List<Map<String, dynamic>>.unmodifiable(
+      _remoteIceCandidates,
+    ),
+  );
+
+  @override
+  void applyLocalOffer(String sdp) {
+    if (sdp.isEmpty) return;
+    _localOfferSdp = sdp;
+  }
+
+  @override
+  void applyRemoteAnswer(String sdp) {
+    if (sdp.isEmpty) return;
+    _remoteAnswerSdp = sdp;
+  }
+
+  @override
+  void addRemoteIceCandidate(Map<String, dynamic> candidate) {
+    if (candidate.isEmpty) return;
+    _remoteIceCandidates.add(Map<String, dynamic>.from(candidate));
+  }
+}
+
 /// Placeholder for the future WebRTC DataChannel transport adapter.
 ///
 /// This intentionally throws today so we can wire transport policy without
 /// changing sync business logic before WebRTC signaling is implemented.
 class WebRtcSyncTransportChannel implements SyncTransportChannel {
   final WebRtcNegotiationMailbox _mailbox = WebRtcNegotiationMailbox.instance;
+  final Map<String, WebRtcPeerRuntime> _runtimeBySession =
+      <String, WebRtcPeerRuntime>{};
 
   WebRtcNegotiationMailbox get mailbox => _mailbox;
 
@@ -38,6 +110,13 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
 
   List<Map<String, dynamic>> drainRemoteIceCandidates(String sessionId) {
     return _mailbox.drainRemoteIceCandidates(sessionId);
+  }
+
+  WebRtcPeerRuntime ensurePeerRuntime(String sessionId) {
+    return _runtimeBySession.putIfAbsent(
+      sessionId,
+      () => InMemoryWebRtcPeerRuntime(sessionId: sessionId),
+    );
   }
 
   /// Build a deterministic negotiation snapshot for a session.
@@ -68,6 +147,39 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     );
 
     return snapshot;
+  }
+
+  /// Sync mailbox-staged artifacts into the session runtime.
+  ///
+  /// This forms the initial bridge before wiring a concrete RTCPeerConnection.
+  WebRtcPeerRuntimeState syncRuntimeFromMailbox({
+    required String sessionId,
+    bool drainIce = true,
+  }) {
+    final runtime = ensurePeerRuntime(sessionId);
+    final snapshot = negotiationSnapshot(sessionId: sessionId, drainIce: drainIce);
+
+    if (snapshot.localOfferSdp != null) {
+      runtime.applyLocalOffer(snapshot.localOfferSdp!);
+    }
+    if (snapshot.remoteAnswerSdp != null) {
+      runtime.applyRemoteAnswer(snapshot.remoteAnswerSdp!);
+    }
+    for (final candidate in snapshot.remoteIceCandidates) {
+      runtime.addRemoteIceCandidate(candidate);
+    }
+
+    final state = runtime.state;
+    debugPrint(
+      '[WebRtcSyncTransportChannel] Runtime sync complete for session '
+      '$sessionId (offer=${state.hasOffer}, answer=${state.hasAnswer}, '
+      'ice=${state.remoteIceCount})',
+    );
+    return state;
+  }
+
+  void clearPeerRuntime(String sessionId) {
+    _runtimeBySession.remove(sessionId);
   }
 
   @override

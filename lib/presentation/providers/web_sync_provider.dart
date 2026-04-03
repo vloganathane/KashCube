@@ -392,7 +392,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       progressMsg: 'Received answer SDP from phone',
     );
 
-    _refreshWebRtcNegotiationSnapshot(msg['session_id']?.toString());
+    _refreshWebRtcRuntimeState(msg['session_id']?.toString());
     debugPrint('[WebSync] SIGNAL_ANSWER received (length=${sdp.length})');
   }
 
@@ -414,14 +414,14 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       progressMsg: 'Received ICE candidate$replayTag from phone',
     );
 
-    _refreshWebRtcNegotiationSnapshot(msg['session_id']?.toString());
+    _refreshWebRtcRuntimeState(msg['session_id']?.toString());
     debugPrint(
       '[WebSync] SIGNAL_ICE_CANDIDATE received$replayTag '
       '(total=${_remoteIceCandidates.length})',
     );
   }
 
-  void _refreshWebRtcNegotiationSnapshot(String? sessionId) {
+  void _refreshWebRtcRuntimeState(String? sessionId) {
     if (sessionId == null || sessionId.isEmpty) {
       return;
     }
@@ -431,7 +431,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       return;
     }
 
-    channel.negotiationSnapshot(sessionId: sessionId);
+    channel.syncRuntimeFromMailbox(sessionId: sessionId);
   }
 
   void _handleSignalError(Map<String, dynamic> msg) {

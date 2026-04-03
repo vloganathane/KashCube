@@ -137,7 +137,12 @@ class InMemoryWebRtcPeerRuntime implements WebRtcPeerRuntime {
 /// This intentionally throws today so we can wire transport policy without
 /// changing sync business logic before WebRTC signaling is implemented.
 class WebRtcSyncTransportChannel implements SyncTransportChannel {
+  WebRtcSyncTransportChannel({
+    WebRtcPeerOpsFactory? peerOpsFactory,
+  }) : _peerOpsFactory = peerOpsFactory ?? ((_) => NoopWebRtcPeerOps());
+
   final WebRtcNegotiationMailbox _mailbox = WebRtcNegotiationMailbox.instance;
+  final WebRtcPeerOpsFactory _peerOpsFactory;
   final Map<String, WebRtcPeerRuntime> _runtimeBySession =
       <String, WebRtcPeerRuntime>{};
   final Map<String, WebRtcDataChannelBridge> _bridgeBySession =
@@ -240,7 +245,7 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     _bridgeBySession[sessionId] = bridge;
     _activeSessionId = sessionId;
 
-    _attachDefaultPeerOpsIfNeeded(bridge);
+    _attachDefaultPeerOpsIfNeeded(sessionId: sessionId, bridge: bridge);
 
     final runtime = _runtimeBySession[sessionId];
     if (runtime != null) {
@@ -252,12 +257,15 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     });
   }
 
-  void _attachDefaultPeerOpsIfNeeded(WebRtcDataChannelBridge bridge) {
+  void _attachDefaultPeerOpsIfNeeded({
+    required String sessionId,
+    required WebRtcDataChannelBridge bridge,
+  }) {
     if (bridge is! WebRtcDataChannelBridgeShell || bridge.hasPeerOps) {
       return;
     }
 
-    unawaited(bridge.attachPeerOps(NoopWebRtcPeerOps()));
+    unawaited(bridge.attachPeerOps(_peerOpsFactory(sessionId)));
   }
 
   void _syncBridgeFromRuntime({

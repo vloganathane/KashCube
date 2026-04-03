@@ -226,5 +226,36 @@ void main() {
       await channel.unregisterDataChannelBridge('sess-008');
       await channel.close();
     });
+
+    test('custom peer ops factory can attach flutter_webrtc shell placeholder', () async {
+      FlutterWebRtcPeerOpsShell? createdPeerOps;
+      final channel = WebRtcSyncTransportChannel(
+        peerOpsFactory: (sessionId) {
+          createdPeerOps = FlutterWebRtcPeerOpsShell(sessionId: sessionId);
+          return createdPeerOps!;
+        },
+      );
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-009');
+
+      channel.registerDataChannelBridge(sessionId: 'sess-009', bridge: bridge);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bridge.hasPeerOps, isTrue);
+      expect(createdPeerOps, isNotNull);
+      expect(createdPeerOps!.sessionId, 'sess-009');
+
+      bridge.applyLocalOfferSdp('offer-custom');
+      bridge.applyRemoteAnswerSdp('answer-custom');
+      bridge.addRemoteIceCandidate({'candidate': 'ice-custom'});
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(createdPeerOps!.localOfferSdp, 'offer-custom');
+      expect(createdPeerOps!.remoteAnswerSdp, 'answer-custom');
+      expect(createdPeerOps!.remoteIceCandidates, hasLength(1));
+      expect(createdPeerOps!.dataChannelEnsured, isTrue);
+
+      await channel.unregisterDataChannelBridge('sess-009');
+      await channel.close();
+    });
   });
 }

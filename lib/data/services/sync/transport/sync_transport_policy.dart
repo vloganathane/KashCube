@@ -14,6 +14,12 @@ enum SyncSignalingMode {
   cloudRelay,
 }
 
+enum SyncTurnRelayMode {
+  disabled,
+  preferred,
+  required,
+}
+
 class SyncTransportPolicy {
   static SyncTransportKind pick({required bool preferWebRtc}) {
     return preferWebRtc ? SyncTransportKind.webRtc : SyncTransportKind.webSocket;
@@ -42,13 +48,24 @@ class SyncTransportPolicy {
     required SyncTransportKind transportKind,
     WebRtcPeerOpsFactory? peerOpsFactory,
     CloudSignalingAdapterFactory? cloudAdapterFactory,
+    SyncTurnRelayMode turnRelayMode = SyncTurnRelayMode.disabled,
+    List<String> relayServerHints = const <String>[],
   }) {
     switch (mode) {
       case SyncSignalingMode.localLan:
         return create(transportKind, peerOpsFactory: peerOpsFactory);
       case SyncSignalingMode.cloudRelay:
+        final cloudRelayMode = switch (turnRelayMode) {
+          SyncTurnRelayMode.disabled => CloudTurnRelayMode.disabled,
+          SyncTurnRelayMode.preferred => CloudTurnRelayMode.preferred,
+          SyncTurnRelayMode.required => CloudTurnRelayMode.required,
+        };
         return CloudSignalingTransportChannel(
           adapterFactory: cloudAdapterFactory,
+          sessionOptions: CloudSignalingSessionOptions(
+            turnRelayMode: cloudRelayMode,
+            relayServerHints: relayServerHints,
+          ),
         );
     }
   }

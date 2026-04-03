@@ -30,6 +30,11 @@ void main() {
       final mode = WebSyncNotifier.resolveDefaultSignalingMode();
       expect(mode, SyncSignalingMode.localLan);
     });
+
+    test('defaults to disabled TURN relay mode in app build', () {
+      final mode = WebSyncNotifier.resolveDefaultTurnRelayMode();
+      expect(mode, SyncTurnRelayMode.disabled);
+    });
   });
 
   group('WebSyncNotifier heartbeat reconnect', () {

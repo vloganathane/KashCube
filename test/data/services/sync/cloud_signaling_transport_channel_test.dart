@@ -8,14 +8,19 @@ class _FakeCloudSignalingAdapter implements CloudSignalingAdapter {
       StreamController<Map<String, dynamic>>.broadcast();
   final List<Map<String, dynamic>> sentFrames = <Map<String, dynamic>>[];
   Uri? connectedUri;
+  CloudSignalingSessionOptions? lastConnectOptions;
   int closeCount = 0;
 
   @override
   Stream<Map<String, dynamic>> get inboundFrames => _inboundController.stream;
 
   @override
-  Future<void> connect(Uri uri) async {
+  Future<void> connect(
+    Uri uri, {
+    CloudSignalingSessionOptions options = const CloudSignalingSessionOptions(),
+  }) async {
     connectedUri = uri;
+    lastConnectOptions = options;
   }
 
   @override
@@ -68,6 +73,31 @@ void main() {
       expect(adapter.sentFrames, hasLength(1));
       expect(adapter.sentFrames.first['type'], 'SIGNAL_OFFER');
       expect(adapter.sentFrames.first['sdp'], 'offer');
+
+      await channel.close();
+    });
+
+    test('passes TURN relay options to adapter on connect', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        sessionOptions: const CloudSignalingSessionOptions(
+          turnRelayMode: CloudTurnRelayMode.required,
+          relayServerHints: <String>['turn:relay.example.invalid:3478'],
+        ),
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      expect(adapter.lastConnectOptions, isNotNull);
+      expect(
+        adapter.lastConnectOptions!.turnRelayMode,
+        CloudTurnRelayMode.required,
+      );
+      expect(
+        adapter.lastConnectOptions!.relayServerHints,
+        <String>['turn:relay.example.invalid:3478'],
+      );
 
       await channel.close();
     });

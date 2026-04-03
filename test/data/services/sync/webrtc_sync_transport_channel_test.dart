@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
+import 'package:kash_cube/data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_sync_transport_channel.dart';
 
 class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
@@ -99,6 +100,29 @@ void main() {
       expect(() => channel.sendJson({'type': 'PING'}), returnsNormally);
 
       await channel.unregisterDataChannelBridge(sessionId);
+      await channel.close();
+    });
+
+    test('bridge shell stores negotiation artifacts and routed outbound frame', () async {
+      final channel = WebRtcSyncTransportChannel();
+      const sessionId = 'sess-004';
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: sessionId)
+        ..applyLocalOfferSdp('offer-sdp')
+        ..applyRemoteAnswerSdp('answer-sdp')
+        ..addRemoteIceCandidate({'candidate': 'ice-a'})
+        ..addRemoteIceCandidate({'candidate': 'ice-b'});
+
+      channel.registerDataChannelBridge(sessionId: sessionId, bridge: bridge);
+      channel.sendJson({'type': 'SYNC', 'table': 'transactions'});
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bridge.localOfferSdp, 'offer-sdp');
+      expect(bridge.remoteAnswerSdp, 'answer-sdp');
+      expect(bridge.remoteIceCandidates.length, 2);
+      expect(bridge.outboundFrames, hasLength(1));
+
+      await channel.unregisterDataChannelBridge(sessionId);
+      expect(bridge.isClosed, isTrue);
       await channel.close();
     });
   });

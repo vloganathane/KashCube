@@ -13,6 +13,7 @@ import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
+import '../../data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
 import '../../data/services/sync/transport/webrtc_sync_transport_channel.dart';
 import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
@@ -467,7 +468,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         channel is WebRtcSyncTransportChannel) {
       channel.registerDataChannelBridge(
         sessionId: sessionId,
-        bridge: NoopWebRtcDataChannelBridge(),
+        bridge: WebRtcDataChannelBridgeShell(sessionId: sessionId),
       );
     }
 

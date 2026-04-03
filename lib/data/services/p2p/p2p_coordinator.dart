@@ -1171,6 +1171,25 @@ class P2pCoordinator {
         });
       }
       sessionState['ice_candidates'] = <dynamic>[];
+     // Retrieve generated answer from adapter and send back to browser
+     final adapter = _webRtcAdapters[sessionId];
+     if (adapter != null && adapter.hasAnswer) {
+       final answerSdp = adapter.getAnswerSdp();
+       if (answerSdp != null) {
+         responses.insert(
+           1,
+           {
+             'type': SyncSignalingMessages.signalAnswer,
+             'session_id': sessionId,
+             'sdp': answerSdp,
+           },
+         );
+         debugPrint(
+           '[P2pCoordinator] Generated and returned answer SDP to browser for session $sessionId',
+         );
+       }
+     }
+
 
       return responses;
     }

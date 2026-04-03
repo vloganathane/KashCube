@@ -110,12 +110,22 @@ class WebSyncState {
 /// All existing repositories read from [DatabaseHelper.instance.database]
 /// unchanged — zero repo-layer changes required.
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
+  static const String _peerOpsModeEnvKey = 'KASHCUBE_WEBRTC_PEER_OPS_MODE';
+
+  static WebRtcPeerOpsMode resolveDefaultPeerOpsMode() {
+    const configured = String.fromEnvironment(
+      _peerOpsModeEnvKey,
+      defaultValue: 'noop',
+    );
+    return parseWebRtcPeerOpsMode(configured);
+  }
+
   WebSyncNotifier({
     bool preferWebRtcTransport = false,
-    WebRtcPeerOpsMode peerOpsMode = WebRtcPeerOpsMode.noop,
+    WebRtcPeerOpsMode? peerOpsMode,
   })
       : _preferWebRtcTransport = preferWebRtcTransport,
-        _peerOpsMode = peerOpsMode,
+        _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
         super(const WebSyncState());
 
   SyncTransportChannel? _channel;

@@ -1,13 +1,13 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** Reliability Hardening (M4) 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** Reliability Hardening (M4) ✅ · M1 ✅ · M2 ✅ · M3 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
 
-**M4 reliability now includes inbound replay dedupe**: repeated PUSH/ROWS payloads with the same row `sync_id` are filtered before merge and notify, keeping reconnect replay idempotent at the provider boundary.
+**M4 is now complete**: heartbeat, reconnect/resume, WRITE ack/retry, inbound replay dedupe, and disconnect cleanup coverage are all in place for the local hybrid transport path.
 
 ## Transparent Slice Reporting Contract
 
@@ -36,7 +36,7 @@ Current transparent baseline:
 1. M1: 100% complete
 2. M2: 100% complete
 3. M3: 100% complete
-4. M4: 52% complete
+4. M4: 100% complete
 5. M5-M6: pending
 
 Current estimated completion (if no blockers):
@@ -44,7 +44,31 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: complete
-4. M4 closure: 1-2 slices
+4. M4 closure: complete
+
+### Latest Work — M4 Closure (Slice 26: Disconnect Cleanup Integration Coverage)
+
+**Commit:** `182f64a` — Add disconnect cleanup sync integration tests
+
+Completed the final M4 integration coverage slice at provider boundary:
+1. Added focused integration-style test proving disconnect clears pending outbound WRITE state before next session
+2. Added focused integration-style test proving disconnect clears inbound replay dedupe cache before next session
+3. Verified same `sync_id` can be re-sent or re-merged after session teardown because stale reliability state is not leaked across sessions
+
+Validation:
+1. Focused tests: `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 52% -> 100%
+
+Estimated completion (updated):
+1. M4 closure: complete
+
+---
 
 ### Latest Work — M4 Progression (Slice 25: Inbound Replay Dedupe)
 

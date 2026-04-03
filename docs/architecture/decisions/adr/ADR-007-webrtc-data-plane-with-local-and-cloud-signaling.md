@@ -53,7 +53,7 @@ Connection policy is direct-first with relay fallback:
 | M1: Signaling protocol freeze (v1) | Sync Lead | 2026-04-10 | Done | Offer/answer/ICE schema finalized in docs with coordinator guard contract tests |
 | M2: Transport adapter integration | App Lead | 2026-04-17 | Done | WebRTC DataChannel adapter wired behind sync transport interface |
 | M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | Done | Phone and browser complete authenticated sync over local signaling |
-| M4: Reliability hardening | QA Lead | 2026-05-01 | In Progress | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
+| M4: Reliability hardening | QA Lead | 2026-05-01 | Done | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
 | M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | Not Started | Cloud signaling plus TURN fallback available in staging |
 | M6: Security and release readiness gate | Security Lead | 2026-05-15 | Not Started | App-layer payload encryption, key rotation checks, and threat review approved |
 
@@ -113,7 +113,7 @@ Status: Done
 3. Add ack/retry semantics and dedupe verification at transport boundary.
 4. Expand integration tests for ordering, replay, reconnect, and session cleanup.
 
-Status: In Progress (heartbeat/liveness, reconnect/resume, WRITE ack/retry, and inbound replay dedupe foundation complete)
+Status: Done
 
 ### Phase E: Anywhere Mode Infrastructure (M5)
 
@@ -136,14 +136,14 @@ Status: Not Started
 1. M1: 100% complete.
 2. M2: 100% complete.
 3. M3: 100% complete.
-4. M4: approximately 52% complete.
+4. M4: 100% complete.
 5. M5-M6: pending.
 
 ### Immediate Next Slices
 
-1. Add integration tests for ordering, replay, reconnect, and session cleanup.
-2. Verify retry/ack behavior across mixed control-plane fallback and ready data-plane paths.
-3. Validate dedupe behavior under session teardown/reconnect cleanup.
+1. Begin cloud signaling path behind feature flag.
+2. Add TURN relay fallback scaffolding for staging.
+3. Preserve local-first mode as default while M5 remains gated.
 
 ## Evidence And Supporting Specs
 

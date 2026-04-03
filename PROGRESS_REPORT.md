@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M5 now includes a concrete cloud signaling adapter seam**: cloud mode still stays fail-closed by default, but transport-level adapter contracts and bridge tests are in place for the upcoming staged implementation.
+**M5 now includes TURN relay scaffolding through typed session options**: relay mode preferences are threaded from provider policy into cloud signaling adapter contracts while cloud mode remains feature-gated and fail-closed by default.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,7 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5: 24% complete
+5. M5: 36% complete
 6. M6: pending
 
 Current estimated completion (if no blockers):
@@ -46,7 +46,37 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
-5. M5 closure: 3-5 slices
+5. M5 closure: 2-4 slices
+
+### Latest Work — M5 Progression (Slice 29: TURN Relay Scaffolding)
+
+**Commit:** `41d020d` — Add TURN relay mode scaffolding seam
+
+Completed TURN fallback scaffolding at signaling seam without enabling network behavior:
+1. Added typed TURN relay mode enums (`disabled`, `preferred`, `required`)
+2. Added cloud signaling session options contract with relay mode + relay server hints
+3. Threaded relay mode from provider env resolver into signaling policy selection
+4. Threaded relay options from policy into cloud signaling adapter connect contract
+5. Added focused tests for:
+  - relay options passthrough in cloud signaling transport
+  - relay mode mapping in signaling policy cloud channel creation
+  - provider default TURN relay mode resolver
+
+Validation:
+1. Focused tests: `cloud_signaling_transport_channel_test.dart` + `sync_transport_policy_test.dart` + `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 24% -> 36%
+
+Estimated completion (updated):
+1. M5 closure: 2-4 slices
+
+---
 
 ### Latest Work — M5 Progression (Slice 28: Cloud Signaling Adapter Seam)
 

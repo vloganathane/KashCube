@@ -1095,22 +1095,96 @@ class P2pCoordinator {
     }
 
     final signalId = frame['signal_id']?.toString();
+    if (type == SyncSignalingMessages.signalIceCandidate && !hasAnswer) {
+      return [
+        _signalAck(
+          sourceType: type,
+          sessionId: sessionId,
+          signalId: signalId,
+          status: 'ice_queued_waiting_for_answer',
+        ),
+      ];
+    }
+
+    if (type == SyncSignalingMessages.signalAnswer) {
+      final responses = <Map<String, dynamic>>[
+        _signalAck(
+          sourceType: type,
+          sessionId: sessionId,
+          signalId: signalId,
+          status: 'answer_staged',
+        ),
+      ];
+
+      final candidates = (sessionState['ice_candidates'] as List<dynamic>?) ?? const <dynamic>[];
+      for (final item in candidates) {
+        if (item is! Map) continue;
+        final candidateFrame = Map<String, dynamic>.from(item);
+        final candidate = candidateFrame['candidate'];
+        if (candidate == null) continue;
+        responses.add({
+          'type': SyncSignalingMessages.signalIceCandidate,
+          'session_id': sessionId,
+          'candidate': candidate,
+          'replayed': true,
+          'source_type': 'QUEUED_ICE_REPLAY',
+        });
+      }
+      sessionState['ice_candidates'] = <dynamic>[];
+
+      responses.add(_signalUnsupported(
+        sourceType: type,
+        sessionId: sessionId,
+        code: 'WEBRTC_ENGINE_NOT_READY',
+        reason: 'Negotiation staged, awaiting local WebRTC engine activation',
+      ));
+      return responses;
+    }
+
     return [
-      {
-        'type': SyncSignalingMessages.signalAck,
-        'status': 'staged',
-        'source_type': type,
-        'session_id': sessionId,
-        if (signalId != null && signalId.isNotEmpty) 'signal_id': signalId,
-      },
-      {
-        'type': SyncSignalingMessages.signalUnsupported,
-        'reason': 'WebRTC peer connection engine is not enabled yet',
-        'code': 'WEBRTC_ENGINE_NOT_READY',
-        'source_type': type,
-        'session_id': sessionId,
-      },
+      _signalAck(
+        sourceType: type,
+        sessionId: sessionId,
+        signalId: signalId,
+        status: 'staged',
+      ),
+      _signalUnsupported(
+        sourceType: type,
+        sessionId: sessionId,
+        code: 'WEBRTC_ENGINE_NOT_READY',
+        reason: 'WebRTC peer connection engine is not enabled yet',
+      ),
     ];
+  }
+
+  Map<String, dynamic> _signalAck({
+    required String sourceType,
+    required String sessionId,
+    String? signalId,
+    String status = 'staged',
+  }) {
+    return {
+      'type': SyncSignalingMessages.signalAck,
+      'status': status,
+      'source_type': sourceType,
+      'session_id': sessionId,
+      if (signalId != null && signalId.isNotEmpty) 'signal_id': signalId,
+    };
+  }
+
+  Map<String, dynamic> _signalUnsupported({
+    required String sourceType,
+    required String sessionId,
+    required String code,
+    required String reason,
+  }) {
+    return {
+      'type': SyncSignalingMessages.signalUnsupported,
+      'reason': reason,
+      'code': code,
+      'source_type': sourceType,
+      'session_id': sessionId,
+    };
   }
 
   Map<String, dynamic> _signalError({

@@ -12,13 +12,13 @@ void main() {
       expect(mode, SyncSignalingMode.cloudRelay);
     });
 
-    test('creates unavailable placeholder for cloud signaling mode', () async {
+    test('creates cloud signaling adapter seam for cloud mode', () async {
       final channel = SyncTransportPolicy.createSignaling(
         SyncSignalingMode.cloudRelay,
         transportKind: SyncTransportKind.webSocket,
       );
 
-      expect(channel, isA<CloudSignalingUnavailableTransportChannel>());
+      expect(channel, isA<CloudSignalingTransportChannel>());
       expect(
         () => channel.connect(Uri.parse('ws://127.0.0.1:8080/ws')),
         throwsA(isA<UnsupportedError>()),

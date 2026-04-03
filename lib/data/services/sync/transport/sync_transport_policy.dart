@@ -41,12 +41,15 @@ class SyncTransportPolicy {
     SyncSignalingMode mode, {
     required SyncTransportKind transportKind,
     WebRtcPeerOpsFactory? peerOpsFactory,
+    CloudSignalingAdapterFactory? cloudAdapterFactory,
   }) {
     switch (mode) {
       case SyncSignalingMode.localLan:
         return create(transportKind, peerOpsFactory: peerOpsFactory);
       case SyncSignalingMode.cloudRelay:
-        return CloudSignalingUnavailableTransportChannel();
+        return CloudSignalingTransportChannel(
+          adapterFactory: cloudAdapterFactory,
+        );
     }
   }
 }

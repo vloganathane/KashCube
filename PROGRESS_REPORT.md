@@ -1,13 +1,13 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** WebRTC Data Plane (M3) 🔄 · M1 ✅ · M2 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** Reliability Hardening (M4) 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
 
-**M3 is now complete**: hybrid WebRTC data-plane routing is live, fail-safe, and session-scoped, with WebSocket retained as deterministic control-plane fallback.
+**M4 has started** with heartbeat/liveness checks in the hybrid WebRTC transport: periodic keepalive pings now run on control plane, and heartbeat timeout is surfaced as structured signaling error for recovery orchestration.
 
 ## Transparent Slice Reporting Contract
 
@@ -22,6 +22,7 @@ Starting now, every slice completion update will include this exact status block
   - M1 percentage change
   - M2 percentage change
   - M3 percentage change
+  - M4 percentage change
 5. Estimated completion
   - remaining slices for current phase
   - estimated completion window for current phase
@@ -35,13 +36,43 @@ Current transparent baseline:
 1. M1: 100% complete
 2. M2: 100% complete
 3. M3: 100% complete
-4. M4-M6: pending
+4. M4: 12% complete
+5. M5-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: complete
+4. M4 closure: 3-5 slices
+
+### Latest Work — M4 Progression (Slice 22: Heartbeat Liveness Foundation)
+
+**Commit:** `8c92b59` — Add heartbeat liveness checks to hybrid WebRTC transport
+
+Completed first reliability-hardening slice for transport liveness:
+1. Added periodic control-plane heartbeat pings from `WebRtcSyncTransportChannel`
+2. Added pong tracking and heartbeat timeout detection
+3. On heartbeat timeout, transport emits structured `SIGNAL_ERROR` frame with `HEARTBEAT_TIMEOUT`
+4. Added focused transport tests for:
+  - periodic heartbeat ping emission
+  - timeout signaling when pong is missing
+  - timeout re-arm behavior after pong recovery
+
+Validation:
+1. Focused tests: `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 0% -> 12%
+
+Estimated completion (updated):
+1. M4 closure: 3-5 slices
+
+---
 
 ### Latest Work — M3 Closure (Slice 21: Session-Scoped Data-Plane Routing)
 

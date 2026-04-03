@@ -51,9 +51,9 @@ Connection policy is direct-first with relay fallback:
 | Milestone | Owner | Target Date | Status | Exit Criteria |
 | --- | --- | --- | --- | --- |
 | M1: Signaling protocol freeze (v1) | Sync Lead | 2026-04-10 | Done | Offer/answer/ICE schema finalized in docs with coordinator guard contract tests |
-| M2: Transport adapter integration | App Lead | 2026-04-17 | In Progress | WebRTC DataChannel adapter wired behind sync transport interface |
-| M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | In Progress | Phone and browser complete authenticated sync over local signaling |
-| M4: Reliability hardening | QA Lead | 2026-05-01 | Not Started | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
+| M2: Transport adapter integration | App Lead | 2026-04-17 | Done | WebRTC DataChannel adapter wired behind sync transport interface |
+| M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | Done | Phone and browser complete authenticated sync over local signaling |
+| M4: Reliability hardening | QA Lead | 2026-05-01 | In Progress | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
 | M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | Not Started | Cloud signaling plus TURN fallback available in staging |
 | M6: Security and release readiness gate | Security Lead | 2026-05-15 | Not Started | App-layer payload encryption, key rotation checks, and threat review approved |
 
@@ -95,7 +95,7 @@ Status: Done
 3. Add negotiation-aware bridge shell with artifact buffering and deduplicated ICE handling.
 4. Add peer-ops abstraction with factory injection so implementation can switch between noop and plugin-backed runtimes.
 
-Status: In Progress (core scaffolding complete)
+Status: Done
 
 ### Phase C: Local End-to-End Data Plane Bring-Up (M3)
 
@@ -104,7 +104,7 @@ Status: In Progress (core scaffolding complete)
 3. Enable controlled WebRTC connect path in policy while preserving WebSocket fallback.
 4. Route sync payload frames through DataChannel stream once channel is established.
 
-Status: In Progress (pending plugin-backed implementation)
+Status: Done
 
 ### Phase D: Reliability Hardening (M4)
 
@@ -113,7 +113,7 @@ Status: In Progress (pending plugin-backed implementation)
 3. Add ack/retry semantics and dedupe verification at transport boundary.
 4. Expand integration tests for ordering, replay, reconnect, and session cleanup.
 
-Status: Not Started
+Status: In Progress (heartbeat/liveness foundation complete)
 
 ### Phase E: Anywhere Mode Infrastructure (M5)
 
@@ -134,15 +134,16 @@ Status: Not Started
 ### Current Progress Snapshot
 
 1. M1: 100% complete.
-2. M2: approximately 75% complete.
-3. M3: approximately 47% complete.
-4. M4-M6: pending.
+2. M2: 100% complete.
+3. M3: 100% complete.
+4. M4: approximately 12% complete.
+5. M5-M6: pending.
 
 ### Immediate Next Slices
 
-1. Add concrete plugin-backed peer ops implementation behind existing factory.
-2. Gate runtime selection between noop and plugin-backed peer ops.
-3. Begin controlled activation of WebRTC connect lifecycle with fallback retained.
+1. Add reconnect and resume behavior on transport heartbeat failure.
+2. Add ack/retry envelope for data-plane eligible payloads.
+3. Add integration tests for ordering, replay, reconnect, and session cleanup.
 
 ## Evidence And Supporting Specs
 

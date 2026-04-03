@@ -41,6 +41,22 @@ enum WebAuthPhase {
 
 const _webSyncNoChange = Object();
 
+class _PendingOutboundWrite {
+  _PendingOutboundWrite({required Map<String, dynamic> payload})
+      : payload = Map<String, dynamic>.from(payload);
+
+  final Map<String, dynamic> payload;
+  int attemptCount = 0;
+  DateTime? lastSentAt;
+
+  String get syncId => payload['sync_id']?.toString() ?? '';
+
+  void markSent(DateTime sentAt) {
+    attemptCount += 1;
+    lastSentAt = sentAt;
+  }
+}
+
 class WebSyncState {
   const WebSyncState({
     this.state        = WsConnState.disconnected,
@@ -127,6 +143,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     Duration heartbeatReconnectBaseDelay = const Duration(seconds: 2),
     int maxHeartbeatReconnectAttempts = 3,
     Future<bool> Function(String wsUrl, String sessionId)? reconnectRunner,
+    Duration writeAckTimeout = const Duration(seconds: 10),
+    int maxWriteRetryAttempts = 3,
   })
       : _preferWebRtcTransport = preferWebRtcTransport,
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
@@ -134,6 +152,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
         _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
         _reconnectRunner = reconnectRunner,
+        _writeAckTimeout = writeAckTimeout,
+        _maxWriteRetryAttempts = maxWriteRetryAttempts,
         super(const WebSyncState());
 
   SyncTransportChannel? _channel;
@@ -149,9 +169,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Duration _heartbeatReconnectBaseDelay;
   final int _maxHeartbeatReconnectAttempts;
   final Future<bool> Function(String wsUrl, String sessionId)? _reconnectRunner;
+  final Duration _writeAckTimeout;
+  final int _maxWriteRetryAttempts;
   Timer? _heartbeatReconnectTimer;
   int _heartbeatReconnectAttempts = 0;
   bool _heartbeatReconnectInFlight = false;
+  final Map<String, _PendingOutboundWrite> _pendingOutboundWrites =
+      <String, _PendingOutboundWrite>{};
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
@@ -375,6 +399,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           _handlePush(msg);
           break;
         case SyncSignalingMessages.writeOk:
+          _handleWriteOk(msg);
           break;
         case SyncSignalingMessages.syncPlan:
           _handleSyncPlan(msg);
@@ -796,6 +821,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _writeLoopInFlight = true;
 
     try {
+      _retryPendingWrites();
+
       final db = await DatabaseHelper.instance.database;
       for (final plan in _outboundTables()) {
         final table = plan.tableName;
@@ -816,7 +843,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         for (final row in rows) {
           final normalized = Map<String, dynamic>.from(row);
           normalized['sync_id'] ??= _newSyncId();
-          _channel?.sendJson({
+          _queueOutboundWrite(<String, dynamic>{
             'type': 'WRITE',
             'table': table,
             'sync_id': normalized['sync_id'],
@@ -840,6 +867,72 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     } finally {
       _writeLoopInFlight = false;
     }
+  }
+
+  void _queueOutboundWrite(Map<String, dynamic> payload) {
+    final syncId = payload['sync_id']?.toString();
+    if (syncId == null || syncId.isEmpty) {
+      return;
+    }
+
+    final pending = _pendingOutboundWrites.putIfAbsent(
+      syncId,
+      () => _PendingOutboundWrite(payload: payload),
+    );
+    if (pending.attemptCount > 0) {
+      return;
+    }
+
+    _sendPendingWrite(pending, isRetry: false);
+  }
+
+  void _retryPendingWrites() {
+    final now = DateTime.now().toUtc();
+    for (final pending in _pendingOutboundWrites.values) {
+      final lastSentAt = pending.lastSentAt;
+      if (lastSentAt == null) {
+        _sendPendingWrite(pending, isRetry: false);
+        continue;
+      }
+
+      if (now.difference(lastSentAt) < _writeAckTimeout) {
+        continue;
+      }
+
+      if (pending.attemptCount >= _maxWriteRetryAttempts) {
+        state = state.copyWith(
+          progressMsg: 'Write delivery pending confirmation. Reconnect may be required.',
+        );
+        continue;
+      }
+
+      _sendPendingWrite(pending, isRetry: true);
+    }
+  }
+
+  void _sendPendingWrite(_PendingOutboundWrite pending, {required bool isRetry}) {
+    final channel = _channel;
+    if (channel == null) {
+      return;
+    }
+
+    final payload = Map<String, dynamic>.from(pending.payload)
+      ..['retry_count'] = pending.attemptCount;
+    if (isRetry) {
+      payload['is_retry'] = true;
+    }
+
+    channel.sendJson(payload);
+    pending.markSent(DateTime.now().toUtc());
+  }
+
+  void _handleWriteOk(Map<String, dynamic> msg) {
+    final syncId = msg['sync_id']?.toString();
+    if (syncId == null || syncId.isEmpty) {
+      return;
+    }
+
+    _pendingOutboundWrites.remove(syncId);
   }
 
   List<SyncTablePlan> _outboundTables() {
@@ -993,9 +1086,28 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   @visibleForTesting
+  void setChannelForTest(SyncTransportChannel channel) {
+    _channel = channel;
+    state = state.copyWith(state: WsConnState.connected, errorMsg: '');
+  }
+
+  @visibleForTesting
   void ingestMessageForTest(Map<String, dynamic> message) {
     _onMessage(jsonEncode(message));
   }
+
+  @visibleForTesting
+  void enqueueOutboundWriteForTest(Map<String, dynamic> payload) {
+    _queueOutboundWrite(payload);
+  }
+
+  @visibleForTesting
+  void retryPendingWritesForTest() {
+    _retryPendingWrites();
+  }
+
+  @visibleForTesting
+  int get pendingOutboundWriteCountForTest => _pendingOutboundWrites.length;
 
   void disconnect({bool clearReconnectState = true}) {
     if (clearReconnectState) {
@@ -1018,6 +1130,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
     _latestRemoteAnswerSdp = null;
     _remoteIceCandidates.clear();
+    _pendingOutboundWrites.clear();
     _outboundLastSentAt.clear();
     _outboundLastSentVersion.clear();
     _snapshotSentTables.clear();

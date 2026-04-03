@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M3 Progression (Slice 18: Ready-Gated Payload Activation)
 
-**Commit:** pending (current working tree)
+**Commit:** `fd7d249` — Gate WebRTC payload flow on data channel readiness
 
 Completed explicit data-channel readiness gating for payload flow:
 1. Bridge shell now tracks `isDataChannelReady`

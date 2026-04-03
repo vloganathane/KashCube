@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/sync/transport/sync_transport_channel.dart';
+import 'package:kash_cube/data/services/sync/transport/sync_transport_policy.dart';
 import 'package:kash_cube/presentation/providers/web_sync_provider.dart';
 
 class _FakeSyncTransportChannel implements SyncTransportChannel {
@@ -24,6 +25,13 @@ class _FakeSyncTransportChannel implements SyncTransportChannel {
 }
 
 void main() {
+  group('WebSyncNotifier signaling mode resolver', () {
+    test('defaults to local signaling mode in app build', () {
+      final mode = WebSyncNotifier.resolveDefaultSignalingMode();
+      expect(mode, SyncSignalingMode.localLan);
+    });
+  });
+
   group('WebSyncNotifier heartbeat reconnect', () {
     test('schedules reconnect on HEARTBEAT_TIMEOUT when session is available', () async {
       var reconnectAttempts = 0;

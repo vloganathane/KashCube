@@ -128,6 +128,7 @@ class WebSyncState {
 /// unchanged — zero repo-layer changes required.
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
   static const String _peerOpsModeEnvKey = 'KASHCUBE_WEBRTC_PEER_OPS_MODE';
+  static const String _signalingModeEnvKey = 'KASHCUBE_SYNC_SIGNALING_MODE';
 
   static WebRtcPeerOpsMode resolveDefaultPeerOpsMode() {
     const configured = String.fromEnvironment(
@@ -137,9 +138,25 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     return parseWebRtcPeerOpsMode(configured);
   }
 
+  static SyncSignalingMode resolveDefaultSignalingMode() {
+    const configuredRaw = String.fromEnvironment(
+      _signalingModeEnvKey,
+      defaultValue: 'local',
+    );
+    final configured = configuredRaw.toLowerCase();
+    switch (configured) {
+      case 'cloud':
+      case 'cloud_relay':
+        return SyncSignalingMode.cloudRelay;
+      default:
+        return SyncSignalingMode.localLan;
+    }
+  }
+
   WebSyncNotifier({
     bool preferWebRtcTransport = false,
     WebRtcPeerOpsMode? peerOpsMode,
+    SyncSignalingMode? signalingMode,
     String? Function()? sessionIdProvider,
     Duration heartbeatReconnectBaseDelay = const Duration(seconds: 2),
     int maxHeartbeatReconnectAttempts = 3,
@@ -152,6 +169,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   })
       : _preferWebRtcTransport = preferWebRtcTransport,
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
+        _signalingMode = signalingMode ?? resolveDefaultSignalingMode(),
         _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
         _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
         _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
@@ -172,6 +190,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   String? _wsUrl; // remembered for session reconnect logging
   final bool _preferWebRtcTransport;
   final WebRtcPeerOpsMode _peerOpsMode;
+  final SyncSignalingMode _signalingMode;
   final String? Function() _sessionIdProvider;
   final Duration _heartbeatReconnectBaseDelay;
   final int _maxHeartbeatReconnectAttempts;
@@ -336,8 +355,26 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     final preferred = SyncTransportPolicy.pick(
       preferWebRtc: _preferWebRtcTransport,
     );
-    final preferredChannel = SyncTransportPolicy.create(
-      preferred,
+
+    if (_signalingMode == SyncSignalingMode.cloudRelay) {
+      final cloudChannel = SyncTransportPolicy.createSignaling(
+        SyncSignalingMode.cloudRelay,
+        transportKind: preferred,
+        peerOpsFactory: _buildWebRtcPeerOpsFactory(),
+      );
+      try {
+        await cloudChannel.connect(uri);
+        state = state.copyWith(progressMsg: 'Cloud signaling mode active');
+        return cloudChannel;
+      } catch (e) {
+        debugPrint('[WebSync] Cloud signaling unavailable, falling back to local signaling: $e');
+        state = state.copyWith(progressMsg: 'Cloud signaling unavailable. Using local signaling…');
+      }
+    }
+
+    final preferredChannel = SyncTransportPolicy.createSignaling(
+      SyncSignalingMode.localLan,
+      transportKind: preferred,
       peerOpsFactory: _buildWebRtcPeerOpsFactory(),
     );
     try {

@@ -3281,6 +3281,29 @@ class DatabaseHelper {
             'Media sync foundation: media_assets table + businesses/parties media reference columns',
       });
     }
+
+    if (oldVersion < 85) {
+      // M6 Slice 34: key rotation metadata columns on trusted_peers.
+      // key_version: monotonically increasing epoch counter (1 = original paired key).
+      // key_rotated_at: ISO-8601 timestamp of last rotation; NULL for unrotated rows.
+      // Both have safe defaults so existing paired peers are not affected.
+      try {
+        await db.execute(
+          'ALTER TABLE trusted_peers ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE trusted_peers ADD COLUMN key_rotated_at TEXT',
+        );
+      } catch (_) {}
+
+      await db.insert('schema_version', {
+        'version': 85,
+        'description':
+            'M6 key rotation: trusted_peers.key_version + key_rotated_at columns',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

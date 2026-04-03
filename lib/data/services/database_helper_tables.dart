@@ -1439,7 +1439,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         paired_at         TEXT NOT NULL,
         last_seen_at      TEXT,
         last_synced_at    TEXT,
-        is_active         INTEGER NOT NULL DEFAULT 1
+        is_active         INTEGER NOT NULL DEFAULT 1,
+        key_version       INTEGER NOT NULL DEFAULT 1,
+        key_rotated_at    TEXT
       )
     ''');
     await db.execute(

@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M2 Progression (Slice 12: Android Peer-Ops Channel Wiring)
 
-**Commit:** pending (current working tree)
+**Commit:** `a1a48c4` — Wire Android WebRTC peer-ops method channel
 
 Completed native channel contract wiring for WebRTC peer ops on Android:
 1. Added `kashcube/webrtc_peer_ops` method channel handler in `MainActivity`

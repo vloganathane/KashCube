@@ -123,9 +123,17 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   WebSyncNotifier({
     bool preferWebRtcTransport = false,
     WebRtcPeerOpsMode? peerOpsMode,
+    String? Function()? sessionIdProvider,
+    Duration heartbeatReconnectBaseDelay = const Duration(seconds: 2),
+    int maxHeartbeatReconnectAttempts = 3,
+    Future<bool> Function(String wsUrl, String sessionId)? reconnectRunner,
   })
       : _preferWebRtcTransport = preferWebRtcTransport,
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
+        _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
+        _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
+        _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
+        _reconnectRunner = reconnectRunner,
         super(const WebSyncState());
 
   SyncTransportChannel? _channel;
@@ -137,6 +145,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   String? _wsUrl; // remembered for session reconnect logging
   final bool _preferWebRtcTransport;
   final WebRtcPeerOpsMode _peerOpsMode;
+  final String? Function() _sessionIdProvider;
+  final Duration _heartbeatReconnectBaseDelay;
+  final int _maxHeartbeatReconnectAttempts;
+  final Future<bool> Function(String wsUrl, String sessionId)? _reconnectRunner;
+  Timer? _heartbeatReconnectTimer;
+  int _heartbeatReconnectAttempts = 0;
+  bool _heartbeatReconnectInFlight = false;
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
@@ -377,7 +392,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           _handleSignalAck(msg);
           break;
         case SyncSignalingMessages.signalError:
-          _handleSignalError(msg);
+          unawaited(_handleSignalError(msg));
           break;
         case SyncSignalingMessages.signalUnsupported:
           _handleSignalUnsupported(msg);
@@ -461,13 +476,106 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     channel.syncRuntimeFromMailbox(sessionId: sessionId);
   }
 
-  void _handleSignalError(Map<String, dynamic> msg) {
+  Future<void> _handleSignalError(Map<String, dynamic> msg) async {
     final code = msg['code']?.toString() ?? 'UNKNOWN_ERROR';
     final reason = msg['reason']?.toString() ?? 'Signaling error';
     state = state.copyWith(
       errorMsg: 'Signaling error ($code): $reason',
     );
     debugPrint('[WebSync] SIGNAL_ERROR code=$code reason=$reason');
+
+    if (code == 'HEARTBEAT_TIMEOUT') {
+      _scheduleHeartbeatReconnect(reason: reason);
+    }
+  }
+
+  void _scheduleHeartbeatReconnect({required String reason}) {
+    if (_heartbeatReconnectInFlight || _heartbeatReconnectTimer != null) {
+      return;
+    }
+    if (_heartbeatReconnectAttempts >= _maxHeartbeatReconnectAttempts) {
+      return;
+    }
+
+    final wsUrl = _wsUrl;
+    final sessionId = _sessionIdProvider();
+    if (wsUrl == null || wsUrl.isEmpty || sessionId == null || sessionId.isEmpty) {
+      state = state.copyWith(
+        progressMsg: 'Connection lost. Auto-reconnect unavailable.',
+      );
+      return;
+    }
+
+    final nextAttempt = _heartbeatReconnectAttempts + 1;
+    final delay = Duration(
+      milliseconds: _heartbeatReconnectBaseDelay.inMilliseconds * nextAttempt,
+    );
+
+    state = state.copyWith(
+      progressMsg:
+          'Connection unstable. Reconnecting ($nextAttempt/$_maxHeartbeatReconnectAttempts)…',
+    );
+
+    _heartbeatReconnectTimer = Timer(delay, () {
+      _heartbeatReconnectTimer = null;
+      unawaited(_attemptHeartbeatReconnect(wsUrl: wsUrl, sessionId: sessionId));
+    });
+  }
+
+  Future<void> _attemptHeartbeatReconnect({
+    required String wsUrl,
+    required String sessionId,
+  }) async {
+    if (_heartbeatReconnectInFlight) {
+      return;
+    }
+
+    _heartbeatReconnectInFlight = true;
+    _heartbeatReconnectAttempts += 1;
+
+    bool reconnected = false;
+    try {
+      final runner = _reconnectRunner ?? _defaultReconnectRunner;
+      reconnected = await runner(wsUrl, sessionId);
+    } catch (e) {
+      debugPrint('[WebSync] Heartbeat reconnect attempt failed: $e');
+      reconnected = false;
+    } finally {
+      _heartbeatReconnectInFlight = false;
+    }
+
+    if (reconnected) {
+      _cancelHeartbeatReconnect(resetAttempts: true);
+      state = state.copyWith(
+        errorMsg: '',
+        progressMsg: 'Reconnected after heartbeat timeout',
+      );
+      return;
+    }
+
+    if (_heartbeatReconnectAttempts >= _maxHeartbeatReconnectAttempts) {
+      state = state.copyWith(
+        progressMsg: 'Connection lost. Please reconnect.',
+      );
+      return;
+    }
+
+    _scheduleHeartbeatReconnect(reason: 'retry');
+  }
+
+  Future<bool> _defaultReconnectRunner(String wsUrl, String sessionId) async {
+    disconnect(clearReconnectState: false);
+    await connect(wsUrl, sessionId, isSession: true);
+    return state.state == WsConnState.connected;
+  }
+
+  void _cancelHeartbeatReconnect({required bool resetAttempts}) {
+    _heartbeatReconnectTimer?.cancel();
+    _heartbeatReconnectTimer = null;
+    _heartbeatReconnectInFlight = false;
+    if (resetAttempts) {
+      _heartbeatReconnectAttempts = 0;
+    }
   }
 
   void _handleSignalUnsupported(Map<String, dynamic> msg) {
@@ -511,6 +619,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   Future<void> _handleAuthOk(Map<String, dynamic> msg) async {
+    _cancelHeartbeatReconnect(resetAttempts: true);
+
     // Persist session token so a page refresh can re-authenticate without
     // requiring a new QR scan.  The phone rotates the session_id on every
     // successful auth, so we always save the freshest value.
@@ -877,7 +987,20 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     debugPrint('[WebSync] Sent signaling frame type=$type signal_id=$signalId');
   }
 
-  void disconnect() {
+  @visibleForTesting
+  void setWsUrlForTest(String wsUrl) {
+    _wsUrl = wsUrl;
+  }
+
+  @visibleForTesting
+  void ingestMessageForTest(Map<String, dynamic> message) {
+    _onMessage(jsonEncode(message));
+  }
+
+  void disconnect({bool clearReconnectState = true}) {
+    if (clearReconnectState) {
+      _cancelHeartbeatReconnect(resetAttempts: true);
+    }
     _writeTimer?.cancel();
     _writeTimer = null;
     _syncEventSub?.cancel();
@@ -906,7 +1029,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
   @override
   void dispose() {
-    disconnect();
+    disconnect(clearReconnectState: true);
     super.dispose();
   }
 }

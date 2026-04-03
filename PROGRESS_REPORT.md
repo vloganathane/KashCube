@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**WebRTC payload flow is now explicitly gated on data-channel readiness** so frames stay buffered until the runtime reports ready. M3 is entering final activation range.
+**WebRTC transport now runs as a hybrid adapter** with WebSocket retained for control-plane frames and WebRTC activated for eligible sync payloads once the data channel is ready. M3 is in final closeout.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,7 +34,7 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 78% complete
+3. M3: 86% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
@@ -42,6 +42,35 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: 1 slice
+
+### Latest Work — M3 Progression (Slice 19: Hybrid Transport Activation)
+
+**Commit:** `7c43d8d` — Activate hybrid WebRTC transport routing
+
+Completed the first live hybrid transport activation slice:
+1. `WebRtcSyncTransportChannel.connect()` now opens a WebSocket-backed control plane instead of throwing
+2. Control-plane inbound frames are merged into the WebRTC transport stream so preferred-WebRTC mode is now live
+3. Control-plane frames continue to route over WebSocket
+4. Data-plane-eligible sync frames route over WebRTC only when the active bridge reports `DATA_CHANNEL_READY`
+5. Eligible payloads still fall back to WebSocket until readiness is established
+6. Added focused tests for:
+  - control-plane stream wiring during connect
+  - control-plane routing over WebSocket
+  - data-plane routing over WebRTC after readiness
+
+Validation:
+1. Focused tests: `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 78% -> 86%
+
+Estimated completion (updated):
+1. M3 closure: 1 slice
+
+---
 
 ### Latest Work — M3 Progression (Slice 18: Ready-Gated Payload Activation)
 

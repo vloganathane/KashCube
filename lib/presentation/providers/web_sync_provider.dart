@@ -12,6 +12,7 @@ import '../../data/services/sync/transport/sync_signaling_messages.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
+import '../../data/services/sync/transport/webrtc_peer_ops.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
 import '../../data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
 import '../../data/services/sync/transport/webrtc_sync_transport_channel.dart';
@@ -130,6 +131,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       WebRtcNegotiationMailbox.instance;
   String? _latestRemoteAnswerSdp;
   final List<Map<String, dynamic>> _remoteIceCandidates = <Map<String, dynamic>>[];
+
+  WebRtcPeerOpsFactory _buildWebRtcPeerOpsFactory() {
+    // Placeholder selection hook. The real flutter_webrtc implementation is
+    // injected here once plugin-backed peer ops are enabled by policy.
+    return (sessionId) => FlutterWebRtcPeerOpsShell(sessionId: sessionId);
+  }
 
   /// Connect with a QR token (first load) or a session token (page refresh).
   ///
@@ -263,7 +270,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     final preferred = SyncTransportPolicy.pick(
       preferWebRtc: _preferWebRtcTransport,
     );
-    final preferredChannel = SyncTransportPolicy.create(preferred);
+    final preferredChannel = SyncTransportPolicy.create(
+      preferred,
+      peerOpsFactory: _buildWebRtcPeerOpsFactory(),
+    );
     try {
       await preferredChannel.connect(uri);
       return preferredChannel;

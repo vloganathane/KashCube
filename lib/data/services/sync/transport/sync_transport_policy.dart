@@ -1,4 +1,5 @@
 import 'sync_transport_channel.dart';
+import 'webrtc_peer_ops.dart';
 import 'webrtc_sync_transport_channel.dart';
 import 'websocket_sync_transport_channel.dart';
 
@@ -12,12 +13,15 @@ class SyncTransportPolicy {
     return preferWebRtc ? SyncTransportKind.webRtc : SyncTransportKind.webSocket;
   }
 
-  static SyncTransportChannel create(SyncTransportKind kind) {
+  static SyncTransportChannel create(
+    SyncTransportKind kind, {
+    WebRtcPeerOpsFactory? peerOpsFactory,
+  }) {
     switch (kind) {
       case SyncTransportKind.webSocket:
         return WebSocketSyncTransportChannel();
       case SyncTransportKind.webRtc:
-        return WebRtcSyncTransportChannel();
+        return WebRtcSyncTransportChannel(peerOpsFactory: peerOpsFactory);
     }
   }
 }

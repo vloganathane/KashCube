@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M2 Closure (Slice 15: Runtime Frames Integrated In Provider)
 
-**Commit:** pending (current working tree)
+**Commit:** `7388284` — Handle WebRTC runtime frames in web sync provider
 
 Completed runtime frame integration at browser provider boundary:
 1. Added `WEBRTC_RUNTIME` handling in `WebSyncNotifier` message switch

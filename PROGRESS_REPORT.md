@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**Data-channel payload scaffolding is now in place** with outbound frame forwarding and inbound callback loopback through the native bridge. M3 is moving from lifecycle-only signaling into payload-path activation.
+**WebRTC payload flow is now explicitly gated on data-channel readiness** so frames stay buffered until the runtime reports ready. M3 is entering final activation range.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,16 +34,44 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 70% complete
+3. M3: 78% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
 2. M2 closure: complete
-3. M3 closure: 1-2 slices
+3. M3 closure: 1 slice
 
-### Latest Work — M3 Progression (Slice 17: Payload Callback Scaffold)
+### Latest Work — M3 Progression (Slice 18: Ready-Gated Payload Activation)
+
+**Commit:** pending (current working tree)
+
+Completed explicit data-channel readiness gating for payload flow:
+1. Bridge shell now tracks `isDataChannelReady`
+2. Outbound WebRTC frames remain buffered until `DATA_CHANNEL_READY` is received
+3. Buffered frames flush immediately once runtime reports ready
+4. Inbound payload frames are ignored until readiness is established
+5. Added focused tests verifying:
+  - outbound frames do not send before ready
+  - buffered frames flush after ready event
+  - inbound payloads are suppressed before ready and delivered after ready
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 70% -> 78%
+
+Estimated completion (updated):
+1. M3 closure: 1 slice
+
+---
+
+### Previous Work — M3 Progression (Slice 17: Payload Callback Scaffold)
 
 **Commit:** `e56a0ed` — Add WebRTC payload callback scaffolding
 

@@ -30,6 +30,9 @@ class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
 }
 
 class _FakeWebRtcPeerOps implements WebRtcPeerOps {
+  _FakeWebRtcPeerOps({this.sessionId = 'fake'});
+
+  final String sessionId;
   String? localOfferSdp;
   String? remoteAnswerSdp;
   final List<Map<String, dynamic>> remoteIceCandidates =
@@ -53,8 +56,8 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   Future<void> createPeerSession() async {
     createPeerSessionCount += 1;
     _events.add(
-      const WebRtcPeerRuntimeEvent(
-        sessionId: 'fake',
+      WebRtcPeerRuntimeEvent(
+        sessionId: sessionId,
         type: WebRtcPeerRuntimeEventType.peerSessionCreated,
       ),
     );
@@ -68,12 +71,6 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() async {
     ensureDataChannelCount += 1;
-    _events.add(
-      const WebRtcPeerRuntimeEvent(
-        sessionId: 'fake',
-        type: WebRtcPeerRuntimeEventType.dataChannelReady,
-      ),
-    );
   }
 
   @override
@@ -85,8 +82,8 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   Future<void> closePeerSession() async {
     closePeerSessionCount += 1;
     _events.add(
-      const WebRtcPeerRuntimeEvent(
-        sessionId: 'fake',
+      WebRtcPeerRuntimeEvent(
+        sessionId: sessionId,
         type: WebRtcPeerRuntimeEventType.peerSessionClosed,
       ),
     );
@@ -106,6 +103,15 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
 
   void emitInboundPayloadFrame(String frame) {
     _payloadFrames.add(frame);
+  }
+
+  void emitReadyEvent() {
+    _events.add(
+      WebRtcPeerRuntimeEvent(
+        sessionId: sessionId,
+        type: WebRtcPeerRuntimeEventType.dataChannelReady,
+      ),
+    );
   }
 }
 
@@ -242,7 +248,7 @@ void main() {
         ..applyLocalOfferSdp('offer-buffered')
         ..applyRemoteAnswerSdp('answer-buffered')
         ..addRemoteIceCandidate({'candidate': 'ice-buffered'});
-      final peerOps = _FakeWebRtcPeerOps();
+      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-006');
       await bridge.sendFrame('{"type":"SYNC","table":"transactions"}');
 
       await bridge.attachPeerOps(peerOps);
@@ -252,6 +258,13 @@ void main() {
       expect(peerOps.remoteIceCandidates, hasLength(1));
       expect(peerOps.ensureDataChannelCount, 1);
       expect(peerOps.createPeerSessionCount, 1);
+      expect(bridge.isDataChannelReady, isFalse);
+      expect(peerOps.sentDataChannelFrames, isEmpty);
+
+      peerOps.emitReadyEvent();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bridge.isDataChannelReady, isTrue);
       expect(peerOps.sentDataChannelFrames, ['{"type":"SYNC","table":"transactions"}']);
 
       await bridge.close();
@@ -260,7 +273,7 @@ void main() {
 
     test('bridge shell deduplicates ICE before forwarding to peer ops', () async {
       final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007');
-      final peerOps = _FakeWebRtcPeerOps();
+      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-007');
 
       await bridge.attachPeerOps(peerOps);
       bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
@@ -272,10 +285,24 @@ void main() {
 
     test('bridge forwards inbound payload frames from peer ops', () async {
       final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007b');
-      final peerOps = _FakeWebRtcPeerOps();
-      final inboundFuture = bridge.inboundFrames.first;
+      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-007b');
 
       await bridge.attachPeerOps(peerOps);
+      peerOps.emitInboundPayloadFrame('{"type":"ROWS","table":"transactions"}');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // Payload frames are ignored until the data channel is reported ready.
+      final gatedFuture = bridge.inboundFrames.timeout(
+        const Duration(milliseconds: 20),
+        onTimeout: (sink) => sink.close(),
+      ).toList();
+      expect(await gatedFuture, isEmpty);
+
+      final inboundFuture = bridge.inboundFrames.firstWhere(
+        (frame) => !frame.contains('"type":"${SyncSignalingMessages.webRtcRuntime}"'),
+      );
+      peerOps.emitReadyEvent();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       peerOps.emitInboundPayloadFrame('{"type":"ROWS","table":"transactions"}');
 
       expect(

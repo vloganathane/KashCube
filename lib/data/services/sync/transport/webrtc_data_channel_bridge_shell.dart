@@ -26,11 +26,13 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
   StreamSubscription<WebRtcPeerRuntimeEvent>? _peerRuntimeSub;
   StreamSubscription<String>? _peerPayloadSub;
   bool _dataChannelEnsured = false;
+  bool _dataChannelReady = false;
   bool _closed = false;
   int _forwardedOutboundFrameCount = 0;
 
   bool get isClosed => _closed;
   bool get hasPeerOps => _peerOps != null;
+  bool get isDataChannelReady => _dataChannelReady;
   String? get localOfferSdp => _localOfferSdp;
   String? get remoteAnswerSdp => _remoteAnswerSdp;
   List<String> get outboundFrames => List<String>.unmodifiable(_outboundFrames);
@@ -48,6 +50,12 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       if (_closed || event.sessionId != sessionId) {
         return;
       }
+      if (event.type == WebRtcPeerRuntimeEventType.dataChannelReady) {
+        _dataChannelReady = true;
+        unawaited(_flushBufferedFramesToPeerOps());
+      } else if (event.type == WebRtcPeerRuntimeEventType.peerSessionClosed) {
+        _dataChannelReady = false;
+      }
       _inbound.add(
         jsonEncode({
           'type': SyncSignalingMessages.webRtcRuntime,
@@ -56,7 +64,7 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       );
     });
     _peerPayloadSub = peerOps.payloadFrames.listen((frame) {
-      if (_closed || frame.isEmpty) {
+      if (_closed || !_dataChannelReady || frame.isEmpty) {
         return;
       }
       _inbound.add(frame);
@@ -86,6 +94,15 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     if (!_dataChannelEnsured) {
       _dataChannelEnsured = true;
       await peerOps.ensureDataChannel();
+    }
+
+    await _flushBufferedFramesToPeerOps();
+  }
+
+  Future<void> _flushBufferedFramesToPeerOps() async {
+    final peerOps = _peerOps;
+    if (peerOps == null || !_dataChannelReady) {
+      return;
     }
 
     for (final frame in _outboundFrames.skip(_forwardedOutboundFrameCount)) {
@@ -148,7 +165,7 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     }
     _outboundFrames.add(jsonFrame);
     final peerOps = _peerOps;
-    if (peerOps != null) {
+    if (peerOps != null && _dataChannelReady) {
       await peerOps.sendDataChannelFrame(jsonFrame);
       _forwardedOutboundFrameCount += 1;
     }
@@ -171,6 +188,7 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     if (peerOps != null) {
       await peerOps.closePeerSession();
     }
+    _dataChannelReady = false;
 
     await _inbound.close();
   }

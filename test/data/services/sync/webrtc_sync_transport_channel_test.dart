@@ -421,6 +421,79 @@ void main() {
       await channel.close();
     });
 
+    test('routes eligible payloads to matching session bridge from payload session_id', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+
+      final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-a');
+      final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-b');
+      final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-a');
+      final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-b');
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8083/ws'));
+
+      channel.registerDataChannelBridge(sessionId: 'sess-a', bridge: bridgeA);
+      await bridgeA.attachPeerOps(peerOpsA);
+      peerOpsA.emitReadyEvent();
+
+      channel.registerDataChannelBridge(sessionId: 'sess-b', bridge: bridgeB);
+      await bridgeB.attachPeerOps(peerOpsB);
+      peerOpsB.emitReadyEvent();
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      channel.sendJson({
+        'type': SyncSignalingMessages.write,
+        'session_id': 'sess-a',
+        'table': 'transactions',
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(peerOpsA.sentDataChannelFrames, [
+        '{"type":"WRITE","session_id":"sess-a","table":"transactions"}',
+      ]);
+      expect(peerOpsB.sentDataChannelFrames, isEmpty);
+      expect(controlPlane.sentPayloads, isEmpty);
+
+      await channel.close();
+    });
+
+    test('falls back to websocket when payload targets non-ready session', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+
+      final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-ready');
+      final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-waiting');
+      final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-ready');
+      final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-waiting');
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8084/ws'));
+
+      channel.registerDataChannelBridge(sessionId: 'sess-ready', bridge: bridgeA);
+      await bridgeA.attachPeerOps(peerOpsA);
+      peerOpsA.emitReadyEvent();
+
+      channel.registerDataChannelBridge(sessionId: 'sess-waiting', bridge: bridgeB);
+      await bridgeB.attachPeerOps(peerOpsB);
+
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      channel.sendJson({
+        'type': SyncSignalingMessages.write,
+        'session_id': 'sess-waiting',
+        'table': 'transactions',
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(peerOpsA.sentDataChannelFrames, isEmpty);
+      expect(peerOpsB.sentDataChannelFrames, isEmpty);
+      expect(controlPlane.sentPayloads, hasLength(1));
+      expect(controlPlane.sentPayloads.first['session_id'], 'sess-waiting');
+      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.write);
+
+      await channel.close();
+    });
+
     test('custom peer ops factory can attach flutter_webrtc shell placeholder', () async {
       FlutterWebRtcPeerOpsShell? createdPeerOps;
       final channel = WebRtcSyncTransportChannel(

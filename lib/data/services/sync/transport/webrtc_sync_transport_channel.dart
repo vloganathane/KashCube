@@ -314,25 +314,37 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   @override
   void sendJson(Map<String, dynamic> payload) {
     final type = payload['type']?.toString().toUpperCase() ?? '';
+    final targetSessionId = _resolveTargetSessionId(payload);
     if (SyncSignalingMessages.isControlPlaneType(type)) {
       _controlPlaneChannel.sendJson(payload);
       return;
     }
 
-    if (_shouldUseDataPlane(type)) {
-      unawaited(_sendViaDataPlane(payload));
+    if (_shouldUseDataPlane(type: type, sessionId: targetSessionId)) {
+      unawaited(_sendViaDataPlane(payload: payload, sessionId: targetSessionId));
       return;
     }
 
     _controlPlaneChannel.sendJson(payload);
   }
 
-  bool _shouldUseDataPlane(String type) {
+  String? _resolveTargetSessionId(Map<String, dynamic> payload) {
+    final payloadSessionId = payload['session_id']?.toString().trim();
+    if (payloadSessionId != null && payloadSessionId.isNotEmpty) {
+      return payloadSessionId;
+    }
+
+    return _activeSessionId;
+  }
+
+  bool _shouldUseDataPlane({
+    required String type,
+    required String? sessionId,
+  }) {
     if (!SyncSignalingMessages.isDataPlaneEligibleType(type)) {
       return false;
     }
 
-    final sessionId = _activeSessionId;
     if (sessionId == null || sessionId.isEmpty) {
       return false;
     }
@@ -341,8 +353,10 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     return bridge is WebRtcDataChannelBridgeShell && bridge.isDataChannelReady;
   }
 
-  Future<void> _sendViaDataPlane(Map<String, dynamic> payload) async {
-    final sessionId = _activeSessionId;
+  Future<void> _sendViaDataPlane({
+    required Map<String, dynamic> payload,
+    required String? sessionId,
+  }) async {
     if (sessionId == null || sessionId.isEmpty) {
       _controlPlaneChannel.sendJson(payload);
       return;

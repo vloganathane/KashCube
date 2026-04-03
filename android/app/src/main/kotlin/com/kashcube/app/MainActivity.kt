@@ -19,8 +19,10 @@ class MainActivity : FlutterActivity() {
 
     private val installReferrerChannelName = "com.kashcube/install_referrer"
     private val webRtcPeerOpsChannelName = "kashcube/webrtc_peer_ops"
+    private val webRtcRuntimeEventMethod = "onRuntimeEvent"
 
     private val peerStateBySession = mutableMapOf<String, PeerSessionState>()
+    private var webRtcPeerOpsChannel: MethodChannel? = null
 
     private data class PeerSessionState(
         var localOfferSdp: String? = null,
@@ -43,8 +45,10 @@ class MainActivity : FlutterActivity() {
                 }
             }
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, webRtcPeerOpsChannelName)
-            .setMethodCallHandler { call, result ->
+        webRtcPeerOpsChannel =
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, webRtcPeerOpsChannelName)
+        webRtcPeerOpsChannel
+            ?.setMethodCallHandler { call, result ->
                 handleWebRtcPeerOpsMethod(call, result)
             }
     }
@@ -73,6 +77,7 @@ class MainActivity : FlutterActivity() {
                 val state = PeerSessionState()
                 peerStateBySession[sessionId] = state
                 logPeerState("createPeerSession", sessionId, state)
+                emitRuntimeEvent(sessionId, "PEER_SESSION_CREATED")
                 result.success(null)
             }
 
@@ -87,6 +92,7 @@ class MainActivity : FlutterActivity() {
                     return
                 }
                 logPeerState("closePeerSession", sessionId, state)
+                emitRuntimeEvent(sessionId, "PEER_SESSION_CLOSED")
                 result.success(null)
             }
 
@@ -147,6 +153,7 @@ class MainActivity : FlutterActivity() {
                 }
                 state.dataChannelEnsured = true
                 logPeerState("ensureDataChannel", sessionId, state)
+                emitRuntimeEvent(sessionId, "DATA_CHANNEL_READY")
                 result.success(null)
             }
 
@@ -161,6 +168,16 @@ class MainActivity : FlutterActivity() {
                 "hasAnswer=${!state.remoteAnswerSdp.isNullOrBlank()} " +
                 "iceCount=${state.remoteIceCandidates.size} " +
                 "dataChannel=${state.dataChannelEnsured}",
+        )
+    }
+
+    private fun emitRuntimeEvent(sessionId: String, event: String) {
+        webRtcPeerOpsChannel?.invokeMethod(
+            webRtcRuntimeEventMethod,
+            mapOf(
+                "session_id" to sessionId,
+                "event" to event,
+            ),
         )
     }
 

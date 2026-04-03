@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M2 transport staging is now closed** with provider-side runtime frame handling integrated. Focus now shifts to M3 data-plane activation and callback wiring.
+**Platform-mode runtime events now have a real native-to-Dart callback path** over the shared WebRTC method channel. M3 data-plane activation is progressing on top of that callback surface.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,16 +34,45 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 60% complete
+3. M3: 64% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
 2. M2 closure: complete
-3. M3 closure: 2-4 slices
+3. M3 closure: 2-3 slices
 
-### Latest Work — M2 Closure (Slice 15: Runtime Frames Integrated In Provider)
+### Latest Work — M3 Progression (Slice 16: Native Runtime Callback Path)
+
+**Commit:** pending (current working tree)
+
+Completed native-to-Dart runtime callback delivery for platform peer-ops mode:
+1. Added shared method-call handler setup in `MethodChannelWebRtcPeerOps`
+2. Added per-session runtime-event controller registry for callback dispatch
+3. Added native callback method contract: `onRuntimeEvent`
+4. Android `MainActivity` now invokes runtime callbacks back into Dart after:
+  - `createPeerSession`
+  - `ensureDataChannel`
+  - `closePeerSession`
+5. Switched platform-mode event tests to validate callback-driven runtime event delivery instead of synthetic local emission
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 60% -> 64%
+
+Estimated completion (updated):
+1. M3 closure: 2-3 slices
+
+---
+
+### Previous Work — M2 Closure (Slice 15: Runtime Frames Integrated In Provider)
 
 **Commit:** `7388284` — Handle WebRTC runtime frames in web sync provider
 

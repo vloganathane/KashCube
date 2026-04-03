@@ -65,7 +65,19 @@ void main() {
       await ops.setRemoteAnswerSdp('answer-sdp');
       await ops.addRemoteIceCandidate({'candidate': 'ice-1'});
       await ops.ensureDataChannel();
+      MethodChannelWebRtcPeerOps.dispatchRuntimeEventForTest({
+        'session_id': 'sess-101',
+        'event': 'PEER_SESSION_CREATED',
+      });
+      MethodChannelWebRtcPeerOps.dispatchRuntimeEventForTest({
+        'session_id': 'sess-101',
+        'event': 'DATA_CHANNEL_READY',
+      });
       await ops.closePeerSession();
+      MethodChannelWebRtcPeerOps.dispatchRuntimeEventForTest({
+        'session_id': 'sess-101',
+        'event': 'PEER_SESSION_CLOSED',
+      });
 
       final events = await eventsFuture;
 

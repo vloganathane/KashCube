@@ -199,9 +199,19 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   MethodChannelWebRtcPeerOps({
     required this.sessionId,
     MethodChannel? channel,
-  }) : _channel = channel ?? const MethodChannel(_defaultChannelName);
+  }) : _channel = channel ?? _sharedChannel {
+    _runtimeEventControllers[sessionId] = _runtimeEventsController;
+    _ensureMethodCallHandler();
+  }
 
   static const String _defaultChannelName = 'kashcube/webrtc_peer_ops';
+  static const String _runtimeEventMethod = 'onRuntimeEvent';
+  static final MethodChannel _sharedChannel =
+      const MethodChannel(_defaultChannelName);
+  static final Map<String, StreamController<WebRtcPeerRuntimeEvent>>
+      _runtimeEventControllers =
+      <String, StreamController<WebRtcPeerRuntimeEvent>>{};
+  static bool _methodCallHandlerInstalled = false;
 
   final String sessionId;
   final MethodChannel _channel;
@@ -212,15 +222,74 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents =>
       _runtimeEventsController.stream;
 
+  static void _ensureMethodCallHandler() {
+    if (_methodCallHandlerInstalled) {
+      return;
+    }
+    _methodCallHandlerInstalled = true;
+    _sharedChannel.setMethodCallHandler(_handleMethodCall);
+  }
+
+  static Future<void> _handleMethodCall(MethodCall call) async {
+    if (call.method != _runtimeEventMethod) {
+      return;
+    }
+
+    final args = call.arguments;
+    if (args is! Map) {
+      return;
+    }
+    _dispatchRuntimeEvent(Map<String, dynamic>.from(args));
+  }
+
+  static void _dispatchRuntimeEvent(Map<String, dynamic> payload) {
+    final sessionId = payload['session_id']?.toString();
+    final eventName = payload['event']?.toString();
+    if (sessionId == null || sessionId.isEmpty || eventName == null) {
+      return;
+    }
+
+    final controller = _runtimeEventControllers[sessionId];
+    if (controller == null || controller.isClosed) {
+      return;
+    }
+
+    final eventType = _parseRuntimeEventType(eventName);
+    if (eventType == null) {
+      return;
+    }
+
+    controller.add(
+      WebRtcPeerRuntimeEvent(sessionId: sessionId, type: eventType),
+    );
+
+    if (eventType == WebRtcPeerRuntimeEventType.peerSessionClosed) {
+      _runtimeEventControllers.remove(sessionId);
+      unawaited(controller.close());
+    }
+  }
+
+  static WebRtcPeerRuntimeEventType? _parseRuntimeEventType(String raw) {
+    switch (raw) {
+      case 'PEER_SESSION_CREATED':
+        return WebRtcPeerRuntimeEventType.peerSessionCreated;
+      case 'DATA_CHANNEL_READY':
+        return WebRtcPeerRuntimeEventType.dataChannelReady;
+      case 'PEER_SESSION_CLOSED':
+        return WebRtcPeerRuntimeEventType.peerSessionClosed;
+      default:
+        return null;
+    }
+  }
+
+  @visibleForTesting
+  static void dispatchRuntimeEventForTest(Map<String, dynamic> payload) {
+    _dispatchRuntimeEvent(payload);
+  }
+
   @override
   Future<void> createPeerSession() async {
     await _invoke('createPeerSession', const <String, dynamic>{});
-    _runtimeEventsController.add(
-      WebRtcPeerRuntimeEvent(
-        sessionId: sessionId,
-        type: WebRtcPeerRuntimeEventType.peerSessionCreated,
-      ),
-    );
   }
 
   @override
@@ -241,24 +310,11 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() async {
     await _invoke('ensureDataChannel', const <String, dynamic>{});
-    _runtimeEventsController.add(
-      WebRtcPeerRuntimeEvent(
-        sessionId: sessionId,
-        type: WebRtcPeerRuntimeEventType.dataChannelReady,
-      ),
-    );
   }
 
   @override
   Future<void> closePeerSession() async {
     await _invoke('closePeerSession', const <String, dynamic>{});
-    _runtimeEventsController.add(
-      WebRtcPeerRuntimeEvent(
-        sessionId: sessionId,
-        type: WebRtcPeerRuntimeEventType.peerSessionClosed,
-      ),
-    );
-    await _runtimeEventsController.close();
   }
 
   Future<void> _invoke(String method, Map<String, dynamic> payload) async {

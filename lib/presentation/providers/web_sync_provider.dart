@@ -11,6 +11,7 @@ import '../../data/services/sync/generic_sync_query_builder.dart';
 import '../../data/services/sync/transport/sync_signaling_messages.dart';
 import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
+import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
 import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
@@ -123,6 +124,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Map<String, int>      _outboundLastSentVersion = {};
   final Set<String>           _snapshotSentTables = {};
   Set<String> _pullTables = const <String>{};
+  final WebRtcNegotiationMailbox _webrtcMailbox =
+      WebRtcNegotiationMailbox.instance;
   String? _latestRemoteAnswerSdp;
   final List<Map<String, dynamic>> _remoteIceCandidates = <Map<String, dynamic>>[];
 
@@ -372,6 +375,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   void _handleIncomingSignalAnswer(Map<String, dynamic> msg) {
+    _webrtcMailbox.ingestSignalingFrame(msg);
+
     final sdp = msg['sdp']?.toString();
     if (sdp == null || sdp.isEmpty) {
       state = state.copyWith(
@@ -389,6 +394,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   void _handleIncomingIceCandidate(Map<String, dynamic> msg) {
+    _webrtcMailbox.ingestSignalingFrame(msg);
+
     final raw = msg['candidate'];
     if (raw is! Map) {
       debugPrint('[WebSync] SIGNAL_ICE_CANDIDATE ignored: malformed candidate');
@@ -735,6 +742,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       List<Map<String, dynamic>>.unmodifiable(_remoteIceCandidates);
 
   void sendSignalOffer({required String sdp}) {
+    final sessionId = url_reader.getSavedSessionId();
+    if (sessionId != null && sessionId.isNotEmpty) {
+      _webrtcMailbox.stageLocalOffer(sessionId: sessionId, offerSdp: sdp);
+    }
+
     _sendSignalFrame(
       type: SyncSignalingMessages.signalOffer,
       payload: {'sdp': sdp},
@@ -788,6 +800,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _syncEventSub = null;
     _syncPlans.clear();
     _pullTables = const <String>{};
+    final sessionId = url_reader.getSavedSessionId();
+    if (sessionId != null && sessionId.isNotEmpty) {
+      _webrtcMailbox.clearSession(sessionId);
+    }
     _latestRemoteAnswerSdp = null;
     _remoteIceCandidates.clear();
     _outboundLastSentAt.clear();

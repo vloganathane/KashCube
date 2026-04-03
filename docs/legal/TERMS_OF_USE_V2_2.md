@@ -2,7 +2,7 @@
 
 Version: 2.2 (Hardened)  
 Effective Date: 16 March 2026  
-Last Updated: March 2026
+Last Updated: 3 April 2026
 
 ---
 
@@ -53,6 +53,15 @@ Where analytics is optional, consent controls are provided in-app.
 
 ### GDPR-Compatible Privacy Notice
 For locally stored financial records, you remain in direct control of your data on your device. Where non-financial telemetry is processed, it is handled in accordance with applicable privacy law and these Terms/Privacy Policy.
+
+### Anywhere Mode (Beta) Privacy Notice
+Anywhere Mode is an optional, explicit opt-in beta feature.
+
+When Anywhere Mode is disabled, sync remains local-first and local-network scoped by default.
+
+When Anywhere Mode is enabled, cloud relay/signaling infrastructure may process limited connection metadata required to establish and maintain peer connectivity, such as session timing, connectivity events, and routing-related metadata.
+
+Financial payload content remains protected by application-layer security controls. The Developer does not intentionally transmit financial transaction values, party names, balances, or invoice line-item content to analytics payloads.
 
 ### Security Disclaimer
 No software can be guaranteed fully secure. The Developer is not responsible for compromise caused by rooted or jailbroken devices, third-party malware, insecure device configuration, or unauthorized physical/device access.

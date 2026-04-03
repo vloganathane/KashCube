@@ -327,8 +327,8 @@ Goal: Attacker decrypts offline backup
 ### **Deployment Prerequisites**
 - [x] M6 acceptance tests pass (SEC-001 through SEC-011)
 - [x] This threat model document approved by Security Lead
-- [ ] Release notes include "Local-first + Beta Anywhere Mode" disclaimer
-- [ ] User privacy notice updated (metadata visible to cloud relays in anywhere mode)
+- [x] Release notes include "Local-first + Beta Anywhere Mode" disclaimer
+- [x] User privacy notice updated (metadata visible to cloud relays in anywhere mode)
 
 ---
 

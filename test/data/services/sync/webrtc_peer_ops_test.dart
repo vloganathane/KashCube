@@ -58,6 +58,7 @@ void main() {
         sessionId: 'sess-101',
         channel: channel,
       );
+      final eventsFuture = ops.runtimeEvents.take(3).toList();
 
       await ops.createPeerSession();
       await ops.setLocalOfferSdp('offer-sdp');
@@ -65,6 +66,8 @@ void main() {
       await ops.addRemoteIceCandidate({'candidate': 'ice-1'});
       await ops.ensureDataChannel();
       await ops.closePeerSession();
+
+      final events = await eventsFuture;
 
       expect(calls.map((c) => c.method), <String>[
         'createPeerSession',
@@ -85,6 +88,37 @@ void main() {
         Map<String, dynamic>.from(fourthArgs['candidate'] as Map)['candidate'],
         'ice-1',
       );
+
+      expect(
+        events.map((e) => e.type),
+        <WebRtcPeerRuntimeEventType>[
+          WebRtcPeerRuntimeEventType.peerSessionCreated,
+          WebRtcPeerRuntimeEventType.dataChannelReady,
+          WebRtcPeerRuntimeEventType.peerSessionClosed,
+        ],
+      );
+    });
+  });
+
+  group('FlutterWebRtcPeerOpsShell runtime events', () {
+    test('emits created, ready, and closed events', () async {
+      final ops = FlutterWebRtcPeerOpsShell(sessionId: 'sess-shell');
+      final eventsFuture = ops.runtimeEvents.take(3).toList();
+
+      await ops.createPeerSession();
+      await ops.ensureDataChannel();
+      await ops.closePeerSession();
+
+      final events = await eventsFuture;
+      expect(
+        events.map((e) => e.type),
+        <WebRtcPeerRuntimeEventType>[
+          WebRtcPeerRuntimeEventType.peerSessionCreated,
+          WebRtcPeerRuntimeEventType.dataChannelReady,
+          WebRtcPeerRuntimeEventType.peerSessionClosed,
+        ],
+      );
+      expect(events.map((e) => e.sessionId).toSet(), {'sess-shell'});
     });
   });
 }

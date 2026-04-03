@@ -34,13 +34,24 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   String? remoteAnswerSdp;
   final List<Map<String, dynamic>> remoteIceCandidates =
       <Map<String, dynamic>>[];
+  final StreamController<WebRtcPeerRuntimeEvent> _events =
+      StreamController<WebRtcPeerRuntimeEvent>.broadcast();
   int ensureDataChannelCount = 0;
   int createPeerSessionCount = 0;
   int closePeerSessionCount = 0;
 
   @override
+  Stream<WebRtcPeerRuntimeEvent> get runtimeEvents => _events.stream;
+
+  @override
   Future<void> createPeerSession() async {
     createPeerSessionCount += 1;
+    _events.add(
+      const WebRtcPeerRuntimeEvent(
+        sessionId: 'fake',
+        type: WebRtcPeerRuntimeEventType.peerSessionCreated,
+      ),
+    );
   }
 
   @override
@@ -51,11 +62,24 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() async {
     ensureDataChannelCount += 1;
+    _events.add(
+      const WebRtcPeerRuntimeEvent(
+        sessionId: 'fake',
+        type: WebRtcPeerRuntimeEventType.dataChannelReady,
+      ),
+    );
   }
 
   @override
   Future<void> closePeerSession() async {
     closePeerSessionCount += 1;
+    _events.add(
+      const WebRtcPeerRuntimeEvent(
+        sessionId: 'fake',
+        type: WebRtcPeerRuntimeEventType.peerSessionClosed,
+      ),
+    );
+    await _events.close();
   }
 
   @override
@@ -273,5 +297,6 @@ void main() {
       await channel.unregisterDataChannelBridge('sess-009');
       await channel.close();
     });
+
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'sync_signaling_messages.dart';
 import 'webrtc_peer_ops.dart';
 import 'webrtc_sync_transport_channel.dart';
 
@@ -22,6 +23,7 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
   String? _localOfferSdp;
   String? _remoteAnswerSdp;
   WebRtcPeerOps? _peerOps;
+  StreamSubscription<WebRtcPeerRuntimeEvent>? _peerRuntimeSub;
   bool _dataChannelEnsured = false;
   bool _closed = false;
 
@@ -37,6 +39,20 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
     if (_closed) {
       throw StateError('WebRTC bridge is closed for session $sessionId');
     }
+
+    await _peerRuntimeSub?.cancel();
+    _peerRuntimeSub = peerOps.runtimeEvents.listen((event) {
+      if (_closed || event.sessionId != sessionId) {
+        return;
+      }
+      _inbound.add(
+        jsonEncode({
+          'type': SyncSignalingMessages.webRtcRuntime,
+          ...event.toJson(),
+        }),
+      );
+    });
+
     _peerOps = peerOps;
     await _syncBufferedArtifactsToPeerOps();
   }
@@ -125,6 +141,9 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       return;
     }
     _closed = true;
+
+    await _peerRuntimeSub?.cancel();
+    _peerRuntimeSub = null;
 
     final peerOps = _peerOps;
     _peerOps = null;

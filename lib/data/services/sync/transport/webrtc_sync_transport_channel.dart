@@ -245,16 +245,16 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     _bridgeBySession[sessionId] = bridge;
     _activeSessionId = sessionId;
 
+    bridge.inboundFrames.listen((raw) {
+      _inboundController.add(raw);
+    });
+
     _attachDefaultPeerOpsIfNeeded(sessionId: sessionId, bridge: bridge);
 
     final runtime = _runtimeBySession[sessionId];
     if (runtime != null) {
       _syncBridgeFromRuntime(sessionId: sessionId, state: runtime.state);
     }
-
-    bridge.inboundFrames.listen((raw) {
-      _inboundController.add(raw);
-    });
   }
 
   void _attachDefaultPeerOpsIfNeeded({

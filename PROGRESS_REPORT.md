@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**WebRTC peer session lifecycle is now explicit end-to-end** (create, apply artifacts, close) with deterministic native error codes. M2 is in final closure range.
+**WebRTC runtime lifecycle events are now modeled and emitted** across peer-ops implementations, establishing deterministic readiness/teardown signaling for M2 closure.
 
 ## Transparent Slice Reporting Contract
 
@@ -33,17 +33,47 @@ Starting now, every slice completion update will include this exact status block
 Current transparent baseline:
 
 1. M1: 100% complete
-2. M2: 88% complete
-3. M3: 53% complete
+2. M2: 94% complete
+3. M3: 57% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
-2. M2 closure: 1 slice
+2. M2 closure: 0-1 slices
 3. M3 closure: 3-5 slices
 
-### Latest Work — M2 Progression (Slice 13: Explicit Peer Session Lifecycle)
+### Latest Work — M2 Progression (Slice 14: Runtime Event Propagation)
+
+**Commit:** pending (current working tree)
+
+Completed runtime event propagation and readiness signaling scaffolding:
+1. Added peer runtime event model (`PEER_SESSION_CREATED`, `DATA_CHANNEL_READY`, `PEER_SESSION_CLOSED`)
+2. Added `runtimeEvents` stream contract to `WebRtcPeerOps`
+3. Implemented lifecycle event emission in:
+  - `FlutterWebRtcPeerOpsShell`
+  - `MethodChannelWebRtcPeerOps`
+4. Added `WEBRTC_RUNTIME` control frame type for bridge/transport signaling
+5. Bridge shell now subscribes to peer runtime events and forwards control frames via inbound stream
+6. Bridge registration order adjusted to attach inbound listeners before peer attach/runtime sync
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 88% -> 94%
+3. M3: 53% -> 57%
+
+Estimated completion (updated):
+1. M2 closure: 0-1 slices
+2. M3 closure: 3-5 slices
+
+---
+
+### Previous Work — M2 Progression (Slice 13: Explicit Peer Session Lifecycle)
 
 **Commit:** `3b43bdf` — Add explicit WebRTC peer session lifecycle contract
 

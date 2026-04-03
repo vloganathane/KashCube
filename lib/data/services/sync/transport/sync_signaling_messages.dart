@@ -22,6 +22,7 @@ class SyncSignalingMessages {
   static const signalAck = 'SIGNAL_ACK';
   static const signalError = 'SIGNAL_ERROR';
   static const signalUnsupported = 'SIGNAL_UNSUPPORTED';
+  static const webRtcRuntime = 'WEBRTC_RUNTIME';
 
   static bool isWebRtcSignalType(String type) {
     switch (type) {

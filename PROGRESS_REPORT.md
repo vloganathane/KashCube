@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M4 reliability now includes reconnect/resume orchestration**: heartbeat timeout triggers bounded session-auth reconnect attempts with safe fallback to explicit user reconnect after max retries.
+**M4 reliability now includes outbound write acknowledgment and retry tracking**: browser-side WRITE frames remain pending until acknowledged, stale writes retry with bounded attempts, and retry exhaustion is surfaced for recovery.
 
 ## Transparent Slice Reporting Contract
 
@@ -36,7 +36,7 @@ Current transparent baseline:
 1. M1: 100% complete
 2. M2: 100% complete
 3. M3: 100% complete
-4. M4: 24% complete
+4. M4: 38% complete
 5. M5-M6: pending
 
 Current estimated completion (if no blockers):
@@ -44,7 +44,37 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: complete
-4. M4 closure: 2-4 slices
+4. M4 closure: 1-3 slices
+
+### Latest Work — M4 Progression (Slice 24: WRITE Ack/Retry Tracking)
+
+**Commit:** `5655ecd` — Add WRITE ack and retry tracking
+
+Completed bounded ack/retry semantics for outbound browser WRITE flow:
+1. Outbound WRITE frames are now tracked as pending by `sync_id`
+2. Incoming `WRITE_OK` clears the corresponding pending write
+3. Stale unacknowledged writes retry after configurable ack timeout
+4. Retry attempts are bounded and surfaced in payload metadata (`retry_count`, `is_retry`)
+5. Retry exhaustion is surfaced to sync state instead of silently dropping the pending write
+6. Added focused provider tests for:
+  - clearing pending write on `WRITE_OK`
+  - retrying stale pending writes with retry markers
+  - stopping retries after max attempts
+
+Validation:
+1. Focused tests: `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 24% -> 38%
+
+Estimated completion (updated):
+1. M4 closure: 1-3 slices
+
+---
 
 ### Latest Work — M4 Progression (Slice 23: Reconnect/Resume On Heartbeat Timeout)
 

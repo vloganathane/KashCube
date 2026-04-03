@@ -6,8 +6,8 @@
 
 ## Executive Summary (3 April 2026)
 
-Signaling protocol foundation is now in place (M1 checkpoint). Coordinator and browser sync notifier now validate, stage, and replay WebRTC offer/answer/ICE negotiation deterministically over WebSocket transport. Up next: wire local peer connection adapter (M2) to replace stub SIGNAL_UNSUPPORTED responses with real SDP generation.
 
+**Signaling + local offer/answer negotiation** now working (M1–M2 checkpoint). LocalPeerConnectionAdapter generates synthetic answer SDPs for each browser offer, completing full handshake locally. Ready for WebRTC engine wiring.
 ### Latest Work — WebRTC Signaling (Slice 6: Queued ICE Replay)
 
 **Commit:** `c9facd3` — Add queued ICE replay progression for signaling state
@@ -31,12 +31,28 @@ Established session lifecycle: authenticated session ID tracked through browser 
 **Analyzer:** ✅ 34 baseline warnings, 0 new hard errors
 
 ---
+---
+### M2 — Local Peer Connection Adapter (Slices 7–8)
 
+**Commits:** `eb3f6e3` · `31c9320`
 ## Prior Work Summary (15 March — Conflict-Free Invoice Numbering + Code Audit)
+**LocalPeerConnectionAdapter** (new file):
+- Per-session adapter: processes browser offer SDP and generates corresponding answer SDP
+- `processOfferAndGenerateAnswer(String offerSdp)` — caches offer, generates synthetic answer
+- `_generateSyntheticAnswer(String offerSdp)` — creates structurally valid answer SDP mirroring offer
+- Enables deterministic negotiation without requiring real flutter_webrtc peer engine (yet)
 
+**Coordinator integration:**
+- `_webRtcAdapters` map: tracks adapter per browser session ID
+- SIGNAL_OFFER handler: creates adapter, processes offer, returns ACK + staged status
+- SIGNAL_ANSWER handler: retrieves cached answer from adapter, includes SDP in response
+- Lifecycle: adapters cleaned up on session close and state pruning
 A full code review audit was performed (P0–P4 all resolved) plus several LAN sync UX improvements and a major new feature — conflict-free multi-device invoice numbering:
+**Result:** Full offer/answer/ICE exchange completes deterministically over local signaling. Browser receives complete handshake payload in single response.
 
+**Analyzer:** ✅ 35 baseline issues, 0 new hard errors
 1. **P0 — Security hardening** — PIN upgraded to PBKDF2-HMAC-SHA256 (100k iterations, 16-byte random salt) — **done** (`8737651`)
+---
 2. **P1 — SMS parser improvements** — sender registry expanded to 56 IDs; GPay regex bounded; dedup hash includes UPI ref no — **done**
 3. **P1.5 — SMS inbox scan UI** — Scan Inbox tile, pending-SMS banner, `SmsBatchReviewSheet` — **done**
 4. **P2 — Audit gaps** — permission guard, recurring catchup, action center routing, batch error surfacing — **done**

@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M5 has started with feature-gated cloud signaling scaffolding**: explicit signaling mode policy is now in place, cloud mode is fail-closed by default, and runtime falls back to local signaling without introducing network behavior.
+**M5 now includes a concrete cloud signaling adapter seam**: cloud mode still stays fail-closed by default, but transport-level adapter contracts and bridge tests are in place for the upcoming staged implementation.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,7 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5: 12% complete
+5. M5: 24% complete
 6. M6: pending
 
 Current estimated completion (if no blockers):
@@ -46,7 +46,36 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
-5. M5 closure: 4-6 slices
+5. M5 closure: 3-5 slices
+
+### Latest Work — M5 Progression (Slice 28: Cloud Signaling Adapter Seam)
+
+**Commit:** `61d32b7` — Add cloud signaling adapter contract seam
+
+Completed the cloud signaling transport seam behind existing feature gates:
+1. Added `CloudSignalingAdapter` contract (connect/send/inbound/close)
+2. Added `CloudSignalingTransportChannel` wrapper that bridges adapter frames into `SyncTransportChannel`
+3. Kept default adapter fail-closed via `CloudSignalingUnavailableAdapter`
+4. Extended transport policy to construct cloud signaling channel with adapter-factory injection seam
+5. Added focused tests for:
+  - cloud signaling transport inbound bridge and outbound forwarding
+  - policy cloud-mode channel creation and fail-closed connect behavior
+
+Validation:
+1. Focused tests: `cloud_signaling_transport_channel_test.dart` + `sync_transport_policy_test.dart` + `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 12% -> 24%
+
+Estimated completion (updated):
+1. M5 closure: 3-5 slices
+
+---
 
 ### Latest Work — M5 Progression (Slice 27: Feature-Gated Cloud Signaling Scaffold)
 

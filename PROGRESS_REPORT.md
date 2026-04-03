@@ -1,12 +1,40 @@
 # Kash Cube - Progress Report
-**Date:** 15 March 2026
-**Current Phase:** LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Date:** 3 April 2026
+**Current Phase:** WebRTC Signaling (M1–M2) 🔄 · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
-## Executive Summary
+## Executive Summary (3 April 2026)
 
-Since the last report (13 March), a full code review audit was performed (P0–P4 all resolved) plus several LAN sync UX improvements and a major new feature — conflict-free multi-device invoice numbering:
+Signaling protocol foundation is now in place (M1 checkpoint). Coordinator and browser sync notifier now validate, stage, and replay WebRTC offer/answer/ICE negotiation deterministically over WebSocket transport. Up next: wire local peer connection adapter (M2) to replace stub SIGNAL_UNSUPPORTED responses with real SDP generation.
+
+### Latest Work — WebRTC Signaling (Slice 6: Queued ICE Replay)
+
+**Commit:** `c9facd3` — Add queued ICE replay progression for signaling state
+
+Completed two-phase ICE handling:
+1. **ICE queueing phase** — If candidates arrive before answer, queue in-memory per session (up to 10 min TTL, 64-session capacity)
+2. **ICE replay phase** — On answer arrival, iterate queued candidates and replay each with replayed flag to browser
+
+State progression guardrails:
+- Reject duplicate offers (DUPLICATE_OFFER status)
+- Reject answer-before-offer (ANSWER_BEFORE_OFFER status)
+- Reject ICE-before-negotiation (ICE_BEFORE_NEGOTIATION status)
+
+Browser send-helpers (3 typed methods):
+- `sendSignalOffer()` — stage offer SDP
+- `sendSignalAnswer()` — stage answer SDP
+- `sendSignalIceCandidate()` — stage candidate JSON
+
+Established session lifecycle: authenticated session ID tracked through browser session → server → coordinator, cleaned up on disconnect to prevent staleness.
+
+**Analyzer:** ✅ 34 baseline warnings, 0 new hard errors
+
+---
+
+## Prior Work Summary (15 March — Conflict-Free Invoice Numbering + Code Audit)
+
+A full code review audit was performed (P0–P4 all resolved) plus several LAN sync UX improvements and a major new feature — conflict-free multi-device invoice numbering:
 
 1. **P0 — Security hardening** — PIN upgraded to PBKDF2-HMAC-SHA256 (100k iterations, 16-byte random salt) — **done** (`8737651`)
 2. **P1 — SMS parser improvements** — sender registry expanded to 56 IDs; GPay regex bounded; dedup hash includes UPI ref no — **done**

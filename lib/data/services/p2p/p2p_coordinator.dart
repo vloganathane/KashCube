@@ -27,6 +27,7 @@ import 'p2p_client.dart';
 import 'p2p_discovery_service.dart';
 import 'p2p_merge_service.dart';
 import 'p2p_server.dart';
+import 'local_peer_connection_adapter.dart';
 
 // ── SyncStatus ────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,11 @@ class P2pCoordinator {
   final Map<String, Map<String, dynamic>> _webRtcSignalState = {};
   static const Duration _webSignalStateTtl = Duration(minutes: 10);
   static const int _maxWebSignalSessions = 64;
+
+  // Local peer connection adapters keyed by browser session id.
+  // Each adapter generates answer SDPs for offers received from the browser.
+  // Adapters are created when offer arrives and cleaned up when session closes.
+  final Map<String, LocalPeerConnectionAdapter> _webRtcAdapters = {};
 
   // In-memory cache of trusted peer identity IDs — kept in sync with the
   // trusted_peers table so _isTrustedPeer() can answer synchronously.
@@ -1106,6 +1112,40 @@ class P2pCoordinator {
       ];
     }
 
+    if (type == SyncSignalingMessages.signalOffer) {
+      // Create local peer connection adapter to process this offer.
+      // The adapter will generate an answer when the browser sends SIGNAL_ANSWER.
+      if (!_webRtcAdapters.containsKey(sessionId)) {
+        _webRtcAdapters[sessionId] = LocalPeerConnectionAdapter(sessionId: sessionId);
+      }
+
+      // Feed offer into adapter for later use when generating answer.
+      final adapter = _webRtcAdapters[sessionId]!;
+      final offerSdp = frame['sdp']?.toString() ?? '';
+      try {
+        adapter.processOfferAndGenerateAnswer(offerSdp);
+      } catch (e) {
+        debugPrint('[P2pCoordinator] Adapter error on offer: $e');
+        return [
+          _signalError(
+            code: 'OFFER_PROCESSING_ERROR',
+            reason: e.toString(),
+            sourceType: type,
+            sessionId: sessionId,
+          ),
+        ];
+      }
+
+      return [
+        _signalAck(
+          sourceType: type,
+          sessionId: sessionId,
+          signalId: signalId,
+          status: 'staged',
+        ),
+      ];
+    }
+
     if (type == SyncSignalingMessages.signalAnswer) {
       final responses = <Map<String, dynamic>>[
         _signalAck(
@@ -1132,12 +1172,6 @@ class P2pCoordinator {
       }
       sessionState['ice_candidates'] = <dynamic>[];
 
-      responses.add(_signalUnsupported(
-        sourceType: type,
-        sessionId: sessionId,
-        code: 'WEBRTC_ENGINE_NOT_READY',
-        reason: 'Negotiation staged, awaiting local WebRTC engine activation',
-      ));
       return responses;
     }
 
@@ -1147,12 +1181,6 @@ class P2pCoordinator {
         sessionId: sessionId,
         signalId: signalId,
         status: 'staged',
-      ),
-      _signalUnsupported(
-        sourceType: type,
-        sessionId: sessionId,
-        code: 'WEBRTC_ENGINE_NOT_READY',
-        reason: 'WebRTC peer connection engine is not enabled yet',
       ),
     ];
   }
@@ -1186,7 +1214,6 @@ class P2pCoordinator {
       'session_id': sessionId,
     };
   }
-
   Map<String, dynamic> _signalError({
     required String code,
     required String reason,
@@ -1210,6 +1237,12 @@ class P2pCoordinator {
     if (removed != null) {
       debugPrint('[P2pCoordinator] Cleared staged signaling state for session $sessionId');
     }
+
+    // Clean up local peer adapter for this session
+    final adapter = _webRtcAdapters.remove(sessionId);
+    if (adapter != null) {
+      debugPrint('[P2pCoordinator] Cleared local peer adapter for session $sessionId');
+    }
   }
 
   void _pruneStaleWebSignalState() {
@@ -1229,6 +1262,7 @@ class P2pCoordinator {
 
     for (final sessionId in staleKeys) {
       _webRtcSignalState.remove(sessionId);
+      _webRtcAdapters.remove(sessionId);
     }
 
     if (_webRtcSignalState.length <= _maxWebSignalSessions) {
@@ -1248,7 +1282,9 @@ class P2pCoordinator {
 
     final overflow = _webRtcSignalState.length - _maxWebSignalSessions;
     for (var i = 0; i < overflow && i < entries.length; i++) {
-      _webRtcSignalState.remove(entries[i].key);
+      final removedKey = entries[i].key;
+      _webRtcSignalState.remove(removedKey);
+      _webRtcAdapters.remove(removedKey);
     }
   }
 

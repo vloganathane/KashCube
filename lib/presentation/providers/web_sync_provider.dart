@@ -14,6 +14,7 @@ import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
 import '../../data/services/sync/transport/webrtc_peer_ops.dart';
+import '../../data/services/sync/transport/cloud_signaling_readiness_gate.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
 import '../../data/services/sync/transport/sync_turn_config_source.dart';
 import '../../data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
@@ -162,6 +163,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     WebRtcPeerOpsMode? peerOpsMode,
     SyncSignalingMode? signalingMode,
     SyncTurnConfigSource? turnConfigSource,
+    bool cloudAdapterInjected = false,
     String? Function()? sessionIdProvider,
     Duration heartbeatReconnectBaseDelay = const Duration(seconds: 2),
     int maxHeartbeatReconnectAttempts = 3,
@@ -176,6 +178,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
         _signalingMode = signalingMode ?? resolveDefaultSignalingMode(),
         _turnConfigSource = turnConfigSource ?? defaultTurnConfigSource(),
+        _cloudAdapterInjected = cloudAdapterInjected,
         _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
         _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
         _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
@@ -198,6 +201,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final WebRtcPeerOpsMode _peerOpsMode;
   final SyncSignalingMode _signalingMode;
   final SyncTurnConfigSource _turnConfigSource;
+  final bool _cloudAdapterInjected;
   final String? Function() _sessionIdProvider;
   final Duration _heartbeatReconnectBaseDelay;
   final int _maxHeartbeatReconnectAttempts;
@@ -364,21 +368,36 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     );
 
     if (_signalingMode == SyncSignalingMode.cloudRelay) {
-      final turnConfig = _turnConfigSource.resolve();
-      final cloudChannel = SyncTransportPolicy.createSignaling(
-        SyncSignalingMode.cloudRelay,
-        transportKind: preferred,
-        peerOpsFactory: _buildWebRtcPeerOpsFactory(),
-        turnRelayMode: turnConfig.relayMode,
-        relayServerHints: turnConfig.relayServerHints,
+      final gate = CloudSignalingReadinessGate(
+        signalingMode: _signalingMode,
+        adapterInjected: _cloudAdapterInjected,
+        turnConfigSource: _turnConfigSource,
       );
-      try {
-        await cloudChannel.connect(uri);
-        state = state.copyWith(progressMsg: 'Cloud signaling mode active');
-        return cloudChannel;
-      } catch (e) {
-        debugPrint('[WebSync] Cloud signaling unavailable, falling back to local signaling: $e');
-        state = state.copyWith(progressMsg: 'Cloud signaling unavailable. Using local signaling…');
+      final gateResult = gate.check();
+      if (gateResult is CloudSignalingNotReady) {
+        final reasonNames = gateResult.reasons.map((r) => r.name).join(', ');
+        debugPrint('[WebSync] Cloud signaling not ready ($reasonNames), using local signaling');
+        state = state.copyWith(
+          progressMsg: 'Cloud signaling not ready. Using local signaling…',
+        );
+      } else {
+        final turnConfig = _turnConfigSource.resolve();
+        final cloudChannel = SyncTransportPolicy.createSignaling(
+          SyncSignalingMode.cloudRelay,
+          transportKind: preferred,
+          peerOpsFactory: _buildWebRtcPeerOpsFactory(),
+          turnRelayMode: turnConfig.relayMode,
+          relayServerHints: turnConfig.relayServerHints,
+        );
+        try {
+          await cloudChannel.connect(uri);
+          state = state.copyWith(progressMsg: 'Cloud signaling mode active');
+          return cloudChannel;
+        } catch (e) {
+          debugPrint('[WebSync] Cloud signaling unavailable, falling back to local signaling: $e');
+          state = state.copyWith(
+              progressMsg: 'Cloud signaling unavailable. Using local signaling…');
+        }
       }
     }
 

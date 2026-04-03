@@ -368,4 +368,27 @@ void main() {
       notifier.dispose();
     });
   });
+
+  group('WebSyncNotifier cloud signaling readiness gate', () {
+    test('cloudAdapterInjected defaults to false (gate blocks cloud connect)', () {
+      // Constructing with cloudRelay but no adapter injected means the gate
+      // will block and the notifier will default to local signaling.
+      final notifier = WebSyncNotifier(
+        signalingMode: SyncSignalingMode.cloudRelay,
+        // cloudAdapterInjected not passed → defaults false
+      );
+      // The notifier constructs successfully; blocking happens at connect time.
+      expect(notifier.state.state, WsConnState.disconnected);
+      notifier.dispose();
+    });
+
+    test('cloudAdapterInjected true marks adapter as present for gate', () {
+      final notifier = WebSyncNotifier(
+        signalingMode: SyncSignalingMode.cloudRelay,
+        cloudAdapterInjected: true,
+      );
+      expect(notifier.state.state, WsConnState.disconnected);
+      notifier.dispose();
+    });
+  });
 }

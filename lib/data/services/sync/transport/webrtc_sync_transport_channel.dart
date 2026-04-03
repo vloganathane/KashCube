@@ -66,6 +66,15 @@ abstract class WebRtcDataChannelBridge {
   Future<void> close();
 }
 
+/// Optional capabilities for bridges that can accept negotiation artifacts.
+abstract class WebRtcNegotiationAwareBridge implements WebRtcDataChannelBridge {
+  void applyLocalOfferSdp(String sdp);
+
+  void applyRemoteAnswerSdp(String sdp);
+
+  void addRemoteIceCandidate(Map<String, dynamic> candidate);
+}
+
 /// Minimal placeholder bridge for session lifecycle wiring.
 ///
 /// This keeps registration/unregistration paths deterministic before the
@@ -204,6 +213,8 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     }
 
     final state = runtime.state;
+    _syncBridgeFromRuntime(sessionId: sessionId, state: state);
+
     debugPrint(
       '[WebRtcSyncTransportChannel] Runtime sync complete for session '
       '$sessionId (offer=${state.hasOffer}, answer=${state.hasAnswer}, '
@@ -227,9 +238,34 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     _bridgeBySession[sessionId] = bridge;
     _activeSessionId = sessionId;
 
+    final runtime = _runtimeBySession[sessionId];
+    if (runtime != null) {
+      _syncBridgeFromRuntime(sessionId: sessionId, state: runtime.state);
+    }
+
     bridge.inboundFrames.listen((raw) {
       _inboundController.add(raw);
     });
+  }
+
+  void _syncBridgeFromRuntime({
+    required String sessionId,
+    required WebRtcPeerRuntimeState state,
+  }) {
+    final bridge = _bridgeBySession[sessionId];
+    if (bridge is! WebRtcNegotiationAwareBridge) {
+      return;
+    }
+
+    if (state.localOfferSdp != null && state.localOfferSdp!.isNotEmpty) {
+      bridge.applyLocalOfferSdp(state.localOfferSdp!);
+    }
+    if (state.remoteAnswerSdp != null && state.remoteAnswerSdp!.isNotEmpty) {
+      bridge.applyRemoteAnswerSdp(state.remoteAnswerSdp!);
+    }
+    for (final candidate in state.remoteIceCandidates) {
+      bridge.addRemoteIceCandidate(candidate);
+    }
   }
 
   Future<void> unregisterDataChannelBridge(String sessionId) async {

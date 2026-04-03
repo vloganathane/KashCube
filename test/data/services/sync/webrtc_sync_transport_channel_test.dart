@@ -125,5 +125,35 @@ void main() {
       expect(bridge.isClosed, isTrue);
       await channel.close();
     });
+
+    test('runtime sync propagates offer/answer/ICE into negotiation-aware bridge', () async {
+      final channel = WebRtcSyncTransportChannel();
+      final mailbox = channel.mailbox;
+      const sessionId = 'sess-005';
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: sessionId);
+
+      channel.registerDataChannelBridge(sessionId: sessionId, bridge: bridge);
+
+      mailbox.stageLocalOffer(sessionId: sessionId, offerSdp: 'offer-from-mailbox');
+      mailbox.ingestSignalingFrame({
+        'type': SyncSignalingMessages.signalAnswer,
+        'session_id': sessionId,
+        'sdp': 'answer-from-mailbox',
+      });
+      mailbox.ingestSignalingFrame({
+        'type': SyncSignalingMessages.signalIceCandidate,
+        'session_id': sessionId,
+        'candidate': {'candidate': 'ice-mailbox-1'},
+      });
+
+      channel.syncRuntimeFromMailbox(sessionId: sessionId);
+
+      expect(bridge.localOfferSdp, 'offer-from-mailbox');
+      expect(bridge.remoteAnswerSdp, 'answer-from-mailbox');
+      expect(bridge.remoteIceCandidates, hasLength(1));
+
+      await channel.unregisterDataChannelBridge(sessionId);
+      await channel.close();
+    });
   });
 }

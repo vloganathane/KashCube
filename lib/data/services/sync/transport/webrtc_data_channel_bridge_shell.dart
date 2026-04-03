@@ -6,7 +6,7 @@ import 'webrtc_sync_transport_channel.dart';
 ///
 /// This class owns session-scoped negotiation artifacts and frame buffers,
 /// while remaining transport-only (no direct RTCPeerConnection dependency yet).
-class WebRtcDataChannelBridgeShell implements WebRtcDataChannelBridge {
+class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
   WebRtcDataChannelBridgeShell({required this.sessionId});
 
   final String sessionId;
@@ -27,16 +27,19 @@ class WebRtcDataChannelBridgeShell implements WebRtcDataChannelBridge {
   List<Map<String, dynamic>> get remoteIceCandidates =>
       List<Map<String, dynamic>>.unmodifiable(_remoteIceCandidates);
 
+  @override
   void applyLocalOfferSdp(String sdp) {
     if (_closed || sdp.isEmpty) return;
     _localOfferSdp = sdp;
   }
 
+  @override
   void applyRemoteAnswerSdp(String sdp) {
     if (_closed || sdp.isEmpty) return;
     _remoteAnswerSdp = sdp;
   }
 
+  @override
   void addRemoteIceCandidate(Map<String, dynamic> candidate) {
     if (_closed || candidate.isEmpty) return;
     _remoteIceCandidates.add(Map<String, dynamic>.from(candidate));

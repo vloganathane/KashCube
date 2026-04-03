@@ -320,7 +320,7 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     }
 
     if (_shouldUseDataPlane(type)) {
-      _sendViaDataPlane(payload);
+      unawaited(_sendViaDataPlane(payload));
       return;
     }
 
@@ -341,7 +341,7 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     return bridge is WebRtcDataChannelBridgeShell && bridge.isDataChannelReady;
   }
 
-  void _sendViaDataPlane(Map<String, dynamic> payload) {
+  Future<void> _sendViaDataPlane(Map<String, dynamic> payload) async {
     final sessionId = _activeSessionId;
     if (sessionId == null || sessionId.isEmpty) {
       _controlPlaneChannel.sendJson(payload);
@@ -355,7 +355,12 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     }
 
     final frame = jsonEncode(payload);
-    unawaited(bridge.sendFrame(frame));
+    try {
+      await bridge.sendFrame(frame);
+    } catch (_) {
+      // Preserve delivery by falling back to control plane when DataChannel send fails.
+      _controlPlaneChannel.sendJson(payload);
+    }
   }
 
   @override

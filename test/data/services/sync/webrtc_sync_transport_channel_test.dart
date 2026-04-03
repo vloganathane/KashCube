@@ -60,9 +60,13 @@ class _FakeControlPlaneChannel implements SyncTransportChannel {
 }
 
 class _FakeWebRtcPeerOps implements WebRtcPeerOps {
-  _FakeWebRtcPeerOps({this.sessionId = 'fake'});
+  _FakeWebRtcPeerOps({
+    this.sessionId = 'fake',
+    this.throwOnSendDataChannelFrame = false,
+  });
 
   final String sessionId;
+  final bool throwOnSendDataChannelFrame;
   String? localOfferSdp;
   String? remoteAnswerSdp;
   final List<Map<String, dynamic>> remoteIceCandidates =
@@ -105,6 +109,9 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
 
   @override
   Future<void> sendDataChannelFrame(String frame) async {
+    if (throwOnSendDataChannelFrame) {
+      throw StateError('simulated data channel send failure');
+    }
     sentDataChannelFrames.add(frame);
   }
 
@@ -384,6 +391,32 @@ void main() {
 
       channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
       expect(peerOps.sentDataChannelFrames, ['{"type":"WRITE","table":"transactions"}']);
+
+      await channel.close();
+    });
+
+    test('falls back to websocket when ready data-plane send fails', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-012');
+      final peerOps = _FakeWebRtcPeerOps(
+        sessionId: 'sess-012',
+        throwOnSendDataChannelFrame: true,
+      );
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8082/ws'));
+      channel.registerDataChannelBridge(sessionId: 'sess-012', bridge: bridge);
+      await bridge.attachPeerOps(peerOps);
+
+      peerOps.emitReadyEvent();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(peerOps.sentDataChannelFrames, isEmpty);
+      expect(controlPlane.sentPayloads, hasLength(1));
+      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.write);
 
       await channel.close();
     });

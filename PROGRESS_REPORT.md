@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M3 Progression (Slice 16: Native Runtime Callback Path)
 
-**Commit:** pending (current working tree)
+**Commit:** `b4bb5ce` — Add native callback path for WebRTC runtime events
 
 Completed native-to-Dart runtime callback delivery for platform peer-ops mode:
 1. Added shared method-call handler setup in `MethodChannelWebRtcPeerOps`

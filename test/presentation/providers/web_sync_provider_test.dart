@@ -4,6 +4,7 @@ import 'package:kash_cube/presentation/providers/web_sync_provider.dart';
 
 class _FakeSyncTransportChannel implements SyncTransportChannel {
   final List<Map<String, dynamic>> sentPayloads = <Map<String, dynamic>>[];
+  int closeCount = 0;
 
   @override
   Future<void> connect(Uri uri) async {}
@@ -17,7 +18,9 @@ class _FakeSyncTransportChannel implements SyncTransportChannel {
   }
 
   @override
-  Future<void> close() async {}
+  Future<void> close() async {
+    closeCount += 1;
+  }
 }
 
 void main() {
@@ -264,6 +267,89 @@ void main() {
       expect(mergedTables, ['transactions']);
       expect(mergedRowCounts, [1]);
       expect(notifiedTables, ['transactions']);
+
+      notifier.dispose();
+    });
+  });
+
+  group('WebSyncNotifier disconnect cleanup integration', () {
+    test('disconnect clears pending outbound writes for next session', () async {
+      final firstChannel = _FakeSyncTransportChannel();
+      final secondChannel = _FakeSyncTransportChannel();
+      final notifier = WebSyncNotifier(
+        writeAckTimeout: const Duration(milliseconds: 5),
+        maxWriteRetryAttempts: 2,
+      );
+
+      notifier.setChannelForTest(firstChannel);
+      notifier.enqueueOutboundWriteForTest(<String, dynamic>{
+        'type': 'WRITE',
+        'table': 'transactions',
+        'sync_id': 'cleanup-write-1',
+        'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
+      });
+
+      expect(notifier.pendingOutboundWriteCountForTest, 1);
+      expect(firstChannel.sentPayloads, hasLength(1));
+
+      notifier.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(notifier.pendingOutboundWriteCountForTest, 0);
+      expect(firstChannel.closeCount, 1);
+
+      notifier.setChannelForTest(secondChannel);
+      notifier.enqueueOutboundWriteForTest(<String, dynamic>{
+        'type': 'WRITE',
+        'table': 'transactions',
+        'sync_id': 'cleanup-write-1',
+        'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
+      });
+
+      expect(secondChannel.sentPayloads, hasLength(1));
+      expect(notifier.pendingOutboundWriteCountForTest, 1);
+
+      notifier.dispose();
+    });
+
+    test('disconnect clears inbound dedupe cache so next session can merge same sync_id again', () async {
+      final mergedTables = <String>[];
+      final mergedRowCounts = <int>[];
+      final notifiedTables = <String>[];
+      final notifier = WebSyncNotifier(
+        upsertRowsHook: (table, rows) async {
+          mergedTables.add(table);
+          mergedRowCounts.add(rows.length);
+        },
+        notifyChangeHook: (table) {
+          notifiedTables.add(table);
+        },
+      );
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'PUSH',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
+        ],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      notifier.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'PUSH',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
+        ],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(mergedTables, ['transactions', 'transactions']);
+      expect(mergedRowCounts, [1, 1]);
+      expect(notifiedTables, ['transactions', 'transactions']);
 
       notifier.dispose();
     });

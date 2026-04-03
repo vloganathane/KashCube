@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**Hybrid transport delivery is now fail-safe**: eligible payloads use WebRTC when ready, and automatically fall back to WebSocket if data-plane send fails. M3 is in final closeout.
+**M3 is now complete**: hybrid WebRTC data-plane routing is live, fail-safe, and session-scoped, with WebSocket retained as deterministic control-plane fallback.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,14 +34,40 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 94% complete
+3. M3: 100% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
 2. M2 closure: complete
-3. M3 closure: 1 slice
+3. M3 closure: complete
+
+### Latest Work — M3 Closure (Slice 21: Session-Scoped Data-Plane Routing)
+
+**Commit:** `d4a903a` — Scope WebRTC routing by payload session
+
+Completed final M3 closeout hardening for multi-session correctness:
+1. Data-plane routing now resolves target bridge from payload `session_id` when present
+2. Eligible payloads are no longer implicitly routed by only the latest active session
+3. If a payload targets a non-ready session, transport falls back to WebSocket instead of leaking to another ready session
+4. Added focused regression tests for:
+  - multi-session routing to matching bridge by payload `session_id`
+  - fallback to control plane when payload targets non-ready session
+
+Validation:
+1. Focused tests: `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 94% -> 100%
+
+Estimated completion (updated):
+1. M3 closure: complete
+
+---
 
 ### Latest Work — M3 Progression (Slice 20: Data-Plane Failure Fallback Hardening)
 

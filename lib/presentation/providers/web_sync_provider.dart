@@ -13,6 +13,7 @@ import '../../data/services/sync/sync_table_registry.dart';
 import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
+import '../../data/services/sync/transport/webrtc_sync_transport_channel.dart';
 import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
     if (dart.library.js_interop) '../web/web_url_reader_web.dart'
@@ -390,6 +391,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     state = state.copyWith(
       progressMsg: 'Received answer SDP from phone',
     );
+
+    _refreshWebRtcNegotiationSnapshot(msg['session_id']?.toString());
     debugPrint('[WebSync] SIGNAL_ANSWER received (length=${sdp.length})');
   }
 
@@ -410,10 +413,25 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     state = state.copyWith(
       progressMsg: 'Received ICE candidate$replayTag from phone',
     );
+
+    _refreshWebRtcNegotiationSnapshot(msg['session_id']?.toString());
     debugPrint(
       '[WebSync] SIGNAL_ICE_CANDIDATE received$replayTag '
       '(total=${_remoteIceCandidates.length})',
     );
+  }
+
+  void _refreshWebRtcNegotiationSnapshot(String? sessionId) {
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+
+    final channel = _channel;
+    if (channel is! WebRtcSyncTransportChannel) {
+      return;
+    }
+
+    channel.negotiationSnapshot(sessionId: sessionId);
   }
 
   void _handleSignalError(Map<String, dynamic> msg) {

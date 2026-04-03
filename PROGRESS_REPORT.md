@@ -1,13 +1,13 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** Anywhere Mode Infrastructure (M5) 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** M6 Security and Release Readiness Gate 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · M5 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
 
-**M5 now includes a staged TURN configuration source abstraction**: `SyncTurnConfigSource` decouples TURN config resolution from the provider, allowing env defaults, test doubles, and a future settings-store implementation to plug in without changing the connect path.
+**M5 is now complete**: the cloud signaling beta readiness gate validates all preconditions (cloud mode selected, adapter injected, TURN config consistent) before any cloud connect attempt, falling back to local signaling with structured log on failure. M5 closes with fail-closed local-first behavior fully preserved.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,7 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5: 60% complete
+5. M5: 100% complete
 6. M6: pending
 
 Current estimated completion (if no blockers):
@@ -46,7 +46,43 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
-5. M5 closure: 1-2 slices
+5. M5 closure: complete
+6. M6 closure: next phase
+
+### Latest Work — M5 Progression (Slice 32: Cloud Signaling Beta Readiness Gate) — M5 CLOSE
+
+**Commit:** `1b2129c` — Add cloud signaling beta readiness gate and wire into provider connect path
+
+Completed M5 with a structured readiness gate before any cloud connect attempt:
+1. Added `CloudSignalingReadinessResult` sealed type (`CloudSignalingReady` / `CloudSignalingNotReady`)
+2. Added `CloudSignalingNotReadyReason` enum (cloudModeNotSelected / noAdapterInjected / turnRequiredButNoHints)
+3. Added `CloudSignalingReadinessGate` that accumulates all failure reasons in a single check call
+4. Added `cloudAdapterInjected` bool to `WebSyncNotifier` constructor (defaults `false`)
+5. Replaced inline cloud connect block with gate-guarded flow: not-ready → log + fall back to local; ready → attempt cloud connect with existing fallback on exception
+6. Added focused tests for:
+  - all three ready/not-ready conditions individually
+  - multi-reason accumulation
+  - TURN disabled with empty hints is not a failure
+  - sealed type exhaustion / distinguishability
+  - provider gate default (`cloudAdapterInjected: false`)
+  - provider accepts `cloudAdapterInjected: true`
+
+Validation:
+1. Focused tests: `cloud_signaling_readiness_gate_test.dart` + `web_sync_provider_test.dart` — 23 tests passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 60% -> 100% ✔ CLOSED
+
+Estimated completion (updated):
+1. M5 closure: complete
+2. M6 closure: next phase (security and release readiness gate)
+
+---
 
 ### Latest Work — M5 Progression (Slice 31: Staged TURN Config Source)
 

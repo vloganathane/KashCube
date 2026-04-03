@@ -54,7 +54,7 @@ Connection policy is direct-first with relay fallback:
 | M2: Transport adapter integration | App Lead | 2026-04-17 | Done | WebRTC DataChannel adapter wired behind sync transport interface |
 | M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | Done | Phone and browser complete authenticated sync over local signaling |
 | M4: Reliability hardening | QA Lead | 2026-05-01 | Done | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
-| M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | In Progress | Cloud signaling plus TURN fallback available in staging |
+| M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | Done | Cloud signaling plus TURN fallback available in staging |
 | M6: Security and release readiness gate | Security Lead | 2026-05-15 | Not Started | App-layer payload encryption, key rotation checks, and threat review approved |
 
 Notes:
@@ -121,7 +121,7 @@ Status: Done
 2. Add TURN relay fallback path for difficult NAT/firewall environments.
 3. Keep mode opt-in and feature-flagged during beta validation.
 
-Status: In Progress (feature-gated scaffold, adapter seam, TURN relay options scaffold, cloud frame mapper, and staged TURN config source complete)
+Status: Done
 
 ### Phase F: Security and Release Readiness (M6)
 
@@ -137,14 +137,14 @@ Status: Not Started
 2. M2: 100% complete.
 3. M3: 100% complete.
 4. M4: 100% complete.
-5. M5: approximately 60% complete.
+5. M5: 100% complete.
 6. M6: pending.
 
 ### Immediate Next Slices
 
-1. Add cloud signaling beta readiness gate once frame parity is confirmed in staging.
-2. Complete M5 with end-to-end cloud signaling path validation check.
-3. Preserve local-first mode as default while M5 remains gated.
+1. Validate app-layer payload encryption and integrity checks over all transport paths (M6).
+2. Verify key handling and rotation behavior for connect-anywhere mode.
+3. Complete threat review and release gate sign-off criteria.
 
 ## Evidence And Supporting Specs
 

@@ -821,6 +821,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     final sessionId = url_reader.getSavedSessionId();
     if (sessionId != null && sessionId.isNotEmpty) {
       _webrtcMailbox.clearSession(sessionId);
+      final channel = _channel;
+      if (channel is WebRtcSyncTransportChannel) {
+        channel.clearPeerRuntime(sessionId);
+      }
     }
     _latestRemoteAnswerSdp = null;
     _remoteIceCandidates.clear();

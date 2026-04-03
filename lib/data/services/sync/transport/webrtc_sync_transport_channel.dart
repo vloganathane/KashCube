@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
@@ -53,6 +54,18 @@ abstract class WebRtcPeerRuntime {
   void addRemoteIceCandidate(Map<String, dynamic> candidate);
 }
 
+/// Bridge contract between transport wrapper and concrete WebRTC data channel.
+///
+/// A future flutter_webrtc implementation can implement this interface and be
+/// registered per session via [registerDataChannelBridge].
+abstract class WebRtcDataChannelBridge {
+  Stream<String> get inboundFrames;
+
+  Future<void> sendFrame(String jsonFrame);
+
+  Future<void> close();
+}
+
 class InMemoryWebRtcPeerRuntime implements WebRtcPeerRuntime {
   InMemoryWebRtcPeerRuntime({required this.sessionId});
 
@@ -101,6 +114,12 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   final WebRtcNegotiationMailbox _mailbox = WebRtcNegotiationMailbox.instance;
   final Map<String, WebRtcPeerRuntime> _runtimeBySession =
       <String, WebRtcPeerRuntime>{};
+  final Map<String, WebRtcDataChannelBridge> _bridgeBySession =
+      <String, WebRtcDataChannelBridge>{};
+  final StreamController<dynamic> _inboundController =
+      StreamController<dynamic>.broadcast();
+
+  String? _activeSessionId;
 
   WebRtcNegotiationMailbox get mailbox => _mailbox;
 
@@ -182,6 +201,32 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     _runtimeBySession.remove(sessionId);
   }
 
+  /// Register a concrete data channel bridge for a session.
+  ///
+  /// This does not change existing fallback behavior because `connect()` still
+  /// throws until full WebRTC connection lifecycle is enabled by policy.
+  void registerDataChannelBridge({
+    required String sessionId,
+    required WebRtcDataChannelBridge bridge,
+  }) {
+    _bridgeBySession[sessionId] = bridge;
+    _activeSessionId = sessionId;
+
+    bridge.inboundFrames.listen((raw) {
+      _inboundController.add(raw);
+    });
+  }
+
+  Future<void> unregisterDataChannelBridge(String sessionId) async {
+    final bridge = _bridgeBySession.remove(sessionId);
+    if (bridge != null) {
+      await bridge.close();
+    }
+    if (_activeSessionId == sessionId) {
+      _activeSessionId = null;
+    }
+  }
+
   @override
   Future<void> connect(Uri uri) async {
     throw UnsupportedError(
@@ -191,13 +236,30 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   }
 
   @override
-  Stream<dynamic> get stream => const Stream<dynamic>.empty();
+  Stream<dynamic> get stream => _inboundController.stream;
 
   @override
   void sendJson(Map<String, dynamic> payload) {
-    throw StateError('WebRTC transport is not connected');
+    final sessionId = _activeSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      throw StateError('WebRTC transport is not connected');
+    }
+
+    final bridge = _bridgeBySession[sessionId];
+    if (bridge == null) {
+      throw StateError('WebRTC data channel bridge not registered');
+    }
+
+    final frame = jsonEncode(payload);
+    unawaited(bridge.sendFrame(frame));
   }
 
   @override
-  Future<void> close() async {}
+  Future<void> close() async {
+    final sessions = _bridgeBySession.keys.toList();
+    for (final sessionId in sessions) {
+      await unregisterDataChannelBridge(sessionId);
+    }
+    await _inboundController.close();
+  }
 }

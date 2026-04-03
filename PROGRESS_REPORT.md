@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**WebRTC transport now runs as a hybrid adapter** with WebSocket retained for control-plane frames and WebRTC activated for eligible sync payloads once the data channel is ready. M3 is in final closeout.
+**Hybrid transport delivery is now fail-safe**: eligible payloads use WebRTC when ready, and automatically fall back to WebSocket if data-plane send fails. M3 is in final closeout.
 
 ## Transparent Slice Reporting Contract
 
@@ -34,7 +34,7 @@ Current transparent baseline:
 
 1. M1: 100% complete
 2. M2: 100% complete
-3. M3: 86% complete
+3. M3: 94% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
@@ -42,6 +42,30 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: 1 slice
+
+### Latest Work — M3 Progression (Slice 20: Data-Plane Failure Fallback Hardening)
+
+**Commit:** `741e81e` — Harden WebRTC payload routing with control-plane fallback on send failure
+
+Completed fail-safe routing for ready-state data-plane sends:
+1. Data-plane sends are now awaited in transport dispatch path
+2. If bridge/data-channel send throws, payload is immediately rerouted over WebSocket control plane
+3. Added focused regression test validating fallback when ready data-plane send fails
+4. Existing control-plane/data-plane split behavior remains unchanged
+
+Validation:
+1. Focused tests: `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 86% -> 94%
+
+Estimated completion (updated):
+1. M3 closure: 1 slice
+
+---
 
 ### Latest Work — M3 Progression (Slice 19: Hybrid Transport Activation)
 

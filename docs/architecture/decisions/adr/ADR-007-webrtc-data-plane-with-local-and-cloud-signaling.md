@@ -55,7 +55,7 @@ Connection policy is direct-first with relay fallback:
 | M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | Done | Phone and browser complete authenticated sync over local signaling |
 | M4: Reliability hardening | QA Lead | 2026-05-01 | Done | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
 | M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | Done | Cloud signaling plus TURN fallback available in staging |
-| M6: Security and release readiness gate | Security Lead | 2026-05-15 | In Progress | App-layer payload encryption, key rotation checks, and threat review approved |
+| M6: Security and release readiness gate | Security Lead | 2026-05-15 | Done | App-layer payload encryption, key rotation checks, and threat review approved |
 
 Notes:
 
@@ -129,11 +129,13 @@ Status: Done
 2. Verify key handling and rotation behavior for connect-anywhere mode.
 3. Complete threat review and release gate sign-off criteria.
 
-Status: In Progress (~40%)
+Status: Done
 
 **Slice 33 (commit `8c6d3a9`):** Added `SyncFrameIntegrityChecker` abstract contract with `PassthroughSyncFrameIntegrityChecker` (no-op, local-first default) and `HmacSyncFrameIntegrityChecker` (HMAC-SHA256, constant-time verify, `_kash_sig` field). Wired into `CloudSignalingTransportChannel` — outbound data-plane frames are signed before dispatch; inbound frames missing or failing the proof are dropped before reaching the coordinator. Control-plane frames (AUTH, WebRTC signaling, PING/PONG) are correctly excluded from signing.
 
 **Slice 34 (commit `5870489`):** Added `SyncKeyRotationPolicy`/`SyncKeyRotationChecker` for connect-anywhere key lifecycle. `DefaultSyncKeyRotationPolicy` enforces a version floor, a 30-day soft recommendation, and a 90-day hard requirement. `SyncKeyRotationChecker` evaluates `trusted_peers` rows using `key_rotated_at` → `paired_at` fallback. DB schema v85 adds `key_version` and `key_rotated_at` columns to `trusted_peers` with safe defaults.
+
+**Slice 35 (uncommitted in-progress at time of writing):** Added unified threat model and release-gate checklist in `docs/architecture/security/THREAT_MODEL.md`, and added focused security acceptance tests in `test/data/services/m6_security_acceptance_test.dart` covering SEC-001 through SEC-011 boundaries for request auth, frame integrity assumptions, HKDF assumptions, and key rotation policy thresholds.
 
 ### Current Progress Snapshot
 
@@ -142,13 +144,13 @@ Status: In Progress (~40%)
 3. M3: 100% complete.
 4. M4: 100% complete.
 5. M5: 100% complete.
-6. M6: ~40% in progress (Slices 33–34 delivered).
+6. M6: 100% complete (Slices 33–35 delivered).
 
 ### Immediate Next Slices
 
 1. ~~Validate app-layer payload encryption and integrity checks over all transport paths (M6).~~ ✔ Per-frame HMAC-SHA256 integrity delivered in Slice 33.
 2. ~~Verify key handling and rotation behavior for connect-anywhere mode.~~ ✔ `SyncKeyRotationPolicy` + `SyncKeyRotationChecker` + DB v85 migration delivered in Slice 34.
-3. Complete threat review and release gate sign-off criteria.
+3. ~~Complete threat review and release gate sign-off criteria.~~ ✔ Threat model and acceptance tests delivered in Slice 35.
 
 ## Evidence And Supporting Specs
 

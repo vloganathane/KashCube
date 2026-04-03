@@ -1,12 +1,14 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** M6 Security and Release Readiness Gate 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · M5 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** M6 Security and Release Readiness Gate ✅ · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · M5 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
-**M6 Slice 34 delivered**: Key rotation check infrastructure for connect-anywhere mode. `SyncKeyRotationPolicy` (sealed status types + `DefaultSyncKeyRotationPolicy` with configurable time/version thresholds) + `SyncKeyRotationChecker` that evaluates `trusted_peers` rows. DB schema v85 adds `key_version` and `key_rotated_at` to `trusted_peers`. M6 is now ~40% complete.
+**M6 Slice 35 delivered**: Threat model and release gate sign-off artifacts are now in place. Added unified threat model document plus focused acceptance coverage (`test/data/services/m6_security_acceptance_test.dart`) for SEC-001 through SEC-011 boundaries (request signing, frame integrity, HKDF properties, key rotation policy thresholds). M6 is now complete.
+
+**M6 Slice 34 delivered**: Key rotation check infrastructure for connect-anywhere mode. `SyncKeyRotationPolicy` (sealed status types + `DefaultSyncKeyRotationPolicy` with configurable time/version thresholds) + `SyncKeyRotationChecker` that evaluates `trusted_peers` rows. DB schema v85 adds `key_version` and `key_rotated_at` to `trusted_peers`.
 
 **M6 Slice 33 delivered**: App-layer HMAC-SHA256 per-frame integrity for the cloud signaling transport path. `HmacSyncFrameIntegrityChecker` signs every outbound data-plane frame with `_kash_sig` and silently drops inbound frames whose proof is absent or invalid. Local-first/LAN path is unchanged — the default `PassthroughSyncFrameIntegrityChecker` is a no-op. M6 is now ~20% complete.
 
@@ -41,7 +43,7 @@ Current transparent baseline:
 3. M3: 100% complete
 4. M4: 100% complete
 5. M5: 100% complete
-6. M6: ~40% complete (Slices 33–34 done)
+6. M6: 100% complete (Slices 33–35 done)
 
 Current estimated completion (if no blockers):
 
@@ -50,7 +52,29 @@ Current estimated completion (if no blockers):
 3. M3 closure: complete
 4. M4 closure: complete
 5. M5 closure: complete
-6. M6 closure: ~2-3 slices remaining (threat model review, release hardening gate)
+6. M6 closure: complete
+
+### Latest Work — M6 Security and Release Readiness Gate (Slice 35: Threat Model Review + Release Gate)
+
+Added final M6 release-gate artifacts for threat review and acceptance criteria tracking:
+
+1. Unified threat model document created: `docs/architecture/security/THREAT_MODEL.md`
+2. Security actor/risk coverage consolidated across existing fragmented docs
+3. Acceptance matrix defined for SEC-001 through SEC-013
+4. Focused security acceptance tests added in `test/data/services/m6_security_acceptance_test.dart`
+
+Validation:
+1. Focused tests: 13 tests passed (0 failures)
+2. New-file analyze: no issues
+
+Milestone delta (this slice):
+1–5. M1–M5: 100% → 100%
+6. M6: ~40% → 100%
+
+Estimated completion (updated):
+1. M6 closure: complete
+
+---
 
 ### Latest Work — M6 Security and Release Readiness Gate (Slice 34: Key Rotation Check)
 

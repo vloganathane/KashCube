@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 abstract class WebRtcPeerOps {
+  Future<void> createPeerSession();
+
   Future<void> setLocalOfferSdp(String sdp);
 
   Future<void> setRemoteAnswerSdp(String sdp);
@@ -9,6 +11,8 @@ abstract class WebRtcPeerOps {
   Future<void> addRemoteIceCandidate(Map<String, dynamic> candidate);
 
   Future<void> ensureDataChannel();
+
+  Future<void> closePeerSession();
 }
 
 typedef WebRtcPeerOpsFactory = WebRtcPeerOps Function(String sessionId);
@@ -46,6 +50,9 @@ WebRtcPeerOpsFactory buildWebRtcPeerOpsFactory(WebRtcPeerOpsMode mode) {
 
 class NoopWebRtcPeerOps implements WebRtcPeerOps {
   @override
+  Future<void> createPeerSession() async {}
+
+  @override
   Future<void> setLocalOfferSdp(String sdp) async {}
 
   @override
@@ -56,6 +63,9 @@ class NoopWebRtcPeerOps implements WebRtcPeerOps {
 
   @override
   Future<void> ensureDataChannel() async {}
+
+  @override
+  Future<void> closePeerSession() async {}
 }
 
 /// Concrete placeholder for a future flutter_webrtc-backed peer implementation.
@@ -73,6 +83,14 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
       <Map<String, dynamic>>[];
   final List<String> operationLog = <String>[];
   bool dataChannelEnsured = false;
+  bool sessionCreated = false;
+  bool sessionClosed = false;
+
+  @override
+  Future<void> createPeerSession() async {
+    sessionCreated = true;
+    operationLog.add('createPeerSession');
+  }
 
   @override
   Future<void> setLocalOfferSdp(String sdp) async {
@@ -97,6 +115,12 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
     dataChannelEnsured = true;
     operationLog.add('ensureDataChannel');
   }
+
+  @override
+  Future<void> closePeerSession() async {
+    sessionClosed = true;
+    operationLog.add('closePeerSession');
+  }
 }
 
 /// Platform channel backed peer ops implementation.
@@ -116,6 +140,11 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   final MethodChannel _channel;
 
   @override
+  Future<void> createPeerSession() {
+    return _invoke('createPeerSession', const <String, dynamic>{});
+  }
+
+  @override
   Future<void> setLocalOfferSdp(String sdp) {
     return _invoke('setLocalOfferSdp', {'sdp': sdp});
   }
@@ -133,6 +162,11 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() {
     return _invoke('ensureDataChannel', const <String, dynamic>{});
+  }
+
+  @override
+  Future<void> closePeerSession() {
+    return _invoke('closePeerSession', const <String, dynamic>{});
   }
 
   Future<void> _invoke(String method, Map<String, dynamic> payload) async {

@@ -35,6 +35,13 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   final List<Map<String, dynamic>> remoteIceCandidates =
       <Map<String, dynamic>>[];
   int ensureDataChannelCount = 0;
+  int createPeerSessionCount = 0;
+  int closePeerSessionCount = 0;
+
+  @override
+  Future<void> createPeerSession() async {
+    createPeerSessionCount += 1;
+  }
 
   @override
   Future<void> addRemoteIceCandidate(Map<String, dynamic> candidate) async {
@@ -44,6 +51,11 @@ class _FakeWebRtcPeerOps implements WebRtcPeerOps {
   @override
   Future<void> ensureDataChannel() async {
     ensureDataChannelCount += 1;
+  }
+
+  @override
+  Future<void> closePeerSession() async {
+    closePeerSessionCount += 1;
   }
 
   @override
@@ -198,6 +210,10 @@ void main() {
       expect(peerOps.remoteAnswerSdp, 'answer-buffered');
       expect(peerOps.remoteIceCandidates, hasLength(1));
       expect(peerOps.ensureDataChannelCount, 1);
+      expect(peerOps.createPeerSessionCount, 1);
+
+      await bridge.close();
+      expect(peerOps.closePeerSessionCount, 1);
     });
 
     test('bridge shell deduplicates ICE before forwarding to peer ops', () async {

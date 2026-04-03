@@ -60,10 +60,42 @@ class MainActivity : FlutterActivity() {
             return
         }
 
-        val state = peerStateBySession.getOrPut(sessionId) { PeerSessionState() }
-
         when (call.method) {
+            "createPeerSession" -> {
+                if (peerStateBySession.containsKey(sessionId)) {
+                    result.error(
+                        "SESSION_ALREADY_EXISTS",
+                        "Peer session already exists for session_id",
+                        null,
+                    )
+                    return
+                }
+                val state = PeerSessionState()
+                peerStateBySession[sessionId] = state
+                logPeerState("createPeerSession", sessionId, state)
+                result.success(null)
+            }
+
+            "closePeerSession" -> {
+                val state = peerStateBySession.remove(sessionId)
+                if (state == null) {
+                    result.error(
+                        "SESSION_NOT_FOUND",
+                        "Peer session not found for session_id",
+                        null,
+                    )
+                    return
+                }
+                logPeerState("closePeerSession", sessionId, state)
+                result.success(null)
+            }
+
             "setLocalOfferSdp" -> {
+                val state = peerStateBySession[sessionId]
+                if (state == null) {
+                    result.error("SESSION_NOT_FOUND", "Call createPeerSession first", null)
+                    return
+                }
                 val sdp = args["sdp"] as? String
                 if (sdp.isNullOrBlank()) {
                     result.error("MISSING_SDP", "sdp is required", null)
@@ -75,6 +107,11 @@ class MainActivity : FlutterActivity() {
             }
 
             "setRemoteAnswerSdp" -> {
+                val state = peerStateBySession[sessionId]
+                if (state == null) {
+                    result.error("SESSION_NOT_FOUND", "Call createPeerSession first", null)
+                    return
+                }
                 val sdp = args["sdp"] as? String
                 if (sdp.isNullOrBlank()) {
                     result.error("MISSING_SDP", "sdp is required", null)
@@ -86,6 +123,11 @@ class MainActivity : FlutterActivity() {
             }
 
             "addRemoteIceCandidate" -> {
+                val state = peerStateBySession[sessionId]
+                if (state == null) {
+                    result.error("SESSION_NOT_FOUND", "Call createPeerSession first", null)
+                    return
+                }
                 @Suppress("UNCHECKED_CAST")
                 val candidate = args["candidate"] as? Map<String, Any?>
                 if (candidate == null || candidate.isEmpty()) {
@@ -98,6 +140,11 @@ class MainActivity : FlutterActivity() {
             }
 
             "ensureDataChannel" -> {
+                val state = peerStateBySession[sessionId]
+                if (state == null) {
+                    result.error("SESSION_NOT_FOUND", "Call createPeerSession first", null)
+                    return
+                }
                 state.dataChannelEnsured = true
                 logPeerState("ensureDataChannel", sessionId, state)
                 result.success(null)

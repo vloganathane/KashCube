@@ -59,26 +59,30 @@ void main() {
         channel: channel,
       );
 
+      await ops.createPeerSession();
       await ops.setLocalOfferSdp('offer-sdp');
       await ops.setRemoteAnswerSdp('answer-sdp');
       await ops.addRemoteIceCandidate({'candidate': 'ice-1'});
       await ops.ensureDataChannel();
+      await ops.closePeerSession();
 
       expect(calls.map((c) => c.method), <String>[
+        'createPeerSession',
         'setLocalOfferSdp',
         'setRemoteAnswerSdp',
         'addRemoteIceCandidate',
         'ensureDataChannel',
+        'closePeerSession',
       ]);
 
-      final firstArgs = Map<String, dynamic>.from(calls.first.arguments as Map);
-      expect(firstArgs['session_id'], 'sess-101');
-      expect(firstArgs['sdp'], 'offer-sdp');
+      final secondArgs = Map<String, dynamic>.from(calls[1].arguments as Map);
+      expect(secondArgs['session_id'], 'sess-101');
+      expect(secondArgs['sdp'], 'offer-sdp');
 
-      final thirdArgs = Map<String, dynamic>.from(calls[2].arguments as Map);
-      expect(thirdArgs['session_id'], 'sess-101');
+      final fourthArgs = Map<String, dynamic>.from(calls[3].arguments as Map);
+      expect(fourthArgs['session_id'], 'sess-101');
       expect(
-        Map<String, dynamic>.from(thirdArgs['candidate'] as Map)['candidate'],
+        Map<String, dynamic>.from(fourthArgs['candidate'] as Map)['candidate'],
         'ice-1',
       );
     });

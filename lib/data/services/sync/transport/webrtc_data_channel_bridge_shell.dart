@@ -47,6 +47,8 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       return;
     }
 
+    await peerOps.createPeerSession();
+
     if (_localOfferSdp != null && _localOfferSdp!.isNotEmpty) {
       await peerOps.setLocalOfferSdp(_localOfferSdp!);
     }
@@ -123,6 +125,13 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
       return;
     }
     _closed = true;
+
+    final peerOps = _peerOps;
+    _peerOps = null;
+    if (peerOps != null) {
+      await peerOps.closePeerSession();
+    }
+
     await _inbound.close();
   }
 }

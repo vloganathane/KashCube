@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**Android-native WebRTC peer-ops channel contract is now wired** behind mode-gated transport staging. Default behavior remains noop/fallback-safe while M2 heads toward closure.
+**WebRTC peer session lifecycle is now explicit end-to-end** (create, apply artifacts, close) with deterministic native error codes. M2 is in final closure range.
 
 ## Transparent Slice Reporting Contract
 
@@ -33,17 +33,47 @@ Starting now, every slice completion update will include this exact status block
 Current transparent baseline:
 
 1. M1: 100% complete
-2. M2: 82% complete
-3. M3: 50% complete
+2. M2: 88% complete
+3. M3: 53% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
-2. M2 closure: 1-2 slices
-3. M3 closure: 4-6 slices
+2. M2 closure: 1 slice
+3. M3 closure: 3-5 slices
 
-### Latest Work — M2 Progression (Slice 12: Android Peer-Ops Channel Wiring)
+### Latest Work — M2 Progression (Slice 13: Explicit Peer Session Lifecycle)
+
+**Commit:** pending (current working tree)
+
+Completed deterministic peer session lifecycle wiring across Dart bridge and Android channel handler:
+1. Added explicit peer ops lifecycle methods: `createPeerSession` and `closePeerSession`
+2. Bridge shell now creates native peer session on attach and closes it during bridge teardown
+3. Android channel now enforces explicit create-before-use flow
+4. Added deterministic native error codes:
+  - `SESSION_ALREADY_EXISTS`
+  - `SESSION_NOT_FOUND`
+  - existing payload codes preserved (`MISSING_SESSION_ID`, `MISSING_SDP`, `MISSING_CANDIDATE`)
+5. Updated focused tests to validate lifecycle call ordering and close hook behavior
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues in modified Dart files
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 82% -> 88%
+3. M3: 50% -> 53%
+
+Estimated completion (updated):
+1. M2 closure: 1 slice
+2. M3 closure: 3-5 slices
+
+---
+
+### Previous Work — M2 Progression (Slice 12: Android Peer-Ops Channel Wiring)
 
 **Commit:** `a1a48c4` — Wire Android WebRTC peer-ops method channel
 

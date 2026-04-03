@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
@@ -145,6 +146,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     Future<bool> Function(String wsUrl, String sessionId)? reconnectRunner,
     Duration writeAckTimeout = const Duration(seconds: 10),
     int maxWriteRetryAttempts = 3,
+    int inboundDedupeCapacity = 512,
+    Future<void> Function(String table, List<dynamic> rows)? upsertRowsHook,
+    void Function(String table)? notifyChangeHook,
   })
       : _preferWebRtcTransport = preferWebRtcTransport,
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
@@ -154,6 +158,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         _reconnectRunner = reconnectRunner,
         _writeAckTimeout = writeAckTimeout,
         _maxWriteRetryAttempts = maxWriteRetryAttempts,
+        _inboundDedupeCapacity = inboundDedupeCapacity,
+        _upsertRowsHook = upsertRowsHook,
+        _notifyChangeHook = notifyChangeHook,
         super(const WebSyncState());
 
   SyncTransportChannel? _channel;
@@ -171,11 +178,18 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Future<bool> Function(String wsUrl, String sessionId)? _reconnectRunner;
   final Duration _writeAckTimeout;
   final int _maxWriteRetryAttempts;
+  final int _inboundDedupeCapacity;
+  final Future<void> Function(String table, List<dynamic> rows)? _upsertRowsHook;
+  final void Function(String table)? _notifyChangeHook;
   Timer? _heartbeatReconnectTimer;
   int _heartbeatReconnectAttempts = 0;
   bool _heartbeatReconnectInFlight = false;
   final Map<String, _PendingOutboundWrite> _pendingOutboundWrites =
       <String, _PendingOutboundWrite>{};
+    final Map<String, Set<String>> _seenInboundRowIdsByTable =
+      <String, Set<String>>{};
+    final Map<String, ListQueue<String>> _seenInboundRowOrderByTable =
+      <String, ListQueue<String>>{};
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
   final Map<String, int>      _outboundLastSentVersion = {};
@@ -756,10 +770,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     if (table == null || rows == null) return;
 
-    if (rows.isNotEmpty) {
-      await _upsertRows(table, rows);
-      _markOutboundWatermarkFromRows(table, rows);
-      DatabaseHelper.instance.notifyChange(table);
+    final filteredRows = _filterNewInboundRows(table, rows);
+
+    if (filteredRows.isNotEmpty) {
+      await _mergeInboundRows(table, filteredRows);
+      _markOutboundWatermarkFromRows(table, filteredRows);
+      _notifyTableChanged(table);
     }
 
     if (isFinal) {
@@ -779,10 +795,74 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     final table = msg['table'] as String?;
     final rows  = msg['rows']  as List<dynamic>?;
     if (table == null || rows == null || rows.isEmpty) return;
+    final filteredRows = _filterNewInboundRows(table, rows);
+    if (filteredRows.isEmpty) {
+      debugPrint('[WebSync] PUSH deduped: $table (${rows.length} duplicate row(s))');
+      return;
+    }
+
+    await _mergeInboundRows(table, filteredRows);
+    _markOutboundWatermarkFromRows(table, filteredRows);
+    _notifyTableChanged(table);
+    debugPrint('[WebSync] PUSH: $table (${filteredRows.length} row(s))');
+  }
+
+  List<dynamic> _filterNewInboundRows(String table, List<dynamic> rows) {
+    final seenIds = _seenInboundRowIdsByTable.putIfAbsent(
+      table,
+      () => <String>{},
+    );
+    final seenOrder = _seenInboundRowOrderByTable.putIfAbsent(
+      table,
+      () => ListQueue<String>(),
+    );
+
+    final filtered = <dynamic>[];
+    for (final row in rows) {
+      if (row is! Map) {
+        filtered.add(row);
+        continue;
+      }
+
+      final syncId = row['sync_id']?.toString();
+      if (syncId == null || syncId.isEmpty) {
+        filtered.add(row);
+        continue;
+      }
+      if (seenIds.contains(syncId)) {
+        continue;
+      }
+
+      seenIds.add(syncId);
+      seenOrder.addLast(syncId);
+      while (seenOrder.length > _inboundDedupeCapacity) {
+        final evicted = seenOrder.removeFirst();
+        seenIds.remove(evicted);
+      }
+      filtered.add(row);
+    }
+
+    return filtered;
+  }
+
+  Future<void> _mergeInboundRows(String table, List<dynamic> rows) async {
+    final hook = _upsertRowsHook;
+    if (hook != null) {
+      await hook(table, rows);
+      return;
+    }
+
     await _upsertRows(table, rows);
-    _markOutboundWatermarkFromRows(table, rows);
+  }
+
+  void _notifyTableChanged(String table) {
+    final hook = _notifyChangeHook;
+    if (hook != null) {
+      hook(table);
+      return;
+    }
+
     DatabaseHelper.instance.notifyChange(table);
-    debugPrint('[WebSync] PUSH: $table (${rows.length} row(s))');
   }
 
   /// Handles the phone's SYNC_PLAN message: logs the advertised tables so
@@ -1131,6 +1211,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _latestRemoteAnswerSdp = null;
     _remoteIceCandidates.clear();
     _pendingOutboundWrites.clear();
+    _seenInboundRowIdsByTable.clear();
+    _seenInboundRowOrderByTable.clear();
     _outboundLastSentAt.clear();
     _outboundLastSentVersion.clear();
     _snapshotSentTables.clear();

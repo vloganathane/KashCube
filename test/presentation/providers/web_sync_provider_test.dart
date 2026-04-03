@@ -186,4 +186,86 @@ void main() {
       notifier.dispose();
     });
   });
+
+  group('WebSyncNotifier inbound replay dedupe', () {
+    test('dedupes replayed PUSH rows by sync_id before merge and notify', () async {
+      final mergedTables = <String>[];
+      final mergedRowCounts = <int>[];
+      final notifiedTables = <String>[];
+      final notifier = WebSyncNotifier(
+        upsertRowsHook: (table, rows) async {
+          mergedTables.add(table);
+          mergedRowCounts.add(rows.length);
+        },
+        notifyChangeHook: (table) {
+          notifiedTables.add(table);
+        },
+      );
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'PUSH',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
+        ],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'PUSH',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
+        ],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(mergedTables, ['transactions']);
+      expect(mergedRowCounts, [1]);
+      expect(notifiedTables, ['transactions']);
+
+      notifier.dispose();
+    });
+
+    test('dedupes replayed ROWS rows by sync_id before merge and notify', () async {
+      final mergedTables = <String>[];
+      final mergedRowCounts = <int>[];
+      final notifiedTables = <String>[];
+      final notifier = WebSyncNotifier(
+        upsertRowsHook: (table, rows) async {
+          mergedTables.add(table);
+          mergedRowCounts.add(rows.length);
+        },
+        notifyChangeHook: (table) {
+          notifiedTables.add(table);
+        },
+      );
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'ROWS',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
+        ],
+        'is_final': false,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      notifier.ingestMessageForTest(<String, dynamic>{
+        'type': 'ROWS',
+        'table': 'transactions',
+        'rows': <Map<String, dynamic>>[
+          <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
+        ],
+        'is_final': false,
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+
+      expect(mergedTables, ['transactions']);
+      expect(mergedRowCounts, [1]);
+      expect(notifiedTables, ['transactions']);
+
+      notifier.dispose();
+    });
+  });
 }

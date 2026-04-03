@@ -50,7 +50,7 @@ Connection policy is direct-first with relay fallback:
 
 | Milestone | Owner | Target Date | Status | Exit Criteria |
 | --- | --- | --- | --- | --- |
-| M1: Signaling protocol freeze (v1) | Sync Lead | 2026-04-10 | In Progress | Offer/answer/ICE schema finalized and reviewed in docs |
+| M1: Signaling protocol freeze (v1) | Sync Lead | 2026-04-10 | Done | Offer/answer/ICE schema finalized in docs with coordinator guard contract tests |
 | M2: Transport adapter integration | App Lead | 2026-04-17 | In Progress | WebRTC DataChannel adapter wired behind sync transport interface |
 | M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | In Progress | Phone and browser complete authenticated sync over local signaling |
 | M4: Reliability hardening | QA Lead | 2026-05-01 | Not Started | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
@@ -83,7 +83,7 @@ The migration is being delivered in guarded slices so existing LAN WebSocket beh
 3. Maintain queue/replay behavior for ICE received before answer.
 4. Add lifecycle cleanup hooks for session close and stale-state pruning.
 
-Status: In Progress (substantially complete)
+Status: Done
 
 ### Phase B: Transport Boundary and Runtime Staging (M2)
 
@@ -133,9 +133,9 @@ Status: Not Started
 
 ### Current Progress Snapshot
 
-1. M1: approximately 85% complete.
-2. M2: approximately 70% complete.
-3. M3: approximately 45% complete.
+1. M1: 100% complete.
+2. M2: approximately 75% complete.
+3. M3: approximately 47% complete.
 4. M4-M6: pending.
 
 ### Immediate Next Slices

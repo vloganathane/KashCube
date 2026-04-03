@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**Signaling + local offer/answer negotiation** now working (M1–M2 checkpoint). LocalPeerConnectionAdapter generates synthetic answer SDPs for each browser offer, completing full handshake locally. Ready for WebRTC engine wiring.
+**M1 signaling protocol freeze is now closed** with explicit coordinator contract tests for ordering/error ACK semantics. Transport staging (M2) and local end-to-end bring-up (M3) continue next.
 
 ## Transparent Slice Reporting Contract
 
@@ -32,9 +32,9 @@ Starting now, every slice completion update will include this exact status block
 
 Current transparent baseline:
 
-1. M1: 85% complete
-2. M2: 70% complete
-3. M3: 45% complete
+1. M1: 100% complete
+2. M2: 75% complete
+3. M3: 47% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
@@ -43,7 +43,36 @@ Current estimated completion (if no blockers):
 2. M2 closure: 2-3 slices
 3. M3 closure: 4-6 slices
 
-### Latest Work — WebRTC Signaling (Slice 6: Queued ICE Replay)
+### Latest Work — M1 Closure (Slice 10: Signaling Contract Validation)
+
+**Commit:** `7aa0b5c` — Add M1 signaling contract guard tests for coordinator
+
+Completed M1 closure guard coverage in coordinator tests:
+1. Missing `session_id` returns `SIGNAL_ERROR` with `MISSING_SESSION_ID`
+2. `SIGNAL_ANSWER` before offer returns `SIGNAL_ERROR` with `ANSWER_BEFORE_OFFER`
+3. Duplicate offer in same session returns `SIGNAL_ERROR` with `DUPLICATE_OFFER`
+4. ICE before answer returns `SIGNAL_ACK` with `ice_queued_waiting_for_answer`
+
+Added targeted test hooks to drive deterministic signaling frame tests:
+1. `handleWebSignalFrameForTest(...)`
+2. `clearWebSignalStateForTest()`
+
+**Validation:**
+- Focused tests: `test/data/services/p2p/p2p_coordinator_test.dart` ✅
+- `flutter analyze`: 35 baseline issues, 0 new hard errors ✅
+
+**Milestone delta (this slice):**
+1. M1: 90% -> 100%
+2. M2: 75% -> 75%
+3. M3: 47% -> 47%
+
+**Estimated completion (updated):**
+1. M2 closure: 2-3 slices
+2. M3 closure: 4-6 slices
+
+---
+
+### Previous Work — WebRTC Signaling (Slice 6: Queued ICE Replay)
 
 **Commit:** `c9facd3` — Add queued ICE replay progression for signaling state
 

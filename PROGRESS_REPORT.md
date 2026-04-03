@@ -1,13 +1,13 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** Reliability Hardening (M4) ✅ · M1 ✅ · M2 ✅ · M3 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** Anywhere Mode Infrastructure (M5) 🔄 · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
 
-**M4 is now complete**: heartbeat, reconnect/resume, WRITE ack/retry, inbound replay dedupe, and disconnect cleanup coverage are all in place for the local hybrid transport path.
+**M5 has started with feature-gated cloud signaling scaffolding**: explicit signaling mode policy is now in place, cloud mode is fail-closed by default, and runtime falls back to local signaling without introducing network behavior.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,8 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5-M6: pending
+5. M5: 12% complete
+6. M6: pending
 
 Current estimated completion (if no blockers):
 
@@ -45,6 +46,37 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
+5. M5 closure: 4-6 slices
+
+### Latest Work — M5 Progression (Slice 27: Feature-Gated Cloud Signaling Scaffold)
+
+**Commit:** `ac0a93d` — Add feature-gated cloud signaling scaffolding
+
+Completed first anywhere-mode infrastructure slice without enabling network behavior:
+1. Added explicit signaling mode policy (`localLan`, `cloudRelay`)
+2. Added cloud signaling placeholder channel that fails closed with `UnsupportedError`
+3. Added provider signaling-mode resolver (`KASHCUBE_SYNC_SIGNALING_MODE`) with local default
+4. Added cloud-mode connect attempt path with deterministic fallback to local signaling
+5. Added focused tests for:
+  - signaling mode selection and channel creation policy
+  - cloud placeholder fail-closed behavior
+  - provider default signaling mode resolver
+
+Validation:
+1. Focused tests: `sync_transport_policy_test.dart` + `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 0% -> 12%
+
+Estimated completion (updated):
+1. M5 closure: 4-6 slices
+
+---
 
 ### Latest Work — M4 Closure (Slice 26: Disconnect Cleanup Integration Coverage)
 

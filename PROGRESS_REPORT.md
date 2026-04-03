@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M1 signaling protocol freeze is now closed** with explicit coordinator contract tests for ordering/error ACK semantics. Transport staging (M2) and local end-to-end bring-up (M3) continue next.
+**Android-native WebRTC peer-ops channel contract is now wired** behind mode-gated transport staging. Default behavior remains noop/fallback-safe while M2 heads toward closure.
 
 ## Transparent Slice Reporting Contract
 
@@ -33,17 +33,44 @@ Starting now, every slice completion update will include this exact status block
 Current transparent baseline:
 
 1. M1: 100% complete
-2. M2: 75% complete
-3. M3: 47% complete
+2. M2: 82% complete
+3. M3: 50% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
-1. M1 closure: 1-2 slices
-2. M2 closure: 2-3 slices
+1. M1 closure: complete
+2. M2 closure: 1-2 slices
 3. M3 closure: 4-6 slices
 
-### Latest Work — M1 Closure (Slice 10: Signaling Contract Validation)
+### Latest Work — M2 Progression (Slice 12: Android Peer-Ops Channel Wiring)
+
+**Commit:** pending (current working tree)
+
+Completed native channel contract wiring for WebRTC peer ops on Android:
+1. Added `kashcube/webrtc_peer_ops` method channel handler in `MainActivity`
+2. Implemented session-scoped in-memory peer state for offer/answer/ICE/datachannel markers
+3. Added method handlers for `setLocalOfferSdp`, `setRemoteAnswerSdp`, `addRemoteIceCandidate`, `ensureDataChannel`
+4. Added validation errors for missing `session_id` / malformed payloads
+5. Added structured debug logs for negotiation state transitions per session
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. `flutter analyze`: 35 baseline issues, 0 new hard errors
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 78% -> 82%
+3. M3: 48% -> 50%
+
+Estimated completion (updated):
+1. M2 closure: 1-2 slices
+2. M3 closure: 3-5 slices
+
+---
+
+### Previous Work — M1 Closure (Slice 10: Signaling Contract Validation)
 
 **Commit:** `7aa0b5c` — Add M1 signaling contract guard tests for coordinator
 

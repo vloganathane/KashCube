@@ -1,5 +1,6 @@
 package com.kashcube.app
 
+import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
 import com.android.installreferrer.api.ReferrerDetails
@@ -16,12 +17,22 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
 
-    private val channelName = "com.kashcube/install_referrer"
+    private val installReferrerChannelName = "com.kashcube/install_referrer"
+    private val webRtcPeerOpsChannelName = "kashcube/webrtc_peer_ops"
+
+    private val peerStateBySession = mutableMapOf<String, PeerSessionState>()
+
+    private data class PeerSessionState(
+        var localOfferSdp: String? = null,
+        var remoteAnswerSdp: String? = null,
+        val remoteIceCandidates: MutableList<Map<String, Any?>> = mutableListOf(),
+        var dataChannelEnsured: Boolean = false,
+    )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, installReferrerChannelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "getReferrer" -> fetchInstallReferrer(
@@ -31,6 +42,79 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, webRtcPeerOpsChannelName)
+            .setMethodCallHandler { call, result ->
+                handleWebRtcPeerOpsMethod(call, result)
+            }
+    }
+
+    private fun handleWebRtcPeerOpsMethod(
+        call: io.flutter.plugin.common.MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val args = call.arguments as? Map<*, *>
+        val sessionId = args?.get("session_id") as? String
+        if (sessionId.isNullOrBlank()) {
+            result.error("MISSING_SESSION_ID", "session_id is required", null)
+            return
+        }
+
+        val state = peerStateBySession.getOrPut(sessionId) { PeerSessionState() }
+
+        when (call.method) {
+            "setLocalOfferSdp" -> {
+                val sdp = args["sdp"] as? String
+                if (sdp.isNullOrBlank()) {
+                    result.error("MISSING_SDP", "sdp is required", null)
+                    return
+                }
+                state.localOfferSdp = sdp
+                logPeerState("setLocalOfferSdp", sessionId, state)
+                result.success(null)
+            }
+
+            "setRemoteAnswerSdp" -> {
+                val sdp = args["sdp"] as? String
+                if (sdp.isNullOrBlank()) {
+                    result.error("MISSING_SDP", "sdp is required", null)
+                    return
+                }
+                state.remoteAnswerSdp = sdp
+                logPeerState("setRemoteAnswerSdp", sessionId, state)
+                result.success(null)
+            }
+
+            "addRemoteIceCandidate" -> {
+                @Suppress("UNCHECKED_CAST")
+                val candidate = args["candidate"] as? Map<String, Any?>
+                if (candidate == null || candidate.isEmpty()) {
+                    result.error("MISSING_CANDIDATE", "candidate is required", null)
+                    return
+                }
+                state.remoteIceCandidates.add(candidate.toMap())
+                logPeerState("addRemoteIceCandidate", sessionId, state)
+                result.success(null)
+            }
+
+            "ensureDataChannel" -> {
+                state.dataChannelEnsured = true
+                logPeerState("ensureDataChannel", sessionId, state)
+                result.success(null)
+            }
+
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun logPeerState(action: String, sessionId: String, state: PeerSessionState) {
+        Log.d(
+            "KashCubeWebRtcPeerOps",
+            "action=$action session=$sessionId hasOffer=${!state.localOfferSdp.isNullOrBlank()} " +
+                "hasAnswer=${!state.remoteAnswerSdp.isNullOrBlank()} " +
+                "iceCount=${state.remoteIceCandidates.size} " +
+                "dataChannel=${state.dataChannelEnsured}",
+        )
     }
 
     /**

@@ -75,6 +75,7 @@ class WebBrowserSession {
   final String deviceName;
 
   bool _authenticated = false;
+  String? _authenticatedSessionId;
   StreamSubscription<dynamic>? _sub;
   bool _disposed = false;
   final Map<String, SyncTablePlan> _syncPlans = {};
@@ -89,6 +90,8 @@ class WebBrowserSession {
   static final Random _rng = Random.secure();
   Timer? _pingTimer;
   Timer? _authTimer;
+
+  String? get authenticatedSessionId => _authenticatedSessionId;
 
   void attach() {
     _attachedAt = DateTime.now();
@@ -270,6 +273,7 @@ class WebBrowserSession {
         : now.difference(_challengeIssuedAt!).inMilliseconds;
 
     _authenticated = true;
+    _authenticatedSessionId = sessionId;
     _sendRaw({
       'type':           SyncSignalingMessages.authOk,
       'device_name':    deviceName,
@@ -432,6 +436,7 @@ class WebBrowserSession {
     _authTimer?.cancel();
     _pingTimer?.cancel();
     _sub?.cancel();
+    _authenticatedSessionId = null;
     try {
       channel.sink.close();
     } catch (e, st) {

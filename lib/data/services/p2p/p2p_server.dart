@@ -293,7 +293,8 @@ class P2pServer {
           // Dispose any existing session (one browser at a time).
           _activeSession?.dispose();
           _addHttpLog('WS  /ws  CONNECTED');
-          final session = WebBrowserSession(
+          late final WebBrowserSession session;
+          session = WebBrowserSession(
             channel:         channel,
             validateToken:   WebSessionService.instance.validateAndConsume,
             validateSession: WebSessionService.instance.validateSession,
@@ -308,7 +309,7 @@ class P2pServer {
               }
             },
             onDisposed: () {
-              final sessionId = WebSessionService.instance.sessionToken;
+              final sessionId = session.authenticatedSessionId;
               unawaited(_webOnSignalSessionClosed?.call(sessionId));
               _activeSession = null;
               if (!_browserConnectionController.isClosed) {

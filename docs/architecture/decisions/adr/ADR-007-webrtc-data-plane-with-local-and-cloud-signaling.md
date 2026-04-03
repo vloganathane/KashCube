@@ -62,6 +62,88 @@ Notes:
 1. Local mode remains default throughout migration.
 2. Anywhere mode stays feature-flagged until M6 sign-off.
 
+## Detailed Implementation Plan (Execution Slices)
+
+The migration is being delivered in guarded slices so existing LAN WebSocket behavior remains stable while WebRTC components are introduced behind explicit policy boundaries.
+
+### Guiding Constraints
+
+1. Do not regress current WebSocket-based sync reliability.
+2. Keep WebRTC components injectable and feature-gated until end-to-end validation is complete.
+3. Preserve local-first behavior as default.
+4. Maintain deterministic signaling state transitions (offer, answer, ICE, replay).
+
+### Phase A: Signaling Control Plane Completion (M1)
+
+1. Finalize signaling schema with ACK and ERROR frame contract.
+2. Enforce session-scoped validation guards:
+	- duplicate offer rejection
+	- answer-before-offer rejection
+	- ICE-before-negotiation rejection
+3. Maintain queue/replay behavior for ICE received before answer.
+4. Add lifecycle cleanup hooks for session close and stale-state pruning.
+
+Status: In Progress (substantially complete)
+
+### Phase B: Transport Boundary and Runtime Staging (M2)
+
+1. Keep `SyncTransportChannel` abstraction stable.
+2. Introduce WebRTC-specific staging components:
+	- negotiation mailbox
+	- runtime snapshot model
+	- bridge contract for DataChannel traffic
+3. Add negotiation-aware bridge shell with artifact buffering and deduplicated ICE handling.
+4. Add peer-ops abstraction with factory injection so implementation can switch between noop and plugin-backed runtimes.
+
+Status: In Progress (core scaffolding complete)
+
+### Phase C: Local End-to-End Data Plane Bring-Up (M3)
+
+1. Implement plugin-backed peer ops (`flutter_webrtc`) behind existing factory hook.
+2. Wire peer ops into bridge shell lifecycle without changing default fallback policy.
+3. Enable controlled WebRTC connect path in policy while preserving WebSocket fallback.
+4. Route sync payload frames through DataChannel stream once channel is established.
+
+Status: In Progress (pending plugin-backed implementation)
+
+### Phase D: Reliability Hardening (M4)
+
+1. Add heartbeat and liveness checks on WebRTC transport.
+2. Implement reconnect and resume behavior for transient failures.
+3. Add ack/retry semantics and dedupe verification at transport boundary.
+4. Expand integration tests for ordering, replay, reconnect, and session cleanup.
+
+Status: Not Started
+
+### Phase E: Anywhere Mode Infrastructure (M5)
+
+1. Introduce cloud signaling backend compatible with existing frame schema.
+2. Add TURN relay fallback path for difficult NAT/firewall environments.
+3. Keep mode opt-in and feature-flagged during beta validation.
+
+Status: Not Started
+
+### Phase F: Security and Release Readiness (M6)
+
+1. Validate app-layer payload encryption and integrity checks over all transport paths.
+2. Verify key handling and rotation behavior for connect-anywhere mode.
+3. Complete threat review and release gate sign-off criteria.
+
+Status: Not Started
+
+### Current Progress Snapshot
+
+1. M1: approximately 85% complete.
+2. M2: approximately 70% complete.
+3. M3: approximately 45% complete.
+4. M4-M6: pending.
+
+### Immediate Next Slices
+
+1. Add concrete plugin-backed peer ops implementation behind existing factory.
+2. Gate runtime selection between noop and plugin-backed peer ops.
+3. Begin controlled activation of WebRTC connect lifecycle with fallback retained.
+
 ## Evidence And Supporting Specs
 
 - `docs/sync/infrastructure/WEBRTC_DATA_PLANE_ARCHITECTURE.md`

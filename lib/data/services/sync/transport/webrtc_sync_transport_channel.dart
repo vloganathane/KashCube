@@ -3,10 +3,12 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'sync_signaling_messages.dart';
 import 'webrtc_data_channel_bridge_shell.dart';
 import 'webrtc_negotiation_mailbox.dart';
 import 'webrtc_peer_ops.dart';
 import 'sync_transport_channel.dart';
+import 'websocket_sync_transport_channel.dart';
 
 class WebRtcNegotiationSnapshot {
   const WebRtcNegotiationSnapshot({
@@ -132,23 +134,25 @@ class InMemoryWebRtcPeerRuntime implements WebRtcPeerRuntime {
   }
 }
 
-/// Placeholder for the future WebRTC DataChannel transport adapter.
-///
-/// This intentionally throws today so we can wire transport policy without
-/// changing sync business logic before WebRTC signaling is implemented.
+/// Hybrid transport adapter that keeps WebSocket as control plane while
+/// activating WebRTC DataChannel for eligible sync payloads once ready.
 class WebRtcSyncTransportChannel implements SyncTransportChannel {
   WebRtcSyncTransportChannel({
     WebRtcPeerOpsFactory? peerOpsFactory,
-  }) : _peerOpsFactory = peerOpsFactory ?? ((_) => NoopWebRtcPeerOps());
+    SyncTransportChannel? controlPlaneChannel,
+  }) : _peerOpsFactory = peerOpsFactory ?? ((_) => NoopWebRtcPeerOps()),
+       _controlPlaneChannel = controlPlaneChannel ?? WebSocketSyncTransportChannel();
 
   final WebRtcNegotiationMailbox _mailbox = WebRtcNegotiationMailbox.instance;
   final WebRtcPeerOpsFactory _peerOpsFactory;
+  final SyncTransportChannel _controlPlaneChannel;
   final Map<String, WebRtcPeerRuntime> _runtimeBySession =
       <String, WebRtcPeerRuntime>{};
   final Map<String, WebRtcDataChannelBridge> _bridgeBySession =
       <String, WebRtcDataChannelBridge>{};
   final StreamController<dynamic> _inboundController =
       StreamController<dynamic>.broadcast();
+  StreamSubscription<dynamic>? _controlPlaneSub;
 
   String? _activeSessionId;
 
@@ -235,9 +239,6 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
   }
 
   /// Register a concrete data channel bridge for a session.
-  ///
-  /// This does not change existing fallback behavior because `connect()` still
-  /// throws until full WebRTC connection lifecycle is enabled by policy.
   void registerDataChannelBridge({
     required String sessionId,
     required WebRtcDataChannelBridge bridge,
@@ -300,10 +301,11 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
 
   @override
   Future<void> connect(Uri uri) async {
-    throw UnsupportedError(
-      'WebRTC transport is not implemented yet. '
-      'Complete signaling + ICE exchange before enabling this policy.',
-    );
+    await _controlPlaneChannel.connect(uri);
+    await _controlPlaneSub?.cancel();
+    _controlPlaneSub = _controlPlaneChannel.stream.listen((raw) {
+      _inboundController.add(raw);
+    });
   }
 
   @override
@@ -311,14 +313,45 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
 
   @override
   void sendJson(Map<String, dynamic> payload) {
+    final type = payload['type']?.toString().toUpperCase() ?? '';
+    if (SyncSignalingMessages.isControlPlaneType(type)) {
+      _controlPlaneChannel.sendJson(payload);
+      return;
+    }
+
+    if (_shouldUseDataPlane(type)) {
+      _sendViaDataPlane(payload);
+      return;
+    }
+
+    _controlPlaneChannel.sendJson(payload);
+  }
+
+  bool _shouldUseDataPlane(String type) {
+    if (!SyncSignalingMessages.isDataPlaneEligibleType(type)) {
+      return false;
+    }
+
     final sessionId = _activeSessionId;
     if (sessionId == null || sessionId.isEmpty) {
-      throw StateError('WebRTC transport is not connected');
+      return false;
+    }
+
+    final bridge = _bridgeBySession[sessionId];
+    return bridge is WebRtcDataChannelBridgeShell && bridge.isDataChannelReady;
+  }
+
+  void _sendViaDataPlane(Map<String, dynamic> payload) {
+    final sessionId = _activeSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      _controlPlaneChannel.sendJson(payload);
+      return;
     }
 
     final bridge = _bridgeBySession[sessionId];
     if (bridge == null) {
-      throw StateError('WebRTC data channel bridge not registered');
+      _controlPlaneChannel.sendJson(payload);
+      return;
     }
 
     final frame = jsonEncode(payload);
@@ -331,6 +364,9 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     for (final sessionId in sessions) {
       await unregisterDataChannelBridge(sessionId);
     }
+    await _controlPlaneSub?.cancel();
+    _controlPlaneSub = null;
+    await _controlPlaneChannel.close();
     await _inboundController.close();
   }
 }

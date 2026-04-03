@@ -42,4 +42,41 @@ class SyncSignalingMessages {
   static bool requiresCandidate(String type) {
     return type == signalIceCandidate;
   }
+
+  static bool isControlPlaneType(String type) {
+    switch (type) {
+      case auth:
+      case sessionAuth:
+      case authBegin:
+      case authOk:
+      case authChallenge:
+      case authFail:
+      case ping:
+      case pong:
+      case signalOffer:
+      case signalAnswer:
+      case signalIceCandidate:
+      case signalAck:
+      case signalError:
+      case signalUnsupported:
+      case webRtcRuntime:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  static bool isDataPlaneEligibleType(String type) {
+    switch (type) {
+      case pull:
+      case rows:
+      case write:
+      case writeOk:
+      case push:
+      case syncPlan:
+        return true;
+      default:
+        return false;
+    }
+  }
 }

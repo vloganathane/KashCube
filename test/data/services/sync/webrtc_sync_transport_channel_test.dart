@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
+import 'package:kash_cube/data/services/sync/transport/sync_transport_channel.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_peer_ops.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_sync_transport_channel.dart';
@@ -26,6 +26,36 @@ class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
   @override
   Future<void> close() async {
     await _inbound.close();
+  }
+}
+
+class _FakeControlPlaneChannel implements SyncTransportChannel {
+  final StreamController<dynamic> _stream = StreamController<dynamic>.broadcast();
+  final List<Map<String, dynamic>> sentPayloads = <Map<String, dynamic>>[];
+  Uri? connectedUri;
+  bool closed = false;
+
+  @override
+  Future<void> connect(Uri uri) async {
+    connectedUri = uri;
+  }
+
+  @override
+  Stream<dynamic> get stream => _stream.stream;
+
+  @override
+  void sendJson(Map<String, dynamic> payload) {
+    sentPayloads.add(Map<String, dynamic>.from(payload));
+  }
+
+  void emitInbound(dynamic payload) {
+    _stream.add(payload);
+  }
+
+  @override
+  Future<void> close() async {
+    closed = true;
+    await _stream.close();
   }
 }
 
@@ -153,7 +183,7 @@ void main() {
       expect(runtime.remoteAnswerSdp, 'answer-sdp');
     });
 
-    test('registered bridge routes inbound stream and outbound sendJson', () async {
+    test('registered bridge routes inbound stream from bridge', () async {
       final channel = WebRtcSyncTransportChannel();
       final bridge = _FakeWebRtcBridge();
       const sessionId = 'sess-002';
@@ -163,16 +193,22 @@ void main() {
       bridge.pushInbound('{"type":"PING"}');
       await expectLater(channel.stream, emits('{"type":"PING"}'));
 
-      channel.sendJson({'type': 'PONG', 'ok': true});
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
-      expect(bridge.sentFrames, hasLength(1));
-      final decoded = jsonDecode(bridge.sentFrames.first) as Map<String, dynamic>;
-      expect(decoded['type'], 'PONG');
-      expect(decoded['ok'], isTrue);
-
       await channel.unregisterDataChannelBridge(sessionId);
       await channel.close();
+    });
+
+    test('connect wires control plane stream into transport stream', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8080/ws'));
+      controlPlane.emitInbound('{"type":"AUTH_OK"}');
+
+      await expectLater(channel.stream, emits('{"type":"AUTH_OK"}'));
+      expect(controlPlane.connectedUri.toString(), 'ws://127.0.0.1:8080/ws');
+
+      await channel.close();
+      expect(controlPlane.closed, isTrue);
     });
 
     test('noop bridge supports lifecycle registration without throws', () async {
@@ -190,7 +226,7 @@ void main() {
       await channel.close();
     });
 
-    test('bridge shell stores negotiation artifacts and routed outbound frame', () async {
+    test('bridge shell stores negotiation artifacts when registered', () async {
       final channel = WebRtcSyncTransportChannel();
       const sessionId = 'sess-004';
       final bridge = WebRtcDataChannelBridgeShell(sessionId: sessionId)
@@ -200,13 +236,10 @@ void main() {
         ..addRemoteIceCandidate({'candidate': 'ice-b'});
 
       channel.registerDataChannelBridge(sessionId: sessionId, bridge: bridge);
-      channel.sendJson({'type': 'SYNC', 'table': 'transactions'});
-      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(bridge.localOfferSdp, 'offer-sdp');
       expect(bridge.remoteAnswerSdp, 'answer-sdp');
       expect(bridge.remoteIceCandidates.length, 2);
-      expect(bridge.outboundFrames, hasLength(1));
 
       await channel.unregisterDataChannelBridge(sessionId);
       expect(bridge.isClosed, isTrue);
@@ -325,6 +358,33 @@ void main() {
       expect(bridge.hasPeerOps, isTrue);
 
       await channel.unregisterDataChannelBridge('sess-008');
+      await channel.close();
+    });
+
+    test('routes control-plane frames over websocket and eligible payloads over ready data plane', () async {
+      final controlPlane = _FakeControlPlaneChannel();
+      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-011');
+      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-011');
+
+      await channel.connect(Uri.parse('ws://127.0.0.1:8081/ws'));
+      channel.registerDataChannelBridge(sessionId: 'sess-011', bridge: bridge);
+      await bridge.attachPeerOps(peerOps);
+
+      channel.sendJson({'type': SyncSignalingMessages.auth, 'token': 'abc'});
+      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
+
+      expect(controlPlane.sentPayloads, hasLength(2));
+      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.auth);
+      expect(controlPlane.sentPayloads.last['type'], SyncSignalingMessages.write);
+      expect(peerOps.sentDataChannelFrames, isEmpty);
+
+      peerOps.emitReadyEvent();
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
+      expect(peerOps.sentDataChannelFrames, ['{"type":"WRITE","table":"transactions"}']);
+
       await channel.close();
     });
 

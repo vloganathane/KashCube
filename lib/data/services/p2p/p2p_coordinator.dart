@@ -1000,62 +1000,89 @@ class P2pCoordinator {
     debugPrint('[P2pCoordinator] Web signaling frame received: $type');
 
     if (!SyncSignalingMessages.isWebRtcSignalType(type)) {
-      return [
-        {
-          'type': SyncSignalingMessages.signalError,
-          'code': 'UNSUPPORTED_SIGNAL_TYPE',
-          'reason': 'Unsupported signaling frame type',
-          'source_type': type,
-        },
-      ];
+      return [_signalError(
+        code: 'UNSUPPORTED_SIGNAL_TYPE',
+        reason: 'Unsupported signaling frame type',
+        sourceType: type,
+      )];
     }
 
     final sessionId = frame['session_id']?.toString();
     if (sessionId == null || sessionId.isEmpty) {
-      return [
-        {
-          'type': SyncSignalingMessages.signalError,
-          'code': 'MISSING_SESSION_ID',
-          'reason': 'session_id is required for signaling frames',
-          'source_type': type,
-        },
-      ];
+      return [_signalError(
+        code: 'MISSING_SESSION_ID',
+        reason: 'session_id is required for signaling frames',
+        sourceType: type,
+      )];
     }
 
     if (SyncSignalingMessages.requiresSdp(type)) {
       final sdp = frame['sdp']?.toString();
       if (sdp == null || sdp.isEmpty) {
-        return [
-          {
-            'type': SyncSignalingMessages.signalError,
-            'code': 'MISSING_SDP',
-            'reason': 'sdp is required for offer/answer frames',
-            'source_type': type,
-            'session_id': sessionId,
-          },
-        ];
+        return [_signalError(
+          code: 'MISSING_SDP',
+          reason: 'sdp is required for offer/answer frames',
+          sourceType: type,
+          sessionId: sessionId,
+        )];
       }
     }
 
     if (SyncSignalingMessages.requiresCandidate(type) && frame['candidate'] == null) {
-      return [
-        {
-          'type': SyncSignalingMessages.signalError,
-          'code': 'MISSING_ICE_CANDIDATE',
-          'reason': 'candidate is required for ice candidate frames',
-          'source_type': type,
-          'session_id': sessionId,
-        },
-      ];
+      return [_signalError(
+        code: 'MISSING_ICE_CANDIDATE',
+        reason: 'candidate is required for ice candidate frames',
+        sourceType: type,
+        sessionId: sessionId,
+      )];
     }
 
     final sessionState = _webRtcSignalState.putIfAbsent(
       sessionId,
       () => <String, dynamic>{},
     );
+
+    final hasOffer = sessionState.containsKey(SyncSignalingMessages.signalOffer.toLowerCase());
+    final hasAnswer = sessionState.containsKey(SyncSignalingMessages.signalAnswer.toLowerCase());
+
+    if (type == SyncSignalingMessages.signalOffer && hasOffer) {
+      return [_signalError(
+        code: 'DUPLICATE_OFFER',
+        reason: 'Offer already staged for this session',
+        sourceType: type,
+        sessionId: sessionId,
+      )];
+    }
+
+    if (type == SyncSignalingMessages.signalAnswer && !hasOffer) {
+      return [_signalError(
+        code: 'ANSWER_BEFORE_OFFER',
+        reason: 'Answer cannot be processed before an offer',
+        sourceType: type,
+        sessionId: sessionId,
+      )];
+    }
+
+    if (type == SyncSignalingMessages.signalIceCandidate && !hasOffer && !hasAnswer) {
+      return [_signalError(
+        code: 'ICE_BEFORE_NEGOTIATION',
+        reason: 'ICE candidate requires staged offer/answer context',
+        sourceType: type,
+        sessionId: sessionId,
+      )];
+    }
+
+    if (type == SyncSignalingMessages.signalIceCandidate) {
+      final candidates = (sessionState['ice_candidates'] as List<dynamic>?) ?? <dynamic>[];
+      candidates.add(Map<String, dynamic>.from(frame));
+      sessionState['ice_candidates'] = candidates;
+    }
+
     sessionState['updated_at'] = DateTime.now().toUtc().toIso8601String();
     sessionState['session_id'] = sessionId;
-    sessionState[type.toLowerCase()] = Map<String, dynamic>.from(frame);
+    if (type != SyncSignalingMessages.signalIceCandidate) {
+      sessionState[type.toLowerCase()] = Map<String, dynamic>.from(frame);
+    }
 
     final signalId = frame['signal_id']?.toString();
     return [
@@ -1074,6 +1101,21 @@ class P2pCoordinator {
         'session_id': sessionId,
       },
     ];
+  }
+
+  Map<String, dynamic> _signalError({
+    required String code,
+    required String reason,
+    required String sourceType,
+    String? sessionId,
+  }) {
+    return {
+      'type': SyncSignalingMessages.signalError,
+      'code': code,
+      'reason': reason,
+      'source_type': sourceType,
+      if (sessionId != null && sessionId.isNotEmpty) 'session_id': sessionId,
+    };
   }
 
   Future<Map<String, dynamic>> _normalizeIncomingWebRow(

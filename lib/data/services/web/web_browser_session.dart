@@ -385,6 +385,10 @@ class WebBrowserSession {
     final frame = Map<String, dynamic>.from(msg)
       ..['type'] = type;
 
+    // Ensure signaling frames carry a stable session id for coordinator
+    // state-machine routing, even if older browser clients omit it.
+    frame['session_id'] ??= getSessionToken();
+
     try {
       final responses = await handler(frame);
       for (final response in responses) {

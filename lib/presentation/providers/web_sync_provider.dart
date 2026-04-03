@@ -677,6 +677,61 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     disconnect();
   }
 
+  bool get canSendSignaling {
+    final sessionId = url_reader.getSavedSessionId();
+    return state.state == WsConnState.connected &&
+        _channel != null &&
+        sessionId != null &&
+        sessionId.isNotEmpty;
+  }
+
+  void sendSignalOffer({required String sdp}) {
+    _sendSignalFrame(
+      type: SyncSignalingMessages.signalOffer,
+      payload: {'sdp': sdp},
+    );
+  }
+
+  void sendSignalAnswer({required String sdp}) {
+    _sendSignalFrame(
+      type: SyncSignalingMessages.signalAnswer,
+      payload: {'sdp': sdp},
+    );
+  }
+
+  void sendSignalIceCandidate({required Map<String, dynamic> candidate}) {
+    _sendSignalFrame(
+      type: SyncSignalingMessages.signalIceCandidate,
+      payload: {'candidate': candidate},
+    );
+  }
+
+  void _sendSignalFrame({
+    required String type,
+    required Map<String, dynamic> payload,
+  }) {
+    final sessionId = url_reader.getSavedSessionId();
+    if (state.state != WsConnState.connected || _channel == null) {
+      state = state.copyWith(errorMsg: 'Cannot send signaling frame while disconnected');
+      return;
+    }
+    if (sessionId == null || sessionId.isEmpty) {
+      state = state.copyWith(errorMsg: 'Missing session id for signaling');
+      return;
+    }
+
+    final signalId = _newSyncId();
+    _channel!.sendJson({
+      'type': type,
+      'session_id': sessionId,
+      'signal_id': signalId,
+      ...payload,
+    });
+
+    state = state.copyWith(progressMsg: 'Sending signaling frame: $type');
+    debugPrint('[WebSync] Sent signaling frame type=$type signal_id=$signalId');
+  }
+
   void disconnect() {
     _writeTimer?.cancel();
     _writeTimer = null;

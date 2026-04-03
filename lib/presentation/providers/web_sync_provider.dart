@@ -123,6 +123,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Map<String, int>      _outboundLastSentVersion = {};
   final Set<String>           _snapshotSentTables = {};
   Set<String> _pullTables = const <String>{};
+  String? _latestRemoteAnswerSdp;
+  final List<Map<String, dynamic>> _remoteIceCandidates = <Map<String, dynamic>>[];
 
   /// Connect with a QR token (first load) or a session token (page refresh).
   ///
@@ -335,9 +337,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           _handleSyncPlan(msg);
           break;
         case SyncSignalingMessages.signalOffer:
+          debugPrint('[WebSync] SIGNAL_OFFER received - awaiting browser peer wiring');
+          break;
         case SyncSignalingMessages.signalAnswer:
+          _handleIncomingSignalAnswer(msg);
+          break;
         case SyncSignalingMessages.signalIceCandidate:
-          debugPrint('[WebSync] Signaling frame received ($type) - awaiting WebRTC data channel activation');
+          _handleIncomingIceCandidate(msg);
           break;
         case SyncSignalingMessages.signalAck:
           _handleSignalAck(msg);
@@ -363,6 +369,44 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       progressMsg: 'Signaling $sourceType: $status',
     );
     debugPrint('[WebSync] SIGNAL_ACK source=$sourceType status=$status');
+  }
+
+  void _handleIncomingSignalAnswer(Map<String, dynamic> msg) {
+    final sdp = msg['sdp']?.toString();
+    if (sdp == null || sdp.isEmpty) {
+      state = state.copyWith(
+        errorMsg: 'Signaling answer frame missing sdp payload',
+      );
+      debugPrint('[WebSync] SIGNAL_ANSWER ignored: missing sdp');
+      return;
+    }
+
+    _latestRemoteAnswerSdp = sdp;
+    state = state.copyWith(
+      progressMsg: 'Received answer SDP from phone',
+    );
+    debugPrint('[WebSync] SIGNAL_ANSWER received (length=${sdp.length})');
+  }
+
+  void _handleIncomingIceCandidate(Map<String, dynamic> msg) {
+    final raw = msg['candidate'];
+    if (raw is! Map) {
+      debugPrint('[WebSync] SIGNAL_ICE_CANDIDATE ignored: malformed candidate');
+      return;
+    }
+
+    final candidate = Map<String, dynamic>.from(raw);
+    _remoteIceCandidates.add(candidate);
+
+    final replayed = msg['replayed'] == true;
+    final replayTag = replayed ? ' (replayed)' : '';
+    state = state.copyWith(
+      progressMsg: 'Received ICE candidate$replayTag from phone',
+    );
+    debugPrint(
+      '[WebSync] SIGNAL_ICE_CANDIDATE received$replayTag '
+      '(total=${_remoteIceCandidates.length})',
+    );
   }
 
   void _handleSignalError(Map<String, dynamic> msg) {
@@ -685,6 +729,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         sessionId.isNotEmpty;
   }
 
+  String? get latestRemoteAnswerSdp => _latestRemoteAnswerSdp;
+
+  List<Map<String, dynamic>> get remoteIceCandidates =>
+      List<Map<String, dynamic>>.unmodifiable(_remoteIceCandidates);
+
   void sendSignalOffer({required String sdp}) {
     _sendSignalFrame(
       type: SyncSignalingMessages.signalOffer,
@@ -739,6 +788,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _syncEventSub = null;
     _syncPlans.clear();
     _pullTables = const <String>{};
+    _latestRemoteAnswerSdp = null;
+    _remoteIceCandidates.clear();
     _outboundLastSentAt.clear();
     _outboundLastSentVersion.clear();
     _snapshotSentTables.clear();

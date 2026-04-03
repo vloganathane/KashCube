@@ -6,6 +6,8 @@
 
 ## Executive Summary (3 April 2026)
 
+**M6 Slice 34 delivered**: Key rotation check infrastructure for connect-anywhere mode. `SyncKeyRotationPolicy` (sealed status types + `DefaultSyncKeyRotationPolicy` with configurable time/version thresholds) + `SyncKeyRotationChecker` that evaluates `trusted_peers` rows. DB schema v85 adds `key_version` and `key_rotated_at` to `trusted_peers`. M6 is now ~40% complete.
+
 **M6 Slice 33 delivered**: App-layer HMAC-SHA256 per-frame integrity for the cloud signaling transport path. `HmacSyncFrameIntegrityChecker` signs every outbound data-plane frame with `_kash_sig` and silently drops inbound frames whose proof is absent or invalid. Local-first/LAN path is unchanged — the default `PassthroughSyncFrameIntegrityChecker` is a no-op. M6 is now ~20% complete.
 
 **M5 is now complete**: the cloud signaling beta readiness gate validates all preconditions (cloud mode selected, adapter injected, TURN config consistent) before any cloud connect attempt, falling back to local signaling with structured log on failure. M5 closes with fail-closed local-first behavior fully preserved.
@@ -39,7 +41,7 @@ Current transparent baseline:
 3. M3: 100% complete
 4. M4: 100% complete
 5. M5: 100% complete
-6. M6: ~20% complete (Slice 33 done)
+6. M6: ~40% complete (Slices 33–34 done)
 
 Current estimated completion (if no blockers):
 
@@ -48,7 +50,43 @@ Current estimated completion (if no blockers):
 3. M3 closure: complete
 4. M4 closure: complete
 5. M5 closure: complete
-6. M6 closure: ~4-5 slices remaining (key rotation, threat review, release gate)
+6. M6 closure: ~2-3 slices remaining (threat model review, release hardening gate)
+
+### Latest Work — M6 Security and Release Readiness Gate (Slice 34: Key Rotation Check)
+
+**Commit:** `5870489` — M6 Slice 34: Key rotation check for connect-anywhere mode
+
+Added key rotation infrastructure to complete the M6 ADR exit criterion "Verify key handling and rotation behavior":
+
+1. `SyncKeyRotationStatus` sealed class hierarchy — `SyncKeyRotationOk`, `SyncKeyRotationRecommended(reason)`, `SyncKeyRotationRequired(reason)` — pure types with no platform dependencies
+2. `SyncKeyRotationPolicy` abstract + `DefaultSyncKeyRotationPolicy` — evaluates any combination of:
+   - Version floor: `keyVersion < minAcceptableVersion` → Required
+   - Soft age threshold: key age > `recommendRotationAfterDays` (default 30) → Recommended
+   - Hard age threshold: key age > `maxKeyAgeDays` (default 90) → Required
+3. `SyncKeyRotationChecker` — maps `trusted_peers` DB rows to rotation results; uses `key_rotated_at` falling back to `paired_at` for unrotated keys; injectable `clock` for deterministic testing; `evaluateAll()` for batch audit
+4. DB schema v85 (dbVersion 84 → 85): `ALTER TABLE trusted_peers ADD COLUMN key_version INTEGER NOT NULL DEFAULT 1` + `key_rotated_at TEXT` — safe defaults; all existing paired peers default to version 1 with age computed from `paired_at`
+
+Files changed:
+- `lib/data/services/sync/security/sync_key_rotation_policy.dart` (new, 130 lines)
+- `lib/data/services/sync/security/sync_key_rotation_checker.dart` (new, 97 lines)
+- `lib/core/constants/app_constants.dart` (dbVersion 84 → 85)
+- `lib/data/services/database_helper.dart` (v85 migration block added)
+- `lib/data/services/database_helper_tables.dart` (fresh-install DDL updated)
+- `test/data/services/sync/sync_key_rotation_policy_test.dart` (new, ~130 lines)
+- `test/data/services/sync/sync_key_rotation_checker_test.dart` (new, ~230 lines)
+
+Validation:
+1. Focused tests: 29 tests passed (0 failures)
+2. New-file analyze: no issues (2 pre-existing warnings in database_helper.dart unchanged)
+
+Milestone delta (this slice):
+1–5. M1–M5: 100% → 100%
+6. M6: ~20% → ~40%
+
+Estimated completion (updated):
+1. M6 in progress — next slices: threat model review, release hardening gate
+
+---
 
 ### Latest Work — M6 Security and Release Readiness Gate (Slice 33: App-layer Frame Integrity)
 

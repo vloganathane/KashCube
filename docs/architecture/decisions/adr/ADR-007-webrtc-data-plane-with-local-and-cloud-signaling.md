@@ -129,9 +129,11 @@ Status: Done
 2. Verify key handling and rotation behavior for connect-anywhere mode.
 3. Complete threat review and release gate sign-off criteria.
 
-Status: In Progress (~20%)
+Status: In Progress (~40%)
 
 **Slice 33 (commit `8c6d3a9`):** Added `SyncFrameIntegrityChecker` abstract contract with `PassthroughSyncFrameIntegrityChecker` (no-op, local-first default) and `HmacSyncFrameIntegrityChecker` (HMAC-SHA256, constant-time verify, `_kash_sig` field). Wired into `CloudSignalingTransportChannel` — outbound data-plane frames are signed before dispatch; inbound frames missing or failing the proof are dropped before reaching the coordinator. Control-plane frames (AUTH, WebRTC signaling, PING/PONG) are correctly excluded from signing.
+
+**Slice 34 (commit `5870489`):** Added `SyncKeyRotationPolicy`/`SyncKeyRotationChecker` for connect-anywhere key lifecycle. `DefaultSyncKeyRotationPolicy` enforces a version floor, a 30-day soft recommendation, and a 90-day hard requirement. `SyncKeyRotationChecker` evaluates `trusted_peers` rows using `key_rotated_at` → `paired_at` fallback. DB schema v85 adds `key_version` and `key_rotated_at` columns to `trusted_peers` with safe defaults.
 
 ### Current Progress Snapshot
 
@@ -140,12 +142,12 @@ Status: In Progress (~20%)
 3. M3: 100% complete.
 4. M4: 100% complete.
 5. M5: 100% complete.
-6. M6: ~20% in progress (Slice 33 — per-frame HMAC integrity delivered).
+6. M6: ~40% in progress (Slices 33–34 delivered).
 
 ### Immediate Next Slices
 
 1. ~~Validate app-layer payload encryption and integrity checks over all transport paths (M6).~~ ✔ Per-frame HMAC-SHA256 integrity delivered in Slice 33.
-2. Verify key handling and rotation behavior for connect-anywhere mode (key rotation check slice).
+2. ~~Verify key handling and rotation behavior for connect-anywhere mode.~~ ✔ `SyncKeyRotationPolicy` + `SyncKeyRotationChecker` + DB v85 migration delivered in Slice 34.
 3. Complete threat review and release gate sign-off criteria.
 
 ## Evidence And Supporting Specs

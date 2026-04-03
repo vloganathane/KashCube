@@ -462,6 +462,15 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       url_reader.saveSession(sessionId, _wsUrl!);
     }
 
+    final channel = _channel;
+    if (sessionId != null && sessionId.isNotEmpty &&
+        channel is WebRtcSyncTransportChannel) {
+      channel.registerDataChannelBridge(
+        sessionId: sessionId,
+        bridge: NoopWebRtcDataChannelBridge(),
+      );
+    }
+
     await _logDiscoveredSyncPlans();
 
     _outboundLastSentAt.clear();
@@ -823,6 +832,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       _webrtcMailbox.clearSession(sessionId);
       final channel = _channel;
       if (channel is WebRtcSyncTransportChannel) {
+        unawaited(channel.unregisterDataChannelBridge(sessionId));
         channel.clearPeerRuntime(sessionId);
       }
     }

@@ -86,5 +86,20 @@ void main() {
       await channel.unregisterDataChannelBridge(sessionId);
       await channel.close();
     });
+
+    test('noop bridge supports lifecycle registration without throws', () async {
+      final channel = WebRtcSyncTransportChannel();
+      const sessionId = 'sess-003';
+
+      channel.registerDataChannelBridge(
+        sessionId: sessionId,
+        bridge: NoopWebRtcDataChannelBridge(),
+      );
+
+      expect(() => channel.sendJson({'type': 'PING'}), returnsNormally);
+
+      await channel.unregisterDataChannelBridge(sessionId);
+      await channel.close();
+    });
   });
 }

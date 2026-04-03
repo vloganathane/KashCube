@@ -66,6 +66,21 @@ abstract class WebRtcDataChannelBridge {
   Future<void> close();
 }
 
+/// Minimal placeholder bridge for session lifecycle wiring.
+///
+/// This keeps registration/unregistration paths deterministic before the
+/// concrete flutter_webrtc DataChannel bridge is available.
+class NoopWebRtcDataChannelBridge implements WebRtcDataChannelBridge {
+  @override
+  Stream<String> get inboundFrames => const Stream<String>.empty();
+
+  @override
+  Future<void> sendFrame(String jsonFrame) async {}
+
+  @override
+  Future<void> close() async {}
+}
+
 class InMemoryWebRtcPeerRuntime implements WebRtcPeerRuntime {
   InMemoryWebRtcPeerRuntime({required this.sessionId});
 

@@ -15,6 +15,7 @@ import '../../data/services/sync/transport/sync_transport_channel.dart';
 import '../../data/services/sync/transport/webrtc_negotiation_mailbox.dart';
 import '../../data/services/sync/transport/webrtc_peer_ops.dart';
 import '../../data/services/sync/transport/sync_transport_policy.dart';
+import '../../data/services/sync/transport/sync_turn_config_source.dart';
 import '../../data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
 import '../../data/services/sync/transport/webrtc_sync_transport_channel.dart';
 import '../../data/services/sync_event_bus.dart';
@@ -129,7 +130,6 @@ class WebSyncState {
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
   static const String _peerOpsModeEnvKey = 'KASHCUBE_WEBRTC_PEER_OPS_MODE';
   static const String _signalingModeEnvKey = 'KASHCUBE_SYNC_SIGNALING_MODE';
-  static const String _turnRelayModeEnvKey = 'KASHCUBE_SYNC_TURN_RELAY_MODE';
 
   static WebRtcPeerOpsMode resolveDefaultPeerOpsMode() {
     const configured = String.fromEnvironment(
@@ -154,30 +154,14 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
   }
 
-  static SyncTurnRelayMode resolveDefaultTurnRelayMode() {
-    const configuredRaw = String.fromEnvironment(
-      _turnRelayModeEnvKey,
-      defaultValue: 'disabled',
-    );
-    final configured = configuredRaw.toLowerCase();
-    switch (configured) {
-      case 'required':
-      case 'turn_required':
-        return SyncTurnRelayMode.required;
-      case 'preferred':
-      case 'turn_preferred':
-      case 'prefer':
-        return SyncTurnRelayMode.preferred;
-      default:
-        return SyncTurnRelayMode.disabled;
-    }
-  }
+  static SyncTurnConfigSource defaultTurnConfigSource() =>
+      const EnvSyncTurnConfigSource();
 
   WebSyncNotifier({
     bool preferWebRtcTransport = false,
     WebRtcPeerOpsMode? peerOpsMode,
     SyncSignalingMode? signalingMode,
-    SyncTurnRelayMode? turnRelayMode,
+    SyncTurnConfigSource? turnConfigSource,
     String? Function()? sessionIdProvider,
     Duration heartbeatReconnectBaseDelay = const Duration(seconds: 2),
     int maxHeartbeatReconnectAttempts = 3,
@@ -191,7 +175,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       : _preferWebRtcTransport = preferWebRtcTransport,
         _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
         _signalingMode = signalingMode ?? resolveDefaultSignalingMode(),
-        _turnRelayMode = turnRelayMode ?? resolveDefaultTurnRelayMode(),
+        _turnConfigSource = turnConfigSource ?? defaultTurnConfigSource(),
         _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
         _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
         _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
@@ -213,7 +197,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final bool _preferWebRtcTransport;
   final WebRtcPeerOpsMode _peerOpsMode;
   final SyncSignalingMode _signalingMode;
-  final SyncTurnRelayMode _turnRelayMode;
+  final SyncTurnConfigSource _turnConfigSource;
   final String? Function() _sessionIdProvider;
   final Duration _heartbeatReconnectBaseDelay;
   final int _maxHeartbeatReconnectAttempts;
@@ -380,11 +364,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     );
 
     if (_signalingMode == SyncSignalingMode.cloudRelay) {
+      final turnConfig = _turnConfigSource.resolve();
       final cloudChannel = SyncTransportPolicy.createSignaling(
         SyncSignalingMode.cloudRelay,
         transportKind: preferred,
         peerOpsFactory: _buildWebRtcPeerOpsFactory(),
-        turnRelayMode: _turnRelayMode,
+        turnRelayMode: turnConfig.relayMode,
+        relayServerHints: turnConfig.relayServerHints,
       );
       try {
         await cloudChannel.connect(uri);

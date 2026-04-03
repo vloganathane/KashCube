@@ -32,8 +32,9 @@ void main() {
     });
 
     test('defaults to disabled TURN relay mode in app build', () {
-      final mode = WebSyncNotifier.resolveDefaultTurnRelayMode();
-      expect(mode, SyncTurnRelayMode.disabled);
+      final source = WebSyncNotifier.defaultTurnConfigSource();
+      final config = source.resolve();
+      expect(config.relayMode, SyncTurnRelayMode.disabled);
     });
   });
 

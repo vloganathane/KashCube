@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M4 reliability now includes outbound write acknowledgment and retry tracking**: browser-side WRITE frames remain pending until acknowledged, stale writes retry with bounded attempts, and retry exhaustion is surfaced for recovery.
+**M4 reliability now includes inbound replay dedupe**: repeated PUSH/ROWS payloads with the same row `sync_id` are filtered before merge and notify, keeping reconnect replay idempotent at the provider boundary.
 
 ## Transparent Slice Reporting Contract
 
@@ -36,7 +36,7 @@ Current transparent baseline:
 1. M1: 100% complete
 2. M2: 100% complete
 3. M3: 100% complete
-4. M4: 38% complete
+4. M4: 52% complete
 5. M5-M6: pending
 
 Current estimated completion (if no blockers):
@@ -44,7 +44,35 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: complete
-4. M4 closure: 1-3 slices
+4. M4 closure: 1-2 slices
+
+### Latest Work — M4 Progression (Slice 25: Inbound Replay Dedupe)
+
+**Commit:** `3e40574` — Deduplicate replayed inbound sync rows
+
+Completed provider-boundary replay dedupe for inbound sync frames:
+1. Added bounded per-table dedupe cache keyed by row `sync_id`
+2. Replayed `PUSH` rows with already-seen `sync_id` are filtered before merge
+3. Replayed `ROWS` rows with already-seen `sync_id` are filtered before merge
+4. Duplicate-only frames no longer trigger repeat database merge or repeat change notification
+5. Added focused provider tests for:
+  - deduping replayed `PUSH` rows before merge/notify
+  - deduping replayed `ROWS` rows before merge/notify
+
+Validation:
+1. Focused tests: `web_sync_provider_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 38% -> 52%
+
+Estimated completion (updated):
+1. M4 closure: 1-2 slices
+
+---
 
 ### Latest Work — M4 Progression (Slice 24: WRITE Ack/Retry Tracking)
 

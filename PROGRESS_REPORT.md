@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M5 now includes cloud signaling frame mapper with coordinator parity checks**: inbound frames with unrecognized types are silently dropped; outbound frames with missing or unknown types throw `ArgumentError` at the send boundary. All routable types from `SyncSignalingMessages` are registry-tested for bidirectional pass-through.
+**M5 now includes a staged TURN configuration source abstraction**: `SyncTurnConfigSource` decouples TURN config resolution from the provider, allowing env defaults, test doubles, and a future settings-store implementation to plug in without changing the connect path.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,7 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5: 48% complete
+5. M5: 60% complete
 6. M6: pending
 
 Current estimated completion (if no blockers):
@@ -46,7 +46,41 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
-5. M5 closure: 1-3 slices
+5. M5 closure: 1-2 slices
+
+### Latest Work — M5 Progression (Slice 31: Staged TURN Config Source)
+
+**Commit:** `e1a2053` — Add staged TURN config source abstraction and wire into provider
+
+Completed config source abstraction to decouple TURN resolution from the provider:
+1. Added `SyncTurnConfig` value type (relayMode + relayServerHints)
+2. Added `SyncTurnConfigSource` abstract contract with single `resolve()` method
+3. Added `EnvSyncTurnConfigSource` — compile-time env-backed default (behavioral parity with previous inline resolver)
+4. Added `StaticSyncTurnConfigSource` — deterministic test double
+5. Replaced `_turnRelayMode` flat field in `WebSyncNotifier` with `_turnConfigSource`; `_connectTransport` calls `.resolve()` per connect attempt
+6. Replaced `resolveDefaultTurnRelayMode()` static with `defaultTurnConfigSource()` returning `EnvSyncTurnConfigSource`
+7. Added focused tests for:
+  - `SyncTurnConfig` default values and `toString`
+  - `StaticSyncTurnConfigSource` resolve and idempotency
+  - `EnvSyncTurnConfigSource` defaults in test env
+  - abstract contract polymorphism
+  - provider `defaultTurnConfigSource` resolver
+
+Validation:
+1. Focused tests: `sync_turn_config_source_test.dart` + `web_sync_provider_test.dart` — 21 tests passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 48% -> 60%
+
+Estimated completion (updated):
+1. M5 closure: 1-2 slices
+
+---
 
 ### Latest Work — M5 Progression (Slice 30: Cloud Signaling Frame Mapper)
 

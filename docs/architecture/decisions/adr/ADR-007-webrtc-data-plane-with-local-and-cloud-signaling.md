@@ -121,7 +121,7 @@ Status: Done
 2. Add TURN relay fallback path for difficult NAT/firewall environments.
 3. Keep mode opt-in and feature-flagged during beta validation.
 
-Status: In Progress (feature-gated scaffold, adapter seam, TURN relay options scaffold, and cloud frame mapper complete)
+Status: In Progress (feature-gated scaffold, adapter seam, TURN relay options scaffold, cloud frame mapper, and staged TURN config source complete)
 
 ### Phase F: Security and Release Readiness (M6)
 
@@ -137,13 +137,13 @@ Status: Not Started
 2. M2: 100% complete.
 3. M3: 100% complete.
 4. M4: 100% complete.
-5. M5: approximately 48% complete.
+5. M5: approximately 60% complete.
 6. M6: pending.
 
 ### Immediate Next Slices
 
-1. Add staged TURN configuration source wiring behind feature flags.
-2. Add cloud signaling beta readiness gate once frame parity is confirmed in staging.
+1. Add cloud signaling beta readiness gate once frame parity is confirmed in staging.
+2. Complete M5 with end-to-end cloud signaling path validation check.
 3. Preserve local-first mode as default while M5 remains gated.
 
 ## Evidence And Supporting Specs

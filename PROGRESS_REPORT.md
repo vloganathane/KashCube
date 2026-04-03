@@ -1,13 +1,13 @@
 # Kash Cube - Progress Report
 **Date:** 3 April 2026
-**Current Phase:** WebRTC Signaling (M1–M2) 🔄 · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
+**Current Phase:** WebRTC Data Plane (M3) 🔄 · M1 ✅ · M2 ✅ · LAN Sync ✅ · KashCube Web W1 ✅ · Sprint 3 IAP ✅ · Code Review P0–P4 ✅ · Conflict-Free Invoice Numbering ✅
 
 ---
 
 ## Executive Summary (3 April 2026)
 
 
-**WebRTC runtime lifecycle events are now modeled and emitted** across peer-ops implementations, establishing deterministic readiness/teardown signaling for M2 closure.
+**M2 transport staging is now closed** with provider-side runtime frame handling integrated. Focus now shifts to M3 data-plane activation and callback wiring.
 
 ## Transparent Slice Reporting Contract
 
@@ -33,17 +33,45 @@ Starting now, every slice completion update will include this exact status block
 Current transparent baseline:
 
 1. M1: 100% complete
-2. M2: 94% complete
-3. M3: 57% complete
+2. M2: 100% complete
+3. M3: 60% complete
 4. M4-M6: pending
 
 Current estimated completion (if no blockers):
 
 1. M1 closure: complete
-2. M2 closure: 0-1 slices
-3. M3 closure: 3-5 slices
+2. M2 closure: complete
+3. M3 closure: 2-4 slices
 
-### Latest Work — M2 Progression (Slice 14: Runtime Event Propagation)
+### Latest Work — M2 Closure (Slice 15: Runtime Frames Integrated In Provider)
+
+**Commit:** pending (current working tree)
+
+Completed runtime frame integration at browser provider boundary:
+1. Added `WEBRTC_RUNTIME` handling in `WebSyncNotifier` message switch
+2. Implemented runtime event mapping in provider:
+  - `PEER_SESSION_CREATED` -> staged session progress
+  - `DATA_CHANNEL_READY` -> data channel readiness progress
+  - `PEER_SESSION_CLOSED` -> teardown progress
+3. Preserved fallback-safe behavior while making runtime transitions visible to UI state/progress
+
+Validation:
+1. Focused tests: `webrtc_peer_ops_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+3. Android compile: `./gradlew :app:compileDebugKotlin` passed
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 94% -> 100%
+3. M3: 57% -> 60%
+
+Estimated completion (updated):
+1. M2 closure: complete
+2. M3 closure: 2-4 slices
+
+---
+
+### Previous Work — M2 Progression (Slice 14: Runtime Event Propagation)
 
 **Commit:** `9bb1621` — Add WebRTC peer runtime event propagation scaffolding
 

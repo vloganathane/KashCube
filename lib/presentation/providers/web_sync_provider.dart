@@ -382,6 +382,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         case SyncSignalingMessages.signalUnsupported:
           _handleSignalUnsupported(msg);
           break;
+        case SyncSignalingMessages.webRtcRuntime:
+          _handleWebRtcRuntime(msg);
+          break;
         default:
           break;
       }
@@ -475,6 +478,36 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       progressMsg: 'Signaling fallback active: $detail',
     );
     debugPrint('[WebSync] SIGNAL_UNSUPPORTED $detail');
+  }
+
+  void _handleWebRtcRuntime(Map<String, dynamic> msg) {
+    final sessionId = msg['session_id']?.toString() ?? 'unknown';
+    final event = msg['event']?.toString() ?? 'UNKNOWN';
+
+    switch (event) {
+      case 'PEER_SESSION_CREATED':
+        state = state.copyWith(
+          progressMsg: 'WebRTC peer session created',
+        );
+        break;
+      case 'DATA_CHANNEL_READY':
+        state = state.copyWith(
+          progressMsg: 'WebRTC data channel ready',
+        );
+        break;
+      case 'PEER_SESSION_CLOSED':
+        state = state.copyWith(
+          progressMsg: 'WebRTC peer session closed',
+        );
+        break;
+      default:
+        state = state.copyWith(
+          progressMsg: 'WebRTC runtime event: $event',
+        );
+        break;
+    }
+
+    debugPrint('[WebSync] WEBRTC_RUNTIME session=$sessionId event=$event');
   }
 
   Future<void> _handleAuthOk(Map<String, dynamic> msg) async {

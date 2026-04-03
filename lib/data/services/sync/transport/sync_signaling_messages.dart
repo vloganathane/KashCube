@@ -19,6 +19,8 @@ class SyncSignalingMessages {
   static const signalOffer = 'SIGNAL_OFFER';
   static const signalAnswer = 'SIGNAL_ANSWER';
   static const signalIceCandidate = 'SIGNAL_ICE_CANDIDATE';
+  static const signalAck = 'SIGNAL_ACK';
+  static const signalError = 'SIGNAL_ERROR';
   static const signalUnsupported = 'SIGNAL_UNSUPPORTED';
 
   static bool isWebRtcSignalType(String type) {
@@ -30,5 +32,13 @@ class SyncSignalingMessages {
       default:
         return false;
     }
+  }
+
+  static bool requiresSdp(String type) {
+    return type == signalOffer || type == signalAnswer;
+  }
+
+  static bool requiresCandidate(String type) {
+    return type == signalIceCandidate;
   }
 }

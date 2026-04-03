@@ -393,7 +393,8 @@ class WebBrowserSession {
     } catch (e) {
       debugPrint('[WebSession] Signal frame error ($type): $e');
       _sendRaw({
-        'type': SyncSignalingMessages.signalUnsupported,
+        'type': SyncSignalingMessages.signalError,
+        'code': 'SIGNAL_HANDLER_ERROR',
         'reason': 'WebRTC signaling handler error',
         'source_type': type,
       });

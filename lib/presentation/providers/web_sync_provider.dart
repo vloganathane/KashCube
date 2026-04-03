@@ -337,8 +337,16 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         case SyncSignalingMessages.signalOffer:
         case SyncSignalingMessages.signalAnswer:
         case SyncSignalingMessages.signalIceCandidate:
+          debugPrint('[WebSync] Signaling frame received ($type) - awaiting WebRTC data channel activation');
+          break;
+        case SyncSignalingMessages.signalAck:
+          _handleSignalAck(msg);
+          break;
+        case SyncSignalingMessages.signalError:
+          _handleSignalError(msg);
+          break;
         case SyncSignalingMessages.signalUnsupported:
-          debugPrint('[WebSync] Signaling frame received ($type) - WebRTC flow not enabled yet');
+          _handleSignalUnsupported(msg);
           break;
         default:
           break;
@@ -346,6 +354,34 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     } catch (e) {
       debugPrint('[WebSync] Message parse error: $e');
     }
+  }
+
+  void _handleSignalAck(Map<String, dynamic> msg) {
+    final sourceType = msg['source_type']?.toString() ?? 'unknown';
+    final status = msg['status']?.toString() ?? 'accepted';
+    state = state.copyWith(
+      progressMsg: 'Signaling $sourceType: $status',
+    );
+    debugPrint('[WebSync] SIGNAL_ACK source=$sourceType status=$status');
+  }
+
+  void _handleSignalError(Map<String, dynamic> msg) {
+    final code = msg['code']?.toString() ?? 'UNKNOWN_ERROR';
+    final reason = msg['reason']?.toString() ?? 'Signaling error';
+    state = state.copyWith(
+      errorMsg: 'Signaling error ($code): $reason',
+    );
+    debugPrint('[WebSync] SIGNAL_ERROR code=$code reason=$reason');
+  }
+
+  void _handleSignalUnsupported(Map<String, dynamic> msg) {
+    final reason = msg['reason']?.toString() ?? 'WebRTC signaling not available';
+    final code = msg['code']?.toString();
+    final detail = (code == null || code.isEmpty) ? reason : '$reason ($code)';
+    state = state.copyWith(
+      progressMsg: 'Signaling fallback active: $detail',
+    );
+    debugPrint('[WebSync] SIGNAL_UNSUPPORTED $detail');
   }
 
   Future<void> _handleAuthOk(Map<String, dynamic> msg) async {

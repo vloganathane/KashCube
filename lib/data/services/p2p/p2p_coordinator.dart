@@ -110,6 +110,10 @@ class P2pCoordinator {
   // Peer identity IDs currently in an active sync cycle.
   final _activeSyncs = <String>{};
 
+  // Staged signaling frames keyed by browser session id.
+  // This keeps the protocol deterministic while WebRTC peer wiring lands.
+  final Map<String, Map<String, dynamic>> _webRtcSignalState = {};
+
   // In-memory cache of trusted peer identity IDs — kept in sync with the
   // trusted_peers table so _isTrustedPeer() can answer synchronously.
   final _trustedPeerIds = <String>{};
@@ -995,13 +999,79 @@ class P2pCoordinator {
     final type = (frame['type'] as String? ?? '').toUpperCase();
     debugPrint('[P2pCoordinator] Web signaling frame received: $type');
 
-    // Next slice will translate these frames into local WebRTC offer/answer/ICE
-    // processing and return concrete signaling responses.
+    if (!SyncSignalingMessages.isWebRtcSignalType(type)) {
+      return [
+        {
+          'type': SyncSignalingMessages.signalError,
+          'code': 'UNSUPPORTED_SIGNAL_TYPE',
+          'reason': 'Unsupported signaling frame type',
+          'source_type': type,
+        },
+      ];
+    }
+
+    final sessionId = frame['session_id']?.toString();
+    if (sessionId == null || sessionId.isEmpty) {
+      return [
+        {
+          'type': SyncSignalingMessages.signalError,
+          'code': 'MISSING_SESSION_ID',
+          'reason': 'session_id is required for signaling frames',
+          'source_type': type,
+        },
+      ];
+    }
+
+    if (SyncSignalingMessages.requiresSdp(type)) {
+      final sdp = frame['sdp']?.toString();
+      if (sdp == null || sdp.isEmpty) {
+        return [
+          {
+            'type': SyncSignalingMessages.signalError,
+            'code': 'MISSING_SDP',
+            'reason': 'sdp is required for offer/answer frames',
+            'source_type': type,
+            'session_id': sessionId,
+          },
+        ];
+      }
+    }
+
+    if (SyncSignalingMessages.requiresCandidate(type) && frame['candidate'] == null) {
+      return [
+        {
+          'type': SyncSignalingMessages.signalError,
+          'code': 'MISSING_ICE_CANDIDATE',
+          'reason': 'candidate is required for ice candidate frames',
+          'source_type': type,
+          'session_id': sessionId,
+        },
+      ];
+    }
+
+    final sessionState = _webRtcSignalState.putIfAbsent(
+      sessionId,
+      () => <String, dynamic>{},
+    );
+    sessionState['updated_at'] = DateTime.now().toUtc().toIso8601String();
+    sessionState['session_id'] = sessionId;
+    sessionState[type.toLowerCase()] = Map<String, dynamic>.from(frame);
+
+    final signalId = frame['signal_id']?.toString();
     return [
       {
-        'type': SyncSignalingMessages.signalUnsupported,
-        'reason': 'WebRTC signaling flow not implemented yet in coordinator',
+        'type': SyncSignalingMessages.signalAck,
+        'status': 'staged',
         'source_type': type,
+        'session_id': sessionId,
+        if (signalId != null && signalId.isNotEmpty) 'signal_id': signalId,
+      },
+      {
+        'type': SyncSignalingMessages.signalUnsupported,
+        'reason': 'WebRTC peer connection engine is not enabled yet',
+        'code': 'WEBRTC_ENGINE_NOT_READY',
+        'source_type': type,
+        'session_id': sessionId,
       },
     ];
   }

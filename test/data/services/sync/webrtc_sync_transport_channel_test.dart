@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_data_channel_bridge_shell.dart';
+import 'package:kash_cube/data/services/sync/transport/webrtc_peer_ops.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_sync_transport_channel.dart';
 
 class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
@@ -25,6 +26,34 @@ class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
   @override
   Future<void> close() async {
     await _inbound.close();
+  }
+}
+
+class _FakeWebRtcPeerOps implements WebRtcPeerOps {
+  String? localOfferSdp;
+  String? remoteAnswerSdp;
+  final List<Map<String, dynamic>> remoteIceCandidates =
+      <Map<String, dynamic>>[];
+  int ensureDataChannelCount = 0;
+
+  @override
+  Future<void> addRemoteIceCandidate(Map<String, dynamic> candidate) async {
+    remoteIceCandidates.add(Map<String, dynamic>.from(candidate));
+  }
+
+  @override
+  Future<void> ensureDataChannel() async {
+    ensureDataChannelCount += 1;
+  }
+
+  @override
+  Future<void> setLocalOfferSdp(String sdp) async {
+    localOfferSdp = sdp;
+  }
+
+  @override
+  Future<void> setRemoteAnswerSdp(String sdp) async {
+    remoteAnswerSdp = sdp;
   }
 }
 
@@ -154,6 +183,33 @@ void main() {
 
       await channel.unregisterDataChannelBridge(sessionId);
       await channel.close();
+    });
+
+    test('bridge shell syncs buffered artifacts into attached peer ops', () async {
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-006')
+        ..applyLocalOfferSdp('offer-buffered')
+        ..applyRemoteAnswerSdp('answer-buffered')
+        ..addRemoteIceCandidate({'candidate': 'ice-buffered'});
+      final peerOps = _FakeWebRtcPeerOps();
+
+      await bridge.attachPeerOps(peerOps);
+
+      expect(peerOps.localOfferSdp, 'offer-buffered');
+      expect(peerOps.remoteAnswerSdp, 'answer-buffered');
+      expect(peerOps.remoteIceCandidates, hasLength(1));
+      expect(peerOps.ensureDataChannelCount, 1);
+    });
+
+    test('bridge shell deduplicates ICE before forwarding to peer ops', () async {
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007');
+      final peerOps = _FakeWebRtcPeerOps();
+
+      await bridge.attachPeerOps(peerOps);
+      bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
+      bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
+
+      expect(bridge.remoteIceCandidates, hasLength(1));
+      expect(peerOps.remoteIceCandidates, hasLength(1));
     });
   });
 }

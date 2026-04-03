@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/sync/transport/cloud_signaling_frame_mapper.dart';
 import 'package:kash_cube/data/services/sync/transport/cloud_signaling_transport_channel.dart';
+import 'package:kash_cube/data/services/sync/transport/sync_frame_integrity_checker.dart';
 import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
 
 class _FakeCloudSignalingAdapter implements CloudSignalingAdapter {
@@ -211,6 +213,143 @@ void main() {
 
       expect(mapInboundCalled, 1);
       expect(mapOutboundCalled, 1);
+
+      await channel.close();
+    });
+  });
+
+  group('CloudSignalingTransportChannel integrity checker integration', () {
+    test('passthrough checker (default) does not add _kash_sig on send', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      channel.sendJson(
+        <String, dynamic>{
+          'type': SyncSignalingMessages.write,
+          'sync_id': 'pt-1',
+          'table': 'transactions',
+        },
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(adapter.sentFrames, hasLength(1));
+      expect(adapter.sentFrames.first.containsKey('_kash_sig'), isFalse);
+
+      await channel.close();
+    });
+
+    test('HMAC checker adds _kash_sig to outbound data-plane frames', () async {
+      final checker = HmacSyncFrameIntegrityChecker(
+        secretBytes: utf8.encode('slice-33-test-secret'),
+      );
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        integrityChecker: checker,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      channel.sendJson(
+        <String, dynamic>{
+          'type': SyncSignalingMessages.write,
+          'sync_id': 'hmac-out-1',
+          'table': 'transactions',
+        },
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(adapter.sentFrames, hasLength(1));
+      expect(adapter.sentFrames.first.containsKey('_kash_sig'), isTrue);
+
+      await channel.close();
+    });
+
+    test('HMAC checker does not add _kash_sig to control-plane outbound frames', () async {
+      final checker = HmacSyncFrameIntegrityChecker(
+        secretBytes: utf8.encode('slice-33-test-secret'),
+      );
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        integrityChecker: checker,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      channel.sendJson(
+        <String, dynamic>{'type': SyncSignalingMessages.signalOffer, 'sdp': 'offer'},
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(adapter.sentFrames, hasLength(1));
+      expect(adapter.sentFrames.first.containsKey('_kash_sig'), isFalse);
+
+      await channel.close();
+    });
+
+    test('HMAC checker drops inbound data-plane frame with missing sig', () async {
+      final checker = HmacSyncFrameIntegrityChecker(
+        secretBytes: utf8.encode('slice-33-test-secret'),
+      );
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        integrityChecker: checker,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      final received = <dynamic>[];
+      channel.stream.listen(received.add);
+
+      // Unsigned data-plane frame — should be dropped by verify.
+      adapter.emitInbound(<String, dynamic>{
+        'type': SyncSignalingMessages.push,
+        'table': 'transactions',
+        'rows': <dynamic>[],
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(received, isEmpty);
+
+      await channel.close();
+    });
+
+    test('HMAC checker passes inbound data-plane frame with valid sig', () async {
+      final checker = HmacSyncFrameIntegrityChecker(
+        secretBytes: utf8.encode('slice-33-test-secret'),
+      );
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        integrityChecker: checker,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      final received = <dynamic>[];
+      channel.stream.listen(received.add);
+
+      // Pre-sign the frame with the same checker before emitting inbound.
+      final frame = <String, dynamic>{
+        'type': SyncSignalingMessages.push,
+        'table': 'transactions',
+        'rows': <dynamic>[<String, dynamic>{'sync_id': 'r1'}],
+      };
+      final signed = checker.sign(frame);
+      adapter.emitInbound(signed);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(received, hasLength(1));
+      // Delivered frame must not contain _kash_sig.
+      final decoded = jsonDecode(received.first as String) as Map<String, dynamic>;
+      expect(decoded.containsKey('_kash_sig'), isFalse);
+      expect(decoded['type'], SyncSignalingMessages.push);
 
       await channel.close();
     });

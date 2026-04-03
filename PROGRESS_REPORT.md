@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M2 Progression (Slice 14: Runtime Event Propagation)
 
-**Commit:** pending (current working tree)
+**Commit:** `9bb1621` — Add WebRTC peer runtime event propagation scaffolding
 
 Completed runtime event propagation and readiness signaling scaffolding:
 1. Added peer runtime event model (`PEER_SESSION_CREATED`, `DATA_CHANNEL_READY`, `PEER_SESSION_CLOSED`)

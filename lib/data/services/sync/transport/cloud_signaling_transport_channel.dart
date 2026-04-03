@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'cloud_signaling_frame_mapper.dart';
 import 'sync_transport_channel.dart';
 
 typedef CloudSignalingAdapterFactory = CloudSignalingAdapter Function();
@@ -67,11 +68,14 @@ class CloudSignalingTransportChannel implements SyncTransportChannel {
   CloudSignalingTransportChannel({
     CloudSignalingAdapterFactory? adapterFactory,
     this.sessionOptions = const CloudSignalingSessionOptions(),
-  })
-      : _adapter = (adapterFactory ?? () => CloudSignalingUnavailableAdapter())();
+    CloudSignalingFrameMapper? frameMapper,
+  })  : _adapter =
+            (adapterFactory ?? () => CloudSignalingUnavailableAdapter())(),
+        _mapper = frameMapper ?? const CloudSignalingFrameMapper();
 
   final CloudSignalingAdapter _adapter;
   final CloudSignalingSessionOptions sessionOptions;
+  final CloudSignalingFrameMapper _mapper;
   final StreamController<dynamic> _inboundController =
       StreamController<dynamic>.broadcast();
   StreamSubscription<Map<String, dynamic>>? _inboundSub;
@@ -81,7 +85,10 @@ class CloudSignalingTransportChannel implements SyncTransportChannel {
     await _adapter.connect(uri, options: sessionOptions);
     await _inboundSub?.cancel();
     _inboundSub = _adapter.inboundFrames.listen((frame) {
-      _inboundController.add(jsonEncode(frame));
+      final mapped = _mapper.mapInbound(frame);
+      if (mapped != null) {
+        _inboundController.add(jsonEncode(mapped));
+      }
     });
   }
 
@@ -90,7 +97,8 @@ class CloudSignalingTransportChannel implements SyncTransportChannel {
 
   @override
   void sendJson(Map<String, dynamic> payload) {
-    unawaited(_adapter.sendFrame(Map<String, dynamic>.from(payload)));
+    final mapped = _mapper.mapOutbound(payload);
+    unawaited(_adapter.sendFrame(mapped));
   }
 
   @override

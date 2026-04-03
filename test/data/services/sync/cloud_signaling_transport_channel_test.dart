@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kash_cube/data/services/sync/transport/cloud_signaling_frame_mapper.dart';
 import 'package:kash_cube/data/services/sync/transport/cloud_signaling_transport_channel.dart';
+import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
 
 class _FakeCloudSignalingAdapter implements CloudSignalingAdapter {
   final StreamController<Map<String, dynamic>> _inboundController =
@@ -102,4 +104,139 @@ void main() {
       await channel.close();
     });
   });
+
+  group('CloudSignalingTransportChannel frame mapper integration', () {
+    test('drops inbound frames with unrecognized type', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      final received = <dynamic>[];
+      channel.stream.listen(received.add);
+
+      adapter.emitInbound(<String, dynamic>{'type': 'CLOUD_KEEPALIVE'});
+      adapter.emitInbound(
+        <String, dynamic>{'type': SyncSignalingMessages.ping},
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      // Only the recognized PING frame should arrive.
+      expect(received, hasLength(1));
+      expect(received.first, contains('"type":"PING"'));
+
+      await channel.close();
+    });
+
+    test('drops inbound frames missing type field', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      final received = <dynamic>[];
+      channel.stream.listen(received.add);
+
+      adapter.emitInbound(<String, dynamic>{'payload': 'no-type'});
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(received, isEmpty);
+
+      await channel.close();
+    });
+
+    test('sendJson validates outbound type via mapper', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      // Valid outbound frame should reach the adapter.
+      channel.sendJson(
+        <String, dynamic>{'type': SyncSignalingMessages.signalOffer, 'sdp': 'x'},
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(adapter.sentFrames, hasLength(1));
+      expect(adapter.sentFrames.first['type'], SyncSignalingMessages.signalOffer);
+
+      await channel.close();
+    });
+
+    test('sendJson throws ArgumentError for unrecognized outbound type', () async {
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      expect(
+        () => channel.sendJson(<String, dynamic>{'type': 'CLOUD_ONLY_FRAME'}),
+        throwsArgumentError,
+      );
+
+      await channel.close();
+    });
+
+    test('accepts custom frameMapper injection', () async {
+      var mapInboundCalled = 0;
+      var mapOutboundCalled = 0;
+
+      final customMapper = _CountingMapper(
+        onMapInbound: () => mapInboundCalled += 1,
+        onMapOutbound: () => mapOutboundCalled += 1,
+      );
+
+      final adapter = _FakeCloudSignalingAdapter();
+      final channel = CloudSignalingTransportChannel(
+        adapterFactory: () => adapter,
+        frameMapper: customMapper,
+      );
+
+      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+
+      adapter.emitInbound(
+        <String, dynamic>{'type': SyncSignalingMessages.pong},
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      channel.sendJson(<String, dynamic>{'type': SyncSignalingMessages.ping});
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(mapInboundCalled, 1);
+      expect(mapOutboundCalled, 1);
+
+      await channel.close();
+    });
+  });
+}
+
+// Helper mapper that delegates to the real mapper but invokes callbacks for
+// observability in the injection test.
+class _CountingMapper extends CloudSignalingFrameMapper {
+  _CountingMapper({
+    required this.onMapInbound,
+    required this.onMapOutbound,
+  });
+
+  final void Function() onMapInbound;
+  final void Function() onMapOutbound;
+
+  @override
+  Map<String, dynamic>? mapInbound(Map<String, dynamic> cloudFrame) {
+    onMapInbound();
+    return super.mapInbound(cloudFrame);
+  }
+
+  @override
+  Map<String, dynamic> mapOutbound(Map<String, dynamic> coordinatorFrame) {
+    onMapOutbound();
+    return super.mapOutbound(coordinatorFrame);
+  }
 }

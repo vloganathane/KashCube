@@ -45,7 +45,7 @@ Current estimated completion (if no blockers):
 
 ### Latest Work — M2 Progression (Slice 13: Explicit Peer Session Lifecycle)
 
-**Commit:** pending (current working tree)
+**Commit:** `3b43bdf` — Add explicit WebRTC peer session lifecycle contract
 
 Completed deterministic peer session lifecycle wiring across Dart bridge and Android channel handler:
 1. Added explicit peer ops lifecycle methods: `createPeerSession` and `closePeerSession`

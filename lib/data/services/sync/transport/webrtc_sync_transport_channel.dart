@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'webrtc_data_channel_bridge_shell.dart';
 import 'webrtc_negotiation_mailbox.dart';
+import 'webrtc_peer_ops.dart';
 import 'sync_transport_channel.dart';
 
 class WebRtcNegotiationSnapshot {
@@ -238,6 +240,8 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     _bridgeBySession[sessionId] = bridge;
     _activeSessionId = sessionId;
 
+    _attachDefaultPeerOpsIfNeeded(bridge);
+
     final runtime = _runtimeBySession[sessionId];
     if (runtime != null) {
       _syncBridgeFromRuntime(sessionId: sessionId, state: runtime.state);
@@ -246,6 +250,14 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     bridge.inboundFrames.listen((raw) {
       _inboundController.add(raw);
     });
+  }
+
+  void _attachDefaultPeerOpsIfNeeded(WebRtcDataChannelBridge bridge) {
+    if (bridge is! WebRtcDataChannelBridgeShell || bridge.hasPeerOps) {
+      return;
+    }
+
+    unawaited(bridge.attachPeerOps(NoopWebRtcPeerOps()));
   }
 
   void _syncBridgeFromRuntime({

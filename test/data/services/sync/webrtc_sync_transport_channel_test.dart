@@ -211,5 +211,20 @@ void main() {
       expect(bridge.remoteIceCandidates, hasLength(1));
       expect(peerOps.remoteIceCandidates, hasLength(1));
     });
+
+    test('registering bridge shell auto-attaches default peer ops', () async {
+      final channel = WebRtcSyncTransportChannel();
+      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-008');
+
+      expect(bridge.hasPeerOps, isFalse);
+
+      channel.registerDataChannelBridge(sessionId: 'sess-008', bridge: bridge);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect(bridge.hasPeerOps, isTrue);
+
+      await channel.unregisterDataChannelBridge('sess-008');
+      await channel.close();
+    });
   });
 }

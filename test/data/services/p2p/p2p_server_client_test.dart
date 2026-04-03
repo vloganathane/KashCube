@@ -13,6 +13,8 @@ void main() {
 
   setUpAll(() async {
     await P2pServer.instance.start(
+      localIdentityId: 'local-test-device',
+      localDisplayName: 'KashCube Test Device',
       secretForPeer: (id) async => id == peerId ? sharedSecret : null,
       onPull: (table, afterVersion) async => {
         'table': table,

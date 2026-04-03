@@ -65,6 +65,7 @@ class P2pServer {
   Future<void> Function(String table, Map<String, dynamic> row)? _webOnWrite;
   Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)?
       _webOnSignalFrame;
+  Future<void> Function(String? sessionId)? _webOnSignalSessionClosed;
   Future<Map<String, dynamic>> Function({
     required String fileName,
     required String mimeType,
@@ -82,6 +83,7 @@ class P2pServer {
     required int    schemaVersion,
     required Future<void> Function(String table, Map<String, dynamic> row) onWrite,
     Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)? onSignalFrame,
+    Future<void> Function(String? sessionId)? onSignalSessionClosed,
     required Future<Map<String, dynamic>> Function({
       required String fileName,
       required String mimeType,
@@ -92,6 +94,7 @@ class P2pServer {
     _webSchemaVersion = schemaVersion;
     _webOnWrite       = onWrite;
     _webOnSignalFrame = onSignalFrame;
+    _webOnSignalSessionClosed = onSignalSessionClosed;
     _webOnMediaUpload = onMediaUpload;
     debugPrint('[P2P] Web companion enabled for $deviceName');
   }
@@ -305,6 +308,8 @@ class P2pServer {
               }
             },
             onDisposed: () {
+              final sessionId = WebSessionService.instance.sessionToken;
+              unawaited(_webOnSignalSessionClosed?.call(sessionId));
               _activeSession = null;
               if (!_browserConnectionController.isClosed) {
                 _browserConnectionController.add(false);

@@ -113,6 +113,8 @@ class P2pCoordinator {
   // Staged signaling frames keyed by browser session id.
   // This keeps the protocol deterministic while WebRTC peer wiring lands.
   final Map<String, Map<String, dynamic>> _webRtcSignalState = {};
+  static const Duration _webSignalStateTtl = Duration(minutes: 10);
+  static const int _maxWebSignalSessions = 64;
 
   // In-memory cache of trusted peer identity IDs — kept in sync with the
   // trusted_peers table so _isTrustedPeer() can answer synchronously.
@@ -253,6 +255,7 @@ class P2pCoordinator {
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
+      onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service so the server keeps the CPU awake while a
@@ -322,6 +325,7 @@ class P2pCoordinator {
         schemaVersion: AppConstants.dbVersion,
         onWrite:       _handleWebWrite,
         onSignalFrame: _handleWebSignalFrame,
+        onSignalSessionClosed: _handleWebSignalSessionClosed,
         onMediaUpload: _handleWebMediaUpload,
       );
       return;
@@ -355,6 +359,7 @@ class P2pCoordinator {
       schemaVersion: AppConstants.dbVersion,
       onWrite:       _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
+      onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
     );
     // Arm the wake-lock service (idempotent).
@@ -377,6 +382,7 @@ class P2pCoordinator {
     _webLastPushedVersion.clear();
     _webSyncPlans.clear();
     _tableColumnsCache.clear();
+    _webRtcSignalState.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
 
@@ -400,6 +406,7 @@ class P2pCoordinator {
     _webLastPushedVersion.clear();
     _webSyncPlans.clear();
     _tableColumnsCache.clear();
+    _webRtcSignalState.clear();
     await _syncEventSub?.cancel();
     _syncEventSub = null;
 
@@ -839,6 +846,7 @@ class P2pCoordinator {
       schemaVersion: schemaVersion,
       onWrite:       _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
+      onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
     );
   }
@@ -1037,6 +1045,8 @@ class P2pCoordinator {
       )];
     }
 
+    _pruneStaleWebSignalState();
+
     final sessionState = _webRtcSignalState.putIfAbsent(
       sessionId,
       () => <String, dynamic>{},
@@ -1116,6 +1126,56 @@ class P2pCoordinator {
       'source_type': sourceType,
       if (sessionId != null && sessionId.isNotEmpty) 'session_id': sessionId,
     };
+  }
+
+  Future<void> _handleWebSignalSessionClosed(String? sessionId) async {
+    if (sessionId == null || sessionId.isEmpty) {
+      return;
+    }
+    final removed = _webRtcSignalState.remove(sessionId);
+    if (removed != null) {
+      debugPrint('[P2pCoordinator] Cleared staged signaling state for session $sessionId');
+    }
+  }
+
+  void _pruneStaleWebSignalState() {
+    if (_webRtcSignalState.isEmpty) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    final staleKeys = <String>[];
+    _webRtcSignalState.forEach((sessionId, state) {
+      final updatedRaw = state['updated_at']?.toString();
+      final updatedAt = DateTime.tryParse(updatedRaw ?? '')?.toUtc();
+      if (updatedAt == null || now.difference(updatedAt) > _webSignalStateTtl) {
+        staleKeys.add(sessionId);
+      }
+    });
+
+    for (final sessionId in staleKeys) {
+      _webRtcSignalState.remove(sessionId);
+    }
+
+    if (_webRtcSignalState.length <= _maxWebSignalSessions) {
+      return;
+    }
+
+    final entries = _webRtcSignalState.entries.toList()
+      ..sort((a, b) {
+        final aTs = DateTime.tryParse(a.value['updated_at']?.toString() ?? '')
+                ?.toUtc() ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        final bTs = DateTime.tryParse(b.value['updated_at']?.toString() ?? '')
+                ?.toUtc() ??
+            DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        return aTs.compareTo(bTs);
+      });
+
+    final overflow = _webRtcSignalState.length - _maxWebSignalSessions;
+    for (var i = 0; i < overflow && i < entries.length; i++) {
+      _webRtcSignalState.remove(entries[i].key);
+    }
   }
 
   Future<Map<String, dynamic>> _normalizeIncomingWebRow(

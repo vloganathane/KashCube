@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/p2p/p2p_coordinator.dart';
 import 'package:kash_cube/data/services/p2p/p2p_discovery_service.dart';
+import 'package:kash_cube/data/services/sync/transport/sync_signaling_messages.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,6 +71,10 @@ Future<Database> _openTestDb() async {
 // ─────────────────────────────────────────────────────────────────────────────
 
 void main() {
+  setUp(() {
+    P2pCoordinator.instance.clearWebSignalStateForTest();
+  });
+
   // ── Initial-state tests ────────────────────────────────────────────────────
 
   group('P2pCoordinator — initial state', () {
@@ -266,6 +271,64 @@ void main() {
         SyncPhase.done,
         SyncPhase.error,
       ]));
+    });
+  });
+
+  group('P2pCoordinator signaling contract (M1)', () {
+    test('returns SIGNAL_ERROR when session_id is missing', () async {
+      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalOffer,
+        'sdp': 'v=0',
+      });
+
+      expect(responses, hasLength(1));
+      expect(responses.first['type'], SyncSignalingMessages.signalError);
+      expect(responses.first['code'], 'MISSING_SESSION_ID');
+    });
+
+    test('rejects answer before offer', () async {
+      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalAnswer,
+        'session_id': 'sess-a1',
+        'sdp': 'v=0',
+      });
+
+      expect(responses.first['type'], SyncSignalingMessages.signalError);
+      expect(responses.first['code'], 'ANSWER_BEFORE_OFFER');
+    });
+
+    test('rejects duplicate offer for same session', () async {
+      await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalOffer,
+        'session_id': 'sess-dup',
+        'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
+      });
+
+      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalOffer,
+        'session_id': 'sess-dup',
+        'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
+      });
+
+      expect(responses.first['type'], SyncSignalingMessages.signalError);
+      expect(responses.first['code'], 'DUPLICATE_OFFER');
+    });
+
+    test('queues ICE and responds with SIGNAL_ACK while waiting for answer', () async {
+      await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalOffer,
+        'session_id': 'sess-ice-q',
+        'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
+      });
+
+      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
+        'type': SyncSignalingMessages.signalIceCandidate,
+        'session_id': 'sess-ice-q',
+        'candidate': {'candidate': 'ice-1'},
+      });
+
+      expect(responses.first['type'], SyncSignalingMessages.signalAck);
+      expect(responses.first['status'], 'ice_queued_waiting_for_answer');
     });
   });
 }

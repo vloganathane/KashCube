@@ -706,6 +706,21 @@ class P2pCoordinator {
     );
   }
 
+  /// Test hook for signaling state-machine validation.
+  @visibleForTesting
+  Future<List<Map<String, dynamic>>> handleWebSignalFrameForTest(
+    Map<String, dynamic> frame,
+  ) {
+    return _handleWebSignalFrame(frame);
+  }
+
+  /// Clears staged signaling state and adapters between tests.
+  @visibleForTesting
+  void clearWebSignalStateForTest() {
+    _webRtcSignalState.clear();
+    _webRtcAdapters.clear();
+  }
+
   /// Stamps `last_seen_at` on the [TrustedPeer] row.
   Future<void> _stampLastSeen(Database db, String peerIdentityId) async {
     await db.rawUpdate(

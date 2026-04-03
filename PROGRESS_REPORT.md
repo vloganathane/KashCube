@@ -6,6 +6,7 @@
 
 ## Executive Summary (3 April 2026)
 
+**M6 Slice 33 delivered**: App-layer HMAC-SHA256 per-frame integrity for the cloud signaling transport path. `HmacSyncFrameIntegrityChecker` signs every outbound data-plane frame with `_kash_sig` and silently drops inbound frames whose proof is absent or invalid. Local-first/LAN path is unchanged — the default `PassthroughSyncFrameIntegrityChecker` is a no-op. M6 is now ~20% complete.
 
 **M5 is now complete**: the cloud signaling beta readiness gate validates all preconditions (cloud mode selected, adapter injected, TURN config consistent) before any cloud connect attempt, falling back to local signaling with structured log on failure. M5 closes with fail-closed local-first behavior fully preserved.
 
@@ -38,7 +39,7 @@ Current transparent baseline:
 3. M3: 100% complete
 4. M4: 100% complete
 5. M5: 100% complete
-6. M6: pending
+6. M6: ~20% complete (Slice 33 done)
 
 Current estimated completion (if no blockers):
 
@@ -47,7 +48,46 @@ Current estimated completion (if no blockers):
 3. M3 closure: complete
 4. M4 closure: complete
 5. M5 closure: complete
-6. M6 closure: next phase
+6. M6 closure: ~4-5 slices remaining (key rotation, threat review, release gate)
+
+### Latest Work — M6 Security and Release Readiness Gate (Slice 33: App-layer Frame Integrity)
+
+**Commit:** `8c6d3a9` — M6 Slice 33: App-layer HMAC-SHA256 frame integrity for cloud sync
+
+Added `SyncFrameIntegrityChecker` contract with two implementations:
+1. `PassthroughSyncFrameIntegrityChecker` — no-op default; preserves full local-first behavior with zero overhead; correct trust boundary for LAN sessions where the existing session token is the authentication layer
+2. `HmacSyncFrameIntegrityChecker({required List<int> secretBytes})` — per-frame HMAC-SHA256 integrity proof added as `_kash_sig` (hex-encoded); lexicographic key canonicalization + `jsonEncode` matches the `P2pAuthService` signing convention already in the codebase; constant-time comparison guards against timing attacks
+
+Wired into `CloudSignalingTransportChannel`:
+- Outbound: `mapOutbound → sign → sendFrame` — data-plane frames leave with `_kash_sig` added
+- Inbound: `mapInbound → verify → emit` — frames without a valid proof are silently dropped before reaching the coordinator
+
+Frame type scoping:
+- Data-plane types signed/verified: `PULL`, `ROWS`, `WRITE`, `WRITE_OK`, `PUSH`, `SYNC_PLAN`
+- Control-plane types pass through unsigned: `AUTH`, `SIGNAL_OFFER`, `SIGNAL_ANSWER`, `PING`, `PONG`
+
+Files changed:
+- `lib/data/services/sync/transport/sync_frame_integrity_checker.dart` (new, 131 lines)
+- `lib/data/services/sync/transport/cloud_signaling_transport_channel.dart` (modified — integrity seam wired)
+- `test/data/services/sync/sync_frame_integrity_checker_test.dart` (new, ~230 lines)
+- `test/data/services/sync/cloud_signaling_transport_channel_test.dart` (modified — 5 integration tests added)
+
+Validation:
+1. Focused tests: 31 tests passed (0 failures)
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 100% -> 100%
+6. M6: 0% -> ~20%
+
+Estimated completion (updated):
+1. M6 in progress — next slices: key rotation check, threat model review, release hardening gate
+
+---
 
 ### Latest Work — M5 Progression (Slice 32: Cloud Signaling Beta Readiness Gate) — M5 CLOSE
 

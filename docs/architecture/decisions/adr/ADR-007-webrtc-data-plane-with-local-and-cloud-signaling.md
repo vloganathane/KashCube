@@ -55,7 +55,7 @@ Connection policy is direct-first with relay fallback:
 | M3: Local mode end-to-end path | Web Companion Lead | 2026-04-24 | Done | Phone and browser complete authenticated sync over local signaling |
 | M4: Reliability hardening | QA Lead | 2026-05-01 | Done | Heartbeat, reconnect, ack/retry, dedupe pass integration test suite |
 | M5: Anywhere mode infrastructure beta | Infra Lead | 2026-05-08 | Done | Cloud signaling plus TURN fallback available in staging |
-| M6: Security and release readiness gate | Security Lead | 2026-05-15 | Not Started | App-layer payload encryption, key rotation checks, and threat review approved |
+| M6: Security and release readiness gate | Security Lead | 2026-05-15 | In Progress | App-layer payload encryption, key rotation checks, and threat review approved |
 
 Notes:
 
@@ -129,7 +129,9 @@ Status: Done
 2. Verify key handling and rotation behavior for connect-anywhere mode.
 3. Complete threat review and release gate sign-off criteria.
 
-Status: Not Started
+Status: In Progress (~20%)
+
+**Slice 33 (commit `8c6d3a9`):** Added `SyncFrameIntegrityChecker` abstract contract with `PassthroughSyncFrameIntegrityChecker` (no-op, local-first default) and `HmacSyncFrameIntegrityChecker` (HMAC-SHA256, constant-time verify, `_kash_sig` field). Wired into `CloudSignalingTransportChannel` — outbound data-plane frames are signed before dispatch; inbound frames missing or failing the proof are dropped before reaching the coordinator. Control-plane frames (AUTH, WebRTC signaling, PING/PONG) are correctly excluded from signing.
 
 ### Current Progress Snapshot
 
@@ -138,12 +140,12 @@ Status: Not Started
 3. M3: 100% complete.
 4. M4: 100% complete.
 5. M5: 100% complete.
-6. M6: pending.
+6. M6: ~20% in progress (Slice 33 — per-frame HMAC integrity delivered).
 
 ### Immediate Next Slices
 
-1. Validate app-layer payload encryption and integrity checks over all transport paths (M6).
-2. Verify key handling and rotation behavior for connect-anywhere mode.
+1. ~~Validate app-layer payload encryption and integrity checks over all transport paths (M6).~~ ✔ Per-frame HMAC-SHA256 integrity delivered in Slice 33.
+2. Verify key handling and rotation behavior for connect-anywhere mode (key rotation check slice).
 3. Complete threat review and release gate sign-off criteria.
 
 ## Evidence And Supporting Specs

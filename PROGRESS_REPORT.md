@@ -8,6 +8,41 @@
 
 
 **Signaling + local offer/answer negotiation** now working (M1–M2 checkpoint). LocalPeerConnectionAdapter generates synthetic answer SDPs for each browser offer, completing full handshake locally. Ready for WebRTC engine wiring.
+
+## Transparent Slice Reporting Contract
+
+Starting now, every slice completion update will include this exact status block:
+
+1. Slice ID and objective completed
+2. Files changed and commit hash
+3. Validation status
+  - focused tests pass/fail
+  - `flutter analyze` delta (new issues vs baseline)
+4. Milestone progress delta
+  - M1 percentage change
+  - M2 percentage change
+  - M3 percentage change
+5. Estimated completion
+  - remaining slices for current phase
+  - estimated completion window for current phase
+6. Risk flags
+  - blockers
+  - assumptions
+  - rollback impact
+
+Current transparent baseline:
+
+1. M1: 85% complete
+2. M2: 70% complete
+3. M3: 45% complete
+4. M4-M6: pending
+
+Current estimated completion (if no blockers):
+
+1. M1 closure: 1-2 slices
+2. M2 closure: 2-3 slices
+3. M3 closure: 4-6 slices
+
 ### Latest Work — WebRTC Signaling (Slice 6: Queued ICE Replay)
 
 **Commit:** `c9facd3` — Add queued ICE replay progression for signaling state

@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M4 has started** with heartbeat/liveness checks in the hybrid WebRTC transport: periodic keepalive pings now run on control plane, and heartbeat timeout is surfaced as structured signaling error for recovery orchestration.
+**M4 reliability now includes reconnect/resume orchestration**: heartbeat timeout triggers bounded session-auth reconnect attempts with safe fallback to explicit user reconnect after max retries.
 
 ## Transparent Slice Reporting Contract
 
@@ -36,7 +36,7 @@ Current transparent baseline:
 1. M1: 100% complete
 2. M2: 100% complete
 3. M3: 100% complete
-4. M4: 12% complete
+4. M4: 24% complete
 5. M5-M6: pending
 
 Current estimated completion (if no blockers):
@@ -44,7 +44,37 @@ Current estimated completion (if no blockers):
 1. M1 closure: complete
 2. M2 closure: complete
 3. M3 closure: complete
-4. M4 closure: 3-5 slices
+4. M4 closure: 2-4 slices
+
+### Latest Work — M4 Progression (Slice 23: Reconnect/Resume On Heartbeat Timeout)
+
+**Commit:** `4926d86` — Add heartbeat-timeout reconnect orchestration
+
+Completed bounded reconnect/resume orchestration in browser sync provider:
+1. `SIGNAL_ERROR` with `HEARTBEAT_TIMEOUT` now schedules automatic reconnect attempts
+2. Reconnect uses persisted session authentication path (`SESSION_AUTH`) with bounded retries
+3. Retry scheduling uses incremental delay and avoids overlapping reconnect attempts
+4. On successful recovery, reconnect state is reset and sync reports reconnected
+5. On max retry exhaustion, state transitions to explicit user reconnect message
+6. Added focused provider tests for:
+  - reconnect scheduling when session is available
+  - no reconnect when session context is unavailable
+  - retry stop at max attempts
+
+Validation:
+1. Focused tests: `web_sync_provider_test.dart` + `webrtc_sync_transport_channel_test.dart` passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 12% -> 24%
+
+Estimated completion (updated):
+1. M4 closure: 2-4 slices
+
+---
 
 ### Latest Work — M4 Progression (Slice 22: Heartbeat Liveness Foundation)
 

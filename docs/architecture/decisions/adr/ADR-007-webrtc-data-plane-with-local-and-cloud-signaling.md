@@ -113,7 +113,7 @@ Status: Done
 3. Add ack/retry semantics and dedupe verification at transport boundary.
 4. Expand integration tests for ordering, replay, reconnect, and session cleanup.
 
-Status: In Progress (heartbeat/liveness foundation complete)
+Status: In Progress (heartbeat/liveness and reconnect/resume foundation complete)
 
 ### Phase E: Anywhere Mode Infrastructure (M5)
 
@@ -136,14 +136,14 @@ Status: Not Started
 1. M1: 100% complete.
 2. M2: 100% complete.
 3. M3: 100% complete.
-4. M4: approximately 12% complete.
+4. M4: approximately 24% complete.
 5. M5-M6: pending.
 
 ### Immediate Next Slices
 
-1. Add reconnect and resume behavior on transport heartbeat failure.
-2. Add ack/retry envelope for data-plane eligible payloads.
-3. Add integration tests for ordering, replay, reconnect, and session cleanup.
+1. Add ack/retry envelope for data-plane eligible payloads.
+2. Add integration tests for ordering, replay, reconnect, and session cleanup.
+3. Add dedupe assertions across reconnect boundaries.
 
 ## Evidence And Supporting Specs
 

@@ -7,7 +7,7 @@
 ## Executive Summary (3 April 2026)
 
 
-**M5 now includes TURN relay scaffolding through typed session options**: relay mode preferences are threaded from provider policy into cloud signaling adapter contracts while cloud mode remains feature-gated and fail-closed by default.
+**M5 now includes cloud signaling frame mapper with coordinator parity checks**: inbound frames with unrecognized types are silently dropped; outbound frames with missing or unknown types throw `ArgumentError` at the send boundary. All routable types from `SyncSignalingMessages` are registry-tested for bidirectional pass-through.
 
 ## Transparent Slice Reporting Contract
 
@@ -37,7 +37,7 @@ Current transparent baseline:
 2. M2: 100% complete
 3. M3: 100% complete
 4. M4: 100% complete
-5. M5: 36% complete
+5. M5: 48% complete
 6. M6: pending
 
 Current estimated completion (if no blockers):
@@ -46,7 +46,42 @@ Current estimated completion (if no blockers):
 2. M2 closure: complete
 3. M3 closure: complete
 4. M4 closure: complete
-5. M5 closure: 2-4 slices
+5. M5 closure: 1-3 slices
+
+### Latest Work — M5 Progression (Slice 30: Cloud Signaling Frame Mapper)
+
+**Commit:** `8be9194` — Add cloud signaling frame mapper with coordinator parity checks
+
+Completed frame mapper to enforce schema parity at the cloud transport boundary:
+1. Added `CloudSignalingFrameMapper` with `mapInbound` (drop unknown types) and `mapOutbound` (fail-fast on unrecognized types)
+2. Wired mapper into `CloudSignalingTransportChannel` for both inbound stream filtering and outbound validation
+3. Made mapper injectable for testability and subclassing
+4. Added parity-table test asserting all `SyncSignalingMessages` types round-trip through both directions
+5. Added focused tests for:
+  - all control-plane and data-plane eligible types pass inbound
+  - missing/empty/non-string type fields return null inbound
+  - unrecognized cloud-only types are dropped inbound
+  - all routable types pass outbound
+  - missing/unrecognized types throw `ArgumentError` outbound
+  - transport channel drops unrecognized inbound frames
+  - transport channel validates outbound types via mapper
+  - custom mapper injection is observable
+
+Validation:
+1. Focused tests: `cloud_signaling_frame_mapper_test.dart` + `cloud_signaling_transport_channel_test.dart` — 21 tests passed
+2. Changed-file analyze: no issues
+
+Milestone delta (this slice):
+1. M1: 100% -> 100%
+2. M2: 100% -> 100%
+3. M3: 100% -> 100%
+4. M4: 100% -> 100%
+5. M5: 36% -> 48%
+
+Estimated completion (updated):
+1. M5 closure: 1-3 slices
+
+---
 
 ### Latest Work — M5 Progression (Slice 29: TURN Relay Scaffolding)
 

@@ -5,11 +5,12 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../data/services/database_helper.dart';
 import '../../data/services/sync/generic_sync_query_builder.dart';
 import '../../data/services/sync/sync_table_registry.dart';
+import '../../data/services/sync/transport/sync_transport_channel.dart';
+import '../../data/services/sync/transport/websocket_sync_transport_channel.dart';
 import '../../data/services/sync_event_bus.dart';
 import '../web/web_url_reader_stub.dart'
     if (dart.library.js_interop) '../web/web_url_reader_web.dart'
@@ -106,7 +107,7 @@ class WebSyncState {
 class WebSyncNotifier extends StateNotifier<WebSyncState> {
   WebSyncNotifier() : super(const WebSyncState());
 
-  WebSocketChannel? _channel;
+  SyncTransportChannel? _channel;
   StreamSubscription<dynamic>? _sub;
   StreamSubscription<String>? _syncEventSub;
   Timer? _writeTimer;
@@ -157,8 +158,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       );
 
       final uri = Uri.parse(wsUrl);
-      _channel = WebSocketChannel.connect(uri);
-      await _channel!.ready;
+      final channel = WebSocketSyncTransportChannel();
+      await channel.connect(uri);
+      _channel = channel;
 
       state = state.copyWith(
         authPhase: WebAuthPhase.wsReachable,
@@ -173,10 +175,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       state = state.copyWith(progressMsg: 'Authenticating browser session…');
 
       // Send AUTH or SESSION_AUTH depending on credential type.
-      _channel!.sink.add(jsonEncode({
+      _channel!.sendJson({
         'type':  isSession ? 'SESSION_AUTH' : 'AUTH',
         'token': token,
-      }));
+      });
     } catch (e) {
       state = state.copyWith(
         state:    WsConnState.disconnected,
@@ -222,8 +224,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       );
 
       final uri = Uri.parse(wsUrl);
-      _channel = WebSocketChannel.connect(uri);
-      await _channel!.ready;
+      final channel = WebSocketSyncTransportChannel();
+      await channel.connect(uri);
+      _channel = channel;
 
       state = state.copyWith(
         authPhase: WebAuthPhase.wsReachable,
@@ -237,7 +240,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
       state = state.copyWith(progressMsg: 'Requesting phone approval QR…');
 
-      _channel!.sink.add(jsonEncode({'type': 'AUTH_BEGIN'}));
+      _channel!.sendJson({'type': 'AUTH_BEGIN'});
     } catch (e) {
       state = state.copyWith(
         state: WsConnState.disconnected,
@@ -297,7 +300,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           disconnect();
           break;
         case 'PING':
-          _channel?.sink.add(jsonEncode({'type': 'PONG'}));
+          _channel?.sendJson({'type': 'PONG'});
           break;
         case 'PONG':
           // Keepalive acknowledgment for browser-initiated ping (if enabled).
@@ -382,7 +385,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   /// No `since` filter — in-memory DB starts empty on every browser load.
   void _pullAllTables() {
     for (final table in _pullTables) {
-      _channel?.sink.add(jsonEncode({'type': 'PULL', 'table': table}));
+      _channel?.sendJson({'type': 'PULL', 'table': table});
     }
   }
 
@@ -508,12 +511,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         for (final row in rows) {
           final normalized = Map<String, dynamic>.from(row);
           normalized['sync_id'] ??= _newSyncId();
-          _channel?.sink.add(jsonEncode({
+          _channel?.sendJson({
             'type': 'WRITE',
             'table': table,
             'sync_id': normalized['sync_id'],
             'row': normalized,
-          }));
+          });
         }
 
         // Advance watermark after successful push.
@@ -625,7 +628,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     _outboundLastSentVersion.clear();
     _snapshotSentTables.clear();
     _sub?.cancel();
-    _channel?.sink.close();
+    unawaited(_channel?.close());
     _channel = null;
     _onDisconnected();
   }

@@ -20,6 +20,7 @@ The current architecture ADR set captures the major decisions already visible in
 4. `adr/ADR-004-event-driven-sync-refresh.md`
 5. `adr/ADR-005-defensive-startup-and-graceful-degradation.md`
 6. `adr/ADR-006-no-kashcube-backend-and-local-trust-model.md`
+7. `adr/ADR-007-webrtc-data-plane-with-local-and-cloud-signaling.md`
 
 ### How to read this file
 

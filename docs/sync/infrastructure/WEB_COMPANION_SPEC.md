@@ -4,6 +4,7 @@
 **Date:** 17 March 2026  
 **Status:** Approved — implement as parallel track alongside P2P sync  
 **Reference:** `sample/wifi-mirror/` — `WebServerService`, `SignalingPlatform._startWebSocketServer()`
+**See Also:** `WEBRTC_DATA_PLANE_ARCHITECTURE.md` (draft migration direction for WebRTC data plane)
 
 ---
 

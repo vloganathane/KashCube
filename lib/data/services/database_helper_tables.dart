@@ -59,20 +59,48 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)
       )
     ''');
-    await db.execute('CREATE INDEX idx_transactions_date ON transactions(date DESC)');
-    await db.execute('CREATE INDEX idx_transactions_party ON transactions(party_name)');
-    await db.execute('CREATE INDEX idx_transactions_mode_type ON transactions(mode, type, date DESC)');
-    await db.execute('CREATE INDEX idx_transactions_category ON transactions(category, date DESC)');
-    await db.execute('CREATE INDEX idx_transactions_account ON transactions(account_id)');
-    await db.execute('CREATE INDEX idx_transactions_to_account ON transactions(to_account_id)');
-    await db.execute('CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)');
-    await db.execute('CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_context ON transactions(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_transactions_date ON transactions(date DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_party ON transactions(party_name)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_mode_type ON transactions(mode, type, date DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_category ON transactions(category, date DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_account ON transactions(account_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_to_account ON transactions(to_account_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_context ON transactions(context_id)',
+    );
   }
 
   // ── 2. Credits & Loans ────────────────────────────────────────────────────
@@ -110,12 +138,22 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');
-    await db.execute('CREATE INDEX idx_credits_customer ON credits(customer_name)');
-    await db.execute('CREATE INDEX idx_credits_status ON credits(is_cleared, is_overdue)');
+    await db.execute(
+      'CREATE INDEX idx_credits_customer ON credits(customer_name)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_credits_status ON credits(is_cleared, is_overdue)',
+    );
     await db.execute('CREATE INDEX idx_credits_due_date ON credits(due_date)');
-    await db.execute('CREATE INDEX idx_credits_pending ON credits(pending_amount DESC)');
-    await db.execute('CREATE INDEX idx_credits_direction ON credits(direction)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_credits_context ON credits(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_credits_pending ON credits(pending_amount DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_credits_direction ON credits(direction)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_credits_context ON credits(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE credit_payments (
@@ -138,9 +176,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (transaction_id) REFERENCES transactions(id)
       )
     ''');
-    await db.execute('CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)');
-    await db.execute('CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_context ON credit_payments(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_credit_payments_context ON credit_payments(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE loans (
@@ -182,10 +226,14 @@ extension _DatabaseTableCreators on DatabaseHelper {
       )
     ''');
     await db.execute('CREATE INDEX idx_loans_lender ON loans(lender_name)');
-    await db.execute('CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)');
+    await db.execute(
+      'CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)',
+    );
     await db.execute('CREATE INDEX idx_loans_next_emi ON loans(next_emi_date)');
     await db.execute('CREATE INDEX idx_loans_direction ON loans(direction)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_loans_context ON loans(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_loans_context ON loans(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE loan_payments (
@@ -208,9 +256,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_loan_payments_loan ON loan_payments(loan_id)');
-    await db.execute('CREATE INDEX idx_loan_payments_due ON loan_payments(due_date)');
-    await db.execute('CREATE INDEX idx_loan_payments_status ON loan_payments(is_paid, due_date)');
+    await db.execute(
+      'CREATE INDEX idx_loan_payments_loan ON loan_payments(loan_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_loan_payments_due ON loan_payments(due_date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_loan_payments_status ON loan_payments(is_paid, due_date)',
+    );
   }
 
   // ── 3. Parties, Accounts, Categories & Budgets ───────────────────────────
@@ -260,8 +314,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_parties_name ON parties(name)');
     await db.execute('CREATE INDEX idx_parties_phone ON parties(phone_number)');
     await db.execute('CREATE INDEX idx_parties_type ON parties(party_type)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_parties_business_card_media ON parties(business_card_media_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_parties_context ON parties(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_parties_business_card_media ON parties(business_card_media_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_parties_context ON parties(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE accounts (
@@ -290,9 +348,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_accounts_type ON accounts(account_type)');
+    await db.execute(
+      'CREATE INDEX idx_accounts_type ON accounts(account_type)',
+    );
     await db.execute('CREATE INDEX idx_accounts_active ON accounts(is_active)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE categories (
@@ -317,7 +379,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_categories_context ON categories(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_categories_context ON categories(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE budgets (
@@ -337,7 +401,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         UNIQUE(year, month, category)
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_budgets_context ON budgets(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_budgets_context ON budgets(context_id)',
+    );
   }
 
   // ── 4. Scheduling (recurring, settings, bills, scheduled_payments) ────────
@@ -394,7 +460,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_bill_attachments_txn ON bill_attachments(transaction_id)');
+    await db.execute(
+      'CREATE INDEX idx_bill_attachments_txn ON bill_attachments(transaction_id)',
+    );
 
     await db.execute('''
       CREATE TABLE bills (
@@ -418,7 +486,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         updated_by_device_id  TEXT
       )
     ''');
-    await db.execute('CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)');
+    await db.execute(
+      'CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)',
+    );
     await db.execute('CREATE INDEX idx_bills_due ON bills(due_day)');
 
     await db.execute('''
@@ -452,11 +522,21 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)');
-    await db.execute('CREATE INDEX idx_sp_next ON scheduled_payments(next_date)');
-    await db.execute('CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_context ON scheduled_payments(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sp_next ON scheduled_payments(next_date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sp_context ON scheduled_payments(context_id)',
+    );
   }
 
   // ── 5. Businesses & Item Catalog ──────────────────────────────────────────
@@ -494,9 +574,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_businesses_active ON businesses(is_active)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_businesses_logo_media ON businesses(logo_media_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_businesses_context ON businesses(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_businesses_active ON businesses(is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_businesses_logo_media ON businesses(logo_media_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_businesses_context ON businesses(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE media_assets (
@@ -517,9 +603,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_media_id ON media_assets(media_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_sha256 ON media_assets(sha256)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_media_assets_context ON media_assets(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_media_assets_media_id ON media_assets(media_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_media_assets_sha256 ON media_assets(sha256)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_media_assets_context ON media_assets(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE item_catalog (
@@ -531,6 +623,10 @@ extension _DatabaseTableCreators on DatabaseHelper {
         tax_pct REAL NOT NULL DEFAULT 0,
         hsn_code TEXT,
         hsn_or_sac TEXT DEFAULT 'HSN',
+        brand_name TEXT,
+        primary_image_path TEXT,
+        barcode TEXT,
+        additional_properties_json TEXT,
         is_active INTEGER NOT NULL DEFAULT 1,
         business_id INTEGER,
         sku TEXT,
@@ -555,11 +651,21 @@ extension _DatabaseTableCreators on DatabaseHelper {
         context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)');
-    await db.execute('CREATE INDEX idx_item_catalog_category ON item_catalog(category)');
-    await db.execute('CREATE INDEX idx_item_catalog_favorite ON item_catalog(is_favorite)');
-    await db.execute('CREATE INDEX idx_item_catalog_last_used ON item_catalog(last_used_at)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_item_catalog_context ON item_catalog(context_id)');
+    await db.execute(
+      'CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_item_catalog_category ON item_catalog(category)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_item_catalog_favorite ON item_catalog(is_favorite)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_item_catalog_last_used ON item_catalog(last_used_at)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_item_catalog_context ON item_catalog(context_id)',
+    );
   }
 
   // ── 6. Sales (Quotes, Invoices) ───────────────────────────────────────────
@@ -682,10 +788,16 @@ extension _DatabaseTableCreators on DatabaseHelper {
     ''');
     await db.execute('CREATE INDEX idx_invoices_status ON invoices(status)');
     await db.execute('CREATE INDEX idx_invoices_due ON invoices(due_date)');
-    await db.execute('CREATE INDEX idx_invoices_business ON invoices(business_id)');
-    await db.execute('CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
+    await db.execute(
+      'CREATE INDEX idx_invoices_business ON invoices(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)',
+    );
     await db.execute('CREATE INDEX idx_invoices_ewb ON invoices(ewb_no)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_invoices_context ON invoices(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_invoices_context ON invoices(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE invoice_items (
@@ -749,11 +861,21 @@ extension _DatabaseTableCreators on DatabaseHelper {
       )
     ''');
     await db.execute('CREATE INDEX idx_bookings_status ON bookings(status)');
-    await db.execute('CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)');
-    await db.execute('CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)');
-    await db.execute('CREATE INDEX idx_bookings_business ON bookings(business_id)');
-    await db.execute('CREATE INDEX idx_bookings_type ON bookings(booking_type)');
-    await db.execute('CREATE INDEX idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)');
+    await db.execute(
+      'CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_bookings_business ON bookings(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_bookings_type ON bookings(booking_type)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)',
+    );
 
     await db.execute('''
       CREATE TABLE booking_items (
@@ -776,7 +898,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (service_item_id) REFERENCES item_catalog(id)
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)',
+    );
   }
 
   // ── 8. Lookup tables (units, transporters, HSN) ───────────────────────────
@@ -801,7 +925,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         last_used_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS hsn_master (
@@ -811,8 +937,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
         type        TEXT NOT NULL DEFAULT 'HSN'
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)',
+    );
     await _seedHsnMaster(db);
   }
 
@@ -858,10 +988,18 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS delivery_challan_items (
@@ -881,7 +1019,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS document_templates (
@@ -928,11 +1068,14 @@ extension _DatabaseTableCreators on DatabaseHelper {
       )
     ''');
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)');
+      'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)',
+    );
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)');
+      'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)',
+    );
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)');
+      'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS party_addresses (
@@ -1000,11 +1143,21 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_business ON purchase_bills(business_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_bill_date ON purchase_bills(bill_date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_status ON purchase_bills(status)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_rc ON purchase_bills(reverse_charge)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_pb_context ON purchase_bills(context_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pb_business ON purchase_bills(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pb_bill_date ON purchase_bills(bill_date)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pb_status ON purchase_bills(status)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pb_rc ON purchase_bills(reverse_charge)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_pb_context ON purchase_bills(context_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS purchase_bill_items (
@@ -1069,9 +1222,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (item_id) REFERENCES item_catalog(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS item_stock (
@@ -1088,7 +1247,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
       )
     ''');
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)');
+      'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)',
+    );
 
     // ── Lot tracking (Phase B) ──────────────────────────────────────────────
     await db.execute('''
@@ -1114,10 +1274,18 @@ extension _DatabaseTableCreators on DatabaseHelper {
         updated_by_device_id  TEXT
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS lot_movements (
@@ -1135,9 +1303,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         created_at        TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS staff (
@@ -1170,9 +1344,15 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (business_id) REFERENCES businesses(id)
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS salary_payments (
@@ -1199,9 +1379,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)');
     await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)');
+      'CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)',
+    );
   }
 
   // ── 11. Sync & Identity ───────────────────────────────────────────────────
@@ -1223,8 +1406,12 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (linked_party_id) REFERENCES parties(id) ON DELETE SET NULL
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_app_users_party ON app_users(linked_party_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_app_users_party ON app_users(linked_party_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS user_permissions (
@@ -1240,7 +1427,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE
       )
     ''');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_user_perms_user ON user_permissions(user_id)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_user_perms_user ON user_permissions(user_id)',
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS subscription (
@@ -1255,7 +1444,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
         shareable_plan_features TEXT
       )
     ''');
-    await db.execute("INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')");
+    await db.execute(
+      "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')",
+    );
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS plan_features (
@@ -1350,13 +1541,25 @@ extension _DatabaseTableCreators on DatabaseHelper {
         last_activity_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     ''');
-    await db.execute("INSERT OR IGNORE INTO device_session (id, locked) VALUES (1, 0)");
+    await db.execute(
+      "INSERT OR IGNORE INTO device_session (id, locked) VALUES (1, 0)",
+    );
 
     // ── UPDATE triggers (auto-stamp updated_at) ───────────────────────────
     const p0Tables = [
-      'transactions', 'credits', 'credit_payments', 'loans', 'parties',
-      'accounts', 'categories', 'budgets', 'item_catalog', 'scheduled_payments',
-      'businesses', 'invoices', 'purchase_bills',
+      'transactions',
+      'credits',
+      'credit_payments',
+      'loans',
+      'parties',
+      'accounts',
+      'categories',
+      'budgets',
+      'item_catalog',
+      'scheduled_payments',
+      'businesses',
+      'invoices',
+      'purchase_bills',
     ];
     for (final tbl in p0Tables) {
       await db.execute('''
@@ -1373,7 +1576,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
     // ── Unique sync_id indexes ─────────────────────────────────────────────
     for (final tbl in p0Tables) {
       await db.execute(
-          'CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)');
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_${tbl}_sync_id ON $tbl(sync_id)',
+      );
     }
 
     // ── v62: my_identity & linked_business_sessions ───────────────────────

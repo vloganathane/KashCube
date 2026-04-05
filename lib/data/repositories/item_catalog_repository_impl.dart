@@ -12,13 +12,15 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   /// The active context for data isolation.
   final int? contextId;
 
-  String get _ctx =>
-      contextId == null ? 'ic.context_id IS NULL' : 'ic.context_id = $contextId';
+  String get _ctx => contextId == null
+      ? 'ic.context_id IS NULL'
+      : 'ic.context_id = $contextId';
 
   /// Columns from [item_catalog] that are not overridden by [item_stock].
   static const _catalogCols = '''
     ic.id, ic.name, ic.description, ic.sku, ic.category, ic.unit,
     ic.unit_price, ic.tax_pct, ic.hsn_code, ic.hsn_or_sac,
+    ic.brand_name, ic.primary_image_path, ic.barcode, ic.additional_properties_json,
     ic.is_favorite, ic.is_active, ic.last_used_at, ic.usage_count,
     ic.duration_minutes, ic.is_bookable, ic.business_id,
     ic.created_at, ic.updated_at
@@ -43,8 +45,7 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
       args.add(category.name);
     }
 
-    final where =
-        conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+    final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
 
     const orderBy = '''
       ORDER BY
@@ -88,8 +89,11 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   @override
   Future<ItemCatalog?> getById(int id) async {
     final db = await _dbHelper.database;
-    final rows =
-        await db.query('item_catalog', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query(
+      'item_catalog',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     if (rows.isEmpty) return null;
     return ItemCatalog.fromMap(rows.first);
   }
@@ -119,8 +123,12 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   @override
   Future<void> update(ItemCatalog item, {int? activeBusinessId}) async {
     final db = await _dbHelper.database;
-    await db.update('item_catalog', item.toMap(),
-        where: 'id = ?', whereArgs: [item.id]);
+    await db.update(
+      'item_catalog',
+      item.toMap(),
+      where: 'id = ?',
+      whereArgs: [item.id],
+    );
     if (activeBusinessId != null && item.id != null) {
       await _upsertItemStock(
         db,
@@ -137,20 +145,27 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
   Future<void> delete(int id) async {
     final db = await _dbHelper.database;
     // Soft-delete: mark inactive
-    await db.update('item_catalog', {'is_active': 0},
-        where: 'id = ?', whereArgs: [id]);
+    await db.update(
+      'item_catalog',
+      {'is_active': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     _dbHelper.notifyChange('item_catalog');
   }
 
   @override
   Future<void> trackUsage(int itemId) async {
     final db = await _dbHelper.database;
-    await db.rawUpdate('''
+    await db.rawUpdate(
+      '''
       UPDATE item_catalog
       SET usage_count = usage_count + 1,
           last_used_at = ?
       WHERE id = ?
-    ''', [DateTime.now().toIso8601String(), itemId]);
+    ''',
+      [DateTime.now().toIso8601String(), itemId],
+    );
   }
 
   @override
@@ -158,12 +173,15 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
     final db = await _dbHelper.database;
     final prefix = category.skuPrefix;
 
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT sku FROM item_catalog
       WHERE sku LIKE ? AND is_active = 1
       ORDER BY sku DESC
       LIMIT 1
-    ''', ['$prefix-%']);
+    ''',
+      ['$prefix-%'],
+    );
 
     int nextNumber = 1;
     if (result.isNotEmpty && result.first['sku'] != null) {
@@ -202,5 +220,4 @@ class ItemCatalogRepositoryImpl implements ItemCatalogRepository {
       [businessId, itemId, trackInventory ? 1 : 0, lowStockThreshold],
     );
   }
-
 }

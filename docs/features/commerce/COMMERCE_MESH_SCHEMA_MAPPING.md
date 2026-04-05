@@ -228,13 +228,29 @@ Current item form already captures:
 - `dealer_price`
 - `track_inventory`
 
-Missing from the current item UI for closer Commerce Mesh parity:
-- `brand_name`
-- `barcode` / `GTIN`
-- `primary_image_path`
-- arbitrary `additionalProperty` editor
+Still missing for deeper Commerce Mesh parity:
 - variant group / variant axes
-- rich media management
+- rich media management (`item_media` + multi-asset mapping)
+
+## Implementation Update (5 April 2026)
+
+Implemented in app schema and item form:
+- `item_catalog.brand_name` (TEXT, nullable)
+- `item_catalog.primary_image_path` (TEXT, nullable)
+- `item_catalog.barcode` (TEXT, nullable)
+- `item_catalog.additional_properties_json` (TEXT, nullable)
+
+Database migration:
+- Schema upgraded to v86
+- Migration adds the 4 columns above using additive `ALTER TABLE`
+- Fresh installs include the columns in base `item_catalog` table creation
+
+Item form information architecture (future-proof baseline):
+- Tabs: Basic, Pricing, Inventory, Media, Advanced
+- Accordions inside each tab to keep optional/long-tail fields discoverable without clutter
+- All known item fields are now present in the form and can be saved even if not used in current workflows
+
+This keeps KashCube's internal model business-first while making room for full Commerce Mesh export parity over time.
 
 ---
 

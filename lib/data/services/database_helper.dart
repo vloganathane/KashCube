@@ -111,7 +111,9 @@ class DatabaseHelper {
       final ok = result.isNotEmpty && result.first.values.first == 'ok';
       _integrityFailed = !ok;
       if (!ok) {
-        debugPrint('[DB] ⚠️ Integrity check FAILED — restore from snapshot recommended');
+        debugPrint(
+          '[DB] ⚠️ Integrity check FAILED — restore from snapshot recommended',
+        );
       } else {
         debugPrint('[DB] Integrity check passed');
       }
@@ -268,7 +270,9 @@ class DatabaseHelper {
           FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_bill_attachments_txn ON bill_attachments(transaction_id)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_bill_attachments_txn ON bill_attachments(transaction_id)',
+      );
 
       await db.insert('schema_version', {
         'version': 2,
@@ -278,8 +282,12 @@ class DatabaseHelper {
 
     if (oldVersion < 3) {
       // Add direction column to credits
-      await db.execute("ALTER TABLE credits ADD COLUMN direction TEXT NOT NULL DEFAULT 'given'");
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_credits_direction ON credits(direction)');
+      await db.execute(
+        "ALTER TABLE credits ADD COLUMN direction TEXT NOT NULL DEFAULT 'given'",
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_credits_direction ON credits(direction)',
+      );
 
       // Create credit_payments table
       await db.execute('''
@@ -297,8 +305,12 @@ class DatabaseHelper {
         )
       ''');
 
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_credit ON credit_payments(credit_id)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_credit_payments_date ON credit_payments(payment_date DESC)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_credit_payments_credit ON credit_payments(credit_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_credit_payments_date ON credit_payments(payment_date DESC)',
+      );
 
       await db.insert('schema_version', {
         'version': 3,
@@ -308,8 +320,7 @@ class DatabaseHelper {
 
     if (oldVersion < 4) {
       // Add repayment_frequency column to loans
-      await db.execute(
-          "ALTER TABLE loans ADD COLUMN repayment_frequency TEXT");
+      await db.execute("ALTER TABLE loans ADD COLUMN repayment_frequency TEXT");
 
       // Create loan_payments table
       await db.execute('''
@@ -329,11 +340,14 @@ class DatabaseHelper {
       ''');
 
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_loan_payments_loan ON loan_payments(loan_id)');
+        'CREATE INDEX IF NOT EXISTS idx_loan_payments_loan ON loan_payments(loan_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_loan_payments_due ON loan_payments(due_date)');
+        'CREATE INDEX IF NOT EXISTS idx_loan_payments_due ON loan_payments(due_date)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_loan_payments_status ON loan_payments(is_paid, due_date)');
+        'CREATE INDEX IF NOT EXISTS idx_loan_payments_status ON loan_payments(is_paid, due_date)',
+      );
 
       await db.insert('schema_version', {
         'version': 4,
@@ -363,9 +377,11 @@ class DatabaseHelper {
       ''');
 
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_bills_active ON bills(is_active, deleted_at)');
+        'CREATE INDEX IF NOT EXISTS idx_bills_active ON bills(is_active, deleted_at)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_bills_due ON bills(due_day)');
+        'CREATE INDEX IF NOT EXISTS idx_bills_due ON bills(due_day)',
+      );
 
       await db.insert('schema_version', {
         'version': 5,
@@ -376,9 +392,11 @@ class DatabaseHelper {
     if (oldVersion < 6) {
       // Add direction column to loans table
       await db.execute(
-          "ALTER TABLE loans ADD COLUMN direction TEXT NOT NULL DEFAULT 'borrowed'");
+        "ALTER TABLE loans ADD COLUMN direction TEXT NOT NULL DEFAULT 'borrowed'",
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_loans_direction ON loans(direction)');
+        'CREATE INDEX IF NOT EXISTS idx_loans_direction ON loans(direction)',
+      );
 
       // Migrate credits into loans table
       await db.execute('''
@@ -409,33 +427,41 @@ class DatabaseHelper {
     if (oldVersion < 7) {
       // Add new unified transaction columns
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN linked_transaction_id INTEGER');
+        'ALTER TABLE transactions ADD COLUMN linked_transaction_id INTEGER',
+      );
+      await db.execute('ALTER TABLE transactions ADD COLUMN due_date TEXT');
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN due_date TEXT');
+        'ALTER TABLE transactions ADD COLUMN interest_rate REAL',
+      );
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN interest_rate REAL');
+        'ALTER TABLE transactions ADD COLUMN interest_type TEXT',
+      );
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN interest_type TEXT');
+        'ALTER TABLE transactions ADD COLUMN repayment_frequency TEXT',
+      );
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN repayment_frequency TEXT');
-      await db.execute(
-          'ALTER TABLE transactions ADD COLUMN total_installments INTEGER');
-      await db.execute(
-          'ALTER TABLE transactions ADD COLUMN emi_amount REAL');
+        'ALTER TABLE transactions ADD COLUMN total_installments INTEGER',
+      );
+      await db.execute('ALTER TABLE transactions ADD COLUMN emi_amount REAL');
 
       // Create index for settlement linking
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)');
+        'CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)',
+      );
 
       // Migrate old type values in transactions table
       await db.execute(
-          "UPDATE transactions SET type = 'lent' WHERE type = 'credit_given'");
+        "UPDATE transactions SET type = 'lent' WHERE type = 'credit_given'",
+      );
       await db.execute(
-          "UPDATE transactions SET type = 'borrowed' WHERE type = 'credit_received'");
+        "UPDATE transactions SET type = 'borrowed' WHERE type = 'credit_received'",
+      );
       await db.execute(
-          "UPDATE transactions SET type = 'borrowed' WHERE type = 'loan_taken'");
+        "UPDATE transactions SET type = 'borrowed' WHERE type = 'loan_taken'",
+      );
       await db.execute(
-          "UPDATE transactions SET type = 'paid_back' WHERE type = 'loan_repayment'");
+        "UPDATE transactions SET type = 'paid_back' WHERE type = 'loan_repayment'",
+      );
 
       // Migrate active loans into transactions table (lent/borrowed)
       await db.execute('''
@@ -473,13 +499,16 @@ class DatabaseHelper {
     if (oldVersion < 8) {
       // Add to_account_id for Transfer type
       await db.execute(
-          'ALTER TABLE transactions ADD COLUMN to_account_id INTEGER');
+        'ALTER TABLE transactions ADD COLUMN to_account_id INTEGER',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id)');
+        'CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id)',
+      );
 
       // Pre-seed default accounts if none exist
       final existing = await db.rawQuery(
-          'SELECT COUNT(*) as cnt FROM accounts WHERE deleted_at IS NULL');
+        'SELECT COUNT(*) as cnt FROM accounts WHERE deleted_at IS NULL',
+      );
       final count = (existing.first['cnt'] as int? ?? 0);
       if (count == 0) {
         await _seedAccounts(db);
@@ -517,9 +546,15 @@ class DatabaseHelper {
           deleted_at TEXT
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)',
+      );
 
       // Migrate legacy bills → scheduled_payments (reminder mode, no auto-create)
       await db.execute('''
@@ -584,9 +619,15 @@ class DatabaseHelper {
           deleted_at TEXT
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_active ON scheduled_payments(is_active, deleted_at)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_next ON scheduled_payments(next_date)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_sp_auto ON scheduled_payments(auto_create, next_date)',
+      );
       await db.insert('schema_version', {
         'version': 10,
         'description': 'Ensure scheduled_payments table exists (v9 safety)',
@@ -599,9 +640,12 @@ class DatabaseHelper {
 
       // Add reminder_sent_at to transactions (tracks last WhatsApp/SMS/Email
       // reminder sent for lent/borrowed transactions)
-      await db.execute('ALTER TABLE transactions ADD COLUMN reminder_sent_at TEXT');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)');
+        'ALTER TABLE transactions ADD COLUMN reminder_sent_at TEXT',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)',
+      );
 
       await db.insert('schema_version', {
         'version': 11,
@@ -707,15 +751,19 @@ class DatabaseHelper {
       ''');
 
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)');
+        'CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_invoices_due ON invoices(due_date)');
+        'CREATE INDEX IF NOT EXISTS idx_invoices_due ON invoices(due_date)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status)');
+        'CREATE INDEX IF NOT EXISTS idx_quotes_status ON quotes(status)',
+      );
 
       await db.insert('schema_version', {
         'version': 13,
-        'description': 'Business mode: item_catalog, quotes, quote_items, invoices, invoice_items',
+        'description':
+            'Business mode: item_catalog, quotes, quote_items, invoices, invoice_items',
       });
     }
 
@@ -738,7 +786,8 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_businesses_active ON businesses(is_active)');
+        'CREATE INDEX IF NOT EXISTS idx_businesses_active ON businesses(is_active)',
+      );
       await db.insert('schema_version', {
         'version': 14,
         'description': 'Add businesses table (multiple business profiles)',
@@ -747,25 +796,38 @@ class DatabaseHelper {
 
     if (oldVersion < 15) {
       // Enhanced item catalog with categories, SKU, favorites, usage tracking, and business linkage
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN business_id INTEGER');
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN business_id INTEGER',
+      );
       await db.execute('ALTER TABLE item_catalog ADD COLUMN sku TEXT');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN category TEXT DEFAULT "product"');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN category TEXT DEFAULT "product"',
+      );
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0',
+      );
       await db.execute('ALTER TABLE item_catalog ADD COLUMN last_used_at TEXT');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN usage_count INTEGER NOT NULL DEFAULT 0');
-      
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_item_catalog_business ON item_catalog(business_id)');
+        'ALTER TABLE item_catalog ADD COLUMN usage_count INTEGER NOT NULL DEFAULT 0',
+      );
+
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_item_catalog_category ON item_catalog(category)');
+        'CREATE INDEX IF NOT EXISTS idx_item_catalog_business ON item_catalog(business_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_item_catalog_favorite ON item_catalog(is_favorite)');
+        'CREATE INDEX IF NOT EXISTS idx_item_catalog_category ON item_catalog(category)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_item_catalog_last_used ON item_catalog(last_used_at)');
-      
+        'CREATE INDEX IF NOT EXISTS idx_item_catalog_favorite ON item_catalog(is_favorite)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_item_catalog_last_used ON item_catalog(last_used_at)',
+      );
+
       await db.insert('schema_version', {
         'version': 15,
-        'description': 'Enhanced item catalog: business_id, categories, SKU, favorites, usage tracking',
+        'description':
+            'Enhanced item catalog: business_id, categories, SKU, favorites, usage tracking',
       });
     }
 
@@ -773,15 +835,18 @@ class DatabaseHelper {
       // Add business_id to invoices and quotes for multi-business support
       await db.execute('ALTER TABLE invoices ADD COLUMN business_id INTEGER');
       await db.execute('ALTER TABLE quotes ADD COLUMN business_id INTEGER');
-      
+
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_invoices_business ON invoices(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_invoices_business ON invoices(business_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_quotes_business ON quotes(business_id)');
-      
+        'CREATE INDEX IF NOT EXISTS idx_quotes_business ON quotes(business_id)',
+      );
+
       await db.insert('schema_version', {
         'version': 16,
-        'description': 'Add business_id to invoices and quotes for multi-business support',
+        'description':
+            'Add business_id to invoices and quotes for multi-business support',
       });
     }
 
@@ -790,39 +855,50 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE parties ADD COLUMN city TEXT');
       await db.execute('ALTER TABLE parties ADD COLUMN state TEXT');
       await db.execute('ALTER TABLE parties ADD COLUMN pincode TEXT');
-      
+
       await db.insert('schema_version', {
         'version': 17,
-        'description': 'Add city, state, pincode to parties for structured addresses',
+        'description':
+            'Add city, state, pincode to parties for structured addresses',
       });
     }
 
     if (oldVersion < 18) {
       // Automatic transaction creation: link transactions to invoices/bookings
-      await db.execute('ALTER TABLE transactions ADD COLUMN linked_invoice_id INTEGER');
-      await db.execute('ALTER TABLE transactions ADD COLUMN linked_booking_id INTEGER');
-      await db.execute('ALTER TABLE transactions ADD COLUMN business_id INTEGER');
-      
+      await db.execute(
+        'ALTER TABLE transactions ADD COLUMN linked_invoice_id INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE transactions ADD COLUMN linked_booking_id INTEGER',
+      );
+      await db.execute(
+        'ALTER TABLE transactions ADD COLUMN business_id INTEGER',
+      );
+
       // Track invoice payment details
       await db.execute('ALTER TABLE invoices ADD COLUMN paid_at TEXT');
       await db.execute('ALTER TABLE invoices ADD COLUMN payment_method TEXT');
-      
+
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)');
+        'CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)');
+        'CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)');
-      
+        'CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)',
+      );
+
       await db.insert('schema_version', {
         'version': 18,
-        'description': 'Automatic transaction creation: link transactions to invoices/bookings, track payment details',
+        'description':
+            'Automatic transaction creation: link transactions to invoices/bookings, track payment details',
       });
     }
 
     if (oldVersion < 19) {
       // Week 25-27: Bookings feature
-      
+
       // Create bookings table
       await db.execute('''
         CREATE TABLE bookings (
@@ -861,20 +937,31 @@ class DatabaseHelper {
           FOREIGN KEY (business_id) REFERENCES businesses(id)
         )
       ''');
-      
+
       // Create indexes for bookings
       await db.execute('CREATE INDEX idx_bookings_status ON bookings(status)');
-      await db.execute('CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)');
-      await db.execute('CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)');
-      await db.execute('CREATE INDEX idx_bookings_business ON bookings(business_id)');
-      
+      await db.execute(
+        'CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)',
+      );
+      await db.execute(
+        'CREATE INDEX idx_bookings_business ON bookings(business_id)',
+      );
+
       // Extend item_catalog for bookable services
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN duration_minutes INTEGER DEFAULT 30');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN is_bookable INTEGER DEFAULT 0');
-      
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN duration_minutes INTEGER DEFAULT 30',
+      );
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN is_bookable INTEGER DEFAULT 0',
+      );
+
       await db.insert('schema_version', {
         'version': 19,
-        'description': 'Add bookings table and extend item_catalog for bookable services',
+        'description':
+            'Add bookings table and extend item_catalog for bookable services',
       });
     }
 
@@ -888,7 +975,8 @@ class DatabaseHelper {
       );
       await db.insert('schema_version', {
         'version': 20,
-        'description': 'Add booking_type column (business/personal) to bookings table',
+        'description':
+            'Add booking_type column (business/personal) to bookings table',
       });
     }
 
@@ -896,13 +984,16 @@ class DatabaseHelper {
       // Unified Notifications — track last manual reminder timestamp per record
       await db.execute('ALTER TABLE invoices ADD COLUMN reminder_sent_at TEXT');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_invoices_reminder ON invoices(reminder_sent_at, due_date)');
+        'CREATE INDEX IF NOT EXISTS idx_invoices_reminder ON invoices(reminder_sent_at, due_date)',
+      );
       await db.execute('ALTER TABLE bookings ADD COLUMN reminder_sent_at TEXT');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)');
+        'CREATE INDEX IF NOT EXISTS idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)',
+      );
       await db.insert('schema_version', {
         'version': 21,
-        'description': 'Add reminder_sent_at to invoices and bookings (Unified Notifications)',
+        'description':
+            'Add reminder_sent_at to invoices and bookings (Unified Notifications)',
       });
     }
 
@@ -925,7 +1016,8 @@ class DatabaseHelper {
       ''');
       await db.insert('schema_version', {
         'version': 22,
-        'description': 'Recreate budgets table with year/month/category/budget_amount schema',
+        'description':
+            'Recreate budgets table with year/month/category/budget_amount schema',
       });
     }
 
@@ -940,7 +1032,8 @@ class DatabaseHelper {
       );
       await db.insert('schema_version', {
         'version': 23,
-        'description': 'Add bill_context column to scheduled_payments (personal/business split)',
+        'description':
+            'Add bill_context column to scheduled_payments (personal/business split)',
       });
     }
 
@@ -951,7 +1044,8 @@ class DatabaseHelper {
       );
       await db.insert('schema_version', {
         'version': 24,
-        'description': 'Add party_context to parties table (personal/business for lender/borrower)',
+        'description':
+            'Add party_context to parties table (personal/business for lender/borrower)',
       });
     }
 
@@ -991,7 +1085,8 @@ class DatabaseHelper {
       await _seedFySettings(db);
       await db.insert('schema_version', {
         'version': 27,
-        'description': 'FY settings: invoice_no_format, fiscal_year_start_month/day, auto_reset_invoice_no, current_fy_start',
+        'description':
+            'FY settings: invoice_no_format, fiscal_year_start_month/day, auto_reset_invoice_no, current_fy_start',
       });
     }
 
@@ -1018,7 +1113,8 @@ class DatabaseHelper {
       await _seedUnitTypes(db);
       await db.insert('schema_version', {
         'version': 29,
-        'description': 'Seed software/digital unit types (week, year, license, seat, user, project, task, sprint, feature, screen, page, report, API call, request, token, deployment, instance, GB, MB, TB)',
+        'description':
+            'Seed software/digital unit types (week, year, license, seat, user, project, task, sprint, feature, screen, page, report, API call, request, token, deployment, instance, GB, MB, TB)',
       });
     }
 
@@ -1035,28 +1131,47 @@ class DatabaseHelper {
       // GST Phase A: add HSN/unit to line items; add invoice_type/place_of_supply/
       // reverse_charge/customer_gstin to invoice+quote headers.
       await db.execute('ALTER TABLE invoice_items ADD COLUMN hsn_code TEXT');
-      await db.execute("ALTER TABLE invoice_items ADD COLUMN unit TEXT DEFAULT 'PCS'");
-      await db.execute("ALTER TABLE invoice_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
+      await db.execute(
+        "ALTER TABLE invoice_items ADD COLUMN unit TEXT DEFAULT 'PCS'",
+      );
+      await db.execute(
+        "ALTER TABLE invoice_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'",
+      );
       await db.execute('ALTER TABLE quote_items ADD COLUMN hsn_code TEXT');
-      await db.execute("ALTER TABLE quote_items ADD COLUMN unit TEXT DEFAULT 'PCS'");
-      await db.execute("ALTER TABLE quote_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
-      await db.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'");
+      await db.execute(
+        "ALTER TABLE quote_items ADD COLUMN unit TEXT DEFAULT 'PCS'",
+      );
+      await db.execute(
+        "ALTER TABLE quote_items ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'",
+      );
+      await db.execute(
+        "ALTER TABLE invoices ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'",
+      );
       await db.execute('ALTER TABLE invoices ADD COLUMN place_of_supply TEXT');
-      await db.execute('ALTER TABLE invoices ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0',
+      );
       await db.execute('ALTER TABLE invoices ADD COLUMN customer_gstin TEXT');
-      await db.execute("ALTER TABLE quotes ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'");
+      await db.execute(
+        "ALTER TABLE quotes ADD COLUMN invoice_type TEXT NOT NULL DEFAULT 'tax_invoice'",
+      );
       await db.execute('ALTER TABLE quotes ADD COLUMN place_of_supply TEXT');
-      await db.execute('ALTER TABLE quotes ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0');
+      await db.execute(
+        'ALTER TABLE quotes ADD COLUMN reverse_charge INTEGER NOT NULL DEFAULT 0',
+      );
       await db.execute('ALTER TABLE quotes ADD COLUMN customer_gstin TEXT');
       await db.insert('schema_version', {
         'version': 32,
-        'description': 'GST Phase A: hsn_code/unit/hsn_or_sac on invoice_items+quote_items; invoice_type/place_of_supply/reverse_charge/customer_gstin on invoices+quotes',
+        'description':
+            'GST Phase A: hsn_code/unit/hsn_or_sac on invoice_items+quote_items; invoice_type/place_of_supply/reverse_charge/customer_gstin on invoices+quotes',
       });
     }
 
     if (oldVersion < 33) {
       // GST Phase A4: store HSN/SAC type on item catalog so the form toggle is persisted.
-      await db.execute("ALTER TABLE item_catalog ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'");
+      await db.execute(
+        "ALTER TABLE item_catalog ADD COLUMN hsn_or_sac TEXT DEFAULT 'HSN'",
+      );
       await db.insert('schema_version', {
         'version': 33,
         'description': 'GST Phase A4: hsn_or_sac column on item_catalog',
@@ -1072,7 +1187,8 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE invoices ADD COLUMN qr_code_data TEXT');
       await db.insert('schema_version', {
         'version': 34,
-        'description': 'GST Phase C1: irn/irn_ack_no/irn_ack_date/qr_code_data on invoices (e-Invoice placeholders)',
+        'description':
+            'GST Phase C1: irn/irn_ack_no/irn_ack_date/qr_code_data on invoices (e-Invoice placeholders)',
       });
     }
 
@@ -1086,8 +1202,12 @@ class DatabaseHelper {
           type        TEXT NOT NULL DEFAULT 'HSN'
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)',
+      );
       await _seedHsnMaster(db);
       await db.insert('schema_version', {
         'version': 35,
@@ -1102,10 +1222,16 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE invoices ADD COLUMN ewb_valid_until TEXT');
       await db.execute('ALTER TABLE invoices ADD COLUMN vehicle_no TEXT');
       await db.execute('ALTER TABLE invoices ADD COLUMN transporter_name TEXT');
-      await db.execute('ALTER TABLE invoices ADD COLUMN transporter_gstin TEXT');
-      await db.execute("ALTER TABLE invoices ADD COLUMN transport_mode TEXT DEFAULT '1'");
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN transporter_gstin TEXT',
+      );
+      await db.execute(
+        "ALTER TABLE invoices ADD COLUMN transport_mode TEXT DEFAULT '1'",
+      );
       await db.execute('ALTER TABLE invoices ADD COLUMN distance_km INTEGER');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_invoices_ewb ON invoices(ewb_no)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_invoices_ewb ON invoices(ewb_no)',
+      );
       // Frequent transporters table for EWB autocomplete.
       await db.execute('''
         CREATE TABLE IF NOT EXISTS transporters (
@@ -1115,7 +1241,9 @@ class DatabaseHelper {
           last_used_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)',
+      );
       // GSP settings keys (all disabled by default — consent required to enable).
       final gspDefaults = <String, String>{
         'gsp_enabled': '0',
@@ -1131,21 +1259,35 @@ class DatabaseHelper {
       }
       await db.insert('schema_version', {
         'version': 36,
-        'description': 'e-Way Bill fields on invoices + transporters table + GSP settings keys',
+        'description':
+            'e-Way Bill fields on invoices + transporters table + GSP settings keys',
       });
     }
 
     if (oldVersion < 37) {
       // Freight, insurance, packing & forwarding charges on invoices and quotes.
-      await db.execute('ALTER TABLE invoices ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE invoices ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE invoices ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE quotes ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE quotes ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE quotes ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0');
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE quotes ADD COLUMN freight_amt REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE quotes ADD COLUMN insurance_amt REAL NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE quotes ADD COLUMN packing_amt REAL NOT NULL DEFAULT 0',
+      );
       await db.insert('schema_version', {
         'version': 37,
-        'description': 'Freight, insurance, packing charges on invoices and quotes (CBIC Rule 46)',
+        'description':
+            'Freight, insurance, packing charges on invoices and quotes (CBIC Rule 46)',
       });
     }
 
@@ -1157,7 +1299,8 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE businesses ADD COLUMN dial_code TEXT');
       await db.insert('schema_version', {
         'version': 38,
-        'description': 'Country and dial code for international customers/vendors (parties + businesses)',
+        'description':
+            'Country and dial code for international customers/vendors (parties + businesses)',
       });
     }
 
@@ -1191,10 +1334,18 @@ class DatabaseHelper {
           FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)',
+      );
 
       await db.execute('''
         CREATE TABLE IF NOT EXISTS delivery_challan_items (
@@ -1211,11 +1362,14 @@ class DatabaseHelper {
           FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE
         )
       ''');
-      await db.execute('CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)',
+      );
 
       await db.insert('schema_version', {
         'version': 39,
-        'description': 'Delivery Challan tables — GST Rule 55 (supply without tax invoice)',
+        'description':
+            'Delivery Challan tables — GST Rule 55 (supply without tax invoice)',
       });
     }
 
@@ -1290,7 +1444,8 @@ class DatabaseHelper {
 
       await db.insert('schema_version', {
         'version': 42,
-        'description': 'Add booking_items table and paid_amount column for multi-service bookings',
+        'description':
+            'Add booking_items table and paid_amount column for multi-service bookings',
       });
     }
 
@@ -1308,49 +1463,62 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)');
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_party ON party_reminders(party_name)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)');
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_sent ON party_reminders(sent_at DESC)',
+      );
 
       await db.insert('schema_version', {
         'version': 43,
-        'description': 'Add party_reminders table for reminder history tracking',
+        'description':
+            'Add party_reminders table for reminder history tracking',
       });
     }
 
     if (oldVersion < 44) {
       // Add business_id to credits, loans, party_reminders for personal/business separation
       await db.execute(
-          'ALTER TABLE credits ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+        'ALTER TABLE credits ADD COLUMN business_id INTEGER REFERENCES businesses(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_credits_business ON credits(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_credits_business ON credits(business_id)',
+      );
 
       await db.execute(
-          'ALTER TABLE loans ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+        'ALTER TABLE loans ADD COLUMN business_id INTEGER REFERENCES businesses(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_loans_business ON loans(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_loans_business ON loans(business_id)',
+      );
 
       await db.execute(
-          'ALTER TABLE party_reminders ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+        'ALTER TABLE party_reminders ADD COLUMN business_id INTEGER REFERENCES businesses(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_party_reminders_business ON party_reminders(business_id)',
+      );
 
       await db.insert('schema_version', {
         'version': 44,
-        'description': 'Add business_id to credits, loans, party_reminders for personal/business separation',
+        'description':
+            'Add business_id to credits, loans, party_reminders for personal/business separation',
       });
     }
 
     if (oldVersion < 45) {
       // Add party_id FK to scheduled_payments for Party 360° aggregation
       await db.execute(
-          'ALTER TABLE scheduled_payments ADD COLUMN party_id INTEGER REFERENCES parties(id)');
+        'ALTER TABLE scheduled_payments ADD COLUMN party_id INTEGER REFERENCES parties(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)');
+        'CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)',
+      );
 
       await db.insert('schema_version', {
         'version': 45,
-        'description': 'Add party_id FK to scheduled_payments for Party 360° aggregation',
+        'description':
+            'Add party_id FK to scheduled_payments for Party 360° aggregation',
       });
     }
 
@@ -1396,21 +1564,11 @@ class DatabaseHelper {
       );
 
       // ── Delivery address snapshot columns on invoices ─────────────────────
-      await db.execute(
-        'ALTER TABLE invoices ADD COLUMN delivery_address TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE invoices ADD COLUMN delivery_city TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE invoices ADD COLUMN delivery_state TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE invoices ADD COLUMN delivery_pincode TEXT',
-      );
-      await db.execute(
-        'ALTER TABLE invoices ADD COLUMN delivery_gstin TEXT',
-      );
+      await db.execute('ALTER TABLE invoices ADD COLUMN delivery_address TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN delivery_city TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN delivery_state TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN delivery_pincode TEXT');
+      await db.execute('ALTER TABLE invoices ADD COLUMN delivery_gstin TEXT');
 
       await db.insert('schema_version', {
         'version': 46,
@@ -1472,13 +1630,15 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX idx_pb_business ON purchase_bills(business_id)');
+        'CREATE INDEX idx_pb_business ON purchase_bills(business_id)',
+      );
       await db.execute(
-          'CREATE INDEX idx_pb_bill_date ON purchase_bills(bill_date)');
+        'CREATE INDEX idx_pb_bill_date ON purchase_bills(bill_date)',
+      );
+      await db.execute('CREATE INDEX idx_pb_status ON purchase_bills(status)');
       await db.execute(
-          'CREATE INDEX idx_pb_status ON purchase_bills(status)');
-      await db.execute(
-          'CREATE INDEX idx_pb_rc ON purchase_bills(reverse_charge)');
+        'CREATE INDEX idx_pb_rc ON purchase_bills(reverse_charge)',
+      );
 
       await db.execute('''
         CREATE TABLE purchase_bill_items (
@@ -1514,7 +1674,8 @@ class DatabaseHelper {
       );
       await db.insert('schema_version', {
         'version': 49,
-        'description': 'Add attachment_path to purchase_bills for vendor invoice attachment',
+        'description':
+            'Add attachment_path to purchase_bills for vendor invoice attachment',
       });
     }
 
@@ -1523,18 +1684,22 @@ class DatabaseHelper {
       await _seedDocumentTemplatePresets(db);
       await db.insert('schema_version', {
         'version': 50,
-        'description': 'Add upi_id to businesses; seed industry invoice template presets',
+        'description':
+            'Add upi_id to businesses; seed industry invoice template presets',
       });
     }
 
     if (oldVersion < 51) {
       // Inventory tracking columns on item_catalog
       await db.execute(
-          'ALTER TABLE item_catalog ADD COLUMN track_inventory INTEGER NOT NULL DEFAULT 0');
+        'ALTER TABLE item_catalog ADD COLUMN track_inventory INTEGER NOT NULL DEFAULT 0',
+      );
       await db.execute(
-          'ALTER TABLE item_catalog ADD COLUMN stock_qty REAL NOT NULL DEFAULT 0');
+        'ALTER TABLE item_catalog ADD COLUMN stock_qty REAL NOT NULL DEFAULT 0',
+      );
       await db.execute(
-          'ALTER TABLE item_catalog ADD COLUMN low_stock_threshold REAL NOT NULL DEFAULT 5');
+        'ALTER TABLE item_catalog ADD COLUMN low_stock_threshold REAL NOT NULL DEFAULT 5',
+      );
       // Stock movements ledger
       await db.execute('''
         CREATE TABLE IF NOT EXISTS stock_movements (
@@ -1551,9 +1716,11 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)');
+        'CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)');
+        'CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)',
+      );
       await db.insert('schema_version', {
         'version': 51,
         'description':
@@ -1589,9 +1756,11 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)');
+        'CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)',
+      );
       // Salary payment records
       await db.execute('''
         CREATE TABLE IF NOT EXISTS salary_payments (
@@ -1613,9 +1782,11 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)');
+        'CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)');
+        'CREATE INDEX IF NOT EXISTS idx_salp_period ON salary_payments(pay_period_year, pay_period_month)',
+      );
       await db.insert('schema_version', {
         'version': 52,
         'description': 'Staff & Payroll: staff + salary_payments tables',
@@ -1624,11 +1795,14 @@ class DatabaseHelper {
 
     if (oldVersion < 53) {
       await db.execute(
-          'ALTER TABLE invoice_items ADD COLUMN catalog_item_id INTEGER');
+        'ALTER TABLE invoice_items ADD COLUMN catalog_item_id INTEGER',
+      );
       await db.execute(
-          'ALTER TABLE delivery_challan_items ADD COLUMN catalog_item_id INTEGER');
+        'ALTER TABLE delivery_challan_items ADD COLUMN catalog_item_id INTEGER',
+      );
       await db.execute(
-          'ALTER TABLE purchase_bill_items ADD COLUMN catalog_item_id INTEGER');
+        'ALTER TABLE purchase_bill_items ADD COLUMN catalog_item_id INTEGER',
+      );
       await db.insert('schema_version', {
         'version': 53,
         'description':
@@ -1639,13 +1813,16 @@ class DatabaseHelper {
     if (oldVersion < 54) {
       // Add party_id FK to staff so every staff member links to a Party (contact) record.
       await db.execute(
-          'ALTER TABLE staff ADD COLUMN party_id INTEGER REFERENCES parties(id)');
+        'ALTER TABLE staff ADD COLUMN party_id INTEGER REFERENCES parties(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)');
+        'CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)',
+      );
 
       // Backfill: create a parties row for every existing staff member.
       final existingStaff = await db.rawQuery(
-          'SELECT id, name, phone, email FROM staff WHERE party_id IS NULL');
+        'SELECT id, name, phone, email FROM staff WHERE party_id IS NULL',
+      );
       final now = DateTime.now().toIso8601String();
       for (final row in existingStaff) {
         final partyId = await db.insert('parties', {
@@ -1673,9 +1850,11 @@ class DatabaseHelper {
     if (oldVersion < 55) {
       // 1. Add business_id to stock_movements.
       await db.execute(
-          'ALTER TABLE stock_movements ADD COLUMN business_id INTEGER REFERENCES businesses(id)');
+        'ALTER TABLE stock_movements ADD COLUMN business_id INTEGER REFERENCES businesses(id)',
+      );
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)');
+        'CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)',
+      );
 
       // 2. Create the item_stock per-business stock table.
       await db.execute('''
@@ -1689,13 +1868,15 @@ class DatabaseHelper {
         )
       ''');
       await db.execute(
-          'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)');
+        'CREATE INDEX IF NOT EXISTS idx_item_stock_item ON item_stock(item_id)',
+      );
 
       // 3. Backfill item_stock from item_catalog for the active business.
       //    Items that were already tracked get their existing qty/threshold
       //    assigned to the active business. Other businesses start at 0.
-      final activeBizRows = await db
-          .rawQuery('SELECT id FROM businesses WHERE is_active = 1 LIMIT 1');
+      final activeBizRows = await db.rawQuery(
+        'SELECT id FROM businesses WHERE is_active = 1 LIMIT 1',
+      );
       if (activeBizRows.isNotEmpty) {
         final activeBizId = activeBizRows.first['id'] as int;
         final trackedItems = await db.rawQuery(
@@ -1730,9 +1911,11 @@ class DatabaseHelper {
     }
     if (oldVersion < 56) {
       await db.execute(
-          'ALTER TABLE item_stock ADD COLUMN last_counted_qty REAL');
+        'ALTER TABLE item_stock ADD COLUMN last_counted_qty REAL',
+      );
       await db.execute(
-          'ALTER TABLE item_stock ADD COLUMN last_counted_at TEXT');
+        'ALTER TABLE item_stock ADD COLUMN last_counted_at TEXT',
+      );
       await db.insert('schema_version', {
         'version': 56,
         'description':
@@ -1742,14 +1925,12 @@ class DatabaseHelper {
 
     if (oldVersion < 57) {
       // Add staff-specific columns to parties
+      await db.execute('ALTER TABLE parties ADD COLUMN staff_role TEXT');
+      await db.execute('ALTER TABLE parties ADD COLUMN staff_salary REAL');
       await db.execute(
-          'ALTER TABLE parties ADD COLUMN staff_role TEXT');
-      await db.execute(
-          'ALTER TABLE parties ADD COLUMN staff_salary REAL');
-      await db.execute(
-          "ALTER TABLE parties ADD COLUMN staff_salary_type TEXT DEFAULT 'monthly'");
-      await db.execute(
-          'ALTER TABLE parties ADD COLUMN staff_join_date TEXT');
+        "ALTER TABLE parties ADD COLUMN staff_salary_type TEXT DEFAULT 'monthly'",
+      );
+      await db.execute('ALTER TABLE parties ADD COLUMN staff_join_date TEXT');
 
       // Back-fill from old staff table (rows that were linked to a party)
       await db.execute('''
@@ -1790,83 +1971,151 @@ class DatabaseHelper {
 
       // transactions: already has updated_at, deleted_at
       await db.execute('ALTER TABLE transactions ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE transactions ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE transactions ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE transactions ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE transactions ADD COLUMN created_by_device_id TEXT',
+      );
 
       // credits: already has updated_at, deleted_at
       await db.execute('ALTER TABLE credits ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE credits ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE credits ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE credits ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE credits ADD COLUMN created_by_device_id TEXT',
+      );
 
       // credit_payments: missing updated_at + deleted_at
       await db.execute('ALTER TABLE credit_payments ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE credit_payments ADD COLUMN updated_at TEXT');
-      await db.execute('ALTER TABLE credit_payments ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE credit_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE credit_payments ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE credit_payments ADD COLUMN updated_at TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE credit_payments ADD COLUMN deleted_at TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE credit_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE credit_payments ADD COLUMN created_by_device_id TEXT',
+      );
 
       // loans: already has updated_at, deleted_at
       await db.execute('ALTER TABLE loans ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE loans ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE loans ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE loans ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE loans ADD COLUMN created_by_device_id TEXT',
+      );
 
       // parties: already has updated_at, deleted_at
       await db.execute('ALTER TABLE parties ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE parties ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE parties ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE parties ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE parties ADD COLUMN created_by_device_id TEXT',
+      );
 
       // accounts: already has updated_at, deleted_at
       await db.execute('ALTER TABLE accounts ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE accounts ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE accounts ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE accounts ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE accounts ADD COLUMN created_by_device_id TEXT',
+      );
 
       // categories: missing updated_at + deleted_at
       await db.execute('ALTER TABLE categories ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE categories ADD COLUMN updated_at TEXT');
       await db.execute('ALTER TABLE categories ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE categories ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE categories ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN created_by_device_id TEXT',
+      );
 
       // budgets: missing updated_at (no deleted_at — keyed by year+month+category)
       await db.execute('ALTER TABLE budgets ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE budgets ADD COLUMN updated_at TEXT');
-      await db.execute('ALTER TABLE budgets ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE budgets ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE budgets ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE budgets ADD COLUMN created_by_device_id TEXT',
+      );
 
       // item_catalog: already has updated_at; missing deleted_at
       await db.execute('ALTER TABLE item_catalog ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE item_catalog ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE item_catalog ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE item_catalog ADD COLUMN created_by_device_id TEXT',
+      );
 
       // scheduled_payments: already has updated_at, deleted_at
-      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN sync_id TEXT');
-      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE scheduled_payments ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE scheduled_payments ADD COLUMN sync_id TEXT',
+      );
+      await db.execute(
+        'ALTER TABLE scheduled_payments ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE scheduled_payments ADD COLUMN created_by_device_id TEXT',
+      );
 
       // businesses: already has updated_at; missing deleted_at
       await db.execute('ALTER TABLE businesses ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE businesses ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE businesses ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE businesses ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE businesses ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE businesses ADD COLUMN created_by_device_id TEXT',
+      );
 
       // invoices: already has updated_at; missing deleted_at
       await db.execute('ALTER TABLE invoices ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE invoices ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE invoices ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE invoices ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE invoices ADD COLUMN created_by_device_id TEXT',
+      );
 
       // purchase_bills: already has updated_at; missing deleted_at
       await db.execute('ALTER TABLE purchase_bills ADD COLUMN sync_id TEXT');
       await db.execute('ALTER TABLE purchase_bills ADD COLUMN deleted_at TEXT');
-      await db.execute('ALTER TABLE purchase_bills ADD COLUMN version INTEGER NOT NULL DEFAULT 0');
-      await db.execute('ALTER TABLE purchase_bills ADD COLUMN created_by_device_id TEXT');
+      await db.execute(
+        'ALTER TABLE purchase_bills ADD COLUMN version INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.execute(
+        'ALTER TABLE purchase_bills ADD COLUMN created_by_device_id TEXT',
+      );
 
       // ── Step B: Backfill sync_id for all existing rows ─────────────────────
       const p0Tables = [
-        'transactions', 'credits', 'credit_payments', 'loans', 'parties',
-        'accounts', 'categories', 'budgets', 'item_catalog', 'scheduled_payments',
-        'businesses', 'invoices', 'purchase_bills',
+        'transactions',
+        'credits',
+        'credit_payments',
+        'loans',
+        'parties',
+        'accounts',
+        'categories',
+        'budgets',
+        'item_catalog',
+        'scheduled_payments',
+        'businesses',
+        'invoices',
+        'purchase_bills',
       ];
       for (final tbl in p0Tables) {
         await db.execute(
@@ -2160,9 +2409,7 @@ class DatabaseHelper {
         );
       }
       try {
-        await db.execute(
-          'ALTER TABLE app_users ADD COLUMN identity_id TEXT',
-        );
+        await db.execute('ALTER TABLE app_users ADD COLUMN identity_id TEXT');
       } catch (e, st) {
         AppLogger.instance.debug(
           'identity_id column already exists or migration not applicable',
@@ -2308,8 +2555,9 @@ class DatabaseHelper {
       ''');
       // Deactivate migrated templates so they don't auto-generate twice.
       await db.execute(
-          "UPDATE recurring_transactions SET is_active = 0, "
-          "updated_at = datetime('now') WHERE is_active = 1");
+        "UPDATE recurring_transactions SET is_active = 0, "
+        "updated_at = datetime('now') WHERE is_active = 1",
+      );
 
       // Migrate active bills → scheduled_payments
       // next_date is derived from due_day (first upcoming occurrence).
@@ -2337,9 +2585,10 @@ class DatabaseHelper {
       ''');
       // Soft-delete migrated bill rows.
       await db.execute(
-          "UPDATE bills SET deleted_at = datetime('now'), "
-          "updated_at = datetime('now') "
-          "WHERE is_active = 1 AND deleted_at IS NULL");
+        "UPDATE bills SET deleted_at = datetime('now'), "
+        "updated_at = datetime('now') "
+        "WHERE is_active = 1 AND deleted_at IS NULL",
+      );
 
       await db.insert('schema_version', {
         'version': 66,
@@ -2404,9 +2653,19 @@ class DatabaseHelper {
     if (oldVersion < 69) {
       // ── Step A: Add updated_by_device_id to all 14 syncable tables ────────
       const syncTables = [
-        'transactions', 'credits', 'credit_payments', 'loans', 'parties',
-        'accounts', 'categories', 'budgets', 'item_catalog',
-        'scheduled_payments', 'businesses', 'invoices', 'purchase_bills',
+        'transactions',
+        'credits',
+        'credit_payments',
+        'loans',
+        'parties',
+        'accounts',
+        'categories',
+        'budgets',
+        'item_catalog',
+        'scheduled_payments',
+        'businesses',
+        'invoices',
+        'purchase_bills',
         'quotes',
       ];
       for (final tbl in syncTables) {
@@ -2553,11 +2812,7 @@ class DatabaseHelper {
       }
 
       // ── Step B: Add partial sync columns to tables that already have updated_at
-      const partialSyncTables = [
-        'staff',
-        'bookings',
-        'delivery_challans',
-      ];
+      const partialSyncTables = ['staff', 'bookings', 'delivery_challans'];
       for (final tbl in partialSyncTables) {
         for (final col in [
           'ALTER TABLE $tbl ADD COLUMN sync_id TEXT',
@@ -2575,10 +2830,7 @@ class DatabaseHelper {
       }
 
       // ── Step C: Backfill sync_id for all existing rows ─────────────────────
-      const allV71Tables = [
-        ...fullSyncTables,
-        ...partialSyncTables,
-      ];
+      const allV71Tables = [...fullSyncTables, ...partialSyncTables];
       for (final tbl in allV71Tables) {
         await db.execute(
           "UPDATE $tbl SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL",
@@ -2700,10 +2952,7 @@ class DatabaseHelper {
       // recurring_transactions: needs all 6 sync columns + deleted_at
       // bills: already has deleted_at; needs sync_id/version/device_id cols
       // party_reminders: needs all 6 sync columns + created_at/updated_at/deleted_at
-      const fullSyncTables = [
-        'recurring_transactions',
-        'party_reminders',
-      ];
+      const fullSyncTables = ['recurring_transactions', 'party_reminders'];
       for (final tbl in fullSyncTables) {
         for (final col in [
           'ALTER TABLE $tbl ADD COLUMN sync_id TEXT',
@@ -2799,10 +3048,12 @@ class DatabaseHelper {
       // stamps updated_by_device_id into the row map before db.insert/update.
       // Missing columns caused a silent "no such column" failure whenever the
       // web companion wrote a setting back to the phone.
-      for (final col in const ['created_by_device_id', 'updated_by_device_id']) {
+      for (final col in const [
+        'created_by_device_id',
+        'updated_by_device_id',
+      ]) {
         try {
-          await db.execute(
-              'ALTER TABLE settings ADD COLUMN $col TEXT');
+          await db.execute('ALTER TABLE settings ADD COLUMN $col TEXT');
         } catch (e) {
           debugPrint('[DB v74] settings.$col: $e');
         }
@@ -2857,14 +3108,16 @@ class DatabaseHelper {
           // 1. Check whether the legacy columns actually exist.
           final cols = await txn.rawQuery('PRAGMA table_info(subscription)');
           final colNames = cols.map((r) => r['name'] as String).toSet();
-          final needsRebuild = colNames.contains('purchased_at') ||
+          final needsRebuild =
+              colNames.contains('purchased_at') ||
               colNames.contains('expires_at') ||
               colNames.contains('receipt_data');
 
           if (needsRebuild) {
             // 2. Rename old table.
             await txn.execute(
-                'ALTER TABLE subscription RENAME TO subscription_old');
+              'ALTER TABLE subscription RENAME TO subscription_old',
+            );
 
             // 3. Recreate with canonical schema.
             await txn.execute("""
@@ -2885,22 +3138,23 @@ class DatabaseHelper {
             //    purchased_at  → plan_started_at
             //    expires_at    → plan_expires_at
             //    receipt_data  → purchase_token (closest semantic match)
-            final hasStarted =
-                colNames.contains('plan_started_at');
-            final hasExpires =
-                colNames.contains('plan_expires_at');
+            final hasStarted = colNames.contains('plan_started_at');
+            final hasExpires = colNames.contains('plan_expires_at');
             final hasSrc = colNames.contains('source') ? 'source' : null;
-            final hasTok =
-                colNames.contains('purchase_token') ? 'purchase_token' : null;
+            final hasTok = colNames.contains('purchase_token')
+                ? 'purchase_token'
+                : null;
             final hasTrial = colNames.contains('is_trial') ? 'is_trial' : null;
-            final hasTrialEnds =
-                colNames.contains('trial_ends_at') ? 'trial_ends_at' : null;
+            final hasTrialEnds = colNames.contains('trial_ends_at')
+                ? 'trial_ends_at'
+                : null;
             final hasShareable = colNames.contains('shareable_plan_features')
                 ? 'shareable_plan_features'
                 : null;
 
             final src = hasSrc ?? "'none'";
-            final tok = hasTok ??
+            final tok =
+                hasTok ??
                 (colNames.contains('receipt_data') ? 'receipt_data' : 'NULL');
             final isTrial = hasTrial ?? '0';
             final trialEnds = hasTrialEnds ?? 'NULL';
@@ -2928,7 +3182,9 @@ class DatabaseHelper {
 
             debugPrint('[DB v76] subscription rebuilt with canonical schema');
           } else {
-            debugPrint('[DB v76] subscription already has canonical schema — skipped rebuild');
+            debugPrint(
+              '[DB v76] subscription already has canonical schema — skipped rebuild',
+            );
           }
         });
       } catch (e) {
@@ -2936,7 +3192,9 @@ class DatabaseHelper {
         // As a last resort, drop and recreate the subscription table so the
         // app can still start.  Subscription data is non-critical (always free
         // tier unless upgraded via IAP) and will be re-synced from the store.
-        debugPrint('[DB v76] migration failed ($e) — attempting emergency recreate');
+        debugPrint(
+          '[DB v76] migration failed ($e) — attempting emergency recreate',
+        );
         try {
           await db.execute('DROP TABLE IF EXISTS subscription');
           await db.execute("""
@@ -2952,7 +3210,9 @@ class DatabaseHelper {
               shareable_plan_features TEXT
             )
           """);
-          await db.execute("INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')");
+          await db.execute(
+            "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')",
+          );
           debugPrint('[DB v76] subscription recreated from scratch');
         } catch (e2) {
           debugPrint('[DB v76] emergency recreate also failed: $e2');
@@ -2977,7 +3237,8 @@ class DatabaseHelper {
       }
       await db.insert('schema_version', {
         'version': 77,
-        'description': 'accounts: add credit_limit column; AccountType.cash support',
+        'description':
+            'accounts: add credit_limit column; AccountType.cash support',
       });
     }
 
@@ -2985,19 +3246,27 @@ class DatabaseHelper {
       // Rename current_balance → opening_balance (add new column, copy data).
       // SQLite cannot rename columns portably, so we keep the old column.
       try {
-        await db.execute('ALTER TABLE accounts ADD COLUMN opening_balance REAL');
         await db.execute(
-            'UPDATE accounts SET opening_balance = current_balance WHERE current_balance IS NOT NULL');
-        debugPrint('[DB v78] accounts.opening_balance column added and populated');
+          'ALTER TABLE accounts ADD COLUMN opening_balance REAL',
+        );
+        await db.execute(
+          'UPDATE accounts SET opening_balance = current_balance WHERE current_balance IS NOT NULL',
+        );
+        debugPrint(
+          '[DB v78] accounts.opening_balance column added and populated',
+        );
       } catch (e) {
         debugPrint('[DB v78] opening_balance already exists or error: \$e');
       }
       try {
         await db.execute(
-            'ALTER TABLE accounts ADD COLUMN linked_bank_account_id INTEGER REFERENCES accounts(id)');
+          'ALTER TABLE accounts ADD COLUMN linked_bank_account_id INTEGER REFERENCES accounts(id)',
+        );
         debugPrint('[DB v78] accounts.linked_bank_account_id column added');
       } catch (e) {
-        debugPrint('[DB v78] linked_bank_account_id already exists or error: \$e');
+        debugPrint(
+          '[DB v78] linked_bank_account_id already exists or error: \$e',
+        );
       }
       await db.insert('schema_version', {
         'version': 78,
@@ -3040,14 +3309,19 @@ class DatabaseHelper {
         debugPrint('[DB v80] item_catalog.mrp already exists or error: \$e');
       }
       try {
-        await db.execute('ALTER TABLE item_catalog ADD COLUMN dealer_price REAL');
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN dealer_price REAL',
+        );
         debugPrint('[DB v80] item_catalog.dealer_price added');
       } catch (e) {
-        debugPrint('[DB v80] item_catalog.dealer_price already exists or error: \$e');
+        debugPrint(
+          '[DB v80] item_catalog.dealer_price already exists or error: \$e',
+        );
       }
       await db.insert('schema_version', {
         'version': 80,
-        'description': 'item_catalog: add mrp and dealer_price price variant columns',
+        'description':
+            'item_catalog: add mrp and dealer_price price variant columns',
       });
     }
 
@@ -3055,21 +3329,24 @@ class DatabaseHelper {
       // Add lot columns to purchase_bill_items
       try {
         await db.execute(
-            'ALTER TABLE purchase_bill_items ADD COLUMN lot_no TEXT');
+          'ALTER TABLE purchase_bill_items ADD COLUMN lot_no TEXT',
+        );
         debugPrint('[DB v81] purchase_bill_items.lot_no added');
       } catch (e) {
         debugPrint('[DB v81] purchase_bill_items.lot_no: $e');
       }
       try {
         await db.execute(
-            'ALTER TABLE purchase_bill_items ADD COLUMN expiry_date TEXT');
+          'ALTER TABLE purchase_bill_items ADD COLUMN expiry_date TEXT',
+        );
         debugPrint('[DB v81] purchase_bill_items.expiry_date added');
       } catch (e) {
         debugPrint('[DB v81] purchase_bill_items.expiry_date: $e');
       }
       try {
         await db.execute(
-            'ALTER TABLE purchase_bill_items ADD COLUMN mfg_date TEXT');
+          'ALTER TABLE purchase_bill_items ADD COLUMN mfg_date TEXT',
+        );
         debugPrint('[DB v81] purchase_bill_items.mfg_date added');
       } catch (e) {
         debugPrint('[DB v81] purchase_bill_items.mfg_date: $e');
@@ -3077,7 +3354,8 @@ class DatabaseHelper {
       // Add lot_allocation_json to invoice_items
       try {
         await db.execute(
-            'ALTER TABLE invoice_items ADD COLUMN lot_allocation_json TEXT');
+          'ALTER TABLE invoice_items ADD COLUMN lot_allocation_json TEXT',
+        );
         debugPrint('[DB v81] invoice_items.lot_allocation_json added');
       } catch (e) {
         debugPrint('[DB v81] invoice_items.lot_allocation_json: $e');
@@ -3108,13 +3386,17 @@ class DatabaseHelper {
           )
         ''');
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)');
+          'CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)',
+        );
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)');
+          'CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)',
+        );
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)');
+          'CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)',
+        );
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)');
+          'CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)',
+        );
         debugPrint('[DB v81] stock_lots table created');
       } catch (e) {
         debugPrint('[DB v81] stock_lots: $e');
@@ -3138,11 +3420,14 @@ class DatabaseHelper {
           )
         ''');
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)');
+          'CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)',
+        );
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)');
+          'CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)',
+        );
         await db.execute(
-            'CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)');
+          'CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)',
+        );
         debugPrint('[DB v81] lot_movements table created');
       } catch (e) {
         debugPrint('[DB v81] lot_movements: $e');
@@ -3219,7 +3504,9 @@ class DatabaseHelper {
 
     if (oldVersion < 84) {
       try {
-        await db.execute('ALTER TABLE businesses ADD COLUMN logo_media_id TEXT');
+        await db.execute(
+          'ALTER TABLE businesses ADD COLUMN logo_media_id TEXT',
+        );
       } catch (_) {}
       try {
         await db.execute(
@@ -3304,6 +3591,31 @@ class DatabaseHelper {
             'M6 key rotation: trusted_peers.key_version + key_rotated_at columns',
       });
     }
+
+    if (oldVersion < 86) {
+      try {
+        await db.execute('ALTER TABLE item_catalog ADD COLUMN brand_name TEXT');
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN primary_image_path TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute('ALTER TABLE item_catalog ADD COLUMN barcode TEXT');
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN additional_properties_json TEXT',
+        );
+      } catch (_) {}
+
+      await db.insert('schema_version', {
+        'version': 86,
+        'description':
+            'item_catalog: add brand_name, primary_image_path, barcode, and additional_properties_json',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -3348,8 +3660,7 @@ class DatabaseHelper {
             var rest = line.substring(firstComma + 1).trim();
             // Strip surrounding quotes from description if present.
             if (rest.startsWith('"') && rest.endsWith('"')) {
-              rest = rest.substring(1, rest.length - 1)
-                  .replaceAll('""', '"');
+              rest = rest.substring(1, rest.length - 1).replaceAll('""', '"');
             }
             desc = rest;
           } else {
@@ -3358,11 +3669,11 @@ class DatabaseHelper {
 
           if (code.isEmpty || desc.isEmpty) continue;
 
-          batch.insert(
-            'hsn_master',
-            {'code': code, 'description': desc, 'type': type},
-            conflictAlgorithm: ConflictAlgorithm.ignore,
-          );
+          batch.insert('hsn_master', {
+            'code': code,
+            'description': desc,
+            'type': type,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
           inserted++;
         }
 
@@ -3377,32 +3688,86 @@ class DatabaseHelper {
   Future<void> _seedPlanFeatures(Database db) async {
     final rows = <Map<String, Object?>>[
       // linked_devices
-      {'plan': 'free',  'feature': 'linked_devices',          'enabled': 1, 'limit_value': 0},
-      {'plan': 'pro',   'feature': 'linked_devices',          'enabled': 1, 'limit_value': 2},
-      {'plan': 'team',  'feature': 'linked_devices',          'enabled': 1, 'limit_value': 10},
+      {
+        'plan': 'free',
+        'feature': 'linked_devices',
+        'enabled': 1,
+        'limit_value': 0,
+      },
+      {
+        'plan': 'pro',
+        'feature': 'linked_devices',
+        'enabled': 1,
+        'limit_value': 2,
+      },
+      {
+        'plan': 'team',
+        'feature': 'linked_devices',
+        'enabled': 1,
+        'limit_value': 10,
+      },
       // app_users
-      {'plan': 'free',  'feature': 'app_users',               'enabled': 1, 'limit_value': 0},
-      {'plan': 'pro',   'feature': 'app_users',               'enabled': 1, 'limit_value': 3},
-      {'plan': 'team',  'feature': 'app_users',               'enabled': 1, 'limit_value': 20},
+      {'plan': 'free', 'feature': 'app_users', 'enabled': 1, 'limit_value': 0},
+      {'plan': 'pro', 'feature': 'app_users', 'enabled': 1, 'limit_value': 3},
+      {'plan': 'team', 'feature': 'app_users', 'enabled': 1, 'limit_value': 20},
       // cashier_mode
-      {'plan': 'free',  'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
-      {'plan': 'pro',   'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
-      {'plan': 'team',  'feature': 'cashier_mode',            'enabled': 1, 'limit_value': 1},
+      {
+        'plan': 'free',
+        'feature': 'cashier_mode',
+        'enabled': 1,
+        'limit_value': 1,
+      },
+      {
+        'plan': 'pro',
+        'feature': 'cashier_mode',
+        'enabled': 1,
+        'limit_value': 1,
+      },
+      {
+        'plan': 'team',
+        'feature': 'cashier_mode',
+        'enabled': 1,
+        'limit_value': 1,
+      },
       // businesses
-      {'plan': 'free',  'feature': 'businesses',              'enabled': 1, 'limit_value': 1},
-      {'plan': 'pro',   'feature': 'businesses',              'enabled': 1, 'limit_value': 3},
-      {'plan': 'team',  'feature': 'businesses',              'enabled': 1, 'limit_value': 10},
+      {'plan': 'free', 'feature': 'businesses', 'enabled': 1, 'limit_value': 1},
+      {'plan': 'pro', 'feature': 'businesses', 'enabled': 1, 'limit_value': 3},
+      {
+        'plan': 'team',
+        'feature': 'businesses',
+        'enabled': 1,
+        'limit_value': 10,
+      },
       // report_history_months (0 = unlimited)
-      {'plan': 'free',  'feature': 'report_history_months',   'enabled': 1, 'limit_value': 3},
-      {'plan': 'pro',   'feature': 'report_history_months',   'enabled': 1, 'limit_value': 24},
-      {'plan': 'team',  'feature': 'report_history_months',   'enabled': 1, 'limit_value': 0},
+      {
+        'plan': 'free',
+        'feature': 'report_history_months',
+        'enabled': 1,
+        'limit_value': 3,
+      },
+      {
+        'plan': 'pro',
+        'feature': 'report_history_months',
+        'enabled': 1,
+        'limit_value': 24,
+      },
+      {
+        'plan': 'team',
+        'feature': 'report_history_months',
+        'enabled': 1,
+        'limit_value': 0,
+      },
       // lan_sync
-      {'plan': 'free',  'feature': 'lan_sync',                'enabled': 0, 'limit_value': 0},
-      {'plan': 'pro',   'feature': 'lan_sync',                'enabled': 1, 'limit_value': 1},
-      {'plan': 'team',  'feature': 'lan_sync',                'enabled': 1, 'limit_value': 1},
+      {'plan': 'free', 'feature': 'lan_sync', 'enabled': 0, 'limit_value': 0},
+      {'plan': 'pro', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 1},
+      {'plan': 'team', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 1},
     ];
     for (final row in rows) {
-      await db.insert('plan_features', row, conflictAlgorithm: ConflictAlgorithm.ignore);
+      await db.insert(
+        'plan_features',
+        row,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
     }
   }
 
@@ -3443,15 +3808,11 @@ class DatabaseHelper {
           '5. Subject to local jurisdiction only.',
     };
     for (final entry in defaults.entries) {
-      await db.insert(
-        'settings',
-        {
-          'key': entry.key,
-          'value': entry.value,
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      await db.insert('settings', {
+        'key': entry.key,
+        'value': entry.value,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
   }
 
@@ -3590,7 +3951,11 @@ class DatabaseHelper {
   Future<void> _seedAccounts(Database db) async {
     final accounts = [
       {'account_type': 'savings', 'account_name': 'Bank', 'is_primary': 1},
-      {'account_type': 'upiWallet', 'account_name': 'UPI / Wallet', 'is_primary': 0},
+      {
+        'account_type': 'upiWallet',
+        'account_name': 'UPI / Wallet',
+        'is_primary': 0,
+      },
       {'account_type': 'savings', 'account_name': 'Cash', 'is_primary': 0},
     ];
     for (final a in accounts) {
@@ -3605,30 +3970,122 @@ class DatabaseHelper {
   /// Seed default expense and income categories.
   Future<void> _seedCategories(Database db) async {
     final expenseCategories = [
-      {'name': 'Food & Dining', 'icon': 'restaurant', 'color': '#FF5722', 'keywords': 'swiggy,zomato,restaurant,food,cafe,hotel,dining'},
-      {'name': 'Transportation', 'icon': 'directions_car', 'color': '#2196F3', 'keywords': 'uber,ola,rapido,metro,fuel,petrol,diesel'},
-      {'name': 'Shopping', 'icon': 'shopping_bag', 'color': '#9C27B0', 'keywords': 'amazon,flipkart,myntra,ajio,shopping'},
-      {'name': 'Bills & Utilities', 'icon': 'receipt_long', 'color': '#607D8B', 'keywords': 'electricity,water,gas,internet,broadband,mobile,recharge'},
-      {'name': 'Healthcare', 'icon': 'local_hospital', 'color': '#F44336', 'keywords': 'hospital,pharmacy,medical,doctor,medicine'},
-      {'name': 'Entertainment', 'icon': 'movie', 'color': '#E91E63', 'keywords': 'netflix,hotstar,spotify,movie,game'},
-      {'name': 'Groceries', 'icon': 'local_grocery_store', 'color': '#4CAF50', 'keywords': 'bigbasket,blinkit,zepto,grocery,supermarket'},
-      {'name': 'Education', 'icon': 'school', 'color': '#3F51B5', 'keywords': 'school,college,course,book,tuition'},
-      {'name': 'Business Expense', 'icon': 'business_center', 'color': '#795548', 'keywords': 'office,business,supply'},
-      {'name': 'Other', 'icon': 'more_horiz', 'color': '#9E9E9E', 'keywords': ''},
+      {
+        'name': 'Food & Dining',
+        'icon': 'restaurant',
+        'color': '#FF5722',
+        'keywords': 'swiggy,zomato,restaurant,food,cafe,hotel,dining',
+      },
+      {
+        'name': 'Transportation',
+        'icon': 'directions_car',
+        'color': '#2196F3',
+        'keywords': 'uber,ola,rapido,metro,fuel,petrol,diesel',
+      },
+      {
+        'name': 'Shopping',
+        'icon': 'shopping_bag',
+        'color': '#9C27B0',
+        'keywords': 'amazon,flipkart,myntra,ajio,shopping',
+      },
+      {
+        'name': 'Bills & Utilities',
+        'icon': 'receipt_long',
+        'color': '#607D8B',
+        'keywords': 'electricity,water,gas,internet,broadband,mobile,recharge',
+      },
+      {
+        'name': 'Healthcare',
+        'icon': 'local_hospital',
+        'color': '#F44336',
+        'keywords': 'hospital,pharmacy,medical,doctor,medicine',
+      },
+      {
+        'name': 'Entertainment',
+        'icon': 'movie',
+        'color': '#E91E63',
+        'keywords': 'netflix,hotstar,spotify,movie,game',
+      },
+      {
+        'name': 'Groceries',
+        'icon': 'local_grocery_store',
+        'color': '#4CAF50',
+        'keywords': 'bigbasket,blinkit,zepto,grocery,supermarket',
+      },
+      {
+        'name': 'Education',
+        'icon': 'school',
+        'color': '#3F51B5',
+        'keywords': 'school,college,course,book,tuition',
+      },
+      {
+        'name': 'Business Expense',
+        'icon': 'business_center',
+        'color': '#795548',
+        'keywords': 'office,business,supply',
+      },
+      {
+        'name': 'Other',
+        'icon': 'more_horiz',
+        'color': '#9E9E9E',
+        'keywords': '',
+      },
     ];
 
     final incomeCategories = [
-      {'name': 'Salary', 'icon': 'account_balance_wallet', 'color': '#2E7D32', 'keywords': 'salary,wage,pay'},
-      {'name': 'Business Income', 'icon': 'store', 'color': '#1B5E20', 'keywords': 'business,revenue,sale'},
-      {'name': 'Freelance', 'icon': 'laptop_mac', 'color': '#00695C', 'keywords': 'freelance,consulting,project'},
-      {'name': 'Investment', 'icon': 'trending_up', 'color': '#0D47A1', 'keywords': 'dividend,interest,mutual fund,stock'},
-      {'name': 'Refund', 'icon': 'replay', 'color': '#FF6F00', 'keywords': 'refund,return,cashback'},
-      {'name': 'Other Income', 'icon': 'attach_money', 'color': '#388E3C', 'keywords': ''},
+      {
+        'name': 'Salary',
+        'icon': 'account_balance_wallet',
+        'color': '#2E7D32',
+        'keywords': 'salary,wage,pay',
+      },
+      {
+        'name': 'Business Income',
+        'icon': 'store',
+        'color': '#1B5E20',
+        'keywords': 'business,revenue,sale',
+      },
+      {
+        'name': 'Freelance',
+        'icon': 'laptop_mac',
+        'color': '#00695C',
+        'keywords': 'freelance,consulting,project',
+      },
+      {
+        'name': 'Investment',
+        'icon': 'trending_up',
+        'color': '#0D47A1',
+        'keywords': 'dividend,interest,mutual fund,stock',
+      },
+      {
+        'name': 'Refund',
+        'icon': 'replay',
+        'color': '#FF6F00',
+        'keywords': 'refund,return,cashback',
+      },
+      {
+        'name': 'Other Income',
+        'icon': 'attach_money',
+        'color': '#388E3C',
+        'keywords': '',
+      },
     ];
 
     final payrollCategories = [
-      {'name': 'Payroll', 'icon': 'badge', 'color': '#1565C0', 'sort_order': 100, 'keywords': 'salary,wages,payroll,staff'},
-      {'name': 'Payroll Deduction', 'icon': 'remove_circle_outline', 'color': '#C62828', 'sort_order': 101, 'keywords': 'tds,pf,esi,deduction'},
+      {
+        'name': 'Payroll',
+        'icon': 'badge',
+        'color': '#1565C0',
+        'sort_order': 100,
+        'keywords': 'salary,wages,payroll,staff',
+      },
+      {
+        'name': 'Payroll Deduction',
+        'icon': 'remove_circle_outline',
+        'color': '#C62828',
+        'sort_order': 101,
+        'keywords': 'tds,pf,esi,deduction',
+      },
     ];
 
     for (var i = 0; i < expenseCategories.length; i++) {
@@ -3756,93 +4213,94 @@ class DatabaseHelper {
     // [code, label, sortOrder] — code is null for non-GST units
     const units = <List<Object?>>[
       // ── Count / Quantity ────────────────────────────────
-      ['NOS', 'Numbers',            0],
-      ['PCS', 'Pieces',             1],
-      ['UNT', 'Units',              2],
-      ['DOZ', 'Dozens',             3],
-      ['PAC', 'Packs',              4],
-      ['BOX', 'Box',                5],
-      ['SET', 'Sets',               6],
-      ['PRS', 'Pairs',              7],
+      ['NOS', 'Numbers', 0],
+      ['PCS', 'Pieces', 1],
+      ['UNT', 'Units', 2],
+      ['DOZ', 'Dozens', 3],
+      ['PAC', 'Packs', 4],
+      ['BOX', 'Box', 5],
+      ['SET', 'Sets', 6],
+      ['PRS', 'Pairs', 7],
       // ── Packaging ──────────────────────────────────────
-      ['BAG', 'Bags',               8],
-      ['BTL', 'Bottles',            9],
-      ['CTN', 'Cartons',           10],
-      ['ROL', 'Rolls',             11],
-      ['BDL', 'Bundles',           12],
-      ['BUN', 'Bunches',           13],
-      ['CAN', 'Cans',              14],
-      ['DRM', 'Drums',             15],
-      ['TUB', 'Tubes',             16],
-      ['TBS', 'Tablets',           17],
-      ['BAL', 'Bale',              18],
-      ['BKL', 'Buckles',           19],
+      ['BAG', 'Bags', 8],
+      ['BTL', 'Bottles', 9],
+      ['CTN', 'Cartons', 10],
+      ['ROL', 'Rolls', 11],
+      ['BDL', 'Bundles', 12],
+      ['BUN', 'Bunches', 13],
+      ['CAN', 'Cans', 14],
+      ['DRM', 'Drums', 15],
+      ['TUB', 'Tubes', 16],
+      ['TBS', 'Tablets', 17],
+      ['BAL', 'Bale', 18],
+      ['BKL', 'Buckles', 19],
       // ── Bulk counts ────────────────────────────────────
-      ['GRS', 'Gross',             20],
-      ['GGK', 'Great Gross',       21],
-      ['TGM', 'Ten Gross',         22],
-      ['THD', 'Thousands',         23],
-      ['BOU', 'Billion of Units',  24],
+      ['GRS', 'Gross', 20],
+      ['GGK', 'Great Gross', 21],
+      ['TGM', 'Ten Gross', 22],
+      ['THD', 'Thousands', 23],
+      ['BOU', 'Billion of Units', 24],
       // ── Weight ─────────────────────────────────────────
-      ['GMS', 'Grammes',           25],
-      ['KGS', 'Kilograms',         26],
-      ['QTL', 'Quintal',           27],
-      ['MTS', 'Metric Ton',        28],
-      ['TON', 'Tonnes',            29],
+      ['GMS', 'Grammes', 25],
+      ['KGS', 'Kilograms', 26],
+      ['QTL', 'Quintal', 27],
+      ['MTS', 'Metric Ton', 28],
+      ['TON', 'Tonnes', 29],
       // ── Volume ─────────────────────────────────────────
-      ['MLT', 'Mililitre',         30],
-      ['LTR', 'Litres',            31],
-      ['KLR', 'Kilolitre',         32],
-      ['UGS', 'US Gallons',        33],
+      ['MLT', 'Mililitre', 30],
+      ['LTR', 'Litres', 31],
+      ['KLR', 'Kilolitre', 32],
+      ['UGS', 'US Gallons', 33],
       // ── Length ─────────────────────────────────────────
-      ['CMS', 'Centi Meters',      34],
-      ['MTR', 'Meters',            35],
-      ['KME', 'Kilometre',         36],
-      ['YDS', 'Yards',             37],
-      ['GYD', 'Gross Yards',       38],
+      ['CMS', 'Centi Meters', 34],
+      ['MTR', 'Meters', 35],
+      ['KME', 'Kilometre', 36],
+      ['YDS', 'Yards', 37],
+      ['GYD', 'Gross Yards', 38],
       // ── Area / Volume (3-D) ────────────────────────────
-      ['SQF', 'Square Feet',       39],
-      ['SQM', 'Square Meters',     40],
-      ['SQY', 'Square Yards',      41],
-      ['CBM', 'Cubic Meters',      42],
+      ['SQF', 'Square Feet', 39],
+      ['SQM', 'Square Meters', 40],
+      ['SQY', 'Square Yards', 41],
+      ['CBM', 'Cubic Meters', 42],
       ['CCM', 'Cubic Centimeters', 43],
       // ── Catch-all ──────────────────────────────────────
-      ['OTH', 'Others',            44],
+      ['OTH', 'Others', 44],
       // ── Non-GST: specialty physical ────────────────────
-      [null,  'mg',                50],
-      [null,  'acre',              51],
+      [null, 'mg', 50],
+      [null, 'acre', 51],
       // ── Non-GST: time ──────────────────────────────────
-      [null,  'hrs',               52],
-      [null,  'days',              53],
-      [null,  'week',              54],
-      [null,  'month',             55],
-      [null,  'year',              56],
+      [null, 'hrs', 52],
+      [null, 'days', 53],
+      [null, 'week', 54],
+      [null, 'month', 55],
+      [null, 'year', 56],
       // ── Non-GST: software / digital services ───────────
-      [null,  'license',           57],
-      [null,  'seat',              58],
-      [null,  'user',              59],
-      [null,  'project',           60],
-      [null,  'task',              61],
-      [null,  'sprint',            62],
-      [null,  'feature',           63],
-      [null,  'screen',            64],
-      [null,  'page',              65],
-      [null,  'report',            66],
-      [null,  'API call',          67],
-      [null,  'request',           68],
-      [null,  'token',             69],
-      [null,  'deployment',        70],
-      [null,  'instance',          71],
-      [null,  'GB',                72],
-      [null,  'MB',                73],
-      [null,  'TB',                74],
+      [null, 'license', 57],
+      [null, 'seat', 58],
+      [null, 'user', 59],
+      [null, 'project', 60],
+      [null, 'task', 61],
+      [null, 'sprint', 62],
+      [null, 'feature', 63],
+      [null, 'screen', 64],
+      [null, 'page', 65],
+      [null, 'report', 66],
+      [null, 'API call', 67],
+      [null, 'request', 68],
+      [null, 'token', 69],
+      [null, 'deployment', 70],
+      [null, 'instance', 71],
+      [null, 'GB', 72],
+      [null, 'MB', 73],
+      [null, 'TB', 74],
     ];
     for (final u in units) {
-      await db.insert(
-        'unit_types',
-        {'code': u[0], 'label': u[1], 'is_system': 1, 'sort_order': u[2]},
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      await db.insert('unit_types', {
+        'code': u[0],
+        'label': u[1],
+        'is_system': 1,
+        'sort_order': u[2],
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
   }
 
@@ -3850,7 +4308,8 @@ class DatabaseHelper {
   Future<List<Map<String, dynamic>>> getUnitTypes() async {
     final db = await database;
     return db.rawQuery(
-        'SELECT id, code, label, is_system FROM unit_types ORDER BY sort_order, label');
+      'SELECT id, code, label, is_system FROM unit_types ORDER BY sort_order, label',
+    );
   }
 
   /// Inserts a custom unit type. Returns the new id, or -1 if duplicate.
@@ -4037,21 +4496,14 @@ class DatabaseHelper {
   /// Returns all transporters ordered by most recently used.
   Future<List<Map<String, dynamic>>> getTransporters() async {
     final db = await database;
-    return db.query(
-      'transporters',
-      orderBy: 'last_used_at DESC',
-      limit: 30,
-    );
+    return db.query('transporters', orderBy: 'last_used_at DESC', limit: 30);
   }
 
   /// Upsert a transporter into the `transporters` table.
   ///
   /// If a transporter with [name] already exists, updates its `last_used_at`
   /// and optionally [gstin]. Otherwise inserts a new row.
-  Future<void> saveTransporter({
-    required String name,
-    String? gstin,
-  }) async {
+  Future<void> saveTransporter({required String name, String? gstin}) async {
     final db = await database;
     final now = DateTime.now().millisecondsSinceEpoch;
     final existing = await db.query(
@@ -4069,10 +4521,7 @@ class DatabaseHelper {
     } else {
       await db.update(
         'transporters',
-        {
-          'gstin': ?gstin,
-          'last_used_at': now,
-        },
+        {'gstin': ?gstin, 'last_used_at': now},
         where: 'name = ?',
         whereArgs: [name],
       );

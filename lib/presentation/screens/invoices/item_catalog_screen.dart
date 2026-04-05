@@ -25,8 +25,7 @@ class ItemCatalogScreen extends ConsumerStatefulWidget {
   final ItemCatalog? initialEditItem;
 
   @override
-  ConsumerState<ItemCatalogScreen> createState() =>
-      _ItemCatalogScreenState();
+  ConsumerState<ItemCatalogScreen> createState() => _ItemCatalogScreenState();
 }
 
 class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
@@ -56,8 +55,7 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text(widget.pickMode ? 'Pick Item' : 'Item Catalog'),
+        title: Text(widget.pickMode ? 'Pick Item' : 'Item Catalog'),
         actions: [
           if (widget.pickMode)
             TextButton.icon(
@@ -83,8 +81,12 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.base,
-                AppSpacing.sm, AppSpacing.base, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.base,
+              0,
+            ),
             child: TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
@@ -120,39 +122,42 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
                     onSelected: (_) => setState(() => _categoryFilter = null),
                   ),
                 ),
-                ...ItemCategory.values.map((cat) => Padding(
-                  padding: const EdgeInsets.only(right: AppSpacing.sm),
-                  child: FilterChip(
-                    label: Text(cat.pluralLabel),
-                    selected: _categoryFilter == cat,
-                    onSelected: (_) => setState(() => _categoryFilter = cat),
+                ...ItemCategory.values.map(
+                  (cat) => Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.sm),
+                    child: FilterChip(
+                      label: Text(cat.pluralLabel),
+                      selected: _categoryFilter == cat,
+                      onSelected: (_) => setState(() => _categoryFilter = cat),
+                    ),
                   ),
-                )),
+                ),
               ],
             ),
           ),
           Expanded(
             child: catalogAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error: $e')),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
               data: (items) {
                 // Apply filters: search + category
                 var filtered = items;
-                
+
                 // Search filter
                 if (_search.isNotEmpty) {
                   filtered = filtered
-                      .where((i) =>
-                          i.name.toLowerCase().contains(
-                              _search.toLowerCase()) ||
-                          (i.description ?? '')
-                              .toLowerCase()
-                              .contains(_search.toLowerCase()))
+                      .where(
+                        (i) =>
+                            i.name.toLowerCase().contains(
+                              _search.toLowerCase(),
+                            ) ||
+                            (i.description ?? '').toLowerCase().contains(
+                              _search.toLowerCase(),
+                            ),
+                      )
                       .toList();
                 }
-                
+
                 // Category filter
                 if (_categoryFilter != null) {
                   filtered = filtered
@@ -170,22 +175,24 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
 
                 return ListView.builder(
                   padding: const EdgeInsets.only(
-                      top: AppSpacing.sm, bottom: 80),
+                    top: AppSpacing.sm,
+                    bottom: 80,
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (_, i) => _CatalogTile(
                     item: filtered[i],
                     pickMode: widget.pickMode,
-                    onPick: () =>
-                        Navigator.pop(context, filtered[i]),
-                    onEdit: () =>
-                        _showItemSheet(context, item: filtered[i]),
-                    onDelete: () => _confirmDelete(
-                        context, ref, filtered[i]),
+                    onPick: () => Navigator.pop(context, filtered[i]),
+                    onEdit: () => _showItemSheet(context, item: filtered[i]),
+                    onDelete: () => _confirmDelete(context, ref, filtered[i]),
                     onToggleTracking: () => ref
                         .read(catalogProvider.notifier)
-                        .edit(filtered[i].copyWith(
+                        .edit(
+                          filtered[i].copyWith(
                             trackInventory: !filtered[i].trackInventory,
-                            updatedAt: DateTime.now())),
+                            updatedAt: DateTime.now(),
+                          ),
+                        ),
                   ),
                 );
               },
@@ -196,8 +203,7 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
     );
   }
 
-  Future<void> _showItemSheet(BuildContext context,
-      {ItemCatalog? item}) async {
+  Future<void> _showItemSheet(BuildContext context, {ItemCatalog? item}) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -216,21 +222,25 @@ class _ItemCatalogScreenState extends ConsumerState<ItemCatalogScreen> {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, ItemCatalog item) async {
+    BuildContext context,
+    WidgetRef ref,
+    ItemCatalog item,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Remove Item?'),
-        content: Text(
-            '"${item.name}" will be removed from the catalog.'),
+        content: Text('"${item.name}" will be removed from the catalog.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Remove')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
         ],
       ),
     );
@@ -280,9 +290,11 @@ class _CatalogTile extends ConsumerWidget {
                       ? Icons.inventory_2_outlined
                       : Icons.inventory_2,
                 ),
-                title: Text(item.trackInventory
-                    ? 'Disable Stock Tracking'
-                    : 'Enable Stock Tracking'),
+                title: Text(
+                  item.trackInventory
+                      ? 'Disable Stock Tracking'
+                      : 'Enable Stock Tracking',
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   onToggleTracking();
@@ -297,11 +309,14 @@ class _CatalogTile extends ConsumerWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.error),
-              title: Text('Delete',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.error)),
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(
+                'Delete',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 onDelete();
@@ -326,37 +341,43 @@ class _CatalogTile extends ConsumerWidget {
       onTap: pickMode ? onPick : onEdit,
       isThreeLine: item.trackInventory,
       leading: CircleAvatar(
-        backgroundColor:
-            Theme.of(context).colorScheme.primaryContainer,
-        child: Icon(Icons.inventory_2_outlined,
-            color: Theme.of(context).colorScheme.primary),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        child: Icon(
+          Icons.inventory_2_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
-      title: Text(item.name,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        item.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: item.trackInventory
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(infoLine,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(infoLine, maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xs + 2, vertical: 1),
+                    horizontal: AppSpacing.xs + 2,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: _stockColor(context).withValues(alpha: 0.12),
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.radiusSm),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     border: Border.all(
-                        color:
-                            _stockColor(context).withValues(alpha: 0.35)),
+                      color: _stockColor(context).withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.inventory_2_outlined,
-                          size: 10, color: _stockColor(context)),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 10,
+                        color: _stockColor(context),
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         item.stockQty <= 0
@@ -381,15 +402,15 @@ class _CatalogTile extends ConsumerWidget {
         children: [
           Text(
             CurrencyFormatter.format(item.unitPrice),
-            style: const TextStyle(
-                fontWeight: FontWeight.bold, fontSize: 14),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           if (item.taxPct > 0)
             Text(
               'GST ${item.taxPct.toStringAsFixed(0)}%',
               style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.outline),
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
         ],
       ),
@@ -417,8 +438,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _priceCtrl;
   late final TextEditingController _taxCtrl;
   late final TextEditingController _hsnCtrl;
+  late final TextEditingController _brandCtrl;
+  late final TextEditingController _barcodeCtrl;
+  late final TextEditingController _imagePathCtrl;
+  late final TextEditingController _additionalPropsCtrl;
   late final TextEditingController _mrpCtrl;
   late final TextEditingController _dealerPriceCtrl;
+  late final TextEditingController _stockQtyCtrl;
+  late final TextEditingController _lowStockThresholdCtrl;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -433,23 +460,38 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     super.initState();
     final item = widget.item;
     _nameCtrl = TextEditingController(text: item?.name ?? '');
-    _descCtrl =
-        TextEditingController(text: item?.description ?? '');
+    _descCtrl = TextEditingController(text: item?.description ?? '');
     _skuCtrl = TextEditingController(text: item?.sku ?? '');
     _selectedUnit = item?.unit ?? 'PCS';
     _priceCtrl = TextEditingController(
-        text: item == null ? '' : item.unitPrice.toStringAsFixed(2));
+      text: item == null ? '' : item.unitPrice.toStringAsFixed(2),
+    );
     _taxCtrl = TextEditingController(
-        text: item == null
-            ? ''
-            : (item.taxPct == 0
-                ? ''
-                : item.taxPct.toStringAsFixed(1)));
+      text: item == null
+          ? ''
+          : (item.taxPct == 0 ? '' : item.taxPct.toStringAsFixed(1)),
+    );
     _hsnCtrl = TextEditingController(text: item?.hsnCode ?? '');
+    _brandCtrl = TextEditingController(text: item?.brandName ?? '');
+    _barcodeCtrl = TextEditingController(text: item?.barcode ?? '');
+    _imagePathCtrl = TextEditingController(text: item?.primaryImagePath ?? '');
+    _additionalPropsCtrl = TextEditingController(
+      text: item?.additionalPropertiesJson ?? '',
+    );
     _mrpCtrl = TextEditingController(
-        text: item?.mrp == null ? '' : item!.mrp!.toStringAsFixed(2));
+      text: item?.mrp == null ? '' : item!.mrp!.toStringAsFixed(2),
+    );
     _dealerPriceCtrl = TextEditingController(
-        text: item?.dealerPrice == null ? '' : item!.dealerPrice!.toStringAsFixed(2));
+      text: item?.dealerPrice == null
+          ? ''
+          : item!.dealerPrice!.toStringAsFixed(2),
+    );
+    _stockQtyCtrl = TextEditingController(
+      text: item == null ? '' : item.stockQty.toStringAsFixed(2),
+    );
+    _lowStockThresholdCtrl = TextEditingController(
+      text: item == null ? '' : item.lowStockThreshold.toStringAsFixed(2),
+    );
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
@@ -458,7 +500,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _trackInventory = item?.trackInventory ?? _trackInventoryDefault(_category);
     _isBookable = item?.isBookable ?? false;
     _durationMinutes = item?.durationMinutes ?? 30;
-    
+
     // Auto-generate SKU for new items
     if (item == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -481,8 +523,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _priceCtrl,
       _taxCtrl,
       _hsnCtrl,
+      _brandCtrl,
+      _barcodeCtrl,
+      _imagePathCtrl,
+      _additionalPropsCtrl,
       _mrpCtrl,
       _dealerPriceCtrl,
+      _stockQtyCtrl,
+      _lowStockThresholdCtrl,
     ]) {
       c.dispose();
     }
@@ -496,22 +544,28 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     final item = ItemCatalog(
       id: widget.item?.id,
       name: _nameCtrl.text.trim(),
-      description: _descCtrl.text.trim().isEmpty
-          ? null
-          : _descCtrl.text.trim(),
-      sku: _skuCtrl.text.trim().isEmpty
-          ? null
-          : _skuCtrl.text.trim(),
+      description: _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+      sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
       unit: _selectedUnit.isEmpty ? 'PCS' : _selectedUnit,
       unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
       taxPct: double.tryParse(_taxCtrl.text) ?? 0,
-      hsnCode: _hsnCtrl.text.trim().isEmpty
-          ? null
-          : _hsnCtrl.text.trim(),
+      hsnCode: _hsnCtrl.text.trim().isEmpty ? null : _hsnCtrl.text.trim(),
       hsnOrSac: _hsnOrSac,
+      brandName: _brandCtrl.text.trim().isEmpty ? null : _brandCtrl.text.trim(),
+      primaryImagePath: _imagePathCtrl.text.trim().isEmpty
+          ? null
+          : _imagePathCtrl.text.trim(),
+      barcode: _barcodeCtrl.text.trim().isEmpty
+          ? null
+          : _barcodeCtrl.text.trim(),
+      additionalPropertiesJson: _additionalPropsCtrl.text.trim().isEmpty
+          ? null
+          : _additionalPropsCtrl.text.trim(),
       category: _category,
       isFavorite: _isFavorite,
       trackInventory: _trackInventory,
+      stockQty: double.tryParse(_stockQtyCtrl.text) ?? 0,
+      lowStockThreshold: double.tryParse(_lowStockThresholdCtrl.text) ?? 5,
       isBookable: _isBookable,
       durationMinutes: _isBookable ? _durationMinutes : null,
       mrp: double.tryParse(_mrpCtrl.text),
@@ -526,8 +580,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   /// Returns the default HSN/SAC code type for a given item category.
   String _defaultHsnOrSac(ItemCategory cat) =>
       (cat == ItemCategory.service || cat == ItemCategory.labor)
-          ? 'SAC'
-          : 'HSN';
+      ? 'SAC'
+      : 'HSN';
 
   /// Physical categories default to tracking on; intangible ones default off.
   bool _trackInventoryDefault(ItemCategory cat) =>
@@ -543,239 +597,425 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+    final sheetHeight = MediaQuery.of(context).size.height * 0.9;
+
     return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.base),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.item == null ? 'Add Item' : 'Edit Item',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: AppSpacing.base),
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Item Name *',
-                  border: OutlineInputBorder(),
+      padding: EdgeInsets.only(bottom: viewInsets),
+      child: SizedBox(
+        height: sheetHeight,
+        child: DefaultTabController(
+          length: 5,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  widget.item == null ? 'Add Item' : 'Edit Item',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _skuCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'SKU / Item Code',
-                  border: OutlineInputBorder(),
-                  hintText: 'e.g., PROD-001',
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              TextFormField(
-                controller: _descCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              DropdownButtonFormField<ItemCategory>(
-                initialValue: _category,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: ItemCategory.values.map((cat) {
-                  return DropdownMenuItem(
-                    value: cat,
-                    child: Text(cat.label),
-                  );
-                }).toList(),
-                onChanged: (val) async {
-                  if (val != null) {
-                    setState(() {
-                      _category = val;
-                      // Auto-switch HSN/SAC type based on new category
-                      _hsnOrSac = _defaultHsnOrSac(val);
-                      // Sync inventory tracking default with new category
-                      _trackInventory = _trackInventoryDefault(val);
-                    });
-                    // Auto-update SKU if it's still in auto-generated format
-                    if (_isAutoGeneratedSku(_skuCtrl.text)) {
-                      final newSku = await ref
-                          .read(catalogProvider.notifier)
-                          .generateNextSku(val);
-                      if (mounted) {
-                        _skuCtrl.text = newSku;
-                      }
-                    }
-                  }
-                },
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: _UnitDropdown(
-                      value: _selectedUnit,
-                      onChanged: (v) => setState(() => _selectedUnit = v),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(value: 'HSN', label: Text('HSN')),
-                            ButtonSegment(value: 'SAC', label: Text('SAC')),
-                          ],
-                          selected: {_hsnOrSac},
-                          onSelectionChanged: (s) => setState(() {
-                            _hsnOrSac = s.first;
-                            _hsnCtrl.clear();
-                          }),
-                          style: const ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        _HsnSearchField(
-                          key: ValueKey(_hsnOrSac),
-                          type: _hsnOrSac,
-                          initialCode: _hsnCtrl.text,
-                          onSelected: (entry) => setState(() {
-                            _hsnCtrl.text = entry.code;
-                          }),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: TextFormField(
-                      controller: _priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Selling Price (₹) *',
-                        border: OutlineInputBorder(),
-                        prefixText: '₹',
-                      ),
-                      validator: (v) =>
-                          (double.tryParse(v ?? '') == null)
-                              ? 'Enter valid amount'
-                              : null,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _taxCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'GST %',
-                        border: OutlineInputBorder(),
-                        suffixText: '%',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _mrpCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'MRP (₹)',
-                        border: OutlineInputBorder(),
-                        prefixText: '₹',
-                        helperText: 'Max Retail Price (optional)',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _dealerPriceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Dealer Price (₹)',
-                        border: OutlineInputBorder(),
-                        prefixText: '₹',
-                        helperText: 'Purchase / trade price',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
-                value: _isFavorite,
-                onChanged: (val) => setState(() => _isFavorite = val),
-                title: const Text('Mark as Favorite'),
-                subtitle: const Text('Show this item at the top of the list'),
-                contentPadding: EdgeInsets.zero,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
-                value: _trackInventory,
-                onChanged: (val) => setState(() => _trackInventory = val),
-                title: const Text('Track Inventory'),
-                subtitle: const Text('Monitor stock levels and get low-stock alerts'),
-                contentPadding: EdgeInsets.zero,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              SwitchListTile(
-                value: _isBookable,
-                onChanged: (val) => setState(() => _isBookable = val),
-                title: const Text('Enable Bookings'),
-                subtitle: const Text('Allow customers to book this service'),
-                contentPadding: EdgeInsets.zero,
-              ),
-              if (_isBookable) ...[
                 const SizedBox(height: AppSpacing.sm),
-                _DurationPicker(
-                  initialMinutes: _durationMinutes,
-                  onChanged: (minutes) => setState(() => _durationMinutes = minutes),
+                const TabBar(
+                  isScrollable: true,
+                  tabs: [
+                    Tab(text: 'Basic'),
+                    Tab(text: 'Pricing'),
+                    Tab(text: 'Inventory'),
+                    Tab(text: 'Media'),
+                    Tab(text: 'Advanced'),
+                  ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      _buildBasicTab(),
+                      _buildPricingTab(),
+                      _buildInventoryTab(),
+                      _buildMediaTab(),
+                      _buildAdvancedTab(),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                FilledButton(
+                  onPressed: _saving ? null : _submit,
+                  child: _saving
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(widget.item == null ? 'Add Item' : 'Save'),
+                ),
+                const SizedBox(height: AppSpacing.base),
               ],
-              const SizedBox(height: AppSpacing.base),
-              FilledButton(
-                onPressed: _saving ? null : _submit,
-                child: _saving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2))
-                    : Text(widget.item == null ? 'Add Item' : 'Save'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBasicTab() {
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      children: [
+        TextFormField(
+          controller: _nameCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Item Name *',
+            border: OutlineInputBorder(),
+          ),
+          validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          controller: _skuCtrl,
+          decoration: const InputDecoration(
+            labelText: 'SKU / Item Code',
+            border: OutlineInputBorder(),
+            hintText: 'e.g., PROD-001',
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        DropdownButtonFormField<ItemCategory>(
+          initialValue: _category,
+          decoration: const InputDecoration(
+            labelText: 'Category',
+            border: OutlineInputBorder(),
+          ),
+          items: ItemCategory.values
+              .map(
+                (cat) => DropdownMenuItem(value: cat, child: Text(cat.label)),
+              )
+              .toList(),
+          onChanged: (val) async {
+            if (val == null) return;
+            setState(() {
+              _category = val;
+              _hsnOrSac = _defaultHsnOrSac(val);
+              _trackInventory = _trackInventoryDefault(val);
+            });
+            if (_isAutoGeneratedSku(_skuCtrl.text)) {
+              final newSku = await ref
+                  .read(catalogProvider.notifier)
+                  .generateNextSku(val);
+              if (mounted) {
+                _skuCtrl.text = newSku;
+              }
+            }
+          },
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextFormField(
+          controller: _descCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Description',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Brand and Identifiers',
+          subtitle: 'Optional commerce profile fields',
+          initiallyExpanded: true,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _brandCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Brand Name',
+                  border: OutlineInputBorder(),
+                ),
               ),
-              const SizedBox(height: AppSpacing.base),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _barcodeCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Barcode / GTIN',
+                  border: OutlineInputBorder(),
+                ),
+              ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPricingTab() {
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _UnitDropdown(
+                value: _selectedUnit,
+                onChanged: (v) => setState(() => _selectedUnit = v),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: TextFormField(
+                controller: _priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Selling Price (₹) *',
+                  border: OutlineInputBorder(),
+                  prefixText: '₹',
+                ),
+                validator: (v) => (double.tryParse(v ?? '') == null)
+                    ? 'Enter valid amount'
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Tax and Compliance',
+          subtitle: 'GST percentage and HSN/SAC code',
+          initiallyExpanded: true,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _taxCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'GST %',
+                  border: OutlineInputBorder(),
+                  suffixText: '%',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'HSN', label: Text('HSN')),
+                  ButtonSegment(value: 'SAC', label: Text('SAC')),
+                ],
+                selected: {_hsnOrSac},
+                onSelectionChanged: (s) => setState(() {
+                  _hsnOrSac = s.first;
+                  _hsnCtrl.clear();
+                }),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _HsnSearchField(
+                key: ValueKey(_hsnOrSac),
+                type: _hsnOrSac,
+                initialCode: _hsnCtrl.text,
+                onSelected: (entry) => setState(() {
+                  _hsnCtrl.text = entry.code;
+                }),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Retail and Trade Pricing',
+          subtitle: 'MRP and dealer purchase price',
+          child: Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _mrpCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'MRP (₹)',
+                    border: OutlineInputBorder(),
+                    prefixText: '₹',
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: TextFormField(
+                  controller: _dealerPriceCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Dealer Price (₹)',
+                    border: OutlineInputBorder(),
+                    prefixText: '₹',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInventoryTab() {
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      children: [
+        SwitchListTile(
+          value: _trackInventory,
+          onChanged: (val) => setState(() => _trackInventory = val),
+          title: const Text('Track Inventory'),
+          subtitle: const Text('Monitor stock levels and get low-stock alerts'),
+          contentPadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Stock Levels',
+          subtitle: _trackInventory
+              ? 'Editable stock defaults for this catalog item'
+              : 'Enable tracking to use stock alerts and thresholds',
+          initiallyExpanded: _trackInventory,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _stockQtyCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Current Stock Qty',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _lowStockThresholdCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Low Stock Threshold',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMediaTab() {
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      children: [
+        _buildAccordion(
+          title: 'Primary Image',
+          subtitle: 'Store local path; export mapper derives URL',
+          initiallyExpanded: true,
+          child: TextFormField(
+            controller: _imagePathCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Primary Image Path',
+              border: OutlineInputBorder(),
+              hintText: '/storage/emulated/0/Pictures/item.jpg',
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Future Media',
+          subtitle: 'Reserved for gallery/video metadata',
+          child: Text(
+            'Additional image/video fields will be added under this section as media workflows expand.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedTab() {
+    return ListView(
+      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      children: [
+        SwitchListTile(
+          value: _isFavorite,
+          onChanged: (val) => setState(() => _isFavorite = val),
+          title: const Text('Mark as Favorite'),
+          subtitle: const Text('Show this item at the top of the list'),
+          contentPadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        SwitchListTile(
+          value: _isBookable,
+          onChanged: (val) => setState(() => _isBookable = val),
+          title: const Text('Enable Bookings'),
+          subtitle: const Text('Allow customers to book this service'),
+          contentPadding: EdgeInsets.zero,
+        ),
+        if (_isBookable) ...[
+          const SizedBox(height: AppSpacing.sm),
+          _buildAccordion(
+            title: 'Service Duration',
+            subtitle: 'Used when bookings are enabled',
+            initiallyExpanded: true,
+            child: _DurationPicker(
+              initialMinutes: _durationMinutes,
+              onChanged: (minutes) =>
+                  setState(() => _durationMinutes = minutes),
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.sm),
+        _buildAccordion(
+          title: 'Custom Properties JSON',
+          subtitle: 'Long-tail metadata for external commerce schemas',
+          child: TextFormField(
+            controller: _additionalPropsCtrl,
+            minLines: 4,
+            maxLines: 8,
+            decoration: const InputDecoration(
+              labelText: 'additional_properties_json',
+              border: OutlineInputBorder(),
+              hintText: '{"packaging":"500g","shelf":"A-3"}',
+            ),
+            validator: (v) {
+              final value = (v ?? '').trim();
+              if (value.isEmpty) return null;
+              final isObject = value.startsWith('{') && value.endsWith('}');
+              if (!isObject) return 'Enter valid JSON object';
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccordion({
+    required String title,
+    required String subtitle,
+    required Widget child,
+    bool initiallyExpanded = false,
+  }) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+          childrenPadding: const EdgeInsets.only(
+            left: AppSpacing.xs,
+            right: AppSpacing.xs,
+            bottom: AppSpacing.sm,
+          ),
+          initiallyExpanded: initiallyExpanded,
+          title: Text(title),
+          subtitle: Text(subtitle),
+          children: [child],
         ),
       ),
     );
@@ -785,10 +1025,11 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState(
-      {required this.pickMode,
-      required this.hasSearch,
-      required this.onAdd});
+  const _EmptyState({
+    required this.pickMode,
+    required this.hasSearch,
+    required this.onAdd,
+  });
   final bool pickMode;
   final bool hasSearch;
   final VoidCallback onAdd;
@@ -801,11 +1042,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_2_outlined,
-                size: 64,
-                color: Theme.of(context)
-                    .colorScheme
-                    .outlineVariant),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
               hasSearch ? 'No items found' : 'Catalog is empty',
@@ -816,8 +1057,8 @@ class _EmptyState extends StatelessWidget {
               hasSearch
                   ? 'Try a different search.'
                   : pickMode
-                      ? 'Create your first item to get started.'
-                      : 'Add products or services you frequently bill.',
+                  ? 'Create your first item to get started.'
+                  : 'Add products or services you frequently bill.',
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
@@ -863,7 +1104,7 @@ class _DurationPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     // Common preset durations
     final presets = [15, 30, 45, 60, 90, 120, 180, 240];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -886,15 +1127,16 @@ class _DurationPicker extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         TextFormField(
-          initialValue: presets.contains(initialMinutes) 
-              ? '' 
+          initialValue: presets.contains(initialMinutes)
+              ? ''
               : initialMinutes.toString(),
           decoration: InputDecoration(
             labelText: 'Custom Duration (minutes)',
             border: const OutlineInputBorder(),
             isDense: true,
             hintText: 'e.g., 75',
-            helperText: 'For multi-day services, use minutes (e.g., 2880 = 2 days)',
+            helperText:
+                'For multi-day services, use minutes (e.g., 2880 = 2 days)',
           ),
           keyboardType: TextInputType.number,
           onChanged: (value) {
@@ -953,36 +1195,34 @@ class _HsnSearchFieldState extends State<_HsnSearchField> {
       optionsBuilder: (textEditingValue) async {
         final q = textEditingValue.text.trim();
         if (q.isEmpty) return [];
-        return HsnSearchService.instance
-            .search(q, type: widget.type);
+        return HsnSearchService.instance.search(q, type: widget.type);
       },
       displayStringForOption: (e) => e.code,
-      fieldViewBuilder: (context, ctrl, focusNode, onSubmit) =>
-          TextFormField(
-            controller: ctrl,
-            focusNode: focusNode,
-            onFieldSubmitted: (_) => onSubmit(),
-            decoration: InputDecoration(
-              labelText: '${widget.type} Code',
-              border: const OutlineInputBorder(),
-              suffixIcon: ctrl.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        ctrl.clear();
-                        // Propagate empty selection back to parent.
-                        widget.onSelected(
-                          HsnEntry(
-                            code: '',
-                            description: '',
-                            isSac: widget.type == 'SAC',
-                          ),
-                        );
-                      },
-                    )
-                  : null,
-            ),
-          ),
+      fieldViewBuilder: (context, ctrl, focusNode, onSubmit) => TextFormField(
+        controller: ctrl,
+        focusNode: focusNode,
+        onFieldSubmitted: (_) => onSubmit(),
+        decoration: InputDecoration(
+          labelText: '${widget.type} Code',
+          border: const OutlineInputBorder(),
+          suffixIcon: ctrl.text.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () {
+                    ctrl.clear();
+                    // Propagate empty selection back to parent.
+                    widget.onSelected(
+                      HsnEntry(
+                        code: '',
+                        description: '',
+                        isSac: widget.type == 'SAC',
+                      ),
+                    );
+                  },
+                )
+              : null,
+        ),
+      ),
       optionsViewBuilder: (context, onSelected, options) {
         return Align(
           alignment: Alignment.topLeft,

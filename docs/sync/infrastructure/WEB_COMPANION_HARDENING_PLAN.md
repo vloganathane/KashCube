@@ -419,6 +419,55 @@ testWidgets('port fallback on conflict', (tester) async {
 - [ ] **Session refresh test:** Connected via QR → refresh browser page → no re-auth (sessionStorage persists)
 - [ ] **Hotspot test:** Test on Pixel 7, Samsung S24 (expect ✅); Xiaomi 13, Redmi Note 12 (expect ⚠️ note variance)
 
+### Network Diagnosis (Quick Triage)
+Use this 4-step check from Mac when Web Companion fails to open over LAN. Replace `192.168.1.6` with the phone IP shown in QR/logs.
+
+```bash
+arp -an | grep 192.168.1.6 || true
+ping -c 3 192.168.1.6
+nc -vz -w 3 192.168.1.6 50505
+curl -i --max-time 5 http://192.168.1.6:50505/health
+```
+
+Expected progression:
+1. ARP resolves to a MAC address (not `incomplete`)
+2. Ping succeeds
+3. TCP connect to `:50505` succeeds
+4. `/health` returns HTTP `200`
+
+### Architectural Alternative: Hosted Shell + WebRTC
+
+If local Web Companion continues to be operationally fragile, a hosted browser shell plus WebRTC data sync is a valid architectural alternative, but it must be evaluated precisely.
+
+Important distinction:
+1. Hosted shell fixes **browser asset delivery**.
+2. WebRTC fixes or improves the **session transport/data plane**.
+3. Hosted shell alone does **not** fix LAN neighbor discovery, routing, AP isolation, or other L2/L3 path failures between laptop and phone.
+
+Implication for current reliability work:
+1. If the dominant failure is slow asset extraction or phone-hosted static serving, hosted shell helps.
+2. If the dominant failure is LAN reachability failure (`ARP -> ping -> TCP -> /health`), hosted shell does not solve the root cause.
+3. In that case, the more meaningful architectural move is WebRTC transport with stronger signaling/reconnect behavior, not just moving the Flutter web bundle to a hosted origin.
+
+Recommended product posture:
+1. Keep **local-first** behavior as the default user experience.
+2. Do **not** replace the current local shell with hosted shell as the only path.
+3. Treat hosted shell as an explicit secondary mode, primarily aligned with Anywhere Mode or a future hosted-browser bootstrap path.
+
+Recommended target architecture:
+1. **Local mode (default):** local signaling + direct WebRTC data channel + phone-approved browser auth.
+2. **Anywhere mode (opt-in):** hosted shell + cloud signaling + STUN/TURN fallback + explicit metadata disclosure.
+3. Keep signaling/control plane separate from the sync data plane so shell delivery and transport can evolve independently.
+
+Decision guidance:
+1. Near term, continue hardening the current local shell path because it preserves the strongest privacy/local-first posture.
+2. Mid term, prioritize WebRTC as the browser sync transport because that is the architectural change most likely to improve end-to-end session behavior.
+3. Add hosted shell only when product/privacy policy accepts the tradeoff of a remote asset origin and when the goal is better browser bootstrap or Anywhere Mode reachability.
+
+Non-goal:
+1. Hosted shell must not turn KashCube into a remote processor of business data.
+2. Any hosted origin, signaling service, or relay must remain transport/bootstrap infrastructure only.
+
 ---
 
 ## Implementation Notes

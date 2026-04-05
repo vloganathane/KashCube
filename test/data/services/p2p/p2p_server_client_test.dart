@@ -5,11 +5,14 @@ import 'package:kash_cube/data/services/p2p/p2p_client.dart';
 import 'package:kash_cube/data/services/p2p/p2p_server.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   // 32-byte shared secret shared between server and client.
   final sharedSecret = Uint8List.fromList(List.generate(32, (i) => i + 1));
   const peerId = 'test-peer-identity';
 
   late P2pClient client;
+  var clientInitialized = false;
 
   setUpAll(() async {
     await P2pServer.instance.start(
@@ -33,10 +36,13 @@ void main() {
       identityId:   peerId,
       sharedSecret: sharedSecret,
     );
+    clientInitialized = true;
   });
 
   tearDownAll(() async {
-    client.dispose();
+    if (clientInitialized) {
+      client.dispose();
+    }
     await P2pServer.instance.stop();
   });
 

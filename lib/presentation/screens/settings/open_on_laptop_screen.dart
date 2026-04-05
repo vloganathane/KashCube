@@ -734,6 +734,17 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
   final String? report;
   final Future<void> Function() onRefresh;
 
+  String _quickTriageCommands() {
+    final host = ip ?? 'PHONE_IP';
+    final targetPort = port ?? 50505;
+    return [
+      'arp -an | grep $host || true',
+      'ping -c 3 $host',
+      'nc -vz -w 3 $host $targetPort',
+      'curl -i --max-time 5 http://$host:$targetPort/health',
+    ].join('\n');
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusText = healthy == null
@@ -809,6 +820,34 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
               ),
           ],
           const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Quick triage (Mac Terminal)',
+            style: context.textTheme.labelMedium,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: context.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(AppSpacing.xs),
+            ),
+            child: SelectableText(
+              _quickTriageCommands(),
+              style: context.textTheme.bodySmall?.copyWith(
+                fontFamily: 'monospace',
+                height: 1.35,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Troubleshoot steps: run top-to-bottom. ARP must resolve, then ping, then TCP :50505, then /health must return 200.',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
@@ -823,6 +862,22 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
                     : const Icon(Icons.refresh, size: 16),
                 label: const Text('Refresh diagnostics'),
                 onPressed: loading ? null : onRefresh,
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                label: const Text('Copy quick triage'),
+                onPressed: () async {
+                  await Clipboard.setData(
+                    ClipboardData(text: _quickTriageCommands()),
+                  );
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Quick triage commands copied'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                },
               ),
               OutlinedButton.icon(
                 icon: const Icon(Icons.copy_outlined, size: 16),
@@ -1056,6 +1111,45 @@ class _WebLogCardState extends State<_WebLogCard> {
                 'Shows the latest HTTP activity reaching this phone. If this stays empty while opening from laptop, traffic is not reaching the server.',
                 style: context.textTheme.bodySmall?.copyWith(
                   color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: context.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(AppSpacing.xs),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'When to switch checks',
+                      style: context.textTheme.labelMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '1) Run LAN quick triage first (ARP → ping → TCP :50505 → /health).',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '2) If LAN triage passes but browser still fails, switch here and watch this log while loading from laptop.',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '3) Empty log means LAN path is still blocked. Non-empty log means traffic reaches phone; investigate auth/session/browser flow next.',
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),

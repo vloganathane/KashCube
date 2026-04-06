@@ -472,6 +472,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late String? _countryOfOrigin;
   DateTime? _releaseDate;
   late String _itemCondition;
+  int? _productGroupId;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -549,6 +550,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _countryOfOrigin = item?.countryOfOrigin;
     _releaseDate = item?.releaseDate;
     _itemCondition = item?.itemCondition ?? 'NewCondition';
+    _productGroupId = item?.productGroupId;
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
@@ -759,6 +761,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       slogan: _sloganCtrl.text.trim().isEmpty ? null : _sloganCtrl.text.trim(),
       itemCondition: _itemCondition,
       modelNumber: _modelNumberCtrl.text.trim().isEmpty ? null : _modelNumberCtrl.text.trim(),
+      productGroupId: _productGroupId,
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -1774,7 +1777,82 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'P3 Advanced Commerce Features',
+          subtitle: 'Product variants, relationships, and reviews',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This product supports advanced schema.org/Product features:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildFeatureTile(
+                context,
+                icon: Icons.palette_outlined,
+                title: 'Product Variants',
+                description: 'Group color/size variants (e.g., T-shirt in 3 colors × 4 sizes)',
+              ),
+              _buildFeatureTile(
+                context,
+                icon: Icons.link_outlined,
+                title: 'Product Relationships',
+                description: 'Link accessories, spare parts, or related products',
+              ),
+              _buildFeatureTile(
+                context,
+                icon: Icons.star_outline,
+                title: 'Reviews & Ratings',
+                description: 'Aggregate customer ratings and review text',
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'These features will be available in dedicated management screens.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
       ],
+    );
+  }
+
+  Widget _buildFeatureTile(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String description,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

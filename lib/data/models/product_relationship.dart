@@ -2,15 +2,16 @@ import 'package:equatable/equatable.dart';
 
 /// Relationship types for product associations.
 enum ProductRelationshipType {
-  accessory('accessory', 'Accessory'),
-  sparePart('spare_part', 'Spare Part'),
-  consumable('consumable', 'Consumable'),
-  relatedProduct('related_product', 'Related Product');
+  accessory('accessory', 'Accessory', 'Compatible accessories sold separately'),
+  sparePart('spare_part', 'Spare Part', 'Replacement parts for this product'),
+  consumable('consumable', 'Consumable', 'Regularly purchased consumables'),
+  relatedProduct('related_product', 'Related Product', 'Similar or complementary products');
 
-  const ProductRelationshipType(this.value, this.label);
+  const ProductRelationshipType(this.value, this.label, this.description);
 
   final String value;
   final String label;
+  final String description;
 
   static ProductRelationshipType fromString(String value) {
     return ProductRelationshipType.values.firstWhere(

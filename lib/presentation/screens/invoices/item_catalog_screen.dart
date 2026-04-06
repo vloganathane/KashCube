@@ -15,6 +15,7 @@ import '../../../data/services/hsn_search_service.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/unit_type_provider.dart';
+import 'related_products_sheet.dart';
 
 class ItemCatalogScreen extends ConsumerStatefulWidget {
   /// When [pickMode] is true, tapping an item pops with the selected [ItemCatalog].
@@ -305,6 +306,20 @@ class _CatalogTile extends ConsumerWidget {
                   onToggleTracking();
                 },
               ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('Related Products'),
+              subtitle: const Text('Accessories, spare parts, etc.'),
+              onTap: () {
+                Navigator.pop(context);
+                showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  builder: (_) => RelatedProductsSheet(item: item),
+                );
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.edit_outlined),
               title: const Text('Edit Item'),

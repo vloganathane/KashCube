@@ -49,6 +49,18 @@ class ProductRelationshipRepositoryImpl
   }
 
   @override
+  Future<void> update(ProductRelationship relationship) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'product_relationships',
+      relationship.toMap(),
+      where: 'id = ?',
+      whereArgs: [relationship.id],
+    );
+    _dbHelper.notifyChange('product_relationships');
+  }
+
+  @override
   Future<void> delete(int id) async {
     final db = await _dbHelper.database;
     await db.update(

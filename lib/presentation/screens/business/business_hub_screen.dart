@@ -23,6 +23,7 @@ import '../inventory/inventory_screen.dart';
 import '../invoices/delivery_challans_screen.dart';
 import '../invoices/invoices_screen.dart';
 import '../invoices/item_catalog_screen.dart';
+import '../invoices/product_groups_screen.dart';
 import '../ledger/credits_screen.dart';
 import '../ledger/ledger_screen.dart';
 import '../loans/loans_screen.dart';
@@ -246,6 +247,16 @@ class _BusinessHub extends ConsumerWidget {
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                       builder: (_) => const ItemCatalogScreen()),
+                ),
+              ),
+              _HubTile(
+                icon: Icons.palette_outlined,
+                label: 'Product Groups',
+                subtitle: const Text('Manage variant families'),
+                color: const Color(0xFF388E3C),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (_) => const ProductGroupsScreen()),
                 ),
               ),
               _HubTile(

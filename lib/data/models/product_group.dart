@@ -31,6 +31,20 @@ class ProductGroup extends Equatable {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
+  /// Helper to parse variesBy JSON array into List<String>.
+  List<String> get variesByList {
+    if (variesBy == null || variesBy!.isEmpty) return [];
+    
+    // Try parsing as JSON array first
+    try {
+      final decoded = variesBy!.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '');
+      return decoded.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    } catch (_) {
+      // Fallback: treat as comma-separated string
+      return variesBy!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    }
+  }
+
   ProductGroup copyWith({
     int? id,
     String? name,

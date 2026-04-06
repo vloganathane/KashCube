@@ -454,6 +454,17 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _lowStockThresholdCtrl;
   late final TextEditingController _mpnCtrl;
   late final TextEditingController _manufacturerCtrl;
+  late final TextEditingController _colorCtrl;
+  late final TextEditingController _sizeCtrl;
+  late final TextEditingController _weightValueCtrl;
+  late final TextEditingController _widthCtrl;
+  late final TextEditingController _heightCtrl;
+  late final TextEditingController _depthCtrl;
+  late final TextEditingController _materialCtrl;
+  late final TextEditingController _keywordsCtrl;
+  late String _weightUnit;
+  late String? _countryOfOrigin;
+  DateTime? _releaseDate;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -505,6 +516,25 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     );
     _mpnCtrl = TextEditingController(text: item?.mpn ?? '');
     _manufacturerCtrl = TextEditingController(text: item?.manufacturerName ?? '');
+    _colorCtrl = TextEditingController(text: item?.color ?? '');
+    _sizeCtrl = TextEditingController(text: item?.size ?? '');
+    _weightValueCtrl = TextEditingController(
+      text: item?.weightValue != null ? item!.weightValue!.toStringAsFixed(1) : '',
+    );
+    _widthCtrl = TextEditingController(
+      text: item?.widthCm != null ? item!.widthCm!.toStringAsFixed(1) : '',
+    );
+    _heightCtrl = TextEditingController(
+      text: item?.heightCm != null ? item!.heightCm!.toStringAsFixed(1) : '',
+    );
+    _depthCtrl = TextEditingController(
+      text: item?.depthCm != null ? item!.depthCm!.toStringAsFixed(1) : '',
+    );
+    _materialCtrl = TextEditingController(text: item?.material ?? '');
+    _keywordsCtrl = TextEditingController(text: item?.keywords ?? '');
+    _weightUnit = item?.weightUnit ?? 'g';
+    _countryOfOrigin = item?.countryOfOrigin;
+    _releaseDate = item?.releaseDate;
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
@@ -549,6 +579,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _lowStockThresholdCtrl,
       _mpnCtrl,
       _manufacturerCtrl,
+      _colorCtrl,
+      _sizeCtrl,
+      _weightValueCtrl,
+      _widthCtrl,
+      _heightCtrl,
+      _depthCtrl,
+      _materialCtrl,
+      _keywordsCtrl,
     ]) {
       c.dispose();
     }
@@ -639,6 +677,17 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       manufacturerName: _manufacturerCtrl.text.trim().isEmpty
           ? null
           : _manufacturerCtrl.text.trim(),
+      color: _colorCtrl.text.trim().isEmpty ? null : _colorCtrl.text.trim(),
+      size: _sizeCtrl.text.trim().isEmpty ? null : _sizeCtrl.text.trim(),
+      weightValue: double.tryParse(_weightValueCtrl.text),
+      weightUnit: _weightUnit,
+      widthCm: double.tryParse(_widthCtrl.text),
+      heightCm: double.tryParse(_heightCtrl.text),
+      depthCm: double.tryParse(_depthCtrl.text),
+      material: _materialCtrl.text.trim().isEmpty ? null : _materialCtrl.text.trim(),
+      keywords: _keywordsCtrl.text.trim().isEmpty ? null : _keywordsCtrl.text.trim(),
+      countryOfOrigin: _countryOfOrigin,
+      releaseDate: _releaseDate,
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -894,11 +943,83 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
-      ],
-    );
-  }
-
-  Widget _buildPricingTab() {
+        _buildAccordion(
+          title: 'Physical Properties',
+          subtitle: 'Color, size, and material',
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _colorCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Color',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _sizeCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Size',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _materialCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Material',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'Keywords',
+          subtitle: 'Comma-separated tags for search and discovery',
+          child: TextFormField(
+            controller: _keywordsCtrl,
+            decoration: InputDecoration(
+              labelText: 'Keywords',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
+              hintText: 'e.g. cotton, organic, summer',
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.base,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
     return ListView(
       padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [
@@ -1094,6 +1215,46 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Release Date'),
+                subtitle: Text(
+                  _releaseDate != null
+                      ? DateFormat('d MMM yyyy').format(_releaseDate!)
+                      : 'No release date',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: 13,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_releaseDate != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        tooltip: 'Clear date',
+                        onPressed: () => setState(() => _releaseDate = null),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                      tooltip: 'Pick date',
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _releaseDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        );
+                        if (picked != null && mounted) {
+                          setState(() => _releaseDate = picked);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1175,6 +1336,126 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                     vertical: AppSpacing.base,
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'Dimensions and Weight',
+          subtitle: 'Used for shipping calculations',
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _weightValueCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Weight',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  DropdownButton<String>(
+                    value: _weightUnit,
+                    items: const ['g', 'kg', 'oz', 'lb']
+                        .map((u) => DropdownMenuItem(value: u, child: Text(u)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _weightUnit = v ?? 'g'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _widthCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Width (cm)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _heightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Height (cm)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _depthCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Depth (cm)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.base,
+                          vertical: AppSpacing.base,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                value: _countryOfOrigin,
+                decoration: InputDecoration(
+                  labelText: 'Country of Origin',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Not specified')),
+                  DropdownMenuItem(value: 'IN', child: Text('India')),
+                  DropdownMenuItem(value: 'CN', child: Text('China')),
+                  DropdownMenuItem(value: 'US', child: Text('United States')),
+                  DropdownMenuItem(value: 'DE', child: Text('Germany')),
+                  DropdownMenuItem(value: 'JP', child: Text('Japan')),
+                  DropdownMenuItem(value: 'GB', child: Text('United Kingdom')),
+                  DropdownMenuItem(value: 'VN', child: Text('Vietnam')),
+                  DropdownMenuItem(value: 'BD', child: Text('Bangladesh')),
+                  DropdownMenuItem(value: 'TW', child: Text('Taiwan')),
+                ],
+                onChanged: (v) => setState(() => _countryOfOrigin = v),
               ),
             ],
           ),

@@ -57,6 +57,17 @@ class ItemCatalog extends Equatable {
     this.priceCurrency = 'INR',
     this.priceValidUntil,
     this.manufacturerName,
+    this.color,
+    this.size,
+    this.weightValue,
+    this.weightUnit = 'g',
+    this.widthCm,
+    this.heightCm,
+    this.depthCm,
+    this.material,
+    this.keywords,
+    this.countryOfOrigin,
+    this.releaseDate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -119,6 +130,41 @@ class ItemCatalog extends Equatable {
   /// Name of the product manufacturer (schema.org manufacturer.name).
   final String? manufacturerName;
 
+  // ── P1 schema.org/Product fields ──────────────────────────────────────────
+
+  /// Product color (schema.org color).
+  final String? color;
+
+  /// Size descriptor (schema.org size).
+  final String? size;
+
+  /// Numeric weight value (schema.org weight.value).
+  final double? weightValue;
+
+  /// Weight unit: g, kg, oz, lb (schema.org weight.unitCode).
+  final String weightUnit;
+
+  /// Width in centimetres (schema.org width).
+  final double? widthCm;
+
+  /// Height in centimetres (schema.org height).
+  final double? heightCm;
+
+  /// Depth in centimetres (schema.org depth).
+  final double? depthCm;
+
+  /// Material composition (schema.org material).
+  final String? material;
+
+  /// Comma-separated keywords for search/SEO (schema.org keywords).
+  final String? keywords;
+
+  /// ISO 3166-1 alpha-2 country code (schema.org countryOfOrigin).
+  final String? countryOfOrigin;
+
+  /// Product launch / release date (schema.org releaseDate).
+  final DateTime? releaseDate;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -158,6 +204,17 @@ class ItemCatalog extends Equatable {
     String? priceCurrency,
     DateTime? priceValidUntil,
     String? manufacturerName,
+    String? color,
+    String? size,
+    double? weightValue,
+    String? weightUnit,
+    double? widthCm,
+    double? heightCm,
+    double? depthCm,
+    String? material,
+    String? keywords,
+    String? countryOfOrigin,
+    DateTime? releaseDate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -196,6 +253,17 @@ class ItemCatalog extends Equatable {
       priceCurrency: priceCurrency ?? this.priceCurrency,
       priceValidUntil: priceValidUntil ?? this.priceValidUntil,
       manufacturerName: manufacturerName ?? this.manufacturerName,
+      color: color ?? this.color,
+      size: size ?? this.size,
+      weightValue: weightValue ?? this.weightValue,
+      weightUnit: weightUnit ?? this.weightUnit,
+      widthCm: widthCm ?? this.widthCm,
+      heightCm: heightCm ?? this.heightCm,
+      depthCm: depthCm ?? this.depthCm,
+      material: material ?? this.material,
+      keywords: keywords ?? this.keywords,
+      countryOfOrigin: countryOfOrigin ?? this.countryOfOrigin,
+      releaseDate: releaseDate ?? this.releaseDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -233,6 +301,17 @@ class ItemCatalog extends Equatable {
     'price_currency': priceCurrency,
     if (priceValidUntil != null) 'price_valid_until': priceValidUntil!.toIso8601String(),
     if (manufacturerName != null) 'manufacturer_name': manufacturerName,
+    if (color != null) 'color': color,
+    if (size != null) 'size': size,
+    if (weightValue != null) 'weight_value': weightValue,
+    'weight_unit': weightUnit,
+    if (widthCm != null) 'width_cm': widthCm,
+    if (heightCm != null) 'height_cm': heightCm,
+    if (depthCm != null) 'depth_cm': depthCm,
+    if (material != null) 'material': material,
+    if (keywords != null) 'keywords': keywords,
+    if (countryOfOrigin != null) 'country_of_origin': countryOfOrigin,
+    if (releaseDate != null) 'release_date': releaseDate!.toIso8601String(),
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -280,6 +359,19 @@ class ItemCatalog extends Equatable {
         ? DateTime.parse(map['price_valid_until'] as String)
         : null,
     manufacturerName: map['manufacturer_name'] as String?,
+    color: map['color'] as String?,
+    size: map['size'] as String?,
+    weightValue: (map['weight_value'] as num?)?.toDouble(),
+    weightUnit: (map['weight_unit'] as String?) ?? 'g',
+    widthCm: (map['width_cm'] as num?)?.toDouble(),
+    heightCm: (map['height_cm'] as num?)?.toDouble(),
+    depthCm: (map['depth_cm'] as num?)?.toDouble(),
+    material: map['material'] as String?,
+    keywords: map['keywords'] as String?,
+    countryOfOrigin: map['country_of_origin'] as String?,
+    releaseDate: map['release_date'] != null
+        ? DateTime.parse(map['release_date'] as String)
+        : null,
     createdAt: DateTime.parse(map['created_at'] as String),
     updatedAt: DateTime.parse(map['updated_at'] as String),
   );
@@ -319,6 +411,17 @@ class ItemCatalog extends Equatable {
     priceCurrency,
     priceValidUntil,
     manufacturerName,
+    color,
+    size,
+    weightValue,
+    weightUnit,
+    widthCm,
+    heightCm,
+    depthCm,
+    material,
+    keywords,
+    countryOfOrigin,
+    releaseDate,
     createdAt,
     updatedAt,
   ];

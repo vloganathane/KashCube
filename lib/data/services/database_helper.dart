@@ -3647,6 +3647,31 @@ class DatabaseHelper {
             'item_catalog: P0 schema.org/Product commerce fields — mpn, availability, price_currency, price_valid_until, manufacturer_name',
       });
     }
+
+    if (oldVersion < 88) {
+      for (final sql in [
+        'ALTER TABLE item_catalog ADD COLUMN color TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN size TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN weight_value REAL',
+        "ALTER TABLE item_catalog ADD COLUMN weight_unit TEXT DEFAULT 'g'",
+        'ALTER TABLE item_catalog ADD COLUMN width_cm REAL',
+        'ALTER TABLE item_catalog ADD COLUMN height_cm REAL',
+        'ALTER TABLE item_catalog ADD COLUMN depth_cm REAL',
+        'ALTER TABLE item_catalog ADD COLUMN material TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN keywords TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN country_of_origin TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN release_date TEXT',
+      ]) {
+        try {
+          await db.execute(sql);
+        } catch (_) {}
+      }
+      await db.insert('schema_version', {
+        'version': 88,
+        'description':
+            'item_catalog: P1 schema.org/Product fields — color, size, weight, dimensions, material, keywords, country_of_origin, release_date',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

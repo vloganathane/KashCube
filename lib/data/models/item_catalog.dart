@@ -75,6 +75,7 @@ class ItemCatalog extends Equatable {
     this.slogan,
     this.itemCondition = 'NewCondition',
     this.modelNumber,
+    this.productGroupId,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -195,6 +196,11 @@ class ItemCatalog extends Equatable {
   /// Model number or identifier (schema.org model).
   final String? modelNumber;
 
+  // ── P3 schema.org/Product fields ──────────────────────────────────────────
+
+  /// Foreign key to product_groups table for variant management (schema.org isVariantOf).
+  final int? productGroupId;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -252,6 +258,7 @@ class ItemCatalog extends Equatable {
     String? slogan,
     String? itemCondition,
     String? modelNumber,
+    int? productGroupId,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -308,6 +315,7 @@ class ItemCatalog extends Equatable {
       slogan: slogan ?? this.slogan,
       itemCondition: itemCondition ?? this.itemCondition,
       modelNumber: modelNumber ?? this.modelNumber,
+      productGroupId: productGroupId ?? this.productGroupId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -363,6 +371,7 @@ class ItemCatalog extends Equatable {
     if (slogan != null) 'slogan': slogan,
     'item_condition': itemCondition,
     if (modelNumber != null) 'model_number': modelNumber,
+    if (productGroupId != null) 'product_group_id': productGroupId,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -430,6 +439,7 @@ class ItemCatalog extends Equatable {
     slogan: map['slogan'] as String?,
     itemCondition: (map['item_condition'] as String?) ?? 'NewCondition',
     modelNumber: map['model_number'] as String?,
+    productGroupId: map['product_group_id'] as int?,
     createdAt: DateTime.parse(map['created_at'] as String),
     updatedAt: DateTime.parse(map['updated_at'] as String),
   );
@@ -487,6 +497,7 @@ class ItemCatalog extends Equatable {
     slogan,
     itemCondition,
     modelNumber,
+    productGroupId,
     createdAt,
     updatedAt,
   ];

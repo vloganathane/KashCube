@@ -664,6 +664,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         slogan TEXT,
         item_condition TEXT DEFAULT 'NewCondition',
         model_number TEXT,
+        product_group_id INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         deleted_at TEXT,
@@ -688,6 +689,82 @@ extension _DatabaseTableCreators on DatabaseHelper {
     );
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_item_catalog_context ON item_catalog(context_id)',
+    );
+
+    // ── P3 Commerce: Product Groups (Variants) ─────────────────────────────
+
+    await db.execute('''
+      CREATE TABLE product_groups (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        varies_by TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        updated_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_groups_context ON product_groups(context_id)',
+    );
+
+    await db.execute('''
+      CREATE TABLE product_relationships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        related_product_id INTEGER NOT NULL,
+        relationship_type TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        updated_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES item_catalog(id) ON DELETE CASCADE,
+        FOREIGN KEY (related_product_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_relationships_product ON product_relationships(product_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_relationships_related ON product_relationships(related_product_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_relationships_context ON product_relationships(context_id)',
+    );
+
+    await db.execute('''
+      CREATE TABLE product_reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        rating INTEGER NOT NULL,
+        review_text TEXT,
+        reviewer_name TEXT,
+        created_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_id              TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+        version              INTEGER NOT NULL DEFAULT 0,
+        created_by_device_id TEXT,
+        updated_by_device_id TEXT,
+        context_id           INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_reviews_rating ON product_reviews(rating)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_product_reviews_context ON product_reviews(context_id)',
     );
   }
 

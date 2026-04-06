@@ -3693,6 +3693,98 @@ class DatabaseHelper {
             'item_catalog: P2 schema.org/Product fields — product_id, asin, logo_path, pattern, slogan, item_condition, model_number',
       });
     }
+
+    if (oldVersion < 90) {
+      // P3: Product variants, relationships, and reviews
+      try {
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN product_group_id INTEGER',
+        );
+      } catch (_) {}
+
+      // Create product_groups table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS product_groups (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          varies_by TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          deleted_at TEXT,
+          sync_id TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+          version INTEGER NOT NULL DEFAULT 0,
+          created_by_device_id TEXT,
+          updated_by_device_id TEXT,
+          context_id INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_groups_context ON product_groups(context_id)',
+      );
+
+      // Create product_relationships table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS product_relationships (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          related_product_id INTEGER NOT NULL,
+          relationship_type TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT,
+          sync_id TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+          version INTEGER NOT NULL DEFAULT 0,
+          created_by_device_id TEXT,
+          updated_by_device_id TEXT,
+          context_id INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES item_catalog(id) ON DELETE CASCADE,
+          FOREIGN KEY (related_product_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_relationships_product ON product_relationships(product_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_relationships_related ON product_relationships(related_product_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_relationships_context ON product_relationships(context_id)',
+      );
+
+      // Create product_reviews table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS product_reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          rating INTEGER NOT NULL,
+          review_text TEXT,
+          reviewer_name TEXT,
+          created_at TEXT NOT NULL,
+          deleted_at TEXT,
+          sync_id TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),
+          version INTEGER NOT NULL DEFAULT 0,
+          created_by_device_id TEXT,
+          updated_by_device_id TEXT,
+          context_id INTEGER REFERENCES linked_business_sessions(id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES item_catalog(id) ON DELETE CASCADE
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_reviews_product ON product_reviews(product_id)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_reviews_rating ON product_reviews(rating)',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_product_reviews_context ON product_reviews(context_id)',
+      );
+
+      await db.insert('schema_version', {
+        'version': 90,
+        'description':
+            'P3 schema.org/Product: product_groups, product_relationships, product_reviews tables + product_group_id FK',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

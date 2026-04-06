@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
-import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/image_compressor.dart';
 import '../../../data/models/hsn_entry.dart';
@@ -1123,6 +1122,11 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           ),
         ),
         const SizedBox(height: AppSpacing.md),
+      ],
+    );
+  }
+
+  Widget _buildPricingTab() {
     return ListView(
       padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [

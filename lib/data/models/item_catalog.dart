@@ -52,6 +52,11 @@ class ItemCatalog extends Equatable {
     this.lastCountedAt,
     this.mrp,
     this.dealerPrice,
+    this.mpn,
+    this.availability = 'InStock',
+    this.priceCurrency = 'INR',
+    this.priceValidUntil,
+    this.manufacturerName,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -95,6 +100,25 @@ class ItemCatalog extends Equatable {
 
   /// Dealer / trade purchase price — used as default price on purchase bills.
   final double? dealerPrice;
+
+  // ── P0 schema.org/Product fields ──────────────────────────────────────────
+
+  /// Manufacturer Part Number (schema.org mpn).
+  final String? mpn;
+
+  /// Offer availability status (schema.org availability).
+  /// Valid values: InStock, OutOfStock, PreOrder, Discontinued.
+  final String availability;
+
+  /// ISO 4217 currency code for pricing (schema.org priceCurrency).
+  final String priceCurrency;
+
+  /// Date until which the listed price is valid (schema.org priceValidUntil).
+  final DateTime? priceValidUntil;
+
+  /// Name of the product manufacturer (schema.org manufacturer.name).
+  final String? manufacturerName;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -129,6 +153,11 @@ class ItemCatalog extends Equatable {
     DateTime? lastCountedAt,
     double? mrp,
     double? dealerPrice,
+    String? mpn,
+    String? availability,
+    String? priceCurrency,
+    DateTime? priceValidUntil,
+    String? manufacturerName,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -162,6 +191,11 @@ class ItemCatalog extends Equatable {
       lastCountedAt: lastCountedAt ?? this.lastCountedAt,
       mrp: mrp ?? this.mrp,
       dealerPrice: dealerPrice ?? this.dealerPrice,
+      mpn: mpn ?? this.mpn,
+      availability: availability ?? this.availability,
+      priceCurrency: priceCurrency ?? this.priceCurrency,
+      priceValidUntil: priceValidUntil ?? this.priceValidUntil,
+      manufacturerName: manufacturerName ?? this.manufacturerName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -194,6 +228,11 @@ class ItemCatalog extends Equatable {
     'low_stock_threshold': lowStockThreshold,
     if (mrp != null) 'mrp': mrp,
     if (dealerPrice != null) 'dealer_price': dealerPrice,
+    if (mpn != null) 'mpn': mpn,
+    'availability': availability,
+    'price_currency': priceCurrency,
+    if (priceValidUntil != null) 'price_valid_until': priceValidUntil!.toIso8601String(),
+    if (manufacturerName != null) 'manufacturer_name': manufacturerName,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -234,6 +273,13 @@ class ItemCatalog extends Equatable {
         : null,
     mrp: (map['mrp'] as num?)?.toDouble(),
     dealerPrice: (map['dealer_price'] as num?)?.toDouble(),
+    mpn: map['mpn'] as String?,
+    availability: (map['availability'] as String?) ?? 'InStock',
+    priceCurrency: (map['price_currency'] as String?) ?? 'INR',
+    priceValidUntil: map['price_valid_until'] != null
+        ? DateTime.parse(map['price_valid_until'] as String)
+        : null,
+    manufacturerName: map['manufacturer_name'] as String?,
     createdAt: DateTime.parse(map['created_at'] as String),
     updatedAt: DateTime.parse(map['updated_at'] as String),
   );
@@ -268,6 +314,11 @@ class ItemCatalog extends Equatable {
     lastCountedAt,
     mrp,
     dealerPrice,
+    mpn,
+    availability,
+    priceCurrency,
+    priceValidUntil,
+    manufacturerName,
     createdAt,
     updatedAt,
   ];

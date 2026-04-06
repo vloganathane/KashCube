@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
+import '../../../core/extensions/context_extensions.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/image_compressor.dart';
 import '../../../data/models/hsn_entry.dart';
 import '../../../data/models/item_catalog.dart';
 import '../../../data/services/hsn_search_service.dart';
@@ -446,6 +452,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _dealerPriceCtrl;
   late final TextEditingController _stockQtyCtrl;
   late final TextEditingController _lowStockThresholdCtrl;
+  late final TextEditingController _mpnCtrl;
+  late final TextEditingController _manufacturerCtrl;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -453,6 +461,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late bool _trackInventory;
   late bool _isBookable;
   late int _durationMinutes;
+  late String _availability;
+  late String _priceCurrency;
+  DateTime? _priceValidUntil;
   bool _saving = false;
 
   @override
@@ -492,9 +503,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     _lowStockThresholdCtrl = TextEditingController(
       text: item == null ? '' : item.lowStockThreshold.toStringAsFixed(2),
     );
+    _mpnCtrl = TextEditingController(text: item?.mpn ?? '');
+    _manufacturerCtrl = TextEditingController(text: item?.manufacturerName ?? '');
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
+    _availability = item?.availability ?? 'InStock';
+    _priceCurrency = item?.priceCurrency ?? 'INR';
+    _priceValidUntil = item?.priceValidUntil;
     // For new items, default trackInventory based on category.
     // Existing items preserve whatever the user previously set.
     _trackInventory = item?.trackInventory ?? _trackInventoryDefault(_category);
@@ -531,10 +547,56 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _dealerPriceCtrl,
       _stockQtyCtrl,
       _lowStockThresholdCtrl,
+      _mpnCtrl,
+      _manufacturerCtrl,
     ]) {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _pickItemImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: AppSpacing.base),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
+    if (picked != null && mounted) {
+      final compressed = await compressPickedImage(picked);
+      setState(() => _imagePathCtrl.text = compressed);
+    }
   }
 
   Future<void> _submit() async {
@@ -570,6 +632,13 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       durationMinutes: _isBookable ? _durationMinutes : null,
       mrp: double.tryParse(_mrpCtrl.text),
       dealerPrice: double.tryParse(_dealerPriceCtrl.text),
+      mpn: _mpnCtrl.text.trim().isEmpty ? null : _mpnCtrl.text.trim(),
+      availability: _availability,
+      priceCurrency: _priceCurrency,
+      priceValidUntil: _priceValidUntil,
+      manufacturerName: _manufacturerCtrl.text.trim().isEmpty
+          ? null
+          : _manufacturerCtrl.text.trim(),
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -608,49 +677,66 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           length: 5,
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  widget.item == null ? 'Add Item' : 'Edit Item',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                const TabBar(
-                  isScrollable: true,
-                  tabs: [
-                    Tab(text: 'Basic'),
-                    Tab(text: 'Pricing'),
-                    Tab(text: 'Inventory'),
-                    Tab(text: 'Media'),
-                    Tab(text: 'Advanced'),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      _buildBasicTab(),
-                      _buildPricingTab(),
-                      _buildInventoryTab(),
-                      _buildMediaTab(),
-                      _buildAdvancedTab(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.md,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    widget.item == null ? 'Add Item' : 'Edit Item',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+                  const TabBar(
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    tabs: [
+                      Tab(text: 'Basic'),
+                      Tab(text: 'Pricing'),
+                      Tab(text: 'Inventory'),
+                      Tab(text: 'Media'),
+                      Tab(text: 'Advanced'),
                     ],
                   ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                FilledButton(
-                  onPressed: _saving ? null : _submit,
-                  child: _saving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(widget.item == null ? 'Add Item' : 'Save'),
-                ),
-                const SizedBox(height: AppSpacing.base),
-              ],
+                  const SizedBox(height: AppSpacing.base),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildBasicTab(),
+                        _buildPricingTab(),
+                        _buildInventoryTab(),
+                        _buildMediaTab(),
+                        _buildAdvancedTab(),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  FilledButton(
+                    onPressed: _saving ? null : _submit,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      ),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(widget.item == null ? 'Add Item' : 'Save'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -660,31 +746,49 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
 
   Widget _buildBasicTab() {
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [
         TextFormField(
           controller: _nameCtrl,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Item Name *',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
           ),
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         TextFormField(
           controller: _skuCtrl,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'SKU / Item Code',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
             hintText: 'e.g., PROD-001',
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<ItemCategory>(
           initialValue: _category,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Category',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
           ),
           items: ItemCategory.values
               .map(
@@ -708,47 +812,95 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             }
           },
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         TextFormField(
           controller: _descCtrl,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Description',
-            border: OutlineInputBorder(),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            alignLabelWithHint: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
           ),
-          maxLines: 2,
+          maxLines: 3,
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.base),
         _buildAccordion(
           title: 'Brand and Identifiers',
           subtitle: 'Optional commerce profile fields',
-          initiallyExpanded: true,
+          initiallyExpanded: false,
           child: Column(
             children: [
               TextFormField(
                 controller: _brandCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Brand Name',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _barcodeCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Barcode / GTIN',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _mpnCtrl,
+                decoration: InputDecoration(
+                  labelText: 'MPN (Manufacturer Part Number)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _manufacturerCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Manufacturer',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
 
   Widget _buildPricingTab() {
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [
         Row(
           children: [
@@ -758,17 +910,23 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 onChanged: (v) => setState(() => _selectedUnit = v),
               ),
             ),
-            const SizedBox(width: AppSpacing.sm),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: TextFormField(
                 controller: _priceCtrl,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Selling Price (₹) *',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
                   prefixText: '₹',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
                 validator: (v) => (double.tryParse(v ?? '') == null)
                     ? 'Enter valid amount'
@@ -777,7 +935,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.base),
         _buildAccordion(
           title: 'Tax and Compliance',
           subtitle: 'GST percentage and HSN/SAC code',
@@ -789,13 +947,19 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'GST %',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
                   suffixText: '%',
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'HSN', label: Text('HSN')),
@@ -807,7 +971,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   _hsnCtrl.clear();
                 }),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               _HsnSearchField(
                 key: ValueKey(_hsnOrSac),
                 type: _hsnOrSac,
@@ -819,7 +983,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             ],
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         _buildAccordion(
           title: 'Retail and Trade Pricing',
           subtitle: 'MRP and dealer purchase price',
@@ -831,37 +995,116 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'MRP (₹)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    ),
                     prefixText: '₹',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.base,
+                      vertical: AppSpacing.base,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: TextFormField(
                   controller: _dealerPriceCtrl,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Dealer Price (₹)',
-                    border: OutlineInputBorder(),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                    ),
                     prefixText: '₹',
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.base,
+                      vertical: AppSpacing.base,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'Offer Details',
+          subtitle: 'Currency and promotional validity',
+          child: Column(
+            children: [
+              DropdownButtonFormField<String>(
+                value: _priceCurrency,
+                decoration: InputDecoration(
+                  labelText: 'Currency',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+                items: const ['INR', 'USD', 'EUR', 'GBP', 'AED']
+                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                    .toList(),
+                onChanged: (v) => setState(() => _priceCurrency = v ?? 'INR'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Price Valid Until'),
+                subtitle: Text(
+                  _priceValidUntil != null
+                      ? DateFormat('d MMM yyyy').format(_priceValidUntil!)
+                      : 'No expiry set',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: 13,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_priceValidUntil != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        tooltip: 'Clear date',
+                        onPressed: () => setState(() => _priceValidUntil = null),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                      tooltip: 'Pick date',
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _priceValidUntil ?? DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                        );
+                        if (picked != null && mounted) {
+                          setState(() => _priceValidUntil = picked);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
 
   Widget _buildInventoryTab() {
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [
         SwitchListTile(
           value: _trackInventory,
@@ -870,7 +1113,28 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           subtitle: const Text('Monitor stock levels and get low-stock alerts'),
           contentPadding: EdgeInsets.zero,
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
+        DropdownButtonFormField<String>(
+          value: _availability,
+          decoration: InputDecoration(
+            labelText: 'Availability',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'InStock', child: Text('In Stock')),
+            DropdownMenuItem(value: 'OutOfStock', child: Text('Out of Stock')),
+            DropdownMenuItem(value: 'PreOrder', child: Text('Pre-Order')),
+            DropdownMenuItem(value: 'Discontinued', child: Text('Discontinued')),
+          ],
+          onChanged: (v) => setState(() => _availability = v ?? 'InStock'),
+        ),
+        const SizedBox(height: AppSpacing.md),
         _buildAccordion(
           title: 'Stock Levels',
           subtitle: _trackInventory
@@ -884,47 +1148,52 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Current Stock Qty',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: _lowStockThresholdCtrl,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Low Stock Threshold',
-                  border: OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
                 ),
               ),
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
 
   Widget _buildMediaTab() {
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: EdgeInsets.zero,
       children: [
-        _buildAccordion(
-          title: 'Primary Image',
-          subtitle: 'Store local path; export mapper derives URL',
-          initiallyExpanded: true,
-          child: TextFormField(
-            controller: _imagePathCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Primary Image Path',
-              border: OutlineInputBorder(),
-              hintText: '/storage/emulated/0/Pictures/item.jpg',
-            ),
-          ),
+        _ItemImagePicker(
+          imagePath: _imagePathCtrl.text.isEmpty ? null : _imagePathCtrl.text,
+          onPick: _pickItemImage,
+          onRemove: () => setState(() => _imagePathCtrl.clear()),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         _buildAccordion(
           title: 'Future Media',
           subtitle: 'Reserved for gallery/video metadata',
@@ -933,13 +1202,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
 
   Widget _buildAdvancedTab() {
     return ListView(
-      padding: const EdgeInsets.only(top: AppSpacing.xs),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       children: [
         SwitchListTile(
           value: _isFavorite,
@@ -948,7 +1218,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           subtitle: const Text('Show this item at the top of the list'),
           contentPadding: EdgeInsets.zero,
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         SwitchListTile(
           value: _isBookable,
           onChanged: (val) => setState(() => _isBookable = val),
@@ -957,7 +1227,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           contentPadding: EdgeInsets.zero,
         ),
         if (_isBookable) ...[
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: AppSpacing.md),
           _buildAccordion(
             title: 'Service Duration',
             subtitle: 'Used when bookings are enabled',
@@ -969,7 +1239,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: AppSpacing.md),
         _buildAccordion(
           title: 'Custom Properties JSON',
           subtitle: 'Long-tail metadata for external commerce schemas',
@@ -977,10 +1247,17 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             controller: _additionalPropsCtrl,
             minLines: 4,
             maxLines: 8,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'additional_properties_json',
-              border: OutlineInputBorder(),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+              ),
               hintText: '{"packaging":"500g","shelf":"A-3"}',
+              alignLabelWithHint: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.base,
+              ),
             ),
             validator: (v) {
               final value = (v ?? '').trim();
@@ -991,6 +1268,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             },
           ),
         ),
+        const SizedBox(height: AppSpacing.md),
       ],
     );
   }
@@ -1003,18 +1281,39 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   }) {
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
+        ),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-          childrenPadding: const EdgeInsets.only(
-            left: AppSpacing.xs,
-            right: AppSpacing.xs,
-            bottom: AppSpacing.sm,
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.base,
+            vertical: AppSpacing.xs,
           ),
+          childrenPadding: const EdgeInsets.all(AppSpacing.base),
           initiallyExpanded: initiallyExpanded,
-          title: Text(title),
-          subtitle: Text(subtitle),
+          shape: const Border(),
+          collapsedShape: const Border(),
+          title: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
           children: [child],
         ),
       ),
@@ -1130,13 +1429,16 @@ class _DurationPicker extends StatelessWidget {
           initialValue: presets.contains(initialMinutes)
               ? ''
               : initialMinutes.toString(),
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             labelText: 'Custom Duration (minutes)',
-            border: const OutlineInputBorder(),
-            isDense: true,
+            border: OutlineInputBorder(),
             hintText: 'e.g., 75',
             helperText:
                 'For multi-day services, use minutes (e.g., 2880 = 2 days)',
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.base,
+            ),
           ),
           keyboardType: TextInputType.number,
           onChanged: (value) {
@@ -1311,4 +1613,108 @@ class _UnitDropdown extends ConsumerWidget {
       },
     );
   }
+}
+
+// ── Item Image Picker ────────────────────────────────────────────────────────
+
+/// Visual image picker for item's primary image, similar to business card picker.
+class _ItemImagePicker extends StatelessWidget {
+  const _ItemImagePicker({
+    required this.imagePath,
+    required this.onPick,
+    required this.onRemove,
+  });
+
+  final String? imagePath;
+  final VoidCallback onPick;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final hasImage = imagePath != null && imagePath!.isNotEmpty && File(imagePath!).existsSync();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.image_outlined, size: 18, color: cs.outline),
+            const SizedBox(width: 8),
+            Text(
+              'Primary Image',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: cs.outline),
+            ),
+            const Spacer(),
+            if (hasImage)
+              TextButton.icon(
+                onPressed: onRemove,
+                icon: const Icon(Icons.delete_outline, size: 16),
+                label: const Text('Remove'),
+                style: TextButton.styleFrom(
+                  foregroundColor: cs.error,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        if (hasImage) ...[
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            child: Image.file(
+              File(imagePath!),
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, error, stack) => _placeholder(context, cs),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: onPick,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Replace Image'),
+          ),
+        ] else
+          InkWell(
+            onTap: onPick,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+            child: Container(
+              height: 140,
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: cs.outlineVariant, style: BorderStyle.solid, width: 1.5),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined,
+                      size: 40, color: cs.primary),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text('Tap to add item image',
+                      style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _placeholder(BuildContext context, ColorScheme cs) => Container(
+        height: 200,
+        decoration: BoxDecoration(
+          color: cs.errorContainer,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+        ),
+        child: Center(
+          child: Icon(Icons.broken_image_outlined, size: 48, color: cs.error),
+        ),
+      );
 }

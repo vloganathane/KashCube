@@ -3616,6 +3616,37 @@ class DatabaseHelper {
             'item_catalog: add brand_name, primary_image_path, barcode, and additional_properties_json',
       });
     }
+
+    if (oldVersion < 87) {
+      try {
+        await db.execute('ALTER TABLE item_catalog ADD COLUMN mpn TEXT');
+      } catch (_) {}
+      try {
+        await db.execute(
+          "ALTER TABLE item_catalog ADD COLUMN availability TEXT DEFAULT 'InStock'",
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          "ALTER TABLE item_catalog ADD COLUMN price_currency TEXT DEFAULT 'INR'",
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN price_valid_until TEXT',
+        );
+      } catch (_) {}
+      try {
+        await db.execute(
+          'ALTER TABLE item_catalog ADD COLUMN manufacturer_name TEXT',
+        );
+      } catch (_) {}
+      await db.insert('schema_version', {
+        'version': 87,
+        'description':
+            'item_catalog: P0 schema.org/Product commerce fields — mpn, availability, price_currency, price_valid_until, manufacturer_name',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

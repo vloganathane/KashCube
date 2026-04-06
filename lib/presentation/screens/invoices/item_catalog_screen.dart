@@ -462,9 +462,16 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
   late final TextEditingController _depthCtrl;
   late final TextEditingController _materialCtrl;
   late final TextEditingController _keywordsCtrl;
+  late final TextEditingController _productIdCtrl;
+  late final TextEditingController _asinCtrl;
+  late final TextEditingController _logoPathCtrl;
+  late final TextEditingController _patternCtrl;
+  late final TextEditingController _sloganCtrl;
+  late final TextEditingController _modelNumberCtrl;
   late String _weightUnit;
   late String? _countryOfOrigin;
   DateTime? _releaseDate;
+  late String _itemCondition;
   late String _hsnOrSac;
   late String _selectedUnit;
   late ItemCategory _category;
@@ -532,9 +539,16 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     );
     _materialCtrl = TextEditingController(text: item?.material ?? '');
     _keywordsCtrl = TextEditingController(text: item?.keywords ?? '');
+    _productIdCtrl = TextEditingController(text: item?.productId ?? '');
+    _asinCtrl = TextEditingController(text: item?.asin ?? '');
+    _logoPathCtrl = TextEditingController(text: item?.logoPath ?? '');
+    _patternCtrl = TextEditingController(text: item?.pattern ?? '');
+    _sloganCtrl = TextEditingController(text: item?.slogan ?? '');
+    _modelNumberCtrl = TextEditingController(text: item?.modelNumber ?? '');
     _weightUnit = item?.weightUnit ?? 'g';
     _countryOfOrigin = item?.countryOfOrigin;
     _releaseDate = item?.releaseDate;
+    _itemCondition = item?.itemCondition ?? 'NewCondition';
     _category = item?.category ?? ItemCategory.product;
     _hsnOrSac = item?.hsnOrSac ?? _defaultHsnOrSac(_category);
     _isFavorite = item?.isFavorite ?? false;
@@ -587,6 +601,12 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       _depthCtrl,
       _materialCtrl,
       _keywordsCtrl,
+      _productIdCtrl,
+      _asinCtrl,
+      _logoPathCtrl,
+      _patternCtrl,
+      _sloganCtrl,
+      _modelNumberCtrl,
     ]) {
       c.dispose();
     }
@@ -634,6 +654,50 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
     if (picked != null && mounted) {
       final compressed = await compressPickedImage(picked);
       setState(() => _imagePathCtrl.text = compressed);
+    }
+  }
+
+  Future<void> _pickLogoImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.md),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: AppSpacing.base),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1600,
+    );
+    if (picked != null && mounted) {
+      final compressed = await compressPickedImage(picked);
+      setState(() => _logoPathCtrl.text = compressed);
     }
   }
 
@@ -688,6 +752,13 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       keywords: _keywordsCtrl.text.trim().isEmpty ? null : _keywordsCtrl.text.trim(),
       countryOfOrigin: _countryOfOrigin,
       releaseDate: _releaseDate,
+      productId: _productIdCtrl.text.trim().isEmpty ? null : _productIdCtrl.text.trim(),
+      asin: _asinCtrl.text.trim().isEmpty ? null : _asinCtrl.text.trim(),
+      logoPath: _logoPathCtrl.text.trim().isEmpty ? null : _logoPathCtrl.text.trim(),
+      pattern: _patternCtrl.text.trim().isEmpty ? null : _patternCtrl.text.trim(),
+      slogan: _sloganCtrl.text.trim().isEmpty ? null : _sloganCtrl.text.trim(),
+      itemCondition: _itemCondition,
+      modelNumber: _modelNumberCtrl.text.trim().isEmpty ? null : _modelNumberCtrl.text.trim(),
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
     );
@@ -930,6 +1001,35 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 controller: _manufacturerCtrl,
                 decoration: InputDecoration(
                   labelText: 'Manufacturer',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _productIdCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Product ID (GTIN)',
+                  hintText: 'Global Trade Item Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _modelNumberCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Model Number',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                   ),
@@ -1476,6 +1576,48 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
         ),
         const SizedBox(height: AppSpacing.md),
         _buildAccordion(
+          title: 'Brand Logo',
+          subtitle: 'Separate from product image',
+          child: Column(
+            children: [
+              if (_logoPathCtrl.text.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  child: Image.file(
+                    File(_logoPathCtrl.text),
+                    height: 120,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _pickLogoImage,
+                      icon: const Icon(Icons.image_outlined),
+                      label: Text(_logoPathCtrl.text.isEmpty ? 'Pick Logo' : 'Change Logo'),
+                    ),
+                  ),
+                  if (_logoPathCtrl.text.isNotEmpty) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    OutlinedButton.icon(
+                      onPressed: () => setState(() => _logoPathCtrl.clear()),
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Remove'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
           title: 'Future Media',
           subtitle: 'Reserved for gallery/video metadata',
           child: Text(
@@ -1520,6 +1662,88 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             ),
           ),
         ],
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'Marketplace Identifiers',
+          subtitle: 'Platform-specific product IDs',
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _asinCtrl,
+                decoration: InputDecoration(
+                  labelText: 'ASIN',
+                  hintText: 'Amazon Standard Identification Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildAccordion(
+          title: 'Product Marketing',
+          subtitle: 'Pattern, slogan, and condition',
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _patternCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Pattern',
+                  hintText: 'e.g., Solid, Striped, Checkered',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextFormField(
+                controller: _sloganCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Slogan / Tagline',
+                  hintText: 'Marketing message',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                value: _itemCondition,
+                onChanged: (val) => setState(() => _itemCondition = val ?? 'NewCondition'),
+                decoration: InputDecoration(
+                  labelText: 'Item Condition',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.base,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'NewCondition', child: Text('New')),
+                  DropdownMenuItem(value: 'UsedCondition', child: Text('Used')),
+                  DropdownMenuItem(value: 'RefurbishedCondition', child: Text('Refurbished')),
+                  DropdownMenuItem(value: 'DamagedCondition', child: Text('Damaged')),
+                ],
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.md),
         _buildAccordion(
           title: 'Custom Properties JSON',

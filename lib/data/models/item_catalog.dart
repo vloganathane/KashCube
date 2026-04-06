@@ -68,6 +68,13 @@ class ItemCatalog extends Equatable {
     this.keywords,
     this.countryOfOrigin,
     this.releaseDate,
+    this.productId,
+    this.asin,
+    this.logoPath,
+    this.pattern,
+    this.slogan,
+    this.itemCondition = 'NewCondition',
+    this.modelNumber,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -165,6 +172,29 @@ class ItemCatalog extends Equatable {
   /// Product launch / release date (schema.org releaseDate).
   final DateTime? releaseDate;
 
+  // ── P2 schema.org/Product fields ──────────────────────────────────────────
+
+  /// Global Trade Item Number or unique product identifier (schema.org productID).
+  final String? productId;
+
+  /// Amazon Standard Identification Number (schema.org gtin or asin).
+  final String? asin;
+
+  /// Path to product logo image (schema.org logo).
+  final String? logoPath;
+
+  /// Pattern or design description (schema.org pattern).
+  final String? pattern;
+
+  /// Marketing slogan or tagline (schema.org slogan).
+  final String? slogan;
+
+  /// Condition: NewCondition, UsedCondition, RefurbishedCondition, DamagedCondition (schema.org itemCondition).
+  final String itemCondition;
+
+  /// Model number or identifier (schema.org model).
+  final String? modelNumber;
+
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -215,6 +245,13 @@ class ItemCatalog extends Equatable {
     String? keywords,
     String? countryOfOrigin,
     DateTime? releaseDate,
+    String? productId,
+    String? asin,
+    String? logoPath,
+    String? pattern,
+    String? slogan,
+    String? itemCondition,
+    String? modelNumber,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -264,6 +301,13 @@ class ItemCatalog extends Equatable {
       keywords: keywords ?? this.keywords,
       countryOfOrigin: countryOfOrigin ?? this.countryOfOrigin,
       releaseDate: releaseDate ?? this.releaseDate,
+      productId: productId ?? this.productId,
+      asin: asin ?? this.asin,
+      logoPath: logoPath ?? this.logoPath,
+      pattern: pattern ?? this.pattern,
+      slogan: slogan ?? this.slogan,
+      itemCondition: itemCondition ?? this.itemCondition,
+      modelNumber: modelNumber ?? this.modelNumber,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -312,6 +356,13 @@ class ItemCatalog extends Equatable {
     if (keywords != null) 'keywords': keywords,
     if (countryOfOrigin != null) 'country_of_origin': countryOfOrigin,
     if (releaseDate != null) 'release_date': releaseDate!.toIso8601String(),
+    if (productId != null) 'product_id': productId,
+    if (asin != null) 'asin': asin,
+    if (logoPath != null) 'logo_path': logoPath,
+    if (pattern != null) 'pattern': pattern,
+    if (slogan != null) 'slogan': slogan,
+    'item_condition': itemCondition,
+    if (modelNumber != null) 'model_number': modelNumber,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
@@ -372,6 +423,13 @@ class ItemCatalog extends Equatable {
     releaseDate: map['release_date'] != null
         ? DateTime.parse(map['release_date'] as String)
         : null,
+    productId: map['product_id'] as String?,
+    asin: map['asin'] as String?,
+    logoPath: map['logo_path'] as String?,
+    pattern: map['pattern'] as String?,
+    slogan: map['slogan'] as String?,
+    itemCondition: (map['item_condition'] as String?) ?? 'NewCondition',
+    modelNumber: map['model_number'] as String?,
     createdAt: DateTime.parse(map['created_at'] as String),
     updatedAt: DateTime.parse(map['updated_at'] as String),
   );
@@ -422,6 +480,13 @@ class ItemCatalog extends Equatable {
     keywords,
     countryOfOrigin,
     releaseDate,
+    productId,
+    asin,
+    logoPath,
+    pattern,
+    slogan,
+    itemCondition,
+    modelNumber,
     createdAt,
     updatedAt,
   ];

@@ -3672,6 +3672,27 @@ class DatabaseHelper {
             'item_catalog: P1 schema.org/Product fields — color, size, weight, dimensions, material, keywords, country_of_origin, release_date',
       });
     }
+
+    if (oldVersion < 89) {
+      for (final sql in [
+        'ALTER TABLE item_catalog ADD COLUMN product_id TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN asin TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN logo_path TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN pattern TEXT',
+        'ALTER TABLE item_catalog ADD COLUMN slogan TEXT',
+        "ALTER TABLE item_catalog ADD COLUMN item_condition TEXT DEFAULT 'NewCondition'",
+        'ALTER TABLE item_catalog ADD COLUMN model_number TEXT',
+      ]) {
+        try {
+          await db.execute(sql);
+        } catch (_) {}
+      }
+      await db.insert('schema_version', {
+        'version': 89,
+        'description':
+            'item_catalog: P2 schema.org/Product fields — product_id, asin, logo_path, pattern, slogan, item_condition, model_number',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

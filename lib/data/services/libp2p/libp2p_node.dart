@@ -1,6 +1,13 @@
 import 'dart:async' as async_dart;
 
-import 'package:dart_libp2p/dart_libp2p.dart' as libp2p;
+import 'package:dart_libp2p/dart_libp2p.dart';
+import 'package:dart_libp2p/config/config.dart' as libp2p_config;
+import 'package:dart_libp2p/config/defaults.dart' show defaultMuxers;
+import 'package:dart_libp2p/p2p/transport/tcp_transport.dart';
+import 'package:dart_libp2p/p2p/security/noise/noise_protocol.dart';
+import 'package:dart_libp2p/p2p/transport/connection_manager.dart' as conn_mgr;
+import 'package:dart_libp2p/p2p/host/resource_manager/resource_manager_impl.dart';
+import 'package:dart_libp2p/p2p/host/resource_manager/limiter.dart';
 import 'package:flutter/foundation.dart';
 
 /// Lifecycle wrapper for dart_libp2p Host.
@@ -19,14 +26,13 @@ import 'package:flutter/foundation.dart';
 /// ```
 class LibP2pNode {
   /// dart_libp2p Host instance (null until [initialize] is called)
-  libp2p.Host? _host;
+  Host? _host;
 
   /// Active protocol handlers (protocol ID → handler function)
-  final Map<String, libp2p.StreamHandler> _protocolHandlers = {};
+  final Map<String, StreamHandler> _protocolHandlers = {};
 
   /// Active streams (peer ID → list of streams)
-  /// Note: Using dynamic until dart_libp2p Stream type is confirmed
-  final Map<String, List<dynamic>> _activeStreams = {};
+  final Map<String, List<P2PStream>> _activeStreams = {};
 
   /// Initialization state
   bool _initialized = false;
@@ -79,13 +85,42 @@ class LibP2pNode {
     }
 
     try {
-      // Create libp2p host
-      // Note: Actual dart_libp2p API may differ - this is placeholder based on
-      // typical libp2p patterns. Will need to adjust based on actual package API.
-      _host = await _createHost(
-        identity: identity,
-        listenAddrs: listenAddrs ?? ['/ip4/0.0.0.0/tcp/0'],
+      // Generate or import Ed25519 key pair
+      final keyPair = identity != null
+          ? await generateEd25519KeyPairFromSeed(identity)
+          : await generateEd25519KeyPair();
+
+      // Create resource manager for connection limits
+      final resourceManager = ResourceManagerImpl(limiter: FixedLimiter());
+
+      // Create connection manager
+      final connectionManager = conn_mgr.ConnectionManager();
+
+      // Create TCP transport
+      final tcpTransport = TCPTransport(
+        resourceManager: resourceManager,
+        connManager: connectionManager,
       );
+
+      // Create Noise security protocol
+      final noiseSecurity = await NoiseSecurity.create(keyPair);
+
+      // Create config with options
+      final config = libp2p_config.Config();
+      final options = <libp2p_config.Option>[
+        libp2p_config.Libp2p.identity(keyPair),
+        libp2p_config.Libp2p.transport(tcpTransport),
+        libp2p_config.Libp2p.security(noiseSecurity),
+        libp2p_config.Libp2p.listenAddrs(
+          (listenAddrs ?? ['/ip4/0.0.0.0/tcp/0'])
+              .map((addr) => MultiAddr(addr))
+              .toList(),
+        ),
+        defaultMuxers, // Yamux stream multiplexer
+      ];
+
+      await config.apply(options);
+      _host = await config.newNode();
 
       _initialized = true;
       debugPrint('[LibP2pNode] Initialized with peer ID: ${_host!.id}');
@@ -109,8 +144,8 @@ class LibP2pNode {
     }
 
     try {
-      // Start listening (dart_libp2p specific API - placeholder)
-      // await _host!.start();
+      // Start the host (begins listening on configured addresses)
+      await _host!.start();
 
       _started = true;
       debugPrint('[LibP2pNode] Started listening on: ${listeningAddrs.join(", ")}');
@@ -171,21 +206,30 @@ class LibP2pNode {
   /// [protocolId]: Protocol identifier (e.g., "/kash-sync/1.0.0")
   /// [handler]: Function to handle incoming streams for this protocol
   ///
-  /// The handler receives a [libp2p.Stream] and should read/write to it.
+  /// The handler receives a [P2PStream] and [PeerId] and should read/write to the stream.
   /// The stream is automatically added to [_activeStreams] and removed when closed.
-  void registerProtocol(String protocolId, libp2p.StreamHandler handler) {
+  void registerProtocol(String protocolId, StreamHandler handler) {
     if (!_initialized) {
       throw StateError('Must initialize before registering protocols');
     }
 
     _protocolHandlers[protocolId] = handler;
 
-    // Register with dart_libp2p host (placeholder - actual API may differ)
-    // _host!.setStreamHandler(protocolId, (stream) async {
-    //   _trackStream(stream.conn.remotePeer.toString(), stream);
-    //   await handler(stream);
-    //   _untrackStream(stream.conn.remotePeer.toString(), stream);
-    // });
+    // Register with dart_libp2p host
+    // Note: ProtocolID is a String typedef
+    _host!.setStreamHandler(protocolId, (P2PStream stream, PeerId remotePeer) async {
+      final peerIdStr = remotePeer.toString();
+      _trackStream(peerIdStr, stream);
+      
+      try {
+        await handler(stream, remotePeer);
+      } catch (e) {
+        debugPrint('[LibP2pNode] Protocol handler error for $protocolId: $e');
+        rethrow;
+      } finally {
+        _untrackStream(peerIdStr, stream);
+      }
+    });
 
     debugPrint('[LibP2pNode] Registered protocol: $protocolId');
   }
@@ -193,8 +237,7 @@ class LibP2pNode {
   /// Unregister a protocol handler.
   void unregisterProtocol(String protocolId) {
     if (_protocolHandlers.remove(protocolId) != null) {
-      // Unregister from dart_libp2p host (placeholder)
-      // _host!.removeStreamHandler(protocolId);
+      _host!.removeStreamHandler(protocolId);
       debugPrint('[LibP2pNode] Unregistered protocol: $protocolId');
     }
   }
@@ -210,7 +253,7 @@ class LibP2pNode {
   ///
   /// Returns the opened stream. Caller is responsible for reading/writing to the stream.
   /// The stream is automatically tracked and removed when closed.
-  Future<dynamic> dial(String peerMultiaddr, {required String protocolId}) async {
+  Future<P2PStream> dial(String peerMultiaddr, {required String protocolId}) async {
     if (!_started) {
       throw StateError('Must call start() before dialing');
     }
@@ -218,32 +261,50 @@ class LibP2pNode {
     try {
       debugPrint('[LibP2pNode] Dialing $peerMultiaddr with protocol $protocolId');
 
-      // Parse multiaddr (dart_libp2p API - placeholder)
-      // final addr = libp2p.Multiaddr(peerMultiaddr);
+      // Parse multiaddr
+      final addr = MultiAddr(peerMultiaddr);
+      
+      // Extract peer ID from multiaddr (/p2p/QmXXX component)
+      final peerId = _extractPeerIdFromMultiaddr(addr);
 
-      // Open stream with protocol negotiation (placeholder)
-      // final stream = await _host!.newStream(addr.peerId, [protocolId]);
+      // Connect to peer (establishes connection if not already connected)
+      final addrInfo = AddrInfo(peerId, [addr]);
+      await _host!.connect(addrInfo);
 
-      // For now, throw not implemented
-      throw UnimplementedError('Dial not yet implemented - awaiting dart_libp2p API integration');
+      // Open stream with protocol negotiation
+      //Note: ProtocolID is a String typedef, pass it directly
+      final context = Context(); // Use default context
+      final stream = await _host!.newStream(peerId, [protocolId], context);
 
       // Track stream
-      // final peerId = addr.peerId.toString();
-      // _trackStream(peerId, stream);
+      final peerIdStr = peerId.toString();
+      _trackStream(peerIdStr, stream);
       
       // Emit connection event
-      // _connectionEvents.add(PeerConnectionEvent(
-      //   peerId: peerId,
-      //   type: PeerConnectionEventType.connected,
-      //   timestamp: DateTime.now(),
-      // ));
+      _connectionEvents.add(PeerConnectionEvent(
+        peerId: peerIdStr,
+        type: PeerConnectionEventType.connected,
+        timestamp: DateTime.now(),
+      ));
 
-      // return stream;
+      debugPrint('[LibP2pNode] Successfully dialed $peerIdStr on protocol $protocolId');
+      return stream;
     } catch (e, stack) {
       debugPrint('[LibP2pNode] Dial failed: $e');
       debugPrint(stack.toString());
       rethrow;
     }
+  }
+
+  /// Extract PeerId from multiaddr.
+  ///
+  /// Multiaddr format: /ip4/192.168.1.10/tcp/9090/p2p/QmPeerId...
+  PeerId _extractPeerIdFromMultiaddr(MultiAddr addr) {
+    final peerIdValue = addr.valueForProtocol('p2p');
+    if (peerIdValue == null || peerIdValue.isEmpty) {
+      throw FormatException('No peer ID in multiaddr: $addr');
+    }
+    return PeerId.fromString(peerIdValue);
   }
 
   /// Send data on an existing stream.
@@ -252,7 +313,7 @@ class LibP2pNode {
   /// [data]: Bytes to send
   ///
   /// Returns number of bytes written.
-  Future<int> send(dynamic stream, Uint8List data) async {
+  Future<int> send(P2PStream stream, Uint8List data) async {
     try {
       await stream.write(data);
       return data.length;
@@ -266,45 +327,14 @@ class LibP2pNode {
   // Internal Helpers
   // ────────────────────────────────────────────────────────────────────────────
 
-  /// Create libp2p host instance.
-  ///
-  /// This is a placeholder - actual implementation depends on dart_libp2p API.
-  Future<libp2p.Host> _createHost({
-    Uint8List? identity,
-    required List<String> listenAddrs,
-  }) async {
-    // Placeholder: Will need to implement based on actual dart_libp2p API
-    // Example (may not match actual API):
-    //
-    // final privKey = identity != null
-    //     ? await libp2p.PrivKey.fromEd25519Seed(identity)
-    //     : await libp2p.PrivKey.generateEd25519();
-    //
-    // final host = await libp2p.Host.create(
-    //   privateKey: privKey,
-    //   listenAddrs: listenAddrs.map((a) => libp2p.Multiaddr(a)).toList(),
-    //   transports: [libp2p.TCPTransport(), libp2p.UDXTransport()],
-    //   security: [libp2p.Noise()],
-    //   muxer: [libp2p.Yamux()],
-    // );
-    //
-    // return host;
-
-    throw UnimplementedError(
-      'Host creation not yet implemented - '
-      'awaiting dart_libp2p API integration. '
-      'This is a Phase 1.3 placeholder.',
-    );
-  }
-
   /// Track an active stream.
-  void _trackStream(String peerId, dynamic stream) {
+  void _trackStream(String peerId, P2PStream stream) {
     _activeStreams.putIfAbsent(peerId, () => []).add(stream);
     debugPrint('[LibP2pNode] Tracking stream to $peerId (${_activeStreams[peerId]!.length} total)');
   }
 
   /// Untrack a closed stream.
-  void _untrackStream(String peerId, dynamic stream) {
+  void _untrackStream(String peerId, P2PStream stream) {
     final streams = _activeStreams[peerId];
     if (streams != null) {
       streams.remove(stream);

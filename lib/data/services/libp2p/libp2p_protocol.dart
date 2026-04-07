@@ -1,6 +1,7 @@
 import 'dart:async' as async_dart;
 import 'dart:convert';
 
+import 'package:dart_libp2p/dart_libp2p.dart';
 import 'package:flutter/foundation.dart';
 
 /// Protocol ID for KashCube sync over libp2p.
@@ -18,8 +19,9 @@ typedef FrameHandler = Future<Map<String, dynamic>?> Function(
   String peerId,
 );
 
-/// Stream handler type alias (using dynamic until dart_libp2p API confirmed)
-typedef LibP2pStreamHandler = Future<void> Function(dynamic stream);
+/// Stream handler type alias for libp2p protocol streams.
+/// Signature matches dart_libp2p StreamHandler: (P2PStream, PeerId) async function
+typedef LibP2pStreamHandler = StreamHandler;
 
 /// Handles the /kash-sync/1.0.0 protocol stream operations.
 ///
@@ -91,8 +93,8 @@ class LibP2pProtocol {
   /// The handler reads length-prefixed frames, parses JSON, routes to handlers,
   /// and sends responses.
   LibP2pStreamHandler createStreamHandler() {
-    return (dynamic stream) async {
-      final peerId = _getPeerId(stream);
+    return (P2PStream stream, PeerId remotePeer) async {
+      final peerId = remotePeer.toString();
       debugPrint('[LibP2pProtocol] Stream opened from $peerId');
 
       try {
@@ -130,7 +132,7 @@ class LibP2pProtocol {
   /// Handle an open stream: read frames, route to handlers, send responses.
   ///
   /// Runs until stream is closed by either peer or error occurs.
-  Future<void> _handleStream(dynamic stream, String peerId) async {
+  Future<void> _handleStream(P2PStream stream, String peerId) async {
     while (true) {
       try {
         // Read frame
@@ -205,7 +207,7 @@ class LibP2pProtocol {
   ///
   /// Returns null on EOF (stream closed).
   /// Throws on malformed data, oversized frames, or JSON parse errors.
-  Future<Map<String, dynamic>?> _readFrame(dynamic stream) async {
+  Future<Map<String, dynamic>?> _readFrame(P2PStream stream) async {
     // Read 4-byte length prefix
     final lengthBytes = await _readExact(stream, 4);
     if (lengthBytes == null) {
@@ -241,7 +243,7 @@ class LibP2pProtocol {
   /// Send a JSON frame to the peer with length prefix.
   ///
   /// Frame format: 4-byte big-endian u32 length + JSON payload
-  Future<void> _sendFrame(dynamic stream, Map<String, dynamic> frame) async {
+  Future<void> _sendFrame(P2PStream stream, Map<String, dynamic> frame) async {
     // Serialize to JSON
     final json = jsonEncode(frame);
     final payloadBytes = utf8.encode(json);
@@ -269,13 +271,13 @@ class LibP2pProtocol {
   ///
   /// Returns null on EOF.
   /// Throws if stream closes before [n] bytes read.
-  Future<Uint8List?> _readExact(dynamic stream, int n) async {
+  Future<Uint8List?> _readExact(P2PStream stream, int n) async {
     final buffer = Uint8List(n);
     int bytesRead = 0;
 
     while (bytesRead < n) {
       final chunk = await stream.read(n - bytesRead);
-      if (chunk == null || chunk.isEmpty) {
+      if (chunk.isEmpty) {
         if (bytesRead == 0) {
           return null; // EOF at start
         }
@@ -290,14 +292,7 @@ class LibP2pProtocol {
     return buffer;
   }
 
-  /// Extract peer ID from stream connection.
-  ///
-  /// Placeholder - actual implementation depends on dart_libp2p API.
-  String _getPeerId(dynamic stream) {
-    // dart_libp2p API placeholder:
-    // return stream.conn.remotePeer.toString();
-    return 'peer-placeholder'; // Will be replaced with actual API call
-  }
+
 
   // ────────────────────────────────────────────────────────────────────────────
   // Cleanup

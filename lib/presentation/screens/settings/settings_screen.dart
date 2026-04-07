@@ -728,6 +728,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 MaterialPageRoute(builder: (_) => DevicesScreen()),
               ),
             ),
+            Consumer(builder: (context, ref, _) {
+              final enabled = ref.watch(libp2pSyncEnabledProvider);
+              return SwitchListTile(
+                secondary: const Icon(Icons.science_outlined),
+                title: const Text('Experimental: libp2p Sync'),
+                subtitle: Text(
+                  enabled
+                      ? 'Using dart_libp2p (Phase 1) · Restart app to apply'
+                      : 'Using WebRTC (default) · Enable for testing',
+                ),
+                value: enabled,
+                onChanged: (v) =>
+                    ref.read(libp2pSyncEnabledProvider.notifier).setEnabled(v),
+              );
+            }),
             ListTile(
               leading: const Icon(Icons.laptop_outlined),
               title: const Text('Open on Laptop'),

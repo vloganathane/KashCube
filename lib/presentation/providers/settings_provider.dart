@@ -286,9 +286,38 @@ class BusinessNameNotifier extends StateNotifier<String> {
   }
 }
 
-final businessNameProvider =
-    StateNotifierProvider<BusinessNameNotifier, String>(
-  (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
+// ---------------------------------------------------------------------------
+// libp2p Sync (Experimental Phase 1 Feature)
+// ---------------------------------------------------------------------------
+
+/// State notifier for experimental libp2p-based peer-to-peer sync.
+///
+/// **Default**: false (WebRTC remains default)
+/// **Experimental**: true (Phase 1 libp2p implementation)
+///
+/// When enabled, KashCube uses dart_libp2p for P2P sync over TCP/UDX with
+/// mDNS discovery (LAN-only). When disabled, WebRTC sync is used.
+class Libp2pSyncEnabledNotifier extends StateNotifier<bool> {
+  Libp2pSyncEnabledNotifier(this._repo) : super(false) {
+    _load();
+  }
+
+  final SettingsRepository _repo;
+
+  Future<void> _load() async {
+    final v = await _repo.get(SettingsKeys.enableLibp2pSync);
+    state = v == 'true';
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    await _repo.set(SettingsKeys.enableLibp2pSync, enabled.toString());
+    state = enabled;
+  }
+}
+
+final libp2pSyncEnabledProvider =
+    StateNotifierProvider<Libp2pSyncEnabledNotifier, bool>(
+  (ref) => Libp2pSyncEnabledNotifier(ref.read(settingsRepositoryProvider)),
 );
 
 // ---------------------------------------------------------------------------

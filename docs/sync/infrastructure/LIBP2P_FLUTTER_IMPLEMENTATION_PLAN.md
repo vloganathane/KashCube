@@ -309,68 +309,169 @@ dart_libp2p for direct peer communication (no relay).
 
 ### Phase 1: libp2p Foundation (Direct Peer Sync Only)
 
-**Goal**: Replace WebRTC with libp2p for direct peer communication (no relay).
+**Goal**: Integrate dart_libp2p for direct peer communication (pure Dart, no FFI).
+
+**Status**: IN PROGRESS (Week 2)  
+**Approach**: ✅ Pure Dart via `dart_libp2p` package (v1.0.3) — no native builds needed!
 
 **Milestones**:
 
-#### 1.1: Set Up Build Infrastructure
-- [ ] Add Go build to CI/CD pipeline
-- [ ] Create `native/go-libp2p-bridge/` directory structure
-- [ ] Set up `Makefile` targets for shared library compilation
-- [ ] Configure platform-specific builds (Android: .so, iOS: .framework, macOS: .dylib, etc.)
-- [ ] Add FFI code generation with `ffigen`
+#### 1.1: Add dart_libp2p Dependency ✅ **COMPLETE**
+- [x] Add `dart_libp2p: ^1.0.3` to pubspec.yaml
+- [x] Run `flutter pub get` and resolve dependencies
+- [x] Verify package imports successfully (2 passing tests)
+- [x] Document transitive dependencies (protobuf, dart_multihash, dart_udx, mdns_dart, etc.)
 
-#### 1.2: Implement Go Wrapper
-- [ ] Initialize libp2p host with Ed25519 key pair
-- [ ] Export C-style functions: `InitNode`, `StartListening`, `DialPeer`, `SendMessage`, `ReceiveMessage`, `Shutdown`
-- [ ] Implement KashCube custom protocol: `/kash-sync/1.0.0`
-- [ ] Add mDNS discovery for local network peers
-- [ ] Add error handling and result marshalling
+**Status**: ✅ Completed 24 Feb 2026  
+**Files**: pubspec.yaml, test/dart_libp2p_import_test.dart  
+**Commit**: 67afe15 — dart_libp2p package installed and verified  
+**Outcome**: Package works, no conflicts with existing dependencies
 
-#### 1.3: Implement Dart FFI Layer
-- [ ] Create `lib/data/services/libp2p_node.dart` with FFI bindings
-- [ ] Wrap native calls in async Dart API
-- [ ] Implement Stream<SyncEnvelope> for incoming messages
-- [ ] Add connection lifecycle management
-- [ ] Handle platform-specific library loading (Android vs iOS vs desktop)
+---
 
-#### 1.4: Implement libp2p Repository
-- [ ] Create `Libp2pSyncRepositoryImpl` implementing `SyncRepository`
-- [ ] Port all sync methods from WebRTC version
-- [ ] Reuse existing sync envelope serialization
-- [ ] Add retry logic and connection resilience
-- [ ] Implement peer discovery via mDNS
+#### 1.2: Design /kash-sync/1.0.0 Protocol ✅ **COMPLETE**
+- [x] Define protocol ID: `/kash-sync/1.0.0`
+- [x] Design stream semantics (bidirectional, long-lived, one per peer)
+- [x] Specify message framing (length-prefixed JSON, 4-byte header)
+- [x] Reuse existing sync envelope (SYNC_PLAN, ROWS, PUSH, WRITE_OK, ERROR)
+- [x] Add new frames: PING/PONG for keepalive
+- [x] Document protocol flow (negotiation, data transfer, real-time sync)
+- [x] Design error handling (malformed JSON, DB constraints, stream errors)
+- [x] Define security model (Noise encryption, PeerId authentication)
+- [x] Map SyncRepository methods to protocol actions
+- [x] Document migration strategy (WebRTC → libp2p feature flag)
 
-#### 1.5: Integration and Testing
-- [ ] Add feature flag in Settings: "Use libp2p Sync (Experimental)"
-- [ ] Test direct sync between 2 devices (Android-Android, Android-iOS, Android-Web)
-- [ ] Verify basic connectivity and message passing
-- [ ] Initial smoke tests (single table sync)
+**Status**: ✅ Completed 24 Feb 2026  
+**Files**: docs/sync/infrastructure/LIBP2P_KASH_SYNC_PROTOCOL.md (1,100+ lines)  
+**Commit**: Pending (next commit)  
+**Outcome**: Complete protocol specification ready for implementation
 
-#### 1.6: Comprehensive Testing (Phase 0 Tasks 6-7 Revised) 🔄 **COMPARATIVE**
-- [ ] **Task 6 (Revised)**: Integration tests for BOTH WebRTC + libp2p
-  - Test suite uses SyncRepository interface (works with both implementations)
-  - 2-device sync convergence (all 40+ tables)
-  - Deduplication verification (send duplicate rows)
-  - Disconnect/reconnect resilience (mid-sync failure recovery)
-  - Conflict resolution (same row edited on both sides)
-  - Run tests against WebRTC implementation
-  - Run tests against libp2p implementation
-  - Compare results and identify functional differences
-- [ ] **Task 7 (Revised)**: Performance comparison report
-  - WebRTC baseline: latency, battery, memory, convergence time
-  - libp2p measurements: same metrics
-  - Side-by-side comparison table
-  - Migration impact analysis
-  - Recommendation: continue with libp2p or fallback to WebRTC
+---
 
-**Duration**: 4-6 weeks  
-**Risk**: Medium — FFI integration complexity  
+#### 1.3: Implement libp2p Service Layer
+- [ ] **LibP2pNode** (`lib/data/services/libp2p_node.dart`):
+  - [ ] Initialize dart_libp2p Host with Ed25519 identity
+  - [ ] Start listening on TCP/UDX transports
+  - [ ] Implement `dial(multiaddr)` for connecting to peers
+  - [ ] Expose `send(peerId, data)` for outbound messages
+  - [ ] Handle `close()` for graceful shutdown
+  - [ ] Configure Noise security and Yamux multiplexing
+
+- [ ] **LibP2pProtocol** (`lib/data/services/libp2p_protocol.dart`):
+  - [ ] Register `/kash-sync/1.0.0` protocol handler
+  - [ ] Parse length-prefixed JSON frames from streams
+  - [ ] Route frame types (SYNC_PLAN, ROWS, PUSH, etc.) to handlers
+  - [ ] Implement frame serialization for outbound messages
+  - [ ] Handle PING/PONG keepalive frames
+  - [ ] Error handling (malformed JSON, unknown frame types)
+
+- [ ] **LibP2pDiscovery** (`lib/data/services/libp2p_discovery.dart`):
+  - [ ] Start mDNS discovery (use dart_libp2p's built-in or mdns_dart)
+  - [ ] Emit discovered peers as Stream<SyncPeer>
+  - [ ] Construct PeerInfo from mDNS TXT records (device name, multiaddr)
+  - [ ] Stop discovery on dispose
+
+**Duration**: 3-4 days  
+**Risk**: Low — dart_libp2p provides most primitives
+
+---
+
+#### 1.4: Create Libp2pSyncRepositoryImpl
+- [ ] Implement `SyncRepository` interface (10 methods)
+- [ ] Port sync logic from `WebRtcSyncRepositoryImpl`:
+  - [ ] Deduplication (LRU cache, sync_id filtering)
+  - [ ] Database merge (upsert with REPLACE conflict)
+  - [ ] Watermark tracking (prevent echo)
+  - [ ] Progress tracking (completed/pending tables, rows synced)
+- [ ] Integrate `LibP2pNode`, `LibP2pProtocol`, `LibP2pDiscovery` services
+- [ ] Implement connection lifecycle:
+  - [ ] `connect(peer)` → dial multiaddr, open stream, send SYNC_PLAN
+  - [ ] `disconnect()` → close streams, stop discovery
+- [ ] Real-time sync:
+  - [ ] `pushRow(table, row)` → send PUSH frame
+  - [ ] `pushRows(table, rows)` → send multiple PUSH frames
+- [ ] Event stream:
+  - [ ] Emit `SyncPeerDiscovered`, `SyncConnected`, `SyncDisconnected`, etc.
+- [ ] Reconnection logic (exponential backoff: 1s, 2s, 4s, max 30s)
+- [ ] Unit tests (22+ tests, matching WebRTC test coverage)
+
+**Duration**: 3-4 days  
+**Risk**: Low — reusing Phase 0 patterns
+
+---
+
+#### 1.5: Basic Integration and Smoke Tests
+- [ ] Add feature flag: `SettingsKeys.enableLibp2pSync` (default: false)
+- [ ] Settings UI toggle: "Use experimental peer-to-peer sync (libp2p)"
+- [ ] Provider conditional in `sync_providers.dart`:
+  ```dart
+  final syncRepositoryProvider = Provider<SyncRepository>((ref) {
+    final settings = ref.watch(settingsProvider);
+    final useLibp2p = settings.getBool(SettingsKeys.enableLibp2pSync) ?? false;
+    return useLibp2p 
+      ? ref.watch(libp2pSyncRepositoryProvider)
+      : ref.watch(webrtcSyncRepositoryProvider);
+  });
+  ```
+- [ ] Test scenarios (manual):
+  - [ ] 2-device LAN sync (Android ↔ Android)
+  - [ ] Single table sync (transactions, 100 rows)
+  - [ ] Disconnect/reconnect (kill network, verify reconnection)
+  - [ ] Basic conflict resolution (edit same row on both)
+- [ ] Smoke tests (automated):
+  - [ ] Connection establishment (dial, accept, close)
+  - [ ] Frame serialization (SYNC_PLAN, ROWS, PUSH)
+  - [ ] Deduplication (send duplicate sync_ids)
+
+**Duration**: 2-3 days  
+**Risk**: Low — controlled rollout with feature flag
+
+---
+
+#### 1.6: Comprehensive Comparative Testing (Phase 0 Tasks 6-7 Revised) 🔄
+- [ ] **Integration Tests (Both WebRTC + libp2p)**:
+  - [ ] 2-device convergence (all 40+ tables, 10,000+ rows)
+  - [ ] Deduplication verification (send duplicates, verify ignored)
+  - [ ] Disconnect/reconnect resilience (mid-sync failure recovery)
+  - [ ] Conflict resolution (concurrent updates, LWW validation)
+  - [ ] Watermark correctness (delta sync, no re-send)
+  - [ ] Error handling (malformed frames, DB constraints)
+  - [ ] Run full suite against WebRTC implementation
+  - [ ] Run full suite against libp2p implementation
+  - [ ] Compare results (functional parity report)
+
+- [ ] **Performance Comparison Report**:
+  - [ ] WebRTC baseline metrics:
+    - Initial sync latency (time to first convergence)
+    - Real-time push latency (time from local edit to remote apply)
+    - Memory usage (peak, average during sync)
+    - Battery drain (% per hour during active sync)
+    - Network bandwidth (bytes sent/received)
+  - [ ] libp2p measurements (same metrics)
+  - [ ] Side-by-side comparison table (Markdown + charts)
+  - [ ] Migration impact analysis:
+    - Breaking changes for users?
+    - Rollback strategy if issues found?
+  - [ ] Recommendation: Proceed with libp2p or fallback to WebRTC?
+
+**Duration**: 1 week (5-7 days)  
+**Risk**: Low — tests validate both implementations  
+**Success Criteria**: libp2p functionally equivalent or better than WebRTC
+
+---
+
+**Phase 1 Summary**:
+
+**Duration**: 2-3 weeks (accelerated from 4-6 weeks due to pure Dart approach)  
+**Risk**: Low-Medium — No FFI complexity, but libp2p integration still new  
 **Success Criteria**:
-- Direct sync works as well as WebRTC
-- No increase in battery drain
-- Deterministic convergence maintained
-- Build pipeline stable across all platforms
+- Direct sync works as well as WebRTC (functional parity)
+- No increase in battery drain (comparable or better)
+- Deterministic convergence maintained (all rows sync correctly)
+- Feature flag allows safe A/B testing (users can opt-in)
+- Comparative report provides data-driven migration decision
+
+**Current Progress**: Tasks 1.1-1.2 complete (2/6), Tasks 1.3-1.6 pending
 
 ### Phase 2: Multi-hop Relay ✅ **SOLVED**
 

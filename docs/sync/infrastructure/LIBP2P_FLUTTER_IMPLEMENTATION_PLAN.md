@@ -284,22 +284,23 @@ dart_libp2p for direct peer communication (no relay).
 
 ## 3. Phased Implementation Plan
 
-### Phase 0: Foundation (Pre-libp2p)
+### Phase 0: Foundation (Pre-libp2p) ✅ **71% COMPLETE**
 
 **Goal**: Harden current sync system and prepare for migration.
 
 **Tasks**:
-- [ ] Add sync columns to `loan_payments` table (identified gap)
-- [ ] Normalize event dedupe across all repositories
-- [ ] Document current sync envelope format
-- [ ] Create `SyncRepository` abstract interface
-- [ ] Extract WebRTC implementation to `WebRTCSyncRepositoryImpl`
-- [ ] Add comprehensive sync integration tests
-- [ ] Profile current sync performance (baseline for comparison)
+- [x] ✅ Add sync columns to `loan_payments` table (v71, already complete)
+- [x] ✅ Normalize event dedupe across all repositories (4 strategies documented)
+- [x] ✅ Document current sync envelope format (WebRTC + P2P protocols)
+- [x] ✅ Create `SyncRepository` abstract interface (188 lines, 10 methods)
+- [x] ✅ Extract WebRTC implementation to `WebRTCSyncRepositoryImpl` (320 lines, 22 tests)
+- [ ] ⏳ Add comprehensive sync integration tests (NEXT - Task 6)
+- [ ] ⏳ Profile current sync performance (baseline for comparison) (Task 7)
 
-**Duration**: 1-2 weeks  
+**Duration**: 1-2 weeks (5 days elapsed, 5-6 days remaining)  
 **Risk**: Low — improves current system  
-**Blocker**: None
+**Status**: 5/7 tasks complete, Tasks 6-7 in progress  
+**Deliverables**: 4,341 lines added (repository + tests + docs)
 
 ### Phase 1: libp2p Foundation (Direct Peer Sync Only)
 

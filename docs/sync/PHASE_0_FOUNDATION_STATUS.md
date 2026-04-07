@@ -468,24 +468,57 @@ class SyncError extends SyncEvent {
 
 ---
 
-## 🔧 Task 5: Extract WebRTC to `WebRTCSyncRepositoryImpl` — **NOT STARTED**
+## 🔧 Task 5: Extract WebRTC to `WebRTCSyncRepositoryImpl` — **IN PROGRESS (70%)**
 
-**Status**: ⏳ Pending  
-**Depends On**: Task 4 (SyncRepository interface)
+**Status**: 🔄 70% Complete  
+**Depends On**: Task 4 (SyncRepository interface) ✅  
+**Detailed Report**: [PHASE_0_TASK_5_EXTRACTION.md](PHASE_0_TASK_5_EXTRACTION.md)
 
-**Current State**:
-- Sync logic mixed in `WebSyncNotifier` (presentation layer)
-- Direct database calls (`DatabaseHelper.instance.database`)
-- No clean separation of transport vs. sync protocol
+**Completed**:
+- ✅ Created `lib/data/repositories/webrtc_sync_repository_impl.dart` (320 lines)
+- ✅ Extracted inbound deduplication (LRU cache, sync_id-based)
+- ✅ Extracted database merge logic (PRAGMA validation, REPLACE conflict)
+- ✅ Extracted watermark update (prevents echo on delta sync)
+- ✅ Extracted message handlers: `handleRowsMessage()`, `handlePushMessage()`, `handleSyncPlanMessage()`
+- ✅ Extracted push methods: `pushRow()`, `pushRows()`
 
-**Refactor Plan**:
-1. Create `lib/data/repositories/webrtc_sync_repository_impl.dart`
-2. Move all WebRTC-specific code from `WebSyncNotifier`
-3. Implement `SyncRepository` interface
-4. Keep `WebSyncNotifier` as thin UI state holder (calls repository)
-5. Move P2P coordinator logic to `Libp2pSyncRepositoryImpl` skeleton (empty for now)
+**Design** (Phase 0 Transitional):
+- Transport ownership: WebSyncNotifier (presentation layer)
+- Business logic: WebRTCSyncRepositoryImpl (data layer)
+- Integration: Message handler pattern with callbacks
 
-**Timeline**: 2-3 days
+**Callbacks**:
+```dart
+final repository = WebRTCSyncRepositoryImpl(
+  sendMessage: (frame) => _channel?.sendJson(frame),
+  notifyTableChanged: (table) => DatabaseHelper.instance.notifyChange(table),
+);
+```
+
+**Extracted Logic** (~210 lines from WebSyncNotifier):
+- `_filterNewInboundRows()` → `_filterNewInboundRows()` (dedupe logic)
+- `_upsertRows()` → `_upsertRows()` (database merge)
+- `_markOutboundWatermarkFromRows()` → `_markOutboundWatermarkFromRows()`
+- `_handleRows()` → `handleRowsMessage()` (ROWS frame protocol)
+- `_handlePush()` → `handlePushMessage()` (PUSH frame protocol)
+- `_handleSyncPlan()` → `handleSyncPlanMessage()` (SYNC_PLAN frame protocol)
+
+**Remaining in WebSyncNotifier** (~850 lines, Phase 1 scope):
+- Transport layer (SyncTransportChannel ownership)
+- Auth flow (QR code, phone approval)
+- WebRTC signaling (SDP, ICE candidates)
+- UI state management (WebSyncState, copyWith)
+- Outbound write loop (periodic push, retry logic)
+- Test hooks (setWsUrlForTest, ingestMessageForTest)
+- Disconnect logic (coupled to transport cleanup)
+
+**Pending** (30% to complete Task 5):
+- ⏳ Update WebSyncNotifier to delegate message handling (1-2 hours)
+- ⏳ Create unit tests for repository (2-3 hours)
+- ⏳ Update integration tests (1 hour)
+- ⏳ Verify no regressions (run existing tests)
+
+**Timeline**: 1 day remaining (original estimate: 2-3 days)
 
 ---
 
@@ -554,19 +587,30 @@ class SyncError extends SyncEvent {
 | Task | Status | Duration | Dependencies |
 |------|--------|----------|--------------|
 | 1. loan_payments sync columns | ✅ Complete | — | — |
-| 2. Normalize dedupe | 🔄 50% | 2-3 days | — |
-| 3. Document envelope format | 🔄 80% | 1 day | — |
-| 4. Create SyncRepository interface | ⏳ Pending | 1 day | Task 3 |
-| 5. Extract WebRTC repository | ⏳ Pending | 2-3 days | Task 4 |
+| 2. Normalize dedupe | ✅ Complete | 2 days | — |
+| 3. Document envelope format | ✅ Complete | 1 day | — |
+| 4. Create SyncRepository interface | ✅ Complete | 1 day | Task 3 |
+| 5. Extract WebRTC repository | 🔄 70% | 2-3 days (1 day left) | Task 4 |
 | 6. Integration tests | ⏳ Pending | 3-4 days | Task 5 |
 | 7. Performance baseline | ⏳ Pending | 2 days | Task 6 |
 
-**Total Estimated Duration**: **1-2 weeks** (6-10 working days)
+**Total Estimated Duration**: **1-2 weeks** (6-10 working days)  
+**Elapsed**: ~5 days (Tasks 1-4 complete + Task 5 partial)  
+**Remaining**: ~3-5 days (complete Task 5, run Tasks 6-7)
+
+**Current Progress**: **57%** (4/7 tasks complete, Task 5 at 70%)
 
 **Next Steps** (Priority Order):
-1. ✅ Complete Task 2 (dedupe normalization) — create `SyncDedupeService`
-2. ✅ Finish Task 3 (envelope docs) — consolidate into single reference
-3. 🚀 Start Task 4 (SyncRepository interface) — enables parallel work on Phase 1
+1. 🚀 **Complete Task 5** (1 day) — Update WebSyncNotifier, add tests
+2. ⏳ **Start Task 6** (3-4 days) — Integration tests (2-device convergence, dedupe, reconnect)
+3. ⏳ **Start Task 7** (2 days) — Performance baseline (latency, memory, battery)
+
+**Completed Milestones**:
+- ✅ loan_payments schema fixed (v71)
+- ✅ Deduplication analysis complete (4 strategies documented)
+- ✅ Sync envelope format documented (WebRTC + P2P protocols)
+- ✅ SyncRepository interface created (188 lines, 10 methods)
+- ✅ WebRTCSyncRepositoryImpl created (320 lines, 70% functional)
 
 ---
 

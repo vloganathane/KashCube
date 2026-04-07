@@ -83,6 +83,11 @@ dependencies:
   # Enables direct peer-to-peer and multi-hop relay sync without central servers.
   # Zero network calls to KashCube servers; all sync traffic is P2P encrypted.
   # Replaces WebRTC for more robust offline-first mesh topology.
+  # FORK: vloganathane/dart_libp2p exists as insurance (for custom changes if needed).
+  # NOTE: Cannot use git dependency yet due to upstream packaging issue (relative path to dart-udx).
+  # Using pub.dev version for Phase 1; will fix fork packaging if custom changes needed.
+  # Upstream: https://github.com/stephanfeb/dart_libp2p (MIT license)
+  # Fork: https://github.com/vloganathane/dart_libp2p
   dart_libp2p: ^1.0.3
 
   # Secure key-value storage (OS keystore) — used exclusively for optional

@@ -66,6 +66,10 @@ class LibP2pNode {
     }
   }
 
+  /// Get underlying libp2p Host instance (null if not initialized).
+  /// Required for mDNS discovery integration.
+  Host? get host => _host;
+
   // ────────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ────────────────────────────────────────────────────────────────────────────

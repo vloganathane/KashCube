@@ -224,19 +224,15 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     Map<String, SyncPeer> discoveredPeers,
   ) async {
     try {
-      // Get node's listen addresses (for broadcasting in TXT records)
-      // TODO: Extract actual multiaddr when dart_libp2p API confirmed
-      final multiaddr = '/ip4/192.168.1.100/tcp/4001/p2p/QmExample';
+      // Ensure node is initialized
+      if (_node.host == null) {
+        throw StateError('Cannot start discovery: libp2p node not initialized');
+      }
 
-      // Start mDNS discovery (returns Future<void>, peers emitted via stream)
+      // Start mDNS discovery using the Host
+      // MdnsDiscovery extracts multiaddrs and peer ID automatically from host
       await _discovery.start(
-        port: 4001, // TODO: Extract actual port from node
-        multiaddr: multiaddr,
-        peerName: 'KashCube Device', // TODO: Get from device settings
-        metadata: {
-          'version': '1.0.0',
-          'protocol': kashSyncProtocolId,
-        },
+        host: _node.host!,
       );
 
       // Listen for discovered peers via discoveredPeers stream

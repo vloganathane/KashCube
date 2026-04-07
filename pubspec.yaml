@@ -79,6 +79,12 @@ dependencies:
   # display name before pairing. Purely local — no internet required.
   bonsoir: ^5.1.2
 
+  # libp2p mesh sync — pure Dart implementation for multi-device synchronization
+  # Enables direct peer-to-peer and multi-hop relay sync without central servers.
+  # Zero network calls to KashCube servers; all sync traffic is P2P encrypted.
+  # Replaces WebRTC for more robust offline-first mesh topology.
+  dart_libp2p: ^1.0.3
+
   # Secure key-value storage (OS keystore) — used exclusively for optional
   # GSP API key when user explicitly opts into e-Way Bill auto-generation.
   # Default state: GSP is disabled, nothing is stored here.

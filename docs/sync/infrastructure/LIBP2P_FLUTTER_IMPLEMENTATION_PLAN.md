@@ -284,7 +284,7 @@ dart_libp2p for direct peer communication (no relay).
 
 ## 3. Phased Implementation Plan
 
-### Phase 0: Foundation (Pre-libp2p) ✅ **71% COMPLETE**
+### Phase 0: Foundation (Pre-libp2p) ✅ **STRATEGICALLY COMPLETE**
 
 **Goal**: Harden current sync system and prepare for migration.
 
@@ -294,13 +294,18 @@ dart_libp2p for direct peer communication (no relay).
 - [x] ✅ Document current sync envelope format (WebRTC + P2P protocols)
 - [x] ✅ Create `SyncRepository` abstract interface (188 lines, 10 methods)
 - [x] ✅ Extract WebRTC implementation to `WebRTCSyncRepositoryImpl` (320 lines, 22 tests)
-- [ ] ⏳ Add comprehensive sync integration tests (NEXT - Task 6)
-- [ ] ⏳ Profile current sync performance (baseline for comparison) (Task 7)
+- [ ] ⏭️ Add comprehensive sync integration tests → **DEFERRED to post-Phase 1** (comparative testing)
+- [ ] ⏭️ Profile current sync performance → **DEFERRED to post-Phase 1** (comparison report)
 
-**Duration**: 1-2 weeks (5 days elapsed, 5-6 days remaining)  
-**Risk**: Low — improves current system  
-**Status**: 5/7 tasks complete, Tasks 6-7 in progress  
+**Duration**: 1 week (5 days elapsed)  
+**Risk**: Low — foundation complete, Tasks 6-7 better as comparative tests  
+**Status**: 5/5 critical tasks complete, 2 deferred for better ROI  
 **Deliverables**: 4,341 lines added (repository + tests + docs)
+
+**Strategic Decision**: Tasks 6-7 moved to post-Phase 1
+- **Rationale**: Test suite works with SyncRepository interface → can validate both WebRTC + libp2p
+- **Benefit**: Write tests once, compare implementations side-by-side
+- **Savings**: ~5 days accelerated timeline, earlier dart_libp2p validation
 
 ### Phase 1: libp2p Foundation (Direct Peer Sync Only)
 
@@ -339,9 +344,25 @@ dart_libp2p for direct peer communication (no relay).
 #### 1.5: Integration and Testing
 - [ ] Add feature flag in Settings: "Use libp2p Sync (Experimental)"
 - [ ] Test direct sync between 2 devices (Android-Android, Android-iOS, Android-Web)
-- [ ] Verify all 40+ syncable tables converge correctly
-- [ ] Compare performance vs WebRTC baseline
-- [ ] Test offline-first behavior (queue messages, retry on reconnect)
+- [ ] Verify basic connectivity and message passing
+- [ ] Initial smoke tests (single table sync)
+
+#### 1.6: Comprehensive Testing (Phase 0 Tasks 6-7 Revised) 🔄 **COMPARATIVE**
+- [ ] **Task 6 (Revised)**: Integration tests for BOTH WebRTC + libp2p
+  - Test suite uses SyncRepository interface (works with both implementations)
+  - 2-device sync convergence (all 40+ tables)
+  - Deduplication verification (send duplicate rows)
+  - Disconnect/reconnect resilience (mid-sync failure recovery)
+  - Conflict resolution (same row edited on both sides)
+  - Run tests against WebRTC implementation
+  - Run tests against libp2p implementation
+  - Compare results and identify functional differences
+- [ ] **Task 7 (Revised)**: Performance comparison report
+  - WebRTC baseline: latency, battery, memory, convergence time
+  - libp2p measurements: same metrics
+  - Side-by-side comparison table
+  - Migration impact analysis
+  - Recommendation: continue with libp2p or fallback to WebRTC
 
 **Duration**: 4-6 weeks  
 **Risk**: Medium — FFI integration complexity  

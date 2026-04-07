@@ -240,6 +240,24 @@ class LibP2pProtocol {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Public Frame Sending (for repository)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Send a JSON frame to peer on active stream (public API for repository).
+  ///
+  /// Wraps _sendFrame for repository use. Frame is serialized to JSON
+  /// with length prefix and sent to the stream.
+  ///
+  /// Throws StateError if frame exceeds maxFrameSize.
+  Future<void> sendFrame(P2PStream stream, Map<String, dynamic> frame) async {
+    return _sendFrame(stream, frame);
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Private Frame I/O
+  // ────────────────────────────────────────────────────────────────────────────
+
   /// Send a JSON frame to the peer with length prefix.
   ///
   /// Frame format: 4-byte big-endian u32 length + JSON payload

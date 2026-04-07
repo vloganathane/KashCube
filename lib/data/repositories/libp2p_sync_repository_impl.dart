@@ -660,11 +660,8 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('No active stream');
     }
 
-    // TODO: Use LibP2pProtocol._sendFrame when API confirmed
-    // For now, placeholder implementation
-    throw UnimplementedError(
-      'Frame sending not yet implemented - awaiting dart_libp2p API integration',
-    );
+    // Use LibP2pProtocol.sendFrame to send with length prefixing
+    await _protocol.sendFrame(_activeStream!, frame);
   }
 
   // ────────────────────────────────────────────────────────────────────────────

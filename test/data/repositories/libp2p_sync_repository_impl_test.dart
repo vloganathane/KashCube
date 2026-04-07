@@ -73,9 +73,7 @@ class MockLibP2pDiscovery extends LibP2pDiscovery {
 
   @override
   Future<void> start({
-    required int port,
-    required String multiaddr,
-    required String peerName,
+    required dynamic host, // Using dynamic to avoid importing dart_libp2p in tests
     Map<String, String>? metadata,
   }) async {
     startCalled = true;

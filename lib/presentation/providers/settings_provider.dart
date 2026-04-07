@@ -101,6 +101,12 @@ class SettingsKeys {
   static const primaryPublicKey = 'primary_public_key';
   static const deviceName       = 'device_name';
 
+  // Sync transport preferences
+  /// Enable experimental libp2p-based peer-to-peer sync (Phase 1+).
+  /// Default: false (WebRTC remains the default transport).
+  /// 'true' | 'false' | null (null = use default WebRTC)
+  static const enableLibp2pSync = 'enable_libp2p_sync';
+
   // SMS automation
   static const smsAutoDetectEnabled = 'sms_auto_detect_enabled';
 

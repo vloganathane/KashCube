@@ -426,28 +426,61 @@ dart_libp2p for direct peer communication (no relay).
 
 ---
 
-#### 1.5: Basic Integration and Smoke Tests
-- [ ] Add feature flag: `SettingsKeys.enableLibp2pSync` (default: false)
-- [ ] Settings UI toggle: "Use experimental peer-to-peer sync (libp2p)"
-- [ ] Provider conditional in `sync_providers.dart`:
-  ```dart
-  final syncRepositoryProvider = Provider<SyncRepository>((ref) {
-    final settings = ref.watch(settingsProvider);
-    final useLibp2p = settings.getBool(SettingsKeys.enableLibp2pSync) ?? false;
-    return useLibp2p 
-      ? ref.watch(libp2pSyncRepositoryProvider)
-      : ref.watch(webrtcSyncRepositoryProvider);
-  });
-  ```
-- [ ] Test scenarios (manual):
-  - [ ] 2-device LAN sync (Android ↔ Android)
-  - [ ] Single table sync (transactions, 100 rows)
-  - [ ] Disconnect/reconnect (kill network, verify reconnection)
-  - [ ] Basic conflict resolution (edit same row on both)
-- [ ] Smoke tests (automated):
-  - [ ] Connection establishment (dial, accept, close)
-  - [ ] Frame serialization (SYNC_PLAN, ROWS, PUSH)
-  - [ ] Deduplication (send duplicate sync_ids)
+#### 1.5: Basic Integration and Smoke Tests 🔄 IN PROGRESS
+- [x] **Step 1: Add feature flag** (Commit: d4c432a)
+  - [x] `SettingsKeys.enableLibp2pSync` constant (default: false)
+  - [x] Documentation: 'true' | 'false' | null
+
+- [x] **Step 2: Create conditional providers** (Commit: d4c432a)
+  - [x] File: `lib/presentation/providers/sync_repository_provider.dart` (106 lines)
+  - [x] `libp2pNodeProvider` → Singleton LibP2pNode instance
+  - [x] `libp2pProtocolProvider` → Singleton LibP2pProtocol instance
+  - [x] `libp2pDiscoveryProvider` → Singleton LibP2pDiscovery instance
+  - [x] `webrtcSyncRepositoryProvider` → WebRTC implementation (legacy/default)
+  - [x] `libp2pSyncRepositoryProvider` → libp2p implementation (experimental)
+  - [x] `syncRepositoryProvider` → Conditional provider (checks feature flag, defaults to WebRTC)
+  - [x] `shouldUseLibp2pSync(WidgetRef)` → Helper function to check feature flag
+
+- [x] **Step 3: Settings UI toggle** (Commit: c3eb039)
+  - [x] `Libp2pSyncEnabledNotifier` → StateNotifier for toggle state
+  - [x] `libp2pSyncEnabledProvider` → StateNotifierProvider
+  - [x] Settings screen: SwitchListTile in Data section
+  - [x] Icon: `science_outlined` (experimental badge)
+  - [x] Title: "Experimental: libp2p Sync"
+  - [x] Subtitle: Shows current transport + restart hint
+
+- [ ] **Step 4: dart_libp2p API Integration** 🔄 PREPARING
+  - [x] Fetch dart_libp2p documentation from pub.dev
+  - [x] Analyze API patterns (Quick Start example, Host creation, Stream I/O)
+  - [x] Identify placeholder replacements needed (9 methods across 3 files)
+  - [x] Review js-libp2p WebRTC guide for context (Circuit Relay V2, Phase 2+ planning)
+  - [x] Create comprehensive integration guide (DART_LIBP2P_INTEGRATION_GUIDE.md)
+  - [ ] **Verify v1.0.3 API** (docs show v0.5.2 — API may differ)
+  - [ ] Update `LibP2pNode` (6 methods: _createHost, start, dial, registerProtocol, etc.)
+  - [ ] Update `LibP2pProtocol` (3 methods: _readFrame, _sendFrame, _getPeerId)
+  - [ ] Update `LibP2pDiscovery` (4 methods: start, _startBroadcast, _startListening, etc.)
+  - [ ] Update `Libp2pSyncRepositoryImpl._sendFrame()` (1 method)
+  - [ ] Run `flutter analyze` → fix compilation errors
+  - [ ] Verify unit tests still pass (22/27 minimum)
+
+- [ ] **Step 5: Smoke Tests** ⏳ BLOCKED (awaiting Step 4)
+  - [ ] Create `test/integration/libp2p_smoke_test.dart`
+  - [ ] Test: Host lifecycle (create, start, close)
+  - [ ] Test: Protocol registration + frame serialization
+  - [ ] Test: Connection establishment (2 nodes, dial/accept)
+  - [ ] Test: Frame exchange (send PING, receive PONG)
+  - [ ] Test: mDNS discovery (start, discover peer, stop)
+
+**Duration**: 2-3 days (estimated)  
+**Files Modified**: 
+- Commits d4c432a, c3eb039: 161 lines (feature flag + providers + UI toggle)
+- Pending: lib/data/services/libp2p/*.dart (963 lines to update)
+- Pending: lib/data/repositories/libp2p_sync_repository_impl.dart (1 method fix)
+
+**Status**: ✅ Steps 1-3 complete (feature flag + providers + UI) | 🔄 Step 4 in preparation | ⏳ Step 5 blocked  
+**Current**: Created detailed integration guide (DART_LIBP2P_INTEGRATION_GUIDE.md) documenting all API replacements needed  
+**Risk**: ⚠️ dart_libp2p v1.0.3 API may differ from v0.5.2 docs — verify imports before implementing  
+**Next**: Verify dart_libp2p v1.0.3 API compatibility, then implement Step 4 (API integration)
 
 **Duration**: 2-3 days  
 **Risk**: Low — controlled rollout with feature flag

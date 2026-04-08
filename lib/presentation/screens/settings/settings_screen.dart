@@ -86,6 +86,391 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
+  List<SettingItem> _buildAllSettings(BuildContext context) {
+    return [
+      // Security
+      SettingItem(
+        title: 'My Identity',
+        subtitle: 'View your identity QR and display name',
+        icon: Icons.fingerprint_rounded,
+        sectionLabel: 'Security',
+        keywords: ['qr', 'identity', 'display', 'profile'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'App Lock',
+        subtitle: 'Require PIN to open app',
+        icon: Icons.lock_outline,
+        sectionLabel: 'Security',
+        keywords: ['pin', 'lock', 'password', 'security', 'passcode'],
+        onTap: () {}, // Handled by switch in full view
+      ),
+      SettingItem(
+        title: 'Biometric Unlock',
+        subtitle: 'Use fingerprint or face',
+        icon: Icons.fingerprint,
+        sectionLabel: 'Security',
+        keywords: ['fingerprint', 'face', 'faceid', 'touchid', 'biometric'],
+        onTap: () {}, // Handled by switch
+      ),
+
+      // Team
+      SettingItem(
+        title: 'Team Members',
+        subtitle: 'Add staff, assign roles & permissions',
+        icon: Icons.group_outlined,
+        sectionLabel: 'Team',
+        keywords: ['staff', 'users', 'roles', 'permissions', 'team'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ManageUsersScreen()),
+        ),
+      ),
+
+      // Accounts
+      SettingItem(
+        title: 'Accounts',
+        subtitle: 'Bank, UPI, Wallet, Cash · Opening Balances',
+        icon: Icons.account_balance_outlined,
+        sectionLabel: 'Accounts',
+        keywords: ['bank', 'upi', 'wallet', 'cash', 'balance', 'opening'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountsManageScreen()),
+        ),
+      ),
+
+      // General
+      SettingItem(
+        title: 'Theme',
+        subtitle: 'Light, Dark or System',
+        icon: Icons.palette_outlined,
+        sectionLabel: 'General',
+        keywords: ['dark', 'light', 'theme', 'appearance', 'color'],
+        onTap: () =>
+            _showThemePicker(context, ref, ref.read(themeModeProvider)),
+      ),
+      SettingItem(
+        title: 'Financial Year',
+        subtitle: 'Year-end closing, archive & FY settings',
+        icon: Icons.calendar_month_outlined,
+        sectionLabel: 'General',
+        keywords: ['fy', 'year', 'closing', 'archive', 'financial'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const FyCloseWizardScreen()),
+        ),
+      ),
+
+      // Data
+      SettingItem(
+        title: 'Storage & Backup',
+        subtitle: 'Usage, backup & cache management',
+        icon: Icons.health_and_safety_outlined,
+        sectionLabel: 'Data',
+        keywords: ['storage', 'backup', 'cache', 'usage', 'space'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const StorageHealthScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Encrypted Backup',
+        subtitle: 'Export or restore with AES-256 encryption',
+        icon: Icons.shield_outlined,
+        sectionLabel: 'Data',
+        keywords: [
+          'backup',
+          'export',
+          'restore',
+          'encrypted',
+          'aes',
+          'kashcube',
+        ],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const EncryptedBackupScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Devices & LAN Sync',
+        subtitle: 'Pair devices and sync over Wi-Fi',
+        icon: Icons.devices_outlined,
+        sectionLabel: 'Data',
+        keywords: ['devices', 'lan', 'sync', 'wifi', 'pair', 'p2p'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DevicesScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Experimental: libp2p Sync',
+        subtitle: 'Using dart_libp2p for peer-to-peer sync',
+        icon: Icons.science_outlined,
+        sectionLabel: 'Data',
+        keywords: [
+          'libp2p',
+          'experimental',
+          'sync',
+          'webrtc',
+          'protocol',
+          'dart',
+        ],
+        onTap: () {}, // Handled by switch
+      ),
+      SettingItem(
+        title: 'Open on Laptop',
+        subtitle: 'View KashCube in browser over Wi-Fi',
+        icon: Icons.laptop_outlined,
+        sectionLabel: 'Data',
+        keywords: ['laptop', 'browser', 'web', 'wifi', 'companion'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const OpenOnLaptopScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Diagnostics Logs',
+        subtitle: 'View, copy, and share recent app logs',
+        icon: Icons.bug_report_outlined,
+        sectionLabel: 'Data',
+        keywords: ['logs', 'diagnostics', 'debug', 'troubleshoot'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AppLogsScreen()),
+        ),
+      ),
+
+      // Notifications
+      SettingItem(
+        title: 'Notification Settings',
+        subtitle: 'Reminders, quiet hours & toggles',
+        icon: Icons.notifications_outlined,
+        sectionLabel: 'Notifications',
+        keywords: ['notifications', 'reminders', 'alerts', 'quiet'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NotificationSettingsScreen()),
+        ),
+      ),
+
+      // Automation
+      SettingItem(
+        title: 'Auto-detect SMS transactions',
+        subtitle: 'Detect bank & UPI transactions from SMS',
+        icon: Icons.sms_outlined,
+        sectionLabel: 'Automation',
+        keywords: ['sms', 'auto', 'detect', 'transaction', 'bank', 'upi'],
+        onTap: () {}, // Handled by permission flow
+      ),
+      SettingItem(
+        title: 'Scan SMS inbox',
+        subtitle: 'Find past transactions in SMS',
+        icon: Icons.inbox_outlined,
+        sectionLabel: 'Automation',
+        keywords: ['sms', 'scan', 'inbox', 'messages', 'import'],
+        onTap: () {}, // Handled in section
+      ),
+
+      // Privacy
+      SettingItem(
+        title: 'Permissions',
+        subtitle: 'Check real-time permission status',
+        icon: Icons.admin_panel_settings_outlined,
+        sectionLabel: 'Privacy',
+        keywords: ['permissions', 'access', 'settings', 'allow'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PermissionsScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Anonymous Analytics',
+        subtitle: 'Share anonymous feature usage',
+        icon: Icons.analytics_outlined,
+        sectionLabel: 'Privacy',
+        keywords: ['analytics', 'usage', 'data', 'privacy', 'firebase'],
+        onTap: () {}, // Handled by switch
+      ),
+
+      // Business Mode
+      SettingItem(
+        title: 'Enable Business Mode',
+        subtitle: 'Unlock invoicing & item catalog',
+        icon: Icons.storefront_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['business', 'invoice', 'catalog', 'items', 'gst'],
+        onTap: () {}, // Handled by switch
+      ),
+      SettingItem(
+        title: 'Business Profiles',
+        subtitle: 'Name, address, GST, logo & more',
+        icon: Icons.business_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['business', 'profile', 'gst', 'logo', 'address'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const BusinessesScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Unit Types',
+        subtitle: 'Manage units used in item catalog',
+        icon: Icons.straighten_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['unit', 'types', 'kg', 'meter', 'quantity'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UnitTypesScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Default Terms & Conditions',
+        subtitle: 'T&C footer for PDFs',
+        icon: Icons.gavel_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['terms', 'conditions', 'tc', 'footer', 'pdf'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DocumentTermsScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'PDF Templates',
+        subtitle: 'Invoice and document templates',
+        icon: Icons.picture_as_pdf_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['pdf', 'template', 'invoice', 'document'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const TemplateListScreen()),
+        ),
+      ),
+
+      // About
+      SettingItem(
+        title: 'About Kash Cube',
+        subtitle: 'Version & app information',
+        icon: Icons.info_outline,
+        sectionLabel: 'About',
+        keywords: ['about', 'version', 'info', 'app'],
+        onTap: () => showAboutDialog(
+          context: context,
+          applicationName: 'Kash Cube',
+          applicationVersion: '1.0.0',
+          applicationLegalese:
+              '© 2026 Kash Cube\nAll data stays on your device.',
+        ),
+      ),
+      SettingItem(
+        title: 'Privacy Policy',
+        subtitle: '100% local, zero network calls',
+        icon: Icons.privacy_tip_outlined,
+        sectionLabel: 'About',
+        keywords: ['privacy', 'policy', 'local', 'data'],
+        onTap: () => _showLegalSheet(
+          context,
+          title: 'Privacy Policy',
+          content: _kPrivacyPolicy,
+        ),
+      ),
+      SettingItem(
+        title: 'Terms of Use',
+        subtitle: 'Legal terms and conditions',
+        icon: Icons.gavel_outlined,
+        sectionLabel: 'About',
+        keywords: ['terms', 'use', 'legal', 'agreement'],
+        onTap: () => _showLegalSheet(
+          context,
+          title: 'Terms of Use & Privacy Policy',
+          content: _kTermsOfUse,
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildSearchResults(BuildContext context) {
+    final allSettings = _buildAllSettings(context);
+    final filtered = allSettings
+        .where((item) => item.matches(_searchQuery))
+        .toList();
+
+    if (filtered.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off,
+                size: 64,
+                color: context.colorScheme.onSurfaceVariant.withValues(
+                  alpha: 0.5,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              Text(
+                'No settings found',
+                style: context.textTheme.titleMedium?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Try "backup", "notifications", or "theme"',
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Group by section
+    final grouped = <String, List<SettingItem>>{};
+    for (final item in filtered) {
+      grouped.putIfAbsent(item.sectionLabel, () => []).add(item);
+    }
+
+    return ListView(
+      children: [
+        for (final entry in grouped.entries) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.md,
+              AppSpacing.base,
+              AppSpacing.xs,
+            ),
+            child: Text(
+              entry.key,
+              style: context.textTheme.labelLarge?.copyWith(
+                color: context.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          for (final item in entry.value)
+            ListTile(
+              leading: Icon(item.icon),
+              title: Text(item.title),
+              subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: item.onTap,
+            ),
+        ],
+        const SizedBox(height: AppSpacing.xxl),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isWide = context.isExpanded;
@@ -141,444 +526,481 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           // Settings list
           Expanded(
-            child: ListView(
-              children: [
-                // -- Profile Header --
-                _ProfileHeader(),
+            child: _searchQuery.isEmpty
+                ? ListView(
+                    children: [
+                      // -- Profile Header --
+                      _ProfileHeader(),
 
-                // -- KashCube Plan --
-                Consumer(
-                  builder: (context, ref, _) {
-                    final tier = ref.watch(subscriptionTierProvider);
-                    return _SettingsSection(
-                      title: 'KashCube Plan',
-                      children: [
-                        ListTile(
-                          leading: Icon(
-                            tier.isFree
-                                ? Icons.workspace_premium_outlined
-                                : Icons.workspace_premium,
-                            color: tier.isFree
-                                ? null
-                                : Theme.of(context).colorScheme.primary,
-                          ),
-                          title: Text(
-                            tier.isFree
-                                ? 'Upgrade to Starter or Business'
-                                : 'Plan: ${tier.displayName}',
-                          ),
-                          subtitle: Text(
-                            tier.isFree
-                                ? 'Remove watermarks · Export reports · UPI QR'
-                                : 'Manage your subscription',
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const UpgradeScreen(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                _SettingsSection(
-                  title: 'Security',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.fingerprint_rounded),
-                      title: const Text('My Identity'),
-                      subtitle: const Text(
-                        'View your identity QR and display name',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ProfileScreen(),
-                        ),
-                      ),
-                    ),
-                    appLockAsync.when(
-                      data: (enabled) => SwitchListTile(
-                        secondary: const Icon(Icons.lock_outline),
-                        title: const Text('App Lock'),
-                        subtitle: Text(
-                          enabled ? 'PIN enabled' : 'Not configured',
-                        ),
-                        value: enabled,
-                        onChanged: (value) =>
-                            _toggleAppLock(context, ref, value),
-                      ),
-                      loading: () => const ListTile(
-                        leading: Icon(Icons.lock_outline),
-                        title: Text('App Lock'),
-                        trailing: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                      error: (_, _) => const ListTile(
-                        leading: Icon(Icons.lock_outline),
-                        title: Text('App Lock'),
-                        subtitle: Text('Error loading'),
-                      ),
-                    ),
-                    biometricAsync.when(
-                      data: (bioEnabled) {
-                        final lockEnabled = appLockAsync.valueOrNull ?? false;
-                        return SwitchListTile(
-                          secondary: const Icon(Icons.fingerprint),
-                          title: const Text('Biometric Unlock'),
-                          subtitle: const Text('Use fingerprint or face'),
-                          value: bioEnabled,
-                          onChanged: lockEnabled
-                              ? (value) => _toggleBiometric(context, ref, value)
-                              : null,
-                        );
-                      },
-                      loading: () => const ListTile(
-                        leading: Icon(Icons.fingerprint),
-                        title: Text('Biometric Unlock'),
-                      ),
-                      error: (_, _) => const ListTile(
-                        leading: Icon(Icons.fingerprint),
-                        title: Text('Biometric Unlock'),
-                        subtitle: Text('Error loading'),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // -- Team --
-                _SettingsSection(
-                  title: 'Team',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.group_outlined),
-                      title: const Text('Team Members'),
-                      subtitle: const Text(
-                        'Add staff, assign roles & permissions',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ManageUsersScreen(),
-                        ),
-                      ),
-                    ),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final hasUsers = ref.watch(hasAnyAppUserProvider);
-                        if (hasUsers.valueOrNull != true)
-                          return const SizedBox.shrink();
-                        return ListTile(
-                          leading: const Icon(Icons.switch_account_outlined),
-                          title: const Text('Switch Profile'),
-                          subtitle: const Text(
-                            'Return to the profile selection screen',
-                          ),
-                          onTap: () =>
-                              ref.read(switchUserProvider.notifier).state++,
-                        );
-                      },
-                    ),
-                  ],
-                ),
-
-                // -- Accounts --
-                _SettingsSection(
-                  title: 'Accounts',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.account_balance_outlined),
-                      title: const Text('Accounts'),
-                      subtitle: const Text(
-                        'Bank, UPI, Wallet, Cash · Opening Balances',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AccountsManageScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // -- General --
-                _SettingsSection(
-                  title: 'General',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.palette_outlined),
-                      title: const Text('Theme'),
-                      subtitle: Text(_themeModeLabel(themeMode)),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showThemePicker(context, ref, themeMode),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.calendar_month_outlined),
-                      title: const Text('Financial Year'),
-                      subtitle: const Text(
-                        'Year-end closing, archive & FY settings',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const FyCloseWizardScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // -- Data --
-                _SettingsSection(
-                  title: 'Data',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.health_and_safety_outlined),
-                      title: const Text('Storage & Backup'),
-                      subtitle: const Text('Usage, backup & cache management'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const StorageHealthScreen(),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.shield_outlined),
-                      title: const Text('Encrypted Backup (.kashcube)'),
-                      subtitle: const Text(
-                        'Export or restore with AES-256 encryption',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const EncryptedBackupScreen(),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.devices_outlined),
-                      title: const Text('Devices & LAN Sync'),
-                      subtitle: const Text('Pair devices and sync over Wi-Fi'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => DevicesScreen()),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.laptop_outlined),
-                      title: const Text('Open on Laptop'),
-                      subtitle: const Text(
-                        'View KashCube in your browser over Wi-Fi',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const OpenOnLaptopScreen(),
-                        ),
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.bug_report_outlined),
-                      title: const Text('Diagnostics Logs'),
-                      subtitle: const Text(
-                        'View, copy, and share recent app logs',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AppLogsScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // -- Notifications --
-                _SettingsSection(
-                  title: 'Notifications',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.notifications_outlined),
-                      title: const Text('Notification Settings'),
-                      subtitle: const Text('Reminders, quiet hours & toggles'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationSettingsScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // -- Automation (SMS) --
-                const _AutomationSection(),
-
-                // -- Privacy --
-                const _PrivacySection(),
-
-                // -- Business Mode --
-                _SettingsSection(
-                  title: 'Business Mode',
-                  children: [
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final enabled = ref.watch(businessModeProvider);
-                        return SwitchListTile(
-                          secondary: const Icon(Icons.storefront_outlined),
-                          title: const Text('Enable Business Mode'),
-                          subtitle: const Text(
-                            'Unlock invoicing & item catalog',
-                          ),
-                          value: enabled,
-                          onChanged: (v) => ref
-                              .read(businessModeProvider.notifier)
-                              .setEnabled(v),
-                        );
-                      },
-                    ),
-                    Consumer(
-                      builder: (context, ref, _) {
-                        final enabled = ref.watch(businessModeProvider);
-                        if (!enabled) return const SizedBox.shrink();
-                        return Column(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.business_outlined),
-                              title: const Text('Business Profiles'),
-                              subtitle: const Text(
-                                'Name, address, GST, logo & more',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const BusinessesScreen(),
+                      // -- KashCube Plan --
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final tier = ref.watch(subscriptionTierProvider);
+                          return _SettingsSection(
+                            title: 'KashCube Plan',
+                            children: [
+                              ListTile(
+                                leading: Icon(
+                                  tier.isFree
+                                      ? Icons.workspace_premium_outlined
+                                      : Icons.workspace_premium,
+                                  color: tier.isFree
+                                      ? null
+                                      : Theme.of(context).colorScheme.primary,
                                 ),
-                              ),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.straighten_outlined),
-                              title: const Text('Unit Types'),
-                              subtitle: const Text(
-                                'Manage units used in item catalog',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const UnitTypesScreen(),
+                                title: Text(
+                                  tier.isFree
+                                      ? 'Upgrade to Starter or Business'
+                                      : 'Plan: ${tier.displayName}',
                                 ),
-                              ),
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.gavel_outlined),
-                              title: const Text('Default Terms & Conditions'),
-                              subtitle: const Text(
-                                'T&C footer for invoice, quote & booking PDFs',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const DocumentTermsScreen(),
+                                subtitle: Text(
+                                  tier.isFree
+                                      ? 'Remove watermarks · Export reports · UPI QR'
+                                      : 'Manage your subscription',
                                 ),
-                              ),
-                            ),
-                            Consumer(
-                              builder: (context, ref, _) {
-                                final template = ref.watch(
-                                  documentTemplateProvider,
-                                );
-                                return ListTile(
-                                  leading: const Icon(
-                                    Icons.picture_as_pdf_outlined,
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const UpgradeScreen(),
                                   ),
-                                  title: const Text('PDF Templates'),
-                                  subtitle: Text(template.name),
-                                  trailing: const Icon(Icons.chevron_right),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const TemplateListScreen(),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      _SettingsSection(
+                        title: 'Security',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.fingerprint_rounded),
+                            title: const Text('My Identity'),
+                            subtitle: const Text(
+                              'View your identity QR and display name',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProfileScreen(),
+                              ),
+                            ),
+                          ),
+                          appLockAsync.when(
+                            data: (enabled) => SwitchListTile(
+                              secondary: const Icon(Icons.lock_outline),
+                              title: const Text('App Lock'),
+                              subtitle: Text(
+                                enabled ? 'PIN enabled' : 'Not configured',
+                              ),
+                              value: enabled,
+                              onChanged: (value) =>
+                                  _toggleAppLock(context, ref, value),
+                            ),
+                            loading: () => const ListTile(
+                              leading: Icon(Icons.lock_outline),
+                              title: Text('App Lock'),
+                              trailing: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            ),
+                            error: (_, _) => const ListTile(
+                              leading: Icon(Icons.lock_outline),
+                              title: Text('App Lock'),
+                              subtitle: Text('Error loading'),
+                            ),
+                          ),
+                          biometricAsync.when(
+                            data: (bioEnabled) {
+                              final lockEnabled =
+                                  appLockAsync.valueOrNull ?? false;
+                              return SwitchListTile(
+                                secondary: const Icon(Icons.fingerprint),
+                                title: const Text('Biometric Unlock'),
+                                subtitle: const Text('Use fingerprint or face'),
+                                value: bioEnabled,
+                                onChanged: lockEnabled
+                                    ? (value) =>
+                                          _toggleBiometric(context, ref, value)
+                                    : null,
+                              );
+                            },
+                            loading: () => const ListTile(
+                              leading: Icon(Icons.fingerprint),
+                              title: Text('Biometric Unlock'),
+                            ),
+                            error: (_, _) => const ListTile(
+                              leading: Icon(Icons.fingerprint),
+                              title: Text('Biometric Unlock'),
+                              subtitle: Text('Error loading'),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // -- Team --
+                      _SettingsSection(
+                        title: 'Team',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.group_outlined),
+                            title: const Text('Team Members'),
+                            subtitle: const Text(
+                              'Add staff, assign roles & permissions',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ManageUsersScreen(),
+                              ),
+                            ),
+                          ),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final hasUsers = ref.watch(hasAnyAppUserProvider);
+                              if (hasUsers.valueOrNull != true)
+                                return const SizedBox.shrink();
+                              return ListTile(
+                                leading: const Icon(
+                                  Icons.switch_account_outlined,
+                                ),
+                                title: const Text('Switch Profile'),
+                                subtitle: const Text(
+                                  'Return to the profile selection screen',
+                                ),
+                                onTap: () => ref
+                                    .read(switchUserProvider.notifier)
+                                    .state++,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+
+                      // -- Accounts --
+                      _SettingsSection(
+                        title: 'Accounts',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.account_balance_outlined),
+                            title: const Text('Accounts'),
+                            subtitle: const Text(
+                              'Bank, UPI, Wallet, Cash · Opening Balances',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AccountsManageScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // -- General --
+                      _SettingsSection(
+                        title: 'General',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.palette_outlined),
+                            title: const Text('Theme'),
+                            subtitle: Text(_themeModeLabel(themeMode)),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () =>
+                                _showThemePicker(context, ref, themeMode),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.calendar_month_outlined),
+                            title: const Text('Financial Year'),
+                            subtitle: const Text(
+                              'Year-end closing, archive & FY settings',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const FyCloseWizardScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // -- Data --
+                      _SettingsSection(
+                        title: 'Data',
+                        children: [
+                          ListTile(
+                            leading: const Icon(
+                              Icons.health_and_safety_outlined,
+                            ),
+                            title: const Text('Storage & Backup'),
+                            subtitle: const Text(
+                              'Usage, backup & cache management',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const StorageHealthScreen(),
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.shield_outlined),
+                            title: const Text('Encrypted Backup (.kashcube)'),
+                            subtitle: const Text(
+                              'Export or restore with AES-256 encryption',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const EncryptedBackupScreen(),
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.devices_outlined),
+                            title: const Text('Devices & LAN Sync'),
+                            subtitle: const Text(
+                              'Pair devices and sync over Wi-Fi',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DevicesScreen(),
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.laptop_outlined),
+                            title: const Text('Open on Laptop'),
+                            subtitle: const Text(
+                              'View KashCube in your browser over Wi-Fi',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const OpenOnLaptopScreen(),
+                              ),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.bug_report_outlined),
+                            title: const Text('Diagnostics Logs'),
+                            subtitle: const Text(
+                              'View, copy, and share recent app logs',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AppLogsScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // -- Notifications --
+                      _SettingsSection(
+                        title: 'Notifications',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.notifications_outlined),
+                            title: const Text('Notification Settings'),
+                            subtitle: const Text(
+                              'Reminders, quiet hours & toggles',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const NotificationSettingsScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // -- Automation (SMS) --
+                      const _AutomationSection(),
+
+                      // -- Privacy --
+                      const _PrivacySection(),
+
+                      // -- Business Mode --
+                      _SettingsSection(
+                        title: 'Business Mode',
+                        children: [
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final enabled = ref.watch(businessModeProvider);
+                              return SwitchListTile(
+                                secondary: const Icon(
+                                  Icons.storefront_outlined,
+                                ),
+                                title: const Text('Enable Business Mode'),
+                                subtitle: const Text(
+                                  'Unlock invoicing & item catalog',
+                                ),
+                                value: enabled,
+                                onChanged: (v) => ref
+                                    .read(businessModeProvider.notifier)
+                                    .setEnabled(v),
+                              );
+                            },
+                          ),
+                          Consumer(
+                            builder: (context, ref, _) {
+                              final enabled = ref.watch(businessModeProvider);
+                              if (!enabled) return const SizedBox.shrink();
+                              return Column(
+                                children: [
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.business_outlined,
+                                    ),
+                                    title: const Text('Business Profiles'),
+                                    subtitle: const Text(
+                                      'Name, address, GST, logo & more',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const BusinessesScreen(),
+                                      ),
                                     ),
                                   ),
-                                );
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.straighten_outlined,
+                                    ),
+                                    title: const Text('Unit Types'),
+                                    subtitle: const Text(
+                                      'Manage units used in item catalog',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const UnitTypesScreen(),
+                                      ),
+                                    ),
+                                  ),
+                                  ListTile(
+                                    leading: const Icon(Icons.gavel_outlined),
+                                    title: const Text(
+                                      'Default Terms & Conditions',
+                                    ),
+                                    subtitle: const Text(
+                                      'T&C footer for invoice, quote & booking PDFs',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const DocumentTermsScreen(),
+                                      ),
+                                    ),
+                                  ),
+                                  Consumer(
+                                    builder: (context, ref, _) {
+                                      final template = ref.watch(
+                                        documentTemplateProvider,
+                                      );
+                                      return ListTile(
+                                        leading: const Icon(
+                                          Icons.picture_as_pdf_outlined,
+                                        ),
+                                        title: const Text('PDF Templates'),
+                                        subtitle: Text(template.name),
+                                        trailing: const Icon(
+                                          Icons.chevron_right,
+                                        ),
+                                        onTap: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) =>
+                                                const TemplateListScreen(),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
 
-                // -- About --
-                _SettingsSection(
-                  title: 'About',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.info_outline),
-                      title: const Text('Kash Cube'),
-                      subtitle: const Text(
-                        'v1.0.0 · Privacy-first financial tracker',
+                      // -- About --
+                      _SettingsSection(
+                        title: 'About',
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.info_outline),
+                            title: const Text('Kash Cube'),
+                            subtitle: const Text(
+                              'v1.0.0 · Privacy-first financial tracker',
+                            ),
+                            onTap: () {
+                              showAboutDialog(
+                                context: context,
+                                applicationName: 'Kash Cube',
+                                applicationVersion: '1.0.0',
+                                applicationLegalese:
+                                    '© 2026 Kash Cube\nAll data stays on your device.',
+                              );
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.privacy_tip_outlined),
+                            title: const Text('Privacy Policy'),
+                            subtitle: const Text(
+                              '100% local, zero network calls',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _showLegalSheet(
+                              context,
+                              title: 'Privacy Policy',
+                              content: _kPrivacyPolicy,
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.gavel_outlined),
+                            title: const Text('Terms of Use'),
+                            subtitle: const Text(
+                              'v2.2 · Effective 16 March 2026',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => _showLegalSheet(
+                              context,
+                              title: 'Terms of Use & Privacy Policy',
+                              content: _kTermsOfUse,
+                            ),
+                          ),
+                        ],
                       ),
-                      onTap: () {
-                        showAboutDialog(
-                          context: context,
-                          applicationName: 'Kash Cube',
-                          applicationVersion: '1.0.0',
-                          applicationLegalese:
-                              '© 2026 Kash Cube\nAll data stays on your device.',
-                        );
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.privacy_tip_outlined),
-                      title: const Text('Privacy Policy'),
-                      subtitle: const Text('100% local, zero network calls'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showLegalSheet(
-                        context,
-                        title: 'Privacy Policy',
-                        content: _kPrivacyPolicy,
-                      ),
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.gavel_outlined),
-                      title: const Text('Terms of Use'),
-                      subtitle: const Text('v2.2 · Effective 16 March 2026'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showLegalSheet(
-                        context,
-                        title: 'Terms of Use & Privacy Policy',
-                        content: _kTermsOfUse,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-              ],
-            ),
+                      const SizedBox(height: AppSpacing.xxl),
+                    ],
+                  )
+                : _buildSearchResults(context),
           ),
         ],
       ),

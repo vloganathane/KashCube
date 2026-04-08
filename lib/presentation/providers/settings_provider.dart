@@ -286,6 +286,11 @@ class BusinessNameNotifier extends StateNotifier<String> {
   }
 }
 
+final businessNameProvider =
+    StateNotifierProvider<BusinessNameNotifier, String>(
+  (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
+);
+
 // ---------------------------------------------------------------------------
 // libp2p Sync (Experimental Phase 1 Feature)
 // ---------------------------------------------------------------------------

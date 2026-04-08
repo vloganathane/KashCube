@@ -36,19 +36,20 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     DatabaseHelper? dbHelper,
     IdentityService? identityService,
     int inboundDedupeCapacity = 512,
-  })  : _node = node ?? LibP2pNode(),
-        _protocol = protocol ?? LibP2pProtocol(),
-        _discovery = discovery ?? LibP2pDiscovery(),
-        _dbHelper = dbHelper ?? DatabaseHelper.instance,
-        _identityService = identityService ?? IdentityService.instance,
-        _inboundDedupeCapacity = inboundDedupeCapacity;
+  }) : _node = node ?? LibP2pNode(),
+       _protocol = protocol ?? LibP2pProtocol(),
+       _discovery = discovery ?? LibP2pDiscovery(),
+       _dbHelper = dbHelper ?? DatabaseHelper.instance,
+       _identityService = identityService ?? IdentityService.instance,
+       _inboundDedupeCapacity = inboundDedupeCapacity;
 
   final LibP2pNode _node;
   final LibP2pProtocol _protocol;
   final LibP2pDiscovery _discovery;
   final DatabaseHelper _dbHelper;
   // ignore: unused_field
-  final IdentityService _identityService; // Reserved for Ed25519 identity integration
+  final IdentityService
+  _identityService; // Reserved for Ed25519 identity integration
   final int _inboundDedupeCapacity;
 
   final StreamController<SyncConnectionState> _connectionStateController =
@@ -75,6 +76,12 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   // Stream subscription for discovery
   StreamSubscription<SyncPeer>? _discoverySubscription;
 
+  // Auto-connect tracking
+  final Set<String> _attemptedConnections =
+      {}; // Track dial attempts to avoid duplicates
+  final Set<String> _activePeers = {}; // Currently connected peers
+  bool _autoConnectEnabled = true; // Enable/disable auto-connect
+
   // ────────────────────────────────────────────────────────────────────────────
   // Connection Lifecycle
   // ────────────────────────────────────────────────────────────────────────────
@@ -89,7 +96,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // Note: IdentityService.ensureInitialized() should be called earlier
       // during app startup. We skip it here to avoid loading SettingsRepository.
       // In production, identity initialization happens in main.dart.
-      
+
       // TODO: Replace with actual identity extraction when identity is ready
       // For now, use placeholder (dart_libp2p will generate identity if null)
       await _node.initialize(
@@ -105,6 +112,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
       // Start listening for connections
       await _node.start();
+
+      // Auto-start discovery for automatic peer connection
+      debugPrint('[Libp2pSync] Starting auto-discovery...');
+      discoverPeers(); // Start discovery stream (non-blocking)
 
       debugPrint('[Libp2pSync] Initialized successfully');
     } catch (e, stack) {
@@ -144,11 +155,13 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       debugPrint('[Libp2pSync] Connection failed: $e');
       debugPrint(stack.toString());
       _emitState(SyncConnectionState.error);
-      _eventsController.add(SyncError(
-        message: 'Connection failed to $_connectedPeerId',
-        error: e,
-        stackTrace: stack,
-      ));
+      _eventsController.add(
+        SyncError(
+          message: 'Connection failed to $_connectedPeerId',
+          error: e,
+          stackTrace: stack,
+        ),
+      );
       rethrow;
     }
   }
@@ -180,6 +193,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       _pendingTables.clear();
       _rowsSynced = 0;
       _syncStartTime = null;
+
+      // Clear auto-connect tracking
+      _attemptedConnections.clear();
+      _activePeers.clear();
 
       _emitState(SyncConnectionState.disconnected);
       _eventsController.add(const SyncDisconnected(reason: 'User disconnect'));
@@ -231,9 +248,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
       // Start mDNS discovery using the Host
       // MdnsDiscovery extracts multiaddrs and peer ID automatically from host
-      await _discovery.start(
-        host: _node.host!,
-      );
+      await _discovery.start(host: _node.host!);
 
       // Listen for discovered peers via discoveredPeers stream
       _discoverySubscription = _discovery.discoveredPeers.listen(
@@ -241,6 +256,14 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
           debugPrint('[Libp2pSync] Discovered peer: ${peer.displayName}');
           discoveredPeers[peer.peerId] = peer;
           controller.add(discoveredPeers.values.toList());
+
+          // ══════════════════════════════════════════════════════════════
+          // AUTO-CONNECT: Dial discovered peers immediately
+          // ══════════════════════════════════════════════════════════════
+          if (_autoConnectEnabled &&
+              !_attemptedConnections.contains(peer.peerId)) {
+            _autoConnectToPeer(peer.peerId);
+          }
         },
         onError: (e, stack) {
           debugPrint('[Libp2pSync] Discovery error: $e');
@@ -276,6 +299,89 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     debugPrint('[Libp2pSync] Discovery stopped');
   }
 
+  /// Auto-connect to a discovered peer (Option 1 + Option 3 hybrid).
+  ///
+  /// Strategy:
+  /// 1. Dial immediately (aggressive discovery)
+  /// 2. Check if peer is trusted (trusted_peers table)
+  /// 3. If trusted: proceed with sync
+  /// 4. If new: verify identity (same owner keypair = auto-trust)
+  /// 5. If untrusted: disconnect (or show pairing prompt in UI)
+  ///
+  /// This combines fast discovery with intelligent trust management.
+  Future<void> _autoConnectToPeer(String peerId) async {
+    // Mark as attempted to avoid duplicate dials
+    _attemptedConnections.add(peerId);
+
+    debugPrint('[Libp2pSync] Auto-connecting to peer: $peerId');
+
+    try {
+      // Check if we're already connected to this peer
+      if (_activePeers.contains(peerId)) {
+        debugPrint('[Libp2pSync] Already connected to $peerId, skipping');
+        return;
+      }
+
+      // Check if peer is in trusted_peers table
+      final isTrusted = await _isTrustedPeer(peerId);
+
+      if (isTrusted) {
+        debugPrint(
+          '[Libp2pSync] ✅ Peer $peerId is trusted, establishing connection',
+        );
+      } else {
+        debugPrint(
+          '[Libp2pSync] ⚠️ Peer $peerId is NEW (not in trusted_peers)',
+        );
+        // TODO: Implement identity verification handshake
+        // For now, we'll attempt connection anyway and let protocol handle auth
+        // Future: Add Ed25519 signature verification here
+      }
+
+      // Attempt to dial the peer
+      // Note: This will trigger the connection flow which includes handshake
+      await connect(peerId: peerId);
+
+      // Track active peer
+      _activePeers.add(peerId);
+
+      // If trusted, trigger sync automatically
+      if (isTrusted) {
+        debugPrint('[Libp2pSync] Auto-syncing with trusted peer $peerId');
+        // TODO: Call syncAll() or specific tables
+        // For now, connection is established and sync can be triggered manually
+      }
+    } catch (e, stack) {
+      debugPrint('[Libp2pSync] Auto-connect to $peerId failed: $e');
+      debugPrint(stack.toString());
+
+      // Remove from active peers on failure
+      _activePeers.remove(peerId);
+
+      // Don't rethrow - auto-connect failures should be non-fatal
+      // The peer might be offline or the connection might fail for network reasons
+    }
+  }
+
+  /// Check if a peer is in the trusted_peers table.
+  ///
+  /// Returns true if the peer exists and is active in trusted_peers.
+  Future<bool> _isTrustedPeer(String peerId) async {
+    try {
+      final db = await _dbHelper.database;
+      final result = await db.query(
+        'trusted_peers',
+        where: 'peer_id = ? AND is_active = 1',
+        whereArgs: [peerId],
+        limit: 1,
+      );
+      return result.isNotEmpty;
+    } catch (e) {
+      debugPrint('[Libp2pSync] Error checking trusted peer: $e');
+      return false;
+    }
+  }
+
   // ────────────────────────────────────────────────────────────────────────────
   // Sync Operations
   // ────────────────────────────────────────────────────────────────────────────
@@ -300,7 +406,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // The peer responds with ROWS frames
       final db = await _dbHelper.database;
       final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
-      
+
       // Find plan for this table
       final plan = plans.firstWhere(
         (p) => p.tableName == tableName,
@@ -315,7 +421,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
             'name': tableName,
             'mode': plan.mode.name,
             'watermark': _outboundLastSentAt[tableName]?.toIso8601String(),
-          }
+          },
         ],
       });
 
@@ -327,11 +433,13 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       debugPrint(stack.toString());
       _pendingTables.remove(tableName);
       _emitState(SyncConnectionState.error);
-      _eventsController.add(SyncError(
-        message: 'Sync failed for table $tableName',
-        error: e,
-        stackTrace: stack,
-      ));
+      _eventsController.add(
+        SyncError(
+          message: 'Sync failed for table $tableName',
+          error: e,
+          stackTrace: stack,
+        ),
+      );
       rethrow;
     }
   }
@@ -356,10 +464,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
     // Emit completion event when all tables done
     final duration = DateTime.now().difference(_syncStartTime!);
-    _eventsController.add(SyncCompleted(
-      totalRowsSynced: _rowsSynced,
-      duration: duration,
-    ));
+    _eventsController.add(
+      SyncCompleted(totalRowsSynced: _rowsSynced, duration: duration),
+    );
 
     debugPrint('[Libp2pSync] All tables synced ($duration)');
   }
@@ -413,11 +520,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('No active stream to peer');
     }
 
-    await _sendFrame({
-      'type': 'PUSH',
-      'table': table,
-      'rows': rows,
-    });
+    await _sendFrame({'type': 'PUSH', 'table': table, 'rows': rows});
 
     debugPrint('[Libp2pSync] PUSH: $table (${rows.length} rows)');
   }
@@ -465,7 +568,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     String peerId,
   ) async {
     final tables = frame['tables'] as List<dynamic>? ?? [];
-    debugPrint('[Libp2pSync] Received SYNC_PLAN from $peerId: ${tables.length} table(s)');
+    debugPrint(
+      '[Libp2pSync] Received SYNC_PLAN from $peerId: ${tables.length} table(s)',
+    );
 
     for (final entry in tables) {
       if (entry is Map<String, dynamic>) {
@@ -517,12 +622,16 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       _completedTables.add(table);
       _pendingTables.remove(table);
 
-      _eventsController.add(SyncTableCompleted(
-        tableName: table,
-        rowsProcessed: filteredRows.length,
-      ));
+      _eventsController.add(
+        SyncTableCompleted(
+          tableName: table,
+          rowsProcessed: filteredRows.length,
+        ),
+      );
 
-      debugPrint('[Libp2pSync] Table synced: $table (${filteredRows.length} rows)');
+      debugPrint(
+        '[Libp2pSync] Table synced: $table (${filteredRows.length} rows)',
+      );
 
       // Check if all pending tables are done
       if (_pendingTables.isEmpty && _completedTables.isNotEmpty) {
@@ -532,10 +641,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
             ? DateTime.now().difference(_syncStartTime!)
             : Duration.zero;
 
-        _eventsController.add(SyncCompleted(
-          totalRowsSynced: _rowsSynced,
-          duration: duration,
-        ));
+        _eventsController.add(
+          SyncCompleted(totalRowsSynced: _rowsSynced, duration: duration),
+        );
       }
     }
 
@@ -564,12 +672,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     final filteredRows = _filterNewInboundRows(table, rows);
 
     if (filteredRows.isEmpty) {
-      debugPrint('[Libp2pSync] PUSH deduped: $table (${rows.length} duplicate row(s))');
-      return {
-        'type': 'WRITE_OK',
-        'table': table,
-        'count': 0,
-      };
+      debugPrint(
+        '[Libp2pSync] PUSH deduped: $table (${rows.length} duplicate row(s))',
+      );
+      return {'type': 'WRITE_OK', 'table': table, 'count': 0};
     }
 
     // Merge into local database
@@ -586,11 +692,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     debugPrint('[Libp2pSync] PUSH: $table (${filteredRows.length} row(s))');
 
     // Send WRITE_OK acknowledgment
-    return {
-      'type': 'WRITE_OK',
-      'table': table,
-      'count': filteredRows.length,
-    };
+    return {'type': 'WRITE_OK', 'table': table, 'count': filteredRows.length};
   }
 
   /// Handle WRITE_OK frame (acknowledgment for PUSH).
@@ -617,10 +719,12 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
     debugPrint('[Libp2pSync] ERROR from $peerId: $code - $message');
 
-    _eventsController.add(SyncError(
-      message: 'Remote error: $message',
-      error: Exception('$code: $message'),
-    ));
+    _eventsController.add(
+      SyncError(
+        message: 'Remote error: $message',
+        error: Exception('$code: $message'),
+      ),
+    );
 
     // No response needed
     return null;
@@ -764,7 +868,8 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   void _markOutboundWatermarkFromRows(String table, List<dynamic> rows) {
     if (rows.isEmpty) return;
 
-    var maxTs = _outboundLastSentAt[table] ??
+    var maxTs =
+        _outboundLastSentAt[table] ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     for (final row in rows) {

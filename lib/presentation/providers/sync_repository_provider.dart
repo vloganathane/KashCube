@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/libp2p_sync_repository_impl.dart';
@@ -15,9 +16,7 @@ import 'settings_provider.dart';
 // ════════════════════════════════════════════════════════════════════════════
 
 /// Singleton instance of LibP2pNode (manages libp2p host lifecycle).
-final libp2pNodeProvider = Provider<LibP2pNode>(
-  (_) => LibP2pNode(),
-);
+final libp2pNodeProvider = Provider<LibP2pNode>((_) => LibP2pNode());
 
 /// Singleton instance of LibP2pProtocol (handles /kash-sync/1.0.0 frames).
 final libp2pProtocolProvider = Provider<LibP2pProtocol>(
@@ -72,20 +71,18 @@ final libp2pSyncRepositoryProvider = Provider<SyncRepository>(
 /// **Feature flag**: `SettingsKeys.enableLibp2pSync` ('true' | 'false' | null)
 /// - `null` or `'false'`: Use WebRTC (default)
 /// - `'true'`: Use libp2p (experimental)
-final syncRepositoryProvider = Provider<SyncRepository>(
-  (ref) {
-    // Note: This triggers a watch on the entire settings repository.
-    // In production, consider a more granular watch mechanism if performance is critical.
-    // For Phase 1.5, this simple approach is sufficient.
-    
-    // Since SettingsRepository.get() is async and Provider cannot be async,
-    // we default to WebRTC for initial setup. The UI layer should handle
-    // the async loading and refresh the provider when the setting changes.
-    
-    // For now, default to WebRTC. Phase 1.5 will add UI toggle to change this.
+final syncRepositoryProvider = Provider<SyncRepository>((ref) {
+  // Watch the libp2p setting and switch implementations dynamically
+  final libp2pEnabled = ref.watch(libp2pSyncEnabledProvider);
+
+  if (libp2pEnabled) {
+    debugPrint('[SyncProvider] Using libp2p sync repository');
+    return ref.watch(libp2pSyncRepositoryProvider);
+  } else {
+    debugPrint('[SyncProvider] Using WebRTC sync repository');
     return ref.watch(webrtcSyncRepositoryProvider);
-  },
-);
+  }
+});
 
 /// Future-based helper to determine which sync repository should be used.
 ///

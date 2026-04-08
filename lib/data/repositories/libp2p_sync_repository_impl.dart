@@ -80,6 +80,8 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   final Set<String> _attemptedConnections =
       {}; // Track dial attempts to avoid duplicates
   final Set<String> _activePeers = {}; // Currently connected peers
+  final Map<String, List<String>> _peerMultiaddrs =
+      {}; // peerId → multiaddrs mapping from discovery
   bool _autoConnectEnabled = true; // Enable/disable auto-connect
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -141,9 +143,21 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     try {
       debugPrint('[Libp2pSync] Connecting to peer: $_connectedPeerId');
 
+      // Look up multiaddr for this peer from discovery
+      final multiaddrs = _peerMultiaddrs[peerId];
+      if (multiaddrs == null || multiaddrs.isEmpty) {
+        throw StateError(
+          'No multiaddrs found for peer $peerId. Discovery may not have completed.',
+        );
+      }
+
+      // Use the first multiaddr (TODO: Try all addrs on failure)
+      final multiaddr = multiaddrs.first;
+      debugPrint('[Libp2pSync] Dialing multiaddr: $multiaddr');
+
       // Open stream to peer using /kash-sync/1.0.0 protocol
       _activeStream = await _node.dial(
-        peerId, // Multiaddr constructed from peerId
+        multiaddr, // Use full multiaddr, not just peerId
         protocolId: kashSyncProtocolId,
       );
 
@@ -197,6 +211,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // Clear auto-connect tracking
       _attemptedConnections.clear();
       _activePeers.clear();
+      _peerMultiaddrs.clear();
 
       _emitState(SyncConnectionState.disconnected);
       _eventsController.add(const SyncDisconnected(reason: 'User disconnect'));
@@ -255,6 +270,16 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
         (peer) {
           debugPrint('[Libp2pSync] Discovered peer: ${peer.displayName}');
           discoveredPeers[peer.peerId] = peer;
+
+          // Store multiaddrs for this peer (retrieved from discovery service)
+          final multiaddrs = _discovery.getMultiaddrs(peer.peerId);
+          if (multiaddrs != null && multiaddrs.isNotEmpty) {
+            _peerMultiaddrs[peer.peerId] = multiaddrs;
+            debugPrint(
+              '[Libp2pSync] Stored multiaddrs for ${peer.peerId}: ${multiaddrs.first}',
+            );
+          }
+
           controller.add(discoveredPeers.values.toList());
 
           // ══════════════════════════════════════════════════════════════

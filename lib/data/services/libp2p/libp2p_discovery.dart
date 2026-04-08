@@ -46,8 +46,14 @@ class LibP2pDiscovery implements MdnsNotifee {
   final StreamController<SyncPeer> _discoveredPeers =
       StreamController<SyncPeer>.broadcast();
 
+  /// Store multiaddrs by peerId for connection dialing
+  final Map<String, List<String>> _peerMultiaddrs = {};
+
   /// Discovered peers stream (emits [SyncPeer] when peer found)
   Stream<SyncPeer> get discoveredPeers => _discoveredPeers.stream;
+
+  /// Get multiaddrs for a specific peer ID
+  List<String>? getMultiaddrs(String peerId) => _peerMultiaddrs[peerId];
 
   /// Current discovery state
   bool get isStarted => _isStarted;
@@ -162,8 +168,10 @@ class LibP2pDiscovery implements MdnsNotifee {
         return;
       }
 
+      // Store multiaddrs for this peer (used for connection dialing)
+      _peerMultiaddrs[peerId] = multiaddrs;
+
       // Create SyncPeer object
-      // TODO: Store multiaddr mapping in repository for connection dial
       // SyncPeer domain model doesn't have metadata field
       final peer = SyncPeer(
         peerId: peerId,

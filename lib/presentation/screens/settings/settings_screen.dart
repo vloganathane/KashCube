@@ -475,6 +475,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
 
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         for (final entry in grouped.entries) ...[
           Padding(
@@ -498,7 +499,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: Text(item.title),
               subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
               trailing: const Icon(Icons.chevron_right),
-              onTap: item.onTap,
+              onTap: () {
+                // Debug: Ensure tap is registered
+                print('ListTile tapped: ${item.title}');
+                item.onTap();
+              },
+              enabled: true,
             ),
         ],
         const SizedBox(height: AppSpacing.xxl),

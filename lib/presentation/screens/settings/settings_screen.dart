@@ -106,7 +106,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.lock_outline,
         sectionLabel: 'Security',
         keywords: ['pin', 'lock', 'password', 'security', 'passcode'],
-        onTap: () {}, // Handled by switch in full view
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
       SettingItem(
         title: 'Biometric Unlock',
@@ -114,7 +119,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.fingerprint,
         sectionLabel: 'Security',
         keywords: ['fingerprint', 'face', 'faceid', 'touchid', 'biometric'],
-        onTap: () {}, // Handled by switch
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
 
       // Team
@@ -219,7 +229,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           'protocol',
           'dart',
         ],
-        onTap: () {}, // Handled by switch
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
       SettingItem(
         title: 'Open on Laptop',
@@ -264,7 +279,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.sms_outlined,
         sectionLabel: 'Automation',
         keywords: ['sms', 'auto', 'detect', 'transaction', 'bank', 'upi'],
-        onTap: () {}, // Handled by permission flow
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
       SettingItem(
         title: 'Scan SMS inbox',
@@ -272,7 +292,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.inbox_outlined,
         sectionLabel: 'Automation',
         keywords: ['sms', 'scan', 'inbox', 'messages', 'import'],
-        onTap: () {}, // Handled in section
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
 
       // Privacy
@@ -293,7 +318,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.analytics_outlined,
         sectionLabel: 'Privacy',
         keywords: ['analytics', 'usage', 'data', 'privacy', 'firebase'],
-        onTap: () {}, // Handled by switch
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
 
       // Business Mode
@@ -303,7 +333,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         icon: Icons.storefront_outlined,
         sectionLabel: 'Business Mode',
         keywords: ['business', 'invoice', 'catalog', 'items', 'gst'],
-        onTap: () {}, // Handled by switch
+        onTap: () {
+          setState(() {
+            _searchQuery = '';
+            _searchController.clear();
+          });
+        },
       ),
       SettingItem(
         title: 'Business Profiles',

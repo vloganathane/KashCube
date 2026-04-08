@@ -92,7 +92,9 @@ class LibP2pDiscovery implements MdnsNotifee {
       _isStarted = true;
       debugPrint('[LibP2pDiscovery] Started successfully');
       debugPrint('[LibP2pDiscovery] Broadcasting as: ${host.id}');
-      debugPrint('[LibP2pDiscovery] Listening on: ${host.addrs.map((a) => a.toString()).join(", ")}');
+      debugPrint(
+        '[LibP2pDiscovery] Listening on: ${host.addrs.map((a) => a.toString()).join(", ")}',
+      );
     } catch (e, stack) {
       debugPrint('[LibP2pDiscovery] Start failed: $e');
       debugPrint(stack.toString());
@@ -109,6 +111,9 @@ class LibP2pDiscovery implements MdnsNotifee {
 
     debugPrint('[LibP2pDiscovery] Stopping...');
 
+    // Mark as stopped BEFORE closing mDNS to prevent race conditions
+    _isStarted = false;
+
     try {
       // Stop mDNS discovery
       if (_mdnsDiscovery != null) {
@@ -116,7 +121,6 @@ class LibP2pDiscovery implements MdnsNotifee {
         _mdnsDiscovery = null;
       }
 
-      _isStarted = false;
       debugPrint('[LibP2pDiscovery] Stopped');
     } catch (e, stack) {
       debugPrint('[LibP2pDiscovery] Stop error: $e');
@@ -133,6 +137,12 @@ class LibP2pDiscovery implements MdnsNotifee {
   /// Converts dart_libp2p AddrInfo → KashCube SyncPeer domain model.
   @override
   void handlePeerFound(AddrInfo addrInfo) {
+    // Guard: Ignore events if discovery is stopped (prevents "Cannot add event after closing")
+    if (!_isStarted || _discoveredPeers.isClosed) {
+      debugPrint('[LibP2pDiscovery] Ignoring peer event (discovery stopped)');
+      return;
+    }
+
     try {
       final peerId = addrInfo.id.toString();
       debugPrint('[LibP2pDiscovery] Discovered peer: $peerId');
@@ -157,16 +167,21 @@ class LibP2pDiscovery implements MdnsNotifee {
       // SyncPeer domain model doesn't have metadata field
       final peer = SyncPeer(
         peerId: peerId,
-        displayName: 'KashCube Device', // TODO: Extract from metadata when available
+        displayName:
+            'KashCube Device', // TODO: Extract from metadata when available
         discoveredAt: DateTime.now(),
         deviceType: null, // Unknown device type
       );
 
-      // Emit discovered peer
-      _discoveredPeers.add(peer);
+      // Emit discovered peer (with additional safety check)
+      if (!_discoveredPeers.isClosed) {
+        _discoveredPeers.add(peer);
 
-      debugPrint('[LibP2pDiscovery] Emitted peer: ${peer.displayName} ($peerId)');
-      debugPrint('[LibP2pDiscovery] Multiaddrs: ${multiaddrs.join(", ")}');
+        debugPrint(
+          '[LibP2pDiscovery] Emitted peer: ${peer.displayName} ($peerId)',
+        );
+        debugPrint('[LibP2pDiscovery] Multiaddrs: ${multiaddrs.join(", ")}');
+      }
     } catch (e, stack) {
       debugPrint('[LibP2pDiscovery] Error processing discovered peer: $e');
       debugPrint(stack.toString());

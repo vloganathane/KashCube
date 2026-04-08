@@ -74,8 +74,8 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
   /// it turned on before the app was last closed.
   Future<void> _restore() async {
     try {
-      final prefs   = await SharedPreferences.getInstance();
-      final wasOn   = prefs.getBool(_kLanSyncEnabled) ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      final wasOn = prefs.getBool(_kLanSyncEnabled) ?? false;
       if (wasOn && mounted) await enable();
     } catch (e) {
       debugPrint('[P2P] restore() failed: $e');
@@ -93,11 +93,29 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
       await _ref.read(identityInitProvider.future);
       final identity = await _ref.read(identityServiceProvider.future);
       final settings = _ref.read(settingsRepositoryProvider);
-      final name     = await settings.get(SettingsKeys.ownerName);
+      final name = await settings.get(SettingsKeys.ownerName);
+
+      // Check if libp2p sync is enabled (experimental feature)
+      final libp2pEnabled = _ref.read(libp2pSyncEnabledProvider);
+      debugPrint(
+        '[P2P] Sync mode: ${libp2pEnabled ? "libp2p" : "WebRTC (P2pCoordinator)"}',
+      );
+
+      if (libp2pEnabled) {
+        // TODO: Initialize libp2p sync repository here
+        // For now, fall back to P2pCoordinator as libp2p isn't fully integrated
+        debugPrint(
+          '[P2P] WARNING: libp2p mode requested but not yet integrated with P2P provider',
+        );
+        debugPrint('[P2P] Falling back to P2pCoordinator (WebRTC) for now');
+      }
+
       await P2pCoordinator.instance.start(
-        db:          db,
-        identity:    identity,
-        displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
+        db: db,
+        identity: identity,
+        displayName: (name == null || name.trim().isEmpty)
+            ? 'KashCube'
+            : name.trim(),
       );
       await registerP2pSyncTask();
       if (mounted) {
@@ -131,8 +149,7 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
   }
 }
 
-final p2pEnabledProvider =
-    StateNotifierProvider<P2pEnabledNotifier, bool>(
+final p2pEnabledProvider = StateNotifierProvider<P2pEnabledNotifier, bool>(
   (ref) => P2pEnabledNotifier(ref),
 );
 
@@ -153,21 +170,25 @@ class WebCompanionNotifier extends StateNotifier<bool> {
     if (P2pCoordinator.instance.serverPort != null) {
       // Defer to next event-loop tick so this is safe to call from initState()
       // (Riverpod forbids synchronous state mutations during widget tree build).
-      Future(() { if (mounted) state = true; });
+      Future(() {
+        if (mounted) state = true;
+      });
       return;
     }
     if (state) return;
     try {
-      final db       = await DatabaseHelper.instance.database;
+      final db = await DatabaseHelper.instance.database;
       await _ref.read(identityInitProvider.future);
       final identity = await _ref.read(identityServiceProvider.future);
       final settings = _ref.read(settingsRepositoryProvider);
-      final name     = await settings.get(SettingsKeys.ownerName);
+      final name = await settings.get(SettingsKeys.ownerName);
       await WebCompanionService.instance.prewarmWebUi();
       await P2pCoordinator.instance.startServerOnly(
-        db:          db,
-        identity:    identity,
-        displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
+        db: db,
+        identity: identity,
+        displayName: (name == null || name.trim().isEmpty)
+            ? 'KashCube'
+            : name.trim(),
       );
       if (mounted) state = true;
     } catch (e) {
@@ -181,8 +202,7 @@ class WebCompanionNotifier extends StateNotifier<bool> {
   }
 }
 
-final webCompanionProvider =
-    StateNotifierProvider<WebCompanionNotifier, bool>(
+final webCompanionProvider = StateNotifierProvider<WebCompanionNotifier, bool>(
   (ref) => WebCompanionNotifier(ref),
 );
 
@@ -197,18 +217,22 @@ final webCompanionProvider =
 /// retry via ensureStarted().
 final httpServerInitProvider = FutureProvider<void>((ref) async {
   try {
-    final db       = await DatabaseHelper.instance.database;
+    final db = await DatabaseHelper.instance.database;
     await ref.read(identityInitProvider.future);
     final identity = await ref.read(identityServiceProvider.future);
     final settings = ref.read(settingsRepositoryProvider);
-    final name     = await settings.get(SettingsKeys.ownerName);
-    
+    final name = await settings.get(SettingsKeys.ownerName);
+
     await P2pCoordinator.instance.startServerOnly(
-      db:          db,
-      identity:    identity,
-      displayName: (name == null || name.trim().isEmpty) ? 'KashCube' : name.trim(),
+      db: db,
+      identity: identity,
+      displayName: (name == null || name.trim().isEmpty)
+          ? 'KashCube'
+          : name.trim(),
     );
-    debugPrint('[HttpServerInit] Server started on port ${P2pServer.instance.port}');
+    debugPrint(
+      '[HttpServerInit] Server started on port ${P2pServer.instance.port}',
+    );
   } catch (e) {
     debugPrint('[HttpServerInit] Failed to start server: $e');
     // Non-fatal — allows app to continue; /health can be retried later.
@@ -236,5 +260,6 @@ final browserConnectionEventProvider = StreamProvider.autoDispose<bool>((ref) {
 });
 
 /// Local IPv4 address of this device (null if unavailable).
-final p2pLocalIpProvider = FutureProvider<String?>((ref) =>
-    P2pDiscoveryService.getLocalIp());
+final p2pLocalIpProvider = FutureProvider<String?>(
+  (ref) => P2pDiscoveryService.getLocalIp(),
+);

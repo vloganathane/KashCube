@@ -494,17 +494,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
           for (final item in entry.value)
-            ListTile(
-              leading: Icon(item.icon),
-              title: Text(item.title),
-              subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // Debug: Ensure tap is registered
-                print('ListTile tapped: ${item.title}');
-                item.onTap();
-              },
-              enabled: true,
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  print('InkWell tapped: ${item.title}');
+                  // For non-navigable items, clear search
+                  if (item.title == 'App Lock' ||
+                      item.title == 'Biometric Unlock' ||
+                      item.title == 'Experimental: libp2p Sync' ||
+                      item.title == 'Auto-detect SMS transactions' ||
+                      item.title == 'Scan SMS inbox' ||
+                      item.title == 'Anonymous Analytics' ||
+                      item.title == 'Enable Business Mode') {
+                    setState(() {
+                      _searchQuery = '';
+                      _searchController.clear();
+                    });
+                  } else {
+                    // For navigable items, execute the navigation
+                    item.onTap();
+                  }
+                },
+                child: ListTile(
+                  leading: Icon(item.icon),
+                  title: Text(item.title),
+                  subtitle: item.subtitle != null ? Text(item.subtitle!) : null,
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ),
             ),
         ],
         const SizedBox(height: AppSpacing.xxl),

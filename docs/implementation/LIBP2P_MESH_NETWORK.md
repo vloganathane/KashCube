@@ -233,13 +233,22 @@
   - ✅ Per-peer connection state tracking
   - ✅ Peer limit enforcement
   - ✅ Graceful multi-peer disconnect
-- 🔄 **Phase 2 starting**: Gossipsub broadcasting (temporary: sends to first peer)
-- ⏳ Phase 3-5: Not started
+- ✅ **Phase 2 complete**: Broadcast layer (direct mesh broadcasting)
+  - ✅ LibP2pBroadcast layer for topic-based messaging
+  - ✅ Message deduplication (24h TTL, 10k msg limit)
+  - ✅ Auto re-broadcasting creates mesh propagation
+  - ✅ BROADCAST frame type in protocol
+  - ✅ All sync messages broadcast to all peers
+  - ⚠️ **Note**: Uses direct broadcast, not gossipsub (dart_libp2p v1.0.3 limitation)
+- ⏳ **Phase 3 next**: Conflict resolution (vector clocks)
+- ⏳ Phase 4-5: Not started
 
-**Commit**: `ae6ed95` - Phase 1 mesh network foundation
+**Commits**: 
+- `ae6ed95` - Phase 1 mesh network foundation
+- `f250221` - Phase 2 broadcast layer
 
 ---
 
 **Last Updated**: 9 April 2026
-**Status**: Phase 1 ✅ COMPLETE, Phase 2 next
-**Target Completion**: Phase 2 in 1-2 days, full mesh in 2-3 weeks
+**Status**: Phase 2 ✅ COMPLETE, Phase 3 next
+**Target Completion**: Phase 3 in 1-2 days, full mesh with resilience in 2-3 weeks

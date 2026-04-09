@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/repositories/sync_repository.dart';
+import '../models/vector_clock.dart';
 import '../services/database_helper.dart';
 import '../services/identity_service.dart';
 import '../services/libp2p/libp2p_broadcast.dart';
@@ -97,6 +98,12 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       {}; // peerId → multiaddrs mapping from discovery
   bool _autoConnectEnabled = true; // Enable/disable auto-connect
 
+  // ── Conflict resolution (Phase 3) ──────────────────────────────────────────
+  String? _deviceId; // This device's ID (from libp2p peer ID)
+  VectorClock _vectorClock = VectorClock.empty(); // Local vector clock
+  final Map<String, VectorClock> _peerVectorClocks =
+      {}; // peerId → their last known clock
+
   // ────────────────────────────────────────────────────────────────────────────
   // Connection Lifecycle
   // ────────────────────────────────────────────────────────────────────────────
@@ -127,6 +134,19 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
       // Start listening for connections
       await _node.start();
+
+      // Set device ID from libp2p peer ID (Phase 3: Conflict resolution)
+      _deviceId = _node.localPeerId;
+      if (_deviceId != null) {
+        // Initialize vector clock with device ID at 0
+        _vectorClock = VectorClock({_deviceId!: 0});
+        debugPrint('[Libp2pSync] Device ID: $_deviceId');
+        debugPrint('[Libp2pSync] Vector clock initialized: $_vectorClock');
+      } else {
+        debugPrint(
+          '[Libp2pSync] ⚠️ Warning: No peer ID, vector clock disabled',
+        );
+      }
 
       // Initialize broadcast layer for mesh networking (Phase 2)
       _broadcast = LibP2pBroadcast(
@@ -645,18 +665,24 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('Not connected. Cannot push row.');
     }
 
-    // TODO(Phase 2): Broadcast to all peers via gossipsub
     if (_peerStreams.isEmpty) {
       throw StateError('No active streams to peers');
     }
+
+    // Increment vector clock for local change (Phase 3)
+    _incrementVectorClock();
 
     await _sendFrame({
       'type': 'PUSH',
       'table': table,
       'rows': [row],
+      'vectorClock': _vectorClock.toJson(), // Include vector clock
+      'deviceId': _deviceId, // Include device ID
     });
 
-    debugPrint('[Libp2pSync] PUSH: $table (1 row)');
+    debugPrint(
+      '[Libp2pSync] PUSH: $table (1 row) [${_vectorClock.toCompactString()}]',
+    );
   }
 
   @override
@@ -668,14 +694,24 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('Not connected. Cannot push rows.');
     }
 
-    // TODO(Phase 2): Broadcast to all peers via gossipsub
     if (_peerStreams.isEmpty) {
       throw StateError('No active streams to peers');
     }
 
-    await _sendFrame({'type': 'PUSH', 'table': table, 'rows': rows});
+    // Increment vector clock for local change (Phase 3)
+    _incrementVectorClock();
 
-    debugPrint('[Libp2pSync] PUSH: $table (${rows.length} rows)');
+    await _sendFrame({
+      'type': 'PUSH',
+      'table': table,
+      'rows': rows,
+      'vectorClock': _vectorClock.toJson(), // Include vector clock
+      'deviceId': _deviceId, // Include device ID
+    });
+
+    debugPrint(
+      '[Libp2pSync] PUSH: $table (${rows.length} rows) [${_vectorClock.toCompactString()}]',
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -808,12 +844,17 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   }
 
   /// Handle PUSH frame (real-time incremental write).
+  ///
+  /// **Phase 3**: Includes conflict detection via vector clocks.
+  /// If concurrent update detected, applies Last-Write-Wins strategy.
   Future<Map<String, dynamic>?> _handlePushFrame(
     Map<String, dynamic> frame,
     String peerId,
   ) async {
     final table = frame['table'] as String?;
     final rows = frame['rows'] as List<dynamic>?;
+    final vectorClockJson = frame['vectorClock'] as Map<String, dynamic>?;
+    final senderDeviceId = frame['deviceId'] as String?;
 
     if (table == null || rows == null || rows.isEmpty) {
       debugPrint('[Libp2pSync] Malformed PUSH frame');
@@ -822,6 +863,39 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
         'code': 'MALFORMED_FRAME',
         'message': 'PUSH frame missing required fields',
       };
+    }
+
+    // ── Phase 3: Conflict detection ──────────────────────────────────────────
+    VectorClock? theirClock;
+    if (vectorClockJson != null) {
+      try {
+        theirClock = VectorClock.fromJson(vectorClockJson);
+
+        // Detect conflict
+        final relationship = _vectorClock.compareTo(theirClock);
+
+        if (relationship.isConflict) {
+          debugPrint(
+            '[Libp2pSync] ⚠️ CONFLICT detected on $table from $peerId',
+          );
+          debugPrint('  Local:  ${_vectorClock.toCompactString()}');
+          debugPrint('  Remote: ${theirClock.toCompactString()}');
+
+          // Apply Last-Write-Wins: Accept remote changes (they won)
+          // Alternative: Could prompt user or use other merge strategies
+          debugPrint('  → Applying Last-Write-Wins (accepting remote)');
+        }
+
+        // Merge vector clocks (take max of each device's counter)
+        _mergeVectorClock(theirClock);
+
+        // Track peer's clock
+        if (senderDeviceId != null) {
+          _peerVectorClocks[senderDeviceId] = theirClock;
+        }
+      } catch (e) {
+        debugPrint('[Libp2pSync] Error parsing vector clock: $e');
+      }
     }
 
     // Deduplicate rows
@@ -845,7 +919,12 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     // Notify DatabaseHelper to broadcast change
     _dbHelper.notifyChange(table);
 
-    debugPrint('[Libp2pSync] PUSH: $table (${filteredRows.length} row(s))');
+    final clockInfo = theirClock != null
+        ? ' [${theirClock.toCompactString()}]'
+        : '';
+    debugPrint(
+      '[Libp2pSync] PUSH: $table (${filteredRows.length} row(s))$clockInfo',
+    );
 
     // Send WRITE_OK acknowledgment
     return {'type': 'WRITE_OK', 'table': table, 'count': filteredRows.length};
@@ -1115,6 +1194,41 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
+  // Vector Clock Operations (Phase 3: Conflict Resolution)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Increment the local vector clock for a local change.
+  ///
+  /// Called before sending PUSH messages to track causality.
+  void _incrementVectorClock() {
+    if (_deviceId == null) {
+      debugPrint('[Libp2pSync] ⚠️ Cannot increment vector clock: no device ID');
+      return;
+    }
+
+    _vectorClock = _vectorClock.increment(_deviceId!);
+
+    debugPrint(
+      '[Libp2pSync] Vector clock incremented: ${_vectorClock.toCompactString()}',
+    );
+  }
+
+  /// Merge a received vector clock with the local clock.
+  ///
+  /// Takes the max of each device's counter. Called when receiving
+  /// PUSH/ROWS frames to update knowledge of distributed state.
+  void _mergeVectorClock(VectorClock receivedClock) {
+    final oldClock = _vectorClock;
+    _vectorClock = _vectorClock.merge(receivedClock);
+
+    if (_vectorClock != oldClock) {
+      debugPrint(
+        '[Libp2pSync] Vector clock merged: ${_vectorClock.toCompactString()}',
+      );
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // Cleanup
   // ────────────────────────────────────────────────────────────────────────────
 
@@ -1127,5 +1241,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     _seenInboundRowOrderByTable.clear();
     _outboundLastSentAt.clear();
     _outboundLastSentVersion.clear();
+
+    // Clear vector clock state (Phase 3)
+    _peerVectorClocks.clear();
+    _vectorClock = VectorClock.empty();
+    _deviceId = null;
   }
 }

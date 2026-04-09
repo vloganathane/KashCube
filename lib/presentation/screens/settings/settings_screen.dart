@@ -205,18 +205,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           MaterialPageRoute(builder: (_) => const EncryptedBackupScreen()),
         ),
       ),
-      // OLD: Devices & LAN Sync - HIDDEN (replaced by libp2p toggle)
-      // SettingItem(
-      //   title: 'Devices & LAN Sync',
-      //   subtitle: 'Pair devices and sync over Wi-Fi',
-      //   icon: Icons.devices_outlined,
-      //   sectionLabel: 'Data',
-      //   keywords: ['devices', 'lan', 'sync', 'wifi', 'pair', 'p2p'],
-      //   onTap: () => Navigator.push(
-      //     context,
-      //     MaterialPageRoute(builder: (_) => DevicesScreen()),
-      //   ),
-      // ),
+      SettingItem(
+        title: 'Devices & LAN Sync',
+        subtitle: 'Pair devices and sync over Wi-Fi',
+        icon: Icons.devices_outlined,
+        sectionLabel: 'Data',
+        keywords: ['devices', 'lan', 'sync', 'wifi', 'pair', 'p2p'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DevicesScreen()),
+        ),
+      ),
       SettingItem(
         title: 'Experimental: libp2p Sync',
         subtitle: 'Using dart_libp2p for peer-to-peer sync',
@@ -827,21 +826,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                           ),
-                          // OLD: Devices & LAN Sync - HIDDEN (replaced by libp2p toggle)
-                          // ListTile(
-                          //   leading: const Icon(Icons.devices_outlined),
-                          //   title: const Text('Devices & LAN Sync'),
-                          //   subtitle: const Text(
-                          //     'Pair devices and sync over Wi-Fi',
-                          //   ),
-                          //   trailing: const Icon(Icons.chevron_right),
-                          //   onTap: () => Navigator.push(
-                          //     context,
-                          //     MaterialPageRoute(
-                          //       builder: (_) => DevicesScreen(),
-                          //     ),
-                          //   ),
-                          // ),
+                          ListTile(
+                            leading: const Icon(Icons.devices_outlined),
+                            title: const Text('Devices & LAN Sync'),
+                            subtitle: const Text(
+                              'Pair devices and sync over Wi-Fi',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DevicesScreen(),
+                              ),
+                            ),
+                          ),
                           Consumer(
                             builder: (context, ref, _) {
                               final enabled = ref.watch(
@@ -1331,17 +1329,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               MaterialPageRoute(builder: (_) => const EncryptedBackupScreen()),
             ),
           ),
-          // OLD: Devices & LAN Sync - HIDDEN (replaced by libp2p toggle)
-          // ListTile(
-          //   leading: const Icon(Icons.devices_outlined),
-          //   title: const Text('Devices & LAN Sync'),
-          //   subtitle: const Text('Pair devices and sync over Wi-Fi'),
-          //   trailing: const Icon(Icons.chevron_right),
-          //   onTap: () => Navigator.push(
-          //     context,
-          //     MaterialPageRoute(builder: (_) => DevicesScreen()),
-          //   ),
-          // ),
+          ListTile(
+            leading: const Icon(Icons.devices_outlined),
+            title: const Text('Devices & LAN Sync'),
+            subtitle: const Text('Pair devices and sync over Wi-Fi'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => DevicesScreen()),
+            ),
+          ),
           Consumer(
             builder: (context, ref, _) {
               final enabled = ref.watch(libp2pSyncEnabledProvider);

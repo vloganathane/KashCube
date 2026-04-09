@@ -58,8 +58,15 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       StreamController<SyncEvent>.broadcast();
 
   SyncConnectionState _currentState = SyncConnectionState.disconnected;
-  String? _connectedPeerId; // Currently connected peer ID (libp2p PeerId)
-  dynamic _activeStream; // libp2p stream (using dynamic until API confirmed)
+
+  // ── Multi-peer connection tracking ────────────────────────────────────────
+  final Set<String> _connectedPeerIds = {}; // All connected peer IDs
+  final Map<String, dynamic> _peerStreams = {}; // peerId → stream
+  final Map<String, SyncConnectionState> _peerConnectionStates =
+      {}; // peerId → state
+  static const int _maxPeers =
+      10; // Max simultaneous connections (configurable)
+
   final Set<String> _completedTables = {};
   final Set<String> _pendingTables = {};
   int _rowsSynced = 0;
@@ -130,18 +137,28 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
   @override
   Future<void> connect({required String peerId}) async {
-    if (_currentState == SyncConnectionState.connected ||
-        _currentState == SyncConnectionState.connecting) {
-      debugPrint('[Libp2pSync] Already connected/connecting to $peerId');
+    // Check if already connected to this specific peer
+    if (_connectedPeerIds.contains(peerId)) {
+      debugPrint('[Libp2pSync] Already connected to $peerId');
       return;
     }
 
-    _connectedPeerId = peerId;
+    // Check peer limit
+    if (_connectedPeerIds.length >= _maxPeers) {
+      debugPrint(
+        '[Libp2pSync] ⚠️ Max peer limit reached ($_maxPeers). Cannot connect to $peerId',
+      );
+      return;
+    }
+
+    _peerConnectionStates[peerId] = SyncConnectionState.connecting;
     _emitState(SyncConnectionState.connecting);
-    _syncStartTime = DateTime.now();
+    if (_syncStartTime == null) _syncStartTime = DateTime.now();
 
     try {
-      debugPrint('[Libp2pSync] Connecting to peer: $_connectedPeerId');
+      debugPrint(
+        '[Libp2pSync] Connecting to peer $peerId (${_connectedPeerIds.length + 1}/$_maxPeers)',
+      );
 
       // Look up multiaddr for this peer from discovery
       final multiaddrs = _peerMultiaddrs[peerId];
@@ -156,44 +173,66 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       debugPrint('[Libp2pSync] Dialing multiaddr: $multiaddr');
 
       // Open stream to peer using /kash-sync/1.0.0 protocol
-      _activeStream = await _node.dial(
+      final stream = await _node.dial(
         multiaddr, // Use full multiaddr, not just peerId
         protocolId: kashSyncProtocolId,
       );
 
-      _emitState(SyncConnectionState.connected);
-      _eventsController.add(const SyncStarted());
+      // Store peer connection
+      _peerStreams[peerId] = stream;
+      _connectedPeerIds.add(peerId);
+      _peerConnectionStates[peerId] = SyncConnectionState.connected;
 
-      debugPrint('[Libp2pSync] Connected to $_connectedPeerId');
-    } catch (e, stack) {
-      debugPrint('[Libp2pSync] Connection failed: $e');
-      debugPrint(stack.toString());
-      _emitState(SyncConnectionState.error);
-      _eventsController.add(
-        SyncError(
-          message: 'Connection failed to $_connectedPeerId',
-          error: e,
-          stackTrace: stack,
-        ),
+      // Update global state if this is our first connection
+      if (_connectedPeerIds.length == 1) {
+        _emitState(SyncConnectionState.connected);
+        _eventsController.add(const SyncStarted());
+      }
+
+      debugPrint(
+        '[Libp2pSync] ✅ Connected to $peerId (${_connectedPeerIds.length}/$_maxPeers peers)',
       );
+    } catch (e, stack) {
+      debugPrint('[Libp2pSync] Connection to $peerId failed: $e');
+      debugPrint(stack.toString());
+
+      // Clean up failed connection attempt
+      _peerConnectionStates.remove(peerId);
+      _peerStreams.remove(peerId);
+
+      // Only emit error if we have no other connections
+      if (_connectedPeerIds.isEmpty) {
+        _emitState(SyncConnectionState.error);
+        _eventsController.add(
+          SyncError(
+            message: 'Connection failed to $peerId',
+            error: e,
+            stackTrace: stack,
+          ),
+        );
+      }
+
       rethrow;
     }
   }
 
   @override
   Future<void> disconnect() async {
+    await disconnectAll();
+  }
+
+  /// Disconnect from all peers and shut down the libp2p node.
+  Future<void> disconnectAll() async {
     if (_currentState == SyncConnectionState.disconnected) {
       return;
     }
 
-    debugPrint('[Libp2pSync] Disconnecting...');
+    debugPrint('[Libp2pSync] Disconnecting from all peers...');
 
     try {
-      // Close active stream
-      if (_activeStream != null) {
-        // TODO: Close stream when dart_libp2p API confirmed
-        // await _activeStream.close();
-        _activeStream = null;
+      // Close all peer streams
+      for (final peerId in _connectedPeerIds.toList()) {
+        await _disconnectPeer(peerId, notifyGlobal: false);
       }
 
       // Stop discovery
@@ -202,7 +241,6 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // Close node (graceful shutdown)
       await _node.close();
 
-      _connectedPeerId = null;
       _completedTables.clear();
       _pendingTables.clear();
       _rowsSynced = 0;
@@ -213,12 +251,59 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       _activePeers.clear();
       _peerMultiaddrs.clear();
 
+      // Clear multi-peer tracking
+      _connectedPeerIds.clear();
+      _peerStreams.clear();
+      _peerConnectionStates.clear();
+
       _emitState(SyncConnectionState.disconnected);
       _eventsController.add(const SyncDisconnected(reason: 'User disconnect'));
 
-      debugPrint('[Libp2pSync] Disconnected');
+      debugPrint('[Libp2pSync] ✅ Disconnected from all peers');
     } catch (e, stack) {
       debugPrint('[Libp2pSync] Disconnect error: $e');
+      debugPrint(stack.toString());
+    }
+  }
+
+  /// Disconnect from a specific peer.
+  Future<void> _disconnectPeer(
+    String peerId, {
+    bool notifyGlobal = true,
+  }) async {
+    if (!_connectedPeerIds.contains(peerId)) {
+      return;
+    }
+
+    debugPrint('[Libp2pSync] Disconnecting from peer $peerId');
+
+    try {
+      // Close stream for this peer
+      final stream = _peerStreams[peerId];
+      if (stream != null) {
+        // TODO: Close stream when dart_libp2p API confirmed
+        // await stream.close();
+      }
+
+      // Remove peer tracking
+      _peerStreams.remove(peerId);
+      _connectedPeerIds.remove(peerId);
+      _peerConnectionStates.remove(peerId);
+      _activePeers.remove(peerId);
+
+      debugPrint(
+        '[Libp2pSync] Disconnected from $peerId (${_connectedPeerIds.length} peers remaining)',
+      );
+
+      // Update global state if this was our last connection
+      if (notifyGlobal && _connectedPeerIds.isEmpty) {
+        _emitState(SyncConnectionState.disconnected);
+        _eventsController.add(
+          SyncDisconnected(reason: 'Peer $peerId disconnected'),
+        );
+      }
+    } catch (e, stack) {
+      debugPrint('[Libp2pSync] Error disconnecting from $peerId: $e');
       debugPrint(stack.toString());
     }
   }
@@ -335,14 +420,28 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   ///
   /// This combines fast discovery with intelligent trust management.
   Future<void> _autoConnectToPeer(String peerId) async {
+    // Check if we've reached max peer limit
+    if (_connectedPeerIds.length >= _maxPeers) {
+      debugPrint(
+        '[Libp2pSync] ⚠️ Max peer limit reached ($_maxPeers), skipping auto-connect to $peerId',
+      );
+      return;
+    }
+
     // Mark as attempted to avoid duplicate dials
+    if (_attemptedConnections.contains(peerId)) {
+      debugPrint('[Libp2pSync] Already attempted connection to $peerId');
+      return;
+    }
     _attemptedConnections.add(peerId);
 
-    debugPrint('[Libp2pSync] Auto-connecting to peer: $peerId');
+    debugPrint(
+      '[Libp2pSync] Auto-connecting to peer $peerId (${_connectedPeerIds.length}/$_maxPeers)',
+    );
 
     try {
       // Check if we're already connected to this peer
-      if (_activePeers.contains(peerId)) {
+      if (_connectedPeerIds.contains(peerId)) {
         debugPrint('[Libp2pSync] Already connected to $peerId, skipping');
         return;
       }
@@ -364,10 +463,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       }
 
       // Attempt to dial the peer
-      // Note: This will trigger the connection flow which includes handshake
+      // Note: connect() now handles multi-peer logic internally
       await connect(peerId: peerId);
 
-      // Track active peer
+      // Track active peer (already done in connect(), but keep for compatibility)
       _activePeers.add(peerId);
 
       // If trusted, trigger sync automatically
@@ -417,8 +516,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('Not connected. Call connect() first.');
     }
 
-    if (_activeStream == null) {
-      throw StateError('No active stream to peer');
+    // TODO(Phase 2): Broadcast to all peers via gossipsub
+    // For now, use first available peer
+    if (_peerStreams.isEmpty) {
+      throw StateError('No active streams to peers');
     }
 
     debugPrint('[Libp2pSync] Syncing table: $tableName');
@@ -519,8 +620,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('Not connected. Cannot push row.');
     }
 
-    if (_activeStream == null) {
-      throw StateError('No active stream to peer');
+    // TODO(Phase 2): Broadcast to all peers via gossipsub
+    if (_peerStreams.isEmpty) {
+      throw StateError('No active streams to peers');
     }
 
     await _sendFrame({
@@ -541,8 +643,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       throw StateError('Not connected. Cannot push rows.');
     }
 
-    if (_activeStream == null) {
-      throw StateError('No active stream to peer');
+    // TODO(Phase 2): Broadcast to all peers via gossipsub
+    if (_peerStreams.isEmpty) {
+      throw StateError('No active streams to peers');
     }
 
     await _sendFrame({'type': 'PUSH', 'table': table, 'rows': rows});
@@ -784,13 +887,23 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   /// Send a JSON frame to the connected peer.
   ///
   /// Uses LibP2pProtocol to serialize with length prefix (4B big-endian u32 + UTF-8).
+  ///
+  /// TODO(Phase 2): Broadcast to all peers via gossipsub. For now, sends to first peer.
   Future<void> _sendFrame(Map<String, dynamic> frame) async {
-    if (_activeStream == null) {
-      throw StateError('No active stream');
+    if (_peerStreams.isEmpty) {
+      throw StateError('No active streams');
+    }
+
+    // Use first available peer for now (until Phase 2 gossipsub)
+    final firstPeerId = _connectedPeerIds.first;
+    final stream = _peerStreams[firstPeerId];
+
+    if (stream == null) {
+      throw StateError('Stream not found for peer $firstPeerId');
     }
 
     // Use LibP2pProtocol.sendFrame to send with length prefixing
-    await _protocol.sendFrame(_activeStream!, frame);
+    await _protocol.sendFrame(stream, frame);
   }
 
   // ────────────────────────────────────────────────────────────────────────────

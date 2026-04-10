@@ -240,15 +240,24 @@
   - ✅ BROADCAST frame type in protocol
   - ✅ All sync messages broadcast to all peers
   - ⚠️ **Note**: Uses direct broadcast, not gossipsub (dart_libp2p v1.0.3 limitation)
-- ⏳ **Phase 3 next**: Conflict resolution (vector clocks)
-- ⏳ Phase 4-5: Not started
+- ✅ **Phase 3 complete**: Conflict resolution with vector clocks
+  - ✅ VectorClock class for distributed conflict detection
+  - ✅ Lamport timestamps per device (logical time)
+  - ✅ Device ID tracking from libp2p peer ID
+  - ✅ Vector clock included in all PUSH messages
+  - ✅ Conflict detection (concurrent updates)
+  - ✅ Last-Write-Wins merge strategy
+  - ✅ Vector clock merge on message receive
+- ⏳ **Phase 4 next**: Resilience (health checks, auto-reconnect)
+- ⏳ Phase 5: Not started (DHT for internet sync - optional)
 
 **Commits**: 
-- `ae6ed95` - Phase 1 mesh network foundation
-- `f250221` - Phase 2 broadcast layer
+- `ae6ed95` - Phase 1: Multi-peer foundation
+- `f250221` - Phase 2: Broadcast layer
+- `edcae29` - Phase 3: Vector clock conflict resolution
 
 ---
 
 **Last Updated**: 9 April 2026
-**Status**: Phase 2 ✅ COMPLETE, Phase 3 next
-**Target Completion**: Phase 3 in 1-2 days, full mesh with resilience in 2-3 weeks
+**Status**: Phase 3 ✅ COMPLETE, Phase 4 next
+**Target Completion**: Phase 4 in 1 day, full production-ready mesh in 1 week

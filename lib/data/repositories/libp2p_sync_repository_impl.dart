@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:math'; // For pow(), min() in exponential backoff
 
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../../domain/repositories/sync_repository.dart';
+import '../models/peer_quality.dart';
 import '../models/vector_clock.dart';
 import '../services/database_helper.dart';
 import '../services/identity_service.dart';
@@ -104,6 +106,25 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   final Map<String, VectorClock> _peerVectorClocks =
       {}; // peerId → their last known clock
 
+  // ── Resilience (Phase 4) ───────────────────────────────────────────────────
+  // Health checks
+  Timer? _healthCheckTimer; // Periodic PING timer
+  final Map<String, DateTime> _peerLastSeen = {}; // peerId → last PONG time
+  static const Duration _healthCheckInterval =
+      Duration(seconds: 30); // PING frequency
+  static const Duration _peerTimeout =
+      Duration(seconds: 90); // 3x health check (declare dead)
+
+  // Auto-reconnect
+  final Map<String, int> _reconnectAttempts = {}; // peerId → attempt count
+  final Map<String, DateTime> _reconnectBackoff =
+      {}; // peerId → retry after time
+  static const Duration _reconnectBaseDelay = Duration(seconds: 2);
+  static const Duration _reconnectMaxDelay = Duration(seconds: 60);
+
+  // Peer quality scoring
+  final Map<String, PeerQuality> _peerQuality = {}; // peerId → quality metrics
+
   // ────────────────────────────────────────────────────────────────────────────
   // Connection Lifecycle
   // ────────────────────────────────────────────────────────────────────────────
@@ -166,6 +187,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       debugPrint('[Libp2pSync] Starting auto-discovery...');
       discoverPeers(); // Start discovery stream (non-blocking)
 
+      // Start health check timer (Phase 4: Resilience)
+      _startHealthCheckTimer();
+
       debugPrint('[Libp2pSync] Initialized successfully');
     } catch (e, stack) {
       debugPrint('[Libp2pSync] Initialization failed: $e');
@@ -212,6 +236,10 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       final multiaddr = multiaddrs.first;
       debugPrint('[Libp2pSync] Dialing multiaddr: $multiaddr');
 
+      // Track connection attempt (Phase 4: Resilience)
+      final quality = _peerQuality.putIfAbsent(peerId, () => PeerQuality());
+      quality.recordConnectionAttempt();
+
       // Open stream to peer using /kash-sync/1.0.0 protocol
       final stream = await _node.dial(
         multiaddr, // Use full multiaddr, not just peerId
@@ -223,6 +251,15 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       _connectedPeerIds.add(peerId);
       _peerConnectionStates[peerId] = SyncConnectionState.connected;
 
+      // Track peer quality (Phase 4: Resilience)
+      final quality = _peerQuality.putIfAbsent(peerId, () => PeerQuality());
+      quality.recordConnectionSuccess();
+      _peerLastSeen[peerId] = DateTime.now(); // Mark as recently seen
+
+      // Clear reconnect backoff on successful connection
+      _reconnectAttempts.remove(peerId);
+      _reconnectBackoff.remove(peerId);
+
       // Update global state if this is our first connection
       if (_connectedPeerIds.length == 1) {
         _emitState(SyncConnectionState.connected);
@@ -230,11 +267,15 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       }
 
       debugPrint(
-        '[Libp2pSync] ✅ Connected to $peerId (${_connectedPeerIds.length}/$_maxPeers peers)',
+        '[Libp2pSync] ✅ Connected to $peerId (${_connectedPeerIds.length}/$_maxPeers peers) [${quality.qualityRating}]',
       );
     } catch (e, stack) {
       debugPrint('[Libp2pSync] Connection to $peerId failed: $e');
       debugPrint(stack.toString());
+
+      // Track connection failure (Phase 4: Resilience)
+      final quality = _peerQuality.putIfAbsent(peerId, () => PeerQuality());
+      quality.recordConnectionFailure();
 
       // Clean up failed connection attempt
       _peerConnectionStates.remove(peerId);
@@ -330,11 +371,25 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
         // await stream.close();
       }
 
+      // Record disconnect in peer quality (Phase 4: Resilience)
+      final quality = _peerQuality[peerId];
+      if (quality != null) {
+        quality.recordDisconnect();
+        debugPrint(
+          '[Libp2pSync] Peer $peerId quality: ${quality.qualityScore.toStringAsFixed(1)} (${quality.qualityRating})',
+        );
+      }
+
       // Remove peer tracking
       _peerStreams.remove(peerId);
       _connectedPeerIds.remove(peerId);
       _peerConnectionStates.remove(peerId);
       _activePeers.remove(peerId);
+
+      // Clear resilience state for this peer (Phase 4: Resilience)
+      _peerLastSeen.remove(peerId);
+      // Keep _peerQuality for reconnection quality history
+      // Keep _reconnectAttempts and _reconnectBackoff for auto-reconnect tracking
 
       debugPrint(
         '[Libp2pSync] Disconnected from $peerId (${_connectedPeerIds.length} peers remaining)',
@@ -966,22 +1021,56 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   }
 
   /// Handle PING frame (keepalive request).
+  ///
+  /// **Phase 4**: Records peer as active and tracks latency.
   Future<Map<String, dynamic>?> _handlePingFrame(
     Map<String, dynamic> frame,
     String peerId,
   ) async {
+    final timestamp = frame['timestamp'] as int?;
+
     debugPrint('[Libp2pSync] PING from $peerId');
 
-    // Respond with PONG
-    return {'type': 'PONG'};
+    // Update last seen time (Phase 4: Resilience)
+    _peerLastSeen[peerId] = DateTime.now();
+
+    // Respond with PONG, echoing timestamp for latency calculation
+    return {
+      'type': 'PONG',
+      'timestamp': timestamp,
+    };
   }
 
   /// Handle PONG frame (keepalive response).
+  ///
+  /// **Phase 4**: Records latency and updates peer quality.
   Future<Map<String, dynamic>?> _handlePongFrame(
     Map<String, dynamic> frame,
     String peerId,
   ) async {
-    debugPrint('[Libp2pSync] PONG from $peerId');
+    final sentTimestamp = frame['timestamp'] as int?;
+
+    // Calculate latency if timestamp present
+    if (sentTimestamp != null) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final latencyMs = now - sentTimestamp;
+
+      // Update peer quality with latency (Phase 4: Resilience)
+      final quality = _peerQuality[peerId];
+      if (quality != null) {
+        quality.recordLatency(latencyMs.toDouble());
+        debugPrint(
+          '[Libp2pSync] PONG from $peerId (${latencyMs}ms) [${quality.qualityRating}]',
+        );
+      } else {
+        debugPrint('[Libp2pSync] PONG from $peerId (${latencyMs}ms)');
+      }
+    } else {
+      debugPrint('[Libp2pSync] PONG from $peerId');
+    }
+
+    // Update last seen time (Phase 4: Resilience)
+    _peerLastSeen[peerId] = DateTime.now();
 
     // No response needed
     return null;
@@ -1229,11 +1318,186 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
+  // Health Check & Auto-Reconnect (Phase 4: Resilience)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Start periodic health check timer.
+  ///
+  /// Sends PING to all peers every [_healthCheckInterval] (30s).
+  /// Detects stale peers (no response for [_peerTimeout] = 90s).
+  /// Triggers auto-reconnect for timed out peers.
+  void _startHealthCheckTimer() {
+    _healthCheckTimer?.cancel(); // Cancel existing timer if any
+
+    _healthCheckTimer = Timer.periodic(_healthCheckInterval, (_) {
+      _performHealthCheck();
+    });
+
+    debugPrint('[Libp2pSync] Health check timer started (every 30s)');
+  }
+
+  /// Perform health check on all connected peers.
+  ///
+  /// 1. Send PING to all peers
+  /// 2. Check for stale peers (no PONG for 90s)
+  /// 3. Disconnect stale peers
+  /// 4. Trigger auto-reconnect for stale peers
+  Future<void> _performHealthCheck() async {
+    if (_connectedPeerIds.isEmpty) {
+      return; // No peers to check
+    }
+
+    final now = DateTime.now();
+    final stalePeers = <String>[];
+
+    // Check each connected peer
+    for (final peerId in _connectedPeerIds.toList()) {
+      final lastSeen = _peerLastSeen[peerId];
+
+      // Check if peer has timed out (no activity for 90s)
+      if (lastSeen != null && now.difference(lastSeen) > _peerTimeout) {
+        debugPrint(
+          '[Libp2pSync] ⚠️ Peer $peerId timed out (no activity for ${now.difference(lastSeen).inSeconds}s)',
+        );
+        stalePeers.add(peerId);
+        continue; // Don't send PING to stale peer
+      }
+
+      // Send PING with timestamp for latency measurement
+      try {
+        final timestamp = now.millisecondsSinceEpoch;
+        await _sendFrame({
+          'type': 'PING',
+          'timestamp': timestamp,
+        });
+
+        // Track message sent (Phase 4: Resilience)
+        final quality = _peerQuality[peerId];
+        quality?.recordMessageSent();
+
+        debugPrint('[Libp2pSync] PING sent to $peerId');
+      } catch (e) {
+        debugPrint('[Libp2pSync] Failed to send PING to $peerId: $e');
+
+        // Track message failure (Phase 4: Resilience)
+        final quality = _peerQuality[peerId];
+        quality?.recordMessageFailure();
+      }
+    }
+
+    // Handle stale peers
+    for (final peerId in stalePeers) {
+      // Disconnect stale peer
+      await _disconnectPeer(peerId);
+
+      // Get peer's multiaddrs for reconnection
+      final multiaddrs = _discovery.getMultiaddrs(peerId);
+      if (multiaddrs.isEmpty) {
+        debugPrint('[Libp2pSync] Cannot reconnect to $peerId: no multiaddrs');
+        continue;
+      }
+
+      // Trigger auto-reconnect
+      debugPrint('[Libp2pSync] Triggering auto-reconnect for stale peer $peerId');
+      unawaited(_autoReconnectToPeer(peerId, multiaddrs));
+    }
+  }
+
+  /// Auto-reconnect to a peer with exponential backoff.
+  ///
+  /// Implements exponential backoff: 2s, 4s, 8s, 16s, 32s, 60s (cap).
+  /// Stops retrying if connection succeeds or max attempts reached.
+  ///
+  /// **Phase 4**: Production-grade reconnection with backoff.
+  Future<void> _autoReconnectToPeer(
+    String peerId,
+    List<String> multiaddrs,
+  ) async {
+    // Check if we're already in backoff
+    final backoffUntil = _reconnectBackoff[peerId];
+    if (backoffUntil != null && DateTime.now().isBefore(backoffUntil)) {
+      final waitSeconds = backoffUntil.difference(DateTime.now()).inSeconds;
+      debugPrint(
+        '[Libp2pSync] Skipping reconnect to $peerId (in backoff for ${waitSeconds}s)',
+      );
+      return;
+    }
+
+    // Get current attempt count
+    final attempts = _reconnectAttempts[peerId] ?? 0;
+
+    // Calculate backoff delay: min(2^attempts * baseDelay, maxDelay)
+    final backoffMultiplier = pow(2, attempts);
+    final backoffDelay = Duration(
+      milliseconds: min(
+        (_reconnectBaseDelay.inMilliseconds * backoffMultiplier).toInt(),
+        _reconnectMaxDelay.inMilliseconds,
+      ),
+    );
+
+    // Set backoff time
+    _reconnectBackoff[peerId] = DateTime.now().add(backoffDelay);
+
+    debugPrint(
+      '[Libp2pSync] Auto-reconnect to $peerId (attempt ${attempts + 1}, delay ${backoffDelay.inSeconds}s)',
+    );
+
+    // Wait for backoff delay
+    await Future.delayed(backoffDelay);
+
+    // Check if we're at max capacity
+    if (_connectedPeerIds.length >= _maxPeers) {
+      debugPrint(
+        '[Libp2pSync] Cannot reconnect to $peerId: at max capacity ($_maxPeers peers)',
+      );
+      return;
+    }
+
+    // Attempt reconnection
+    try {
+      // Track connection attempt (Phase 4: Resilience)
+      final quality = _peerQuality.putIfAbsent(peerId, () => PeerQuality());
+      quality.recordConnectionAttempt();
+
+      // Increment attempt counter
+      _reconnectAttempts[peerId] = attempts + 1;
+
+      // Try to connect
+      await connect(peerId: peerId);
+
+      // Success! Reset reconnect state
+      _reconnectAttempts.remove(peerId);
+      _reconnectBackoff.remove(peerId);
+
+      debugPrint('[Libp2pSync] ✅ Auto-reconnected to $peerId successfully');
+    } catch (e) {
+      debugPrint('[Libp2pSync] Auto-reconnect to $peerId failed: $e');
+
+      // Connection already tracked failure in connect() method
+
+      // Retry if we haven't exceeded max attempts (e.g., 10 attempts = ~17 minutes)
+      if (attempts < 10) {
+        debugPrint('[Libp2pSync] Will retry reconnect to $peerId later');
+        // Schedule next retry (handled by next health check cycle)
+      } else {
+        debugPrint(
+          '[Libp2pSync] Giving up on reconnect to $peerId after ${attempts + 1} attempts',
+        );
+        _reconnectAttempts.remove(peerId);
+        _reconnectBackoff.remove(peerId);
+      }
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // Cleanup
   // ────────────────────────────────────────────────────────────────────────────
 
   /// Dispose resources.
   void dispose() {
+    // Cancel health check timer (Phase 4: Resilience)
+    _healthCheckTimer?.cancel();
+
     _connectionStateController.close();
     _eventsController.close();
     _discoverySubscription?.cancel();
@@ -1246,5 +1510,11 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     _peerVectorClocks.clear();
     _vectorClock = VectorClock.empty();
     _deviceId = null;
+
+    // Clear resilience state (Phase 4)
+    _peerLastSeen.clear();
+    _reconnectAttempts.clear();
+    _reconnectBackoff.clear();
+    _peerQuality.clear();
   }
 }

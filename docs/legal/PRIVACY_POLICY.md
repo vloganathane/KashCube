@@ -42,18 +42,25 @@ We explicitly DO NOT collect, store, or transmit:
 
 ## Permissions
 
-### Required Permissions
-- **Storage**: To save database locally on device
-  - Android: Local storage for SQLite database
-  - iOS: App sandbox storage
+### Core App Storage
+- **Local SQLite files** on your device
 
-### NOT Required
-- ❌ Internet/Network access
-- ❌ Location access
-- ❌ Contacts access
-- ❌ Camera access (in current version)
-- ❌ Microphone access
-- ❌ Phone access
+### Declared on Android Build
+- Internet + network state (LAN web companion/P2P sync and optional analytics transport)
+- Wi-Fi/multicast access (LAN discovery and local connectivity)
+- Notifications + boot receiver + vibration (local reminders)
+- Camera (QR scan and camera capture flows)
+- Contacts read/write (optional import/save contact flows)
+- Biometric/fingerprint (optional app lock)
+- Billing/install-referrer permissions (Play Billing and install attribution)
+- Additional platform/SDK-injected permissions used by enabled dependencies
+
+### Runtime Prompts (shown only when feature is used)
+- Notifications (when enabling reminders)
+- SMS (when enabling SMS auto-detect)
+- Camera (when using QR/camera flows)
+- Contacts (when importing/saving contacts)
+- Biometric (when enabling biometric app lock)
 
 ## Data Sharing
 
@@ -88,16 +95,8 @@ Kash Cube does not collect any data from anyone, including children. The app can
 
 Since we don't collect data:
 - This policy is unlikely to change fundamentally
-- Any updates will be reflected in the app repository
+- Any updates will be posted on GitHub Pages
 - Check the "Last Updated" date above
-
-## Open Source
-
-Kash Cube is open source. You can:
-- Review the code to verify these claims
-- Audit the database implementation
-- Confirm no network calls are made
-- Build from source yourself
 
 ## Your Rights
 
@@ -142,35 +141,36 @@ If analytics is disabled, no data is sent to Firebase. Period.
 
 ## Contact
 
-For questions about this privacy policy or the app:
-- Check the GitHub repository for source code
-- Open an issue if you have concerns
-- Verify privacy claims by reviewing the code
+For support or privacy-related questions:
+- Contact us through the Play Store listing
+- Email support channel as listed on app store page
 
 ## Third-Party Services
 
 Kash Cube uses these open-source packages:
 - **sqflite**: Local database (no network calls)
-- **provider**: State management (local only)
+- **flutter_riverpod**: State management (local only)
 - **fl_chart**: Charts rendering (local only)
 - **intl**: Date formatting (local only)
 - **path_provider**: File paths (local only)
+- **firebase_analytics**: Optional analytics (opt-in only, off by default)
 
-None of these packages collect or transmit data.
+Core packages do not collect or transmit data. Firebase Analytics only operates when explicitly enabled by user.
 
 ## Compliance
 
-- **GDPR**: Compliant by design (no data collection)
-- **CCPA**: Compliant (no data sale, no collection)
-- **COPPA**: Compliant (no collection from anyone)
+- **GDPR**: Compliant by design (no data collection except opt-in analytics)
+- **CCPA**: Compliant (no data sale, minimal collection)
+- **COPPA**: Compliant (no collection from children)
+- **DPDP Act 2023**: Compliant
 
-## Verification
+## Data Security
 
-You can verify these claims by:
-1. Checking network permissions (none required)
-2. Reviewing source code (fully open)
-3. Using network monitoring tools (no traffic)
-4. Inspecting the database file (local only)
+- SQLite database with standard security
+- Access restricted to Kash Cube app only
+- Protected by device-level security (lock screen, encryption)
+- PIN protected with PBKDF2-HMAC-SHA256 (100,000 iterations)
+- No financial data transmission = no network interception risk
 
 ## Bottom Line
 
@@ -180,6 +180,4 @@ Your financial data is personal. We built Kash Cube to keep it that way.
 
 ---
 
-**Questions?** Review the source code or open an issue on GitHub.
-
-**Trust, but verify.** We encourage you to audit the code yourself.
+**Questions?** Contact us through the Play Store listing or visit our GitHub Pages site.

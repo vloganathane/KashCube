@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kash Cube - Privacy Policy</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1B5E20;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .version {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #2E7D32;
+            font-size: 20px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #81C784;
+            padding-bottom: 5px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background-color: #E8F5E9;
+            padding: 15px;
+            border-left: 4px solid #2E7D32;
+            margin: 20px 0;
+        }
+        .no-collect {
+            color: #C62828;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kash Cube — Privacy Policy</h1>
+        <p class="version">Version 1.1 · Last Updated: March 22, 2026</p>
+
+        <div class="highlight">
+            <strong>OUR COMMITMENT</strong><br>
+            Kash Cube is built with privacy at its core. Your financial data is yours and yours alone.
+        </div>
+
+        <h2>DATA STORAGE</h2>
+        <p>All data is stored locally on your device using SQLite. There is no cloud sync, no remote servers, and no login required. Your data never leaves your device.</p>
+        
+        <p><strong>What we store:</strong></p>
+        <ul>
+            <li>Transaction amounts, categories, descriptions, and dates</li>
+            <li>Party names and notes (stored locally)</li>
+            <li>Account and credit records</li>
+        </ul>
+
+        <p><strong>Where it is stored:</strong></p>
+        <ul>
+            <li>Android: App-private local storage</li>
+            <li>iOS: App sandbox (Application Support)</li>
+        </ul>
+
+        <h2>DATA WE DO NOT COLLECT</h2>
+        <ul class="no-collect">
+            <li>✗ Personal information (name, email, phone)</li>
+            <li>✗ Location data</li>
+            <li>✗ Device identifiers or advertising IDs</li>
+            <li>✗ Crash reports</li>
+            <li>✗ IP addresses</li>
+            <li>✗ Any financial data sent to third parties</li>
+        </ul>
+
+        <h2>ANALYTICS (opt-in, off by default)</h2>
+        <p>Optional anonymous analytics via Firebase Analytics — <strong>OFF by default</strong>. Enable in Settings → Privacy → Anonymous Analytics.</p>
+
+        <p><strong>When opted in, we collect:</strong></p>
+        <ul>
+            <li>Screen navigation events (e.g. "opened Reports")</li>
+            <li>Feature interaction events (e.g. "exported CSV")</li>
+            <li>App session metadata from Firebase (OS version, country)</li>
+        </ul>
+
+        <p><strong>We NEVER collect (even when opted in):</strong></p>
+        <ul class="no-collect">
+            <li>✗ Transaction amounts, descriptions, or dates</li>
+            <li>✗ Party names, balances, or contact details</li>
+            <li>✗ SMS content</li>
+            <li>✗ Any personally identifiable financial information</li>
+        </ul>
+
+        <p>Disabling analytics stops all event collection immediately.</p>
+
+        <h2>PERMISSIONS</h2>
+        <p><strong>Core app storage:</strong> Local SQLite files on your device</p>
+        
+        <p><strong>Declared on Android build:</strong></p>
+        <ul>
+            <li>Internet + network state (LAN web companion/P2P sync and optional analytics transport)</li>
+            <li>Wi-Fi/multicast access (LAN discovery and local connectivity)</li>
+            <li>Notifications + boot receiver + vibration (local reminders)</li>
+            <li>Camera (QR scan and camera capture flows)</li>
+            <li>Contacts read/write (optional import/save contact flows)</li>
+            <li>Biometric/fingerprint (optional app lock)</li>
+            <li>Billing/install-referrer permissions (Play Billing and install attribution)</li>
+            <li>Additional platform/SDK-injected permissions used by enabled dependencies</li>
+        </ul>
+
+        <p><strong>Runtime prompts shown only when feature is used:</strong></p>
+        <ul>
+            <li>Notifications (when enabling reminders)</li>
+            <li>SMS (when enabling SMS auto-detect)</li>
+            <li>Camera (when using QR/camera flows)</li>
+            <li>Contacts (when importing/saving contacts)</li>
+            <li>Biometric (when enabling biometric app lock)</li>
+        </ul>
+
+        <h2>DATA SHARING</h2>
+        <p>We do not share any data — because we do not have access to it. Your data never leaves your device, is never uploaded, and is never sold.</p>
+
+        <h2>SECURITY</h2>
+        <ul>
+            <li>Device-level security (lock screen, encryption)</li>
+            <li>PIN protected with PBKDF2-HMAC-SHA256 (100,000 iterations)</li>
+            <li>No data transmission = no network interception risk</li>
+        </ul>
+
+        <h2>YOUR RIGHTS</h2>
+        <ul>
+            <li><strong>Access:</strong> View all your data in the app at any time</li>
+            <li><strong>Delete:</strong> Uninstall the app to clear all data</li>
+            <li><strong>Export:</strong> PDF/CSV export from within the app</li>
+            <li><strong>Modify:</strong> Edit or delete any record</li>
+        </ul>
+
+        <h2>COMPLIANCE</h2>
+        <ul>
+            <li><strong>GDPR:</strong> Compliant by design — no data collection</li>
+            <li><strong>CCPA:</strong> Compliant — no data sale</li>
+            <li><strong>COPPA:</strong> Compliant — no collection from anyone</li>
+            <li><strong>DPDP Act 2023:</strong> Compliant</li>
+        </ul>
+
+        <h2>CONTACT</h2>
+        <p>For support or privacy-related questions, contact us through the Play Store listing or email support.</p>
+
+        <div class="footer">
+            <p>© 2026 Kash Cube · All data stays on your device</p>
+            <p><a href="index.html" style="color: #2E7D32; text-decoration: none;">Back to Home</a> | <a href="terms.html" style="color: #2E7D32; text-decoration: none;">Terms of Use</a></p>
+        </div>
+    </div>
+</body>
+</html>

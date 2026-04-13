@@ -10,7 +10,7 @@ import '../../providers/analytics_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/sms_provider.dart';
 import '../../providers/app_user_provider.dart';
-import '../../p2p/devices_screen.dart';
+// import '../../p2p/devices_screen.dart';  // Hidden for Play Store
 import 'settings_search_helper.dart';
 import 'accounts_manage_screen.dart';
 import 'app_logs_screen.dart';
@@ -29,7 +29,7 @@ import 'sms_permission_screen.dart';
 import 'storage_health_screen.dart';
 import 'template_list_screen.dart';
 import 'upgrade_screen.dart';
-import 'open_on_laptop_screen.dart';
+// import 'open_on_laptop_screen.dart';  // Hidden for Play Store
 
 // ── Profile provider ──────────────────────────────────────────────────────────
 
@@ -205,48 +205,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           MaterialPageRoute(builder: (_) => const EncryptedBackupScreen()),
         ),
       ),
-      SettingItem(
-        title: 'Devices & LAN Sync',
-        subtitle: 'Pair devices and sync over Wi-Fi',
-        icon: Icons.devices_outlined,
-        sectionLabel: 'Data',
-        keywords: ['devices', 'lan', 'sync', 'wifi', 'pair', 'p2p'],
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => DevicesScreen()),
-        ),
-      ),
-      SettingItem(
-        title: 'Experimental: libp2p Sync',
-        subtitle: 'Using dart_libp2p for peer-to-peer sync',
-        icon: Icons.science_outlined,
-        sectionLabel: 'Data',
-        keywords: [
-          'libp2p',
-          'experimental',
-          'sync',
-          'webrtc',
-          'protocol',
-          'dart',
-        ],
-        onTap: () {
-          setState(() {
-            _searchQuery = '';
-            _searchController.clear();
-          });
-        },
-      ),
-      SettingItem(
-        title: 'Open on Laptop',
-        subtitle: 'View KashCube in browser over Wi-Fi',
-        icon: Icons.laptop_outlined,
-        sectionLabel: 'Data',
-        keywords: ['laptop', 'browser', 'web', 'wifi', 'companion'],
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const OpenOnLaptopScreen()),
-        ),
-      ),
+      // ──────────────────────────────────────────────────────────────────
+      // HIDDEN FOR PLAY STORE RELEASE — Experimental sync features
+      // Uncomment these for internal testing builds
+      // ──────────────────────────────────────────────────────────────────
+      // SettingItem(
+      //   title: 'Devices & LAN Sync',
+      //   subtitle: 'Pair devices and sync over Wi-Fi',
+      //   icon: Icons.devices_outlined,
+      //   sectionLabel: 'Data',
+      //   keywords: ['devices', 'lan', 'sync', 'wifi', 'pair', 'p2p'],
+      //   onTap: () => Navigator.push(
+      //     context,
+      //     MaterialPageRoute(builder: (_) => DevicesScreen()),
+      //   ),
+      // ),
+      // SettingItem(
+      //   title: 'Experimental: libp2p Sync',
+      //   subtitle: 'Using dart_libp2p for peer-to-peer sync',
+      //   icon: Icons.science_outlined,
+      //   sectionLabel: 'Data',
+      //   keywords: [
+      //     'libp2p',
+      //     'experimental',
+      //     'sync',
+      //     'webrtc',
+      //     'protocol',
+      //     'dart',
+      //   ],
+      //   onTap: () {
+      //     setState(() {
+      //       _searchQuery = '';
+      //       _searchController.clear();
+      //     });
+      //   },
+      // ),
+      // SettingItem(
+      //   title: 'Open on Laptop',
+      //   subtitle: 'View KashCube in browser over Wi-Fi',
+      //   icon: Icons.laptop_outlined,
+      //   sectionLabel: 'Data',
+      //   keywords: ['laptop', 'browser', 'web', 'wifi', 'companion'],
+      //   onTap: () => Navigator.push(
+      //     context,
+      //     MaterialPageRoute(builder: (_) => const OpenOnLaptopScreen()),
+      //   ),
+      // ),
       SettingItem(
         title: 'Diagnostics Logs',
         subtitle: 'View, copy, and share recent app logs',
@@ -498,11 +502,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               color: Colors.transparent,
               child: InkWell(
                 onTap: () {
-                  print('InkWell tapped: ${item.title}');
                   // For non-navigable items, clear search
                   if (item.title == 'App Lock' ||
                       item.title == 'Biometric Unlock' ||
-                      item.title == 'Experimental: libp2p Sync' ||
+                      // item.title == 'Experimental: libp2p Sync' ||  // Hidden for Play Store
                       item.title == 'Auto-detect SMS transactions' ||
                       item.title == 'Scan SMS inbox' ||
                       item.title == 'Anonymous Analytics' ||
@@ -826,54 +829,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                               ),
                             ),
                           ),
-                          ListTile(
-                            leading: const Icon(Icons.devices_outlined),
-                            title: const Text('Devices & LAN Sync'),
-                            subtitle: const Text(
-                              'Pair devices and sync over Wi-Fi',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DevicesScreen(),
-                              ),
-                            ),
-                          ),
-                          Consumer(
-                            builder: (context, ref, _) {
-                              final enabled = ref.watch(
-                                libp2pSyncEnabledProvider,
-                              );
-                              return SwitchListTile(
-                                secondary: const Icon(Icons.science_outlined),
-                                title: const Text('Experimental: libp2p Sync'),
-                                subtitle: Text(
-                                  enabled
-                                      ? 'Using dart_libp2p (Phase 1) · Restart app to apply'
-                                      : 'Using WebRTC (default) · Enable for testing',
-                                ),
-                                value: enabled,
-                                onChanged: (v) => ref
-                                    .read(libp2pSyncEnabledProvider.notifier)
-                                    .setEnabled(v),
-                              );
-                            },
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.laptop_outlined),
-                            title: const Text('Open on Laptop'),
-                            subtitle: const Text(
-                              'View KashCube in your browser over Wi-Fi',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const OpenOnLaptopScreen(),
-                              ),
-                            ),
-                          ),
+                          // ─────────────────────────────────────────────────────────────
+                          // HIDDEN FOR PLAY STORE RELEASE — Experimental sync features
+                          // Uncomment for internal testing builds
+                          // ─────────────────────────────────────────────────────────────
+                          // ListTile(
+                          //   leading: const Icon(Icons.devices_outlined),
+                          //   title: const Text('Devices & LAN Sync'),
+                          //   subtitle: const Text(
+                          //     'Pair devices and sync over Wi-Fi',
+                          //   ),
+                          //   trailing: const Icon(Icons.chevron_right),
+                          //   onTap: () => Navigator.push(
+                          //     context,
+                          //     MaterialPageRoute(
+                          //       builder: (_) => DevicesScreen(),
+                          //     ),
+                          //   ),
+                          // ),
+                          // Consumer(
+                          //   builder: (context, ref, _) {
+                          //     final enabled = ref.watch(
+                          //       libp2pSyncEnabledProvider,
+                          //     );
+                          //     return SwitchListTile(
+                          //       secondary: const Icon(Icons.science_outlined),
+                          //       title: const Text('Experimental: libp2p Sync'),
+                          //       subtitle: Text(
+                          //         enabled
+                          //             ? 'Using dart_libp2p (Phase 1) · Restart app to apply'
+                          //             : 'Using WebRTC (default) · Enable for testing',
+                          //       ),
+                          //       value: enabled,
+                          //       onChanged: (v) => ref
+                          //           .read(libp2pSyncEnabledProvider.notifier)
+                          //           .setEnabled(v),
+                          //     );
+                          //   },
+                          // ),
+                          // ListTile(
+                          //   leading: const Icon(Icons.laptop_outlined),
+                          //   title: const Text('Open on Laptop'),
+                          //   subtitle: const Text(
+                          //     'View KashCube in your browser over Wi-Fi',
+                          //   ),
+                          //   trailing: const Icon(Icons.chevron_right),
+                          //   onTap: () => Navigator.push(
+                          //     context,
+                          //     MaterialPageRoute(
+                          //       builder: (_) => const OpenOnLaptopScreen(),
+                          //     ),
+                          //   ),
+                          // ),
                           ListTile(
                             leading: const Icon(Icons.bug_report_outlined),
                             title: const Text('Diagnostics Logs'),
@@ -1329,43 +1336,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               MaterialPageRoute(builder: (_) => const EncryptedBackupScreen()),
             ),
           ),
-          ListTile(
-            leading: const Icon(Icons.devices_outlined),
-            title: const Text('Devices & LAN Sync'),
-            subtitle: const Text('Pair devices and sync over Wi-Fi'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => DevicesScreen()),
-            ),
-          ),
-          Consumer(
-            builder: (context, ref, _) {
-              final enabled = ref.watch(libp2pSyncEnabledProvider);
-              return SwitchListTile(
-                secondary: const Icon(Icons.science_outlined),
-                title: const Text('Experimental: libp2p Sync'),
-                subtitle: Text(
-                  enabled
-                      ? 'Using dart_libp2p (Phase 1) · Restart app to apply'
-                      : 'Using WebRTC (default) · Enable for testing',
-                ),
-                value: enabled,
-                onChanged: (v) =>
-                    ref.read(libp2pSyncEnabledProvider.notifier).setEnabled(v),
-              );
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.laptop_outlined),
-            title: const Text('Open on Laptop'),
-            subtitle: const Text('View KashCube in your browser over Wi-Fi'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const OpenOnLaptopScreen()),
-            ),
-          ),
+          // ──────────────────────────────────────────────────────────────────
+          // HIDDEN FOR PLAY STORE RELEASE — Experimental sync features
+          // Uncomment for internal testing builds
+          // ──────────────────────────────────────────────────────────────────
+          // ListTile(
+          //   leading: const Icon(Icons.devices_outlined),
+          //   title: const Text('Devices & LAN Sync'),
+          //   subtitle: const Text('Pair devices and sync over Wi-Fi'),
+          //   trailing: const Icon(Icons.chevron_right),
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(builder: (_) => DevicesScreen()),
+          //   ),
+          // ),
+          // Consumer(
+          //   builder: (context, ref, _) {
+          //     final enabled = ref.watch(libp2pSyncEnabledProvider);
+          //     return SwitchListTile(
+          //       secondary: const Icon(Icons.science_outlined),
+          //       title: const Text('Experimental: libp2p Sync'),
+          //       subtitle: Text(
+          //         enabled
+          //             ? 'Using dart_libp2p (Phase 1) · Restart app to apply'
+          //             : 'Using WebRTC (default) · Enable for testing',
+          //       ),
+          //       value: enabled,
+          //       onChanged: (v) =>
+          //           ref.read(libp2pSyncEnabledProvider.notifier).setEnabled(v),
+          //     );
+          //   },
+          // ),
+          // ListTile(
+          //   leading: const Icon(Icons.laptop_outlined),
+          //   title: const Text('Open on Laptop'),
+          //   subtitle: const Text('View KashCube in your browser over Wi-Fi'),
+          //   trailing: const Icon(Icons.chevron_right),
+          //   onTap: () => Navigator.push(
+          //     context,
+          //     MaterialPageRoute(builder: (_) => const OpenOnLaptopScreen()),
+          //   ),
+          // ),
           ListTile(
             leading: const Icon(Icons.bug_report_outlined),
             title: const Text('Diagnostics Logs'),
@@ -2096,7 +2107,7 @@ const _kPrivacyPolicy =
     'COPPA: Compliant — no collection from anyone\n'
     'DPDP Act 2023: Compliant\n\n'
     'CONTACT\n'
-    'Review the code or raise an issue on the official GitHub repository. Trust, but verify.';
+    'For support or privacy-related questions, contact us through the Play Store listing or email support.';
 
 const _kTermsOfUse =
     'Kash Cube — Terms of Use & Privacy Policy\n'

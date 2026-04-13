@@ -252,7 +252,6 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       _peerConnectionStates[peerId] = SyncConnectionState.connected;
 
       // Track peer quality (Phase 4: Resilience)
-      final quality = _peerQuality.putIfAbsent(peerId, () => PeerQuality());
       quality.recordConnectionSuccess();
       _peerLastSeen[peerId] = DateTime.now(); // Mark as recently seen
 
@@ -1058,7 +1057,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // Update peer quality with latency (Phase 4: Resilience)
       final quality = _peerQuality[peerId];
       if (quality != null) {
-        quality.recordLatency(latencyMs.toDouble());
+        quality.recordLatency(latencyMs);
         debugPrint(
           '[Libp2pSync] PONG from $peerId (${latencyMs}ms) [${quality.qualityRating}]',
         );
@@ -1392,7 +1391,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
       // Get peer's multiaddrs for reconnection
       final multiaddrs = _discovery.getMultiaddrs(peerId);
-      if (multiaddrs.isEmpty) {
+      if (multiaddrs == null || multiaddrs.isEmpty) {
         debugPrint('[Libp2pSync] Cannot reconnect to $peerId: no multiaddrs');
         continue;
       }

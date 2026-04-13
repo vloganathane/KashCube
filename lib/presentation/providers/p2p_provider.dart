@@ -12,7 +12,7 @@ import '../../data/services/p2p/p2p_server.dart';
 import '../../data/services/web/web_companion_service.dart';
 import '../providers/identity_provider.dart';
 import '../providers/settings_provider.dart';
-import '../providers/sync_repository_provider.dart';
+import '../providers/sync_mode_runtime_provider.dart';
 
 // ── Read-only stream providers ─────────────────────────────────────────────
 
@@ -87,73 +87,7 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
     if (state || _enabling) return;
     _enabling = true;
     try {
-      final db = await DatabaseHelper.instance.database;
-      // Wait for both the signing keypair AND the identity keypair to be
-      // loaded — identityInitProvider runs ensureIdentityInitialized which
-      // populates identityId used by P2pCoordinator.start().
-      await _ref.read(identityInitProvider.future);
-      final identity = await _ref.read(identityServiceProvider.future);
-      final settings = _ref.read(settingsRepositoryProvider);
-      final name = await settings.get(SettingsKeys.ownerName);
-
-      // Check if libp2p sync is enabled (experimental feature)
-      final libp2pEnabled = _ref.read(libp2pSyncEnabledProvider);
-      debugPrint(
-        '[P2P] Sync mode: ${libp2pEnabled ? "libp2p (experimental)" : "WebRTC (legacy)"}',
-      );
-
-      if (libp2pEnabled) {
-        // ═══════════════════════════════════════════════════════════════════
-        // libp2p SYNC PATH (Experimental)
-        // ═══════════════════════════════════════════════════════════════════
-        debugPrint('[P2P] Initializing libp2p sync...');
-
-        try {
-          // Get libp2p sync repository from provider
-          final syncRepo = _ref.read(libp2pSyncRepositoryProvider);
-
-          // Initialize the repository (starts libp2p host + discovery)
-          await syncRepo.initialize();
-
-          debugPrint('[P2P] ✅ libp2p sync initialized successfully!');
-          debugPrint(
-            '[P2P] Peer ID: ${_ref.read(libp2pNodeProvider).localPeerId}',
-          );
-          debugPrint(
-            '[P2P] Listening on: ${_ref.read(libp2pNodeProvider).listeningAddrs.join(", ")}',
-          );
-
-          // Register background sync task
-          await registerP2pSyncTask();
-
-          if (mounted) {
-            state = true;
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setBool(_kLanSyncEnabled, true);
-          }
-
-          _enabling = false;
-          return; // ← EXIT - Don't start P2pCoordinator when using libp2p
-        } catch (e, s) {
-          debugPrint('[P2P] ❌ libp2p initialization failed: $e');
-          debugPrint(s.toString());
-          _enabling = false;
-          rethrow;
-        }
-      }
-
-      // ═══════════════════════════════════════════════════════════════════
-      // WebRTC SYNC PATH (Legacy - will be deprecated)
-      // ═══════════════════════════════════════════════════════════════════
-      debugPrint('[P2P] Using legacy WebRTC sync (P2pCoordinator)');
-      await P2pCoordinator.instance.start(
-        db: db,
-        identity: identity,
-        displayName: (name == null || name.trim().isEmpty)
-            ? 'KashCube'
-            : name.trim(),
-      );
-      await registerP2pSyncTask();
+      await _ref.read(syncModeRuntimeProvider).startLanSync();
       if (mounted) {
         state = true;
         final prefs = await SharedPreferences.getInstance();
@@ -176,25 +110,12 @@ class P2pEnabledNotifier extends StateNotifier<bool> {
   Future<void> disable() async {
     if (!state) return;
 
-    // Check which sync mode is active
-    final libp2pEnabled = _ref.read(libp2pSyncEnabledProvider);
-
-    if (libp2pEnabled) {
-      debugPrint('[P2P] Stopping libp2p sync...');
-      try {
-        // Close libp2p node (disconnects all peers, stops discovery)
-        final node = _ref.read(libp2pNodeProvider);
-        await node.close();
-        debugPrint('[P2P] ✅ libp2p sync stopped');
-      } catch (e) {
-        debugPrint('[P2P] Error stopping libp2p: $e');
-      }
-    } else {
-      debugPrint('[P2P] Stopping WebRTC sync...');
-      await P2pCoordinator.instance.stop();
+    try {
+      await _ref.read(syncModeRuntimeProvider).stopLanSync();
+    } catch (e) {
+      debugPrint('[P2P] disable() stop failed: $e');
     }
 
-    await cancelP2pSyncTask();
     if (mounted) {
       state = false;
       final prefs = await SharedPreferences.getInstance();

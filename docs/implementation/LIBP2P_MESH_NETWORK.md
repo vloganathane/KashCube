@@ -12,6 +12,31 @@
 
 **Issue**: Doesn't scale beyond 2 devices. If Device A connects to Device B, and Device C appears, only one connection can be maintained.
 
+## Product Structure Decision (10 Apr 2026)
+
+Decision: keep a single KashCube app, split internals into modules.
+
+- App Core module: finance domain, local SQLite, UI, settings
+- Sync Runtime module: sync mode orchestration and lifecycle
+- Mesh Engine module: libp2p discovery, broadcast, conflict resolution, resilience
+
+Rationale:
+
+- Avoid user confusion and install friction from multiple app downloads
+- Isolate distributed-system complexity from finance product code
+- Keep optional mesh behavior behind feature flags while preserving one product surface
+- Enable gradual hardening and testing without expanding release complexity
+
+Planned rollout:
+
+1. Phase A: modular monolith (single app, strict interfaces)
+2. Phase B: optional feature packaging if size/perf data justifies it
+3. Phase C: evaluate separate companion distribution only with strong usage evidence
+
+Status update:
+
+- Started Phase A boundary work by extracting sync mode orchestration out of UI-facing provider code into a dedicated runtime provider/service.
+
 ## Target Architecture (Mesh Network)
 
 ### Phase 1: Multi-Peer Connection Management ✅ CURRENT

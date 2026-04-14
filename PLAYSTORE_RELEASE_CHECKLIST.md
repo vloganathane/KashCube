@@ -22,7 +22,7 @@
 
 ### Permissions Review
 - [ ] **AndroidManifest.xml permissions justified**
-  - [ ] INTERNET — LAN sync & opt-in analytics ONLY
+  - [ ] INTERNET — LAN sync & analytics (on by default, opt-out available)
   - [ ] ACCESS_NETWORK_STATE — LAN discovery
   - [ ] ACCESS_WIFI_STATE — LAN discovery
   - [ ] POST_NOTIFICATIONS — Local reminders
@@ -96,7 +96,7 @@
 - [ ] **Backup includes all tables**
 - [ ] **Media files backed up** (if applicable)
 
-### Analytics (Opt-in)
+### Analytics (On by default, opt-out available)
 - [ ] **Firebase config valid** (google-services.json)
 - [ ] **Consent check before every event**
 - [ ] **No financial data in events**

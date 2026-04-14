@@ -48,7 +48,7 @@ Location: **Play Console → Policy → App content → Data safety**
 - ❌ Device/other IDs (for analytics purposes)
 
 **Important clarifications:**
-- **Analytics is OFF by default** — users must explicitly enable it
+- **Analytics is ON by default** — users can disable it in Settings
 - **Financial data stays local** — never transmitted
 - **SMS content is NOT collected** — only parsed locally
 - **Contacts stored locally** — not sent to servers
@@ -147,13 +147,17 @@ Optional tablet screenshots (7-10" layout)
 
 **Short description (80 chars max):**
 ```
-Privacy-first expense tracker for India. 100% local. UPI/SMS. GST invoices.
+Complete finance manager for India. 100% local. Income, credits, invoices, GST.
 ```
+
+**Alternatives:**
+- All-in-one finance app for India. 100% local. Income, expenses, credits, GST.
+- Privacy-first money manager for India. Local-only. Income, credits, UPI, GST.
 
 **Full description (4000 chars max):**
 
 ```
-🔒 Kash Cube — Privacy-First Financial Tracker for India
+🔒 Kash Cube — Complete Privacy-First Finance Manager for India
 
 Your money, your data, your device. Period.
 
@@ -162,29 +166,39 @@ All your financial data stays on your phone. No servers, no cloud sync, no data 
 
 ✨ KEY FEATURES
 
+💰 Complete Financial Tracking
+• Track income, expenses, investments, and transfers
+• Manage credits/udhar (lent & borrowed money)
+• Multiple accounts: Bank, UPI, Wallet, Cash
+• Budgets with real-time tracking
+• Loan management (personal & business)
+
 📊 Auto-Capture Transactions
 Automatically detect UPI, bank SMS, PhonePe, GPay, Paytm payments. One tap to add.
 
-💼 GST Invoices & Quotes
-Generate professional GST-compliant invoices. Built for Indian businesses.
+💼 GST Invoices & Business Tools
+• Generate professional GST-compliant invoices
+• Party/customer management
+• Item catalog with HSN/SAC codes
+• Quotes and booking PDFs
+• Team management (assign roles & permissions)
 
-📈 Smart Reports
-Visual breakdowns by category, party, date. Track expenses at a glance.
-
-💰 Credits/Udhar Tracking
-Manage customer credits (khata). Never forget who owes what.
+📈 Smart Reports & Analytics
+Visual breakdowns by category, party, account, and date. Track income vs expenses, savings rate, daily spend, and more.
 
 🇮🇳 Built for India
 • ₹ Indian numbering (₹1,00,000 not $100,000)
 • GST compliance tools
-• UPI/NEFT/RTGS support
+• UPI/NEFT/RTGS/IMPS support
 • Hindi/English UI
+• Financial year tracking (Apr-Mar)
 
 🔐 Security First
 • PIN lock with biometric unlock
 • AES-256 encrypted backups
 • PBKDF2 password hashing (100k iterations)
 • Optional app lock timeout
+• No data leaves your device
 
 🌙 Modern Design
 • Material Design 3
@@ -193,17 +207,18 @@ Manage customer credits (khata). Never forget who owes what.
 • Indian color palette (green for income, red for expense)
 
 🎯 100% Privacy Guarantee
-• No cloud sync (unless you enable LAN sync between YOUR devices)
+• No cloud sync (unless you enable optional LAN sync between YOUR devices)
 • No email/phone required
 • No login, no user account
-• Optional analytics (you control it, off by default)
+• Optional analytics (enabled by default, you can disable it)
 • No ads, ever
 
 📱 WHO IS THIS FOR?
 
-• Small business owners tracking daily expenses
-• Freelancers managing invoices
-• Anyone who wants privacy-first finance tracking
+• Small business owners managing income, expenses & invoices
+• Freelancers tracking payments and client credits
+• Anyone managing personal finances (salary, expenses, investments)
+• Shopkeepers tracking daily sales and customer udhar/khata
 • Users tired of apps that upload everything to the cloud
 
 🚫 NO NETWORK CALLS
@@ -295,7 +310,7 @@ Follow questionnaire:
 1. **Test release build on physical device** before uploading
 2. **Backup your keystore** (`key.properties` + keystore file) — you can NEVER re-sign without it
 3. **Enable experimental features** only for internal testing builds
-4. **Verify analytics consent** works (off by default, user must enable)
+4. **Verify analytics consent** works (on by default, user can disable)
 5. **Test SMS parsing** with 10+ real messages
 6. **Check database migration** (fresh install + restore from backup)
 

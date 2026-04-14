@@ -13,7 +13,7 @@
 
 **Answer:** ✅ **Yes**
 
-**Reason:** Optional Firebase Analytics collects app interaction data
+**Reason:** Firebase Analytics collects app interaction data (enabled by default, user can disable)
 
 ---
 
@@ -29,7 +29,7 @@ Select: **App interactions**
 
 - **Is this data collected?** Yes
 - **Is this data shared?** No
-- **Is collection optional?** Yes (user must enable analytics)
+- **Is collection optional?** Yes (enabled by default, user can disable in Settings)
 - **Purpose:** Analytics
 - **Ephemeral?** No
 
@@ -39,7 +39,7 @@ Select: **Other app performance data**
 
 - **Is this data collected?** Yes (Firebase automatically collects OS version, country via IP)
 - **Is this data shared?** No
-- **Is collection optional?** Yes (user must enable analytics)
+- **Is collection optional?** Yes (enabled by default, user can disable in Settings)
 - **Purpose:** Analytics
 - **Ephemeral?** No
 
@@ -199,8 +199,8 @@ For each data type you marked as collected:
 - ❌ Device IDs (for tracking)
 
 **Key Points:**
-- Analytics is OFF by default
-- User must explicitly enable it
+- Analytics is ON by default
+- User can disable it in Settings→Privacy→Anonymous Analytics
 - Only feature usage tracked (no financial data)
 - Data encrypted in transit (HTTPS)
 - Users can disable anytime
@@ -246,8 +246,8 @@ On your Play Store listing:
 > **No data shared with third parties**  
 > This app may collect App interactions and Diagnostics, and this data is not shared with third parties  
 > *Data collection and usage*  
-> App interactions — Optional  
-> Diagnostics — Optional  
+> App interactions — Optional (users can opt out)  
+> Diagnostics — Optional (users can opt out)  
 > *Security practices*  
 > Data is encrypted in transit  
 > You can request that data be deleted
@@ -259,10 +259,10 @@ On your Play Store listing:
 Before submitting:
 
 - [ ] Only declared: App interactions + Diagnostics
-- [ ] Marked both as "optional" (user must enable)
+- [ ] Marked both as "optional" (enabled by default, users can disable)
 - [ ] NOT declared: Financial info, SMS, Contacts, Location
 - [ ] Security practices mention encryption + deletion
-- [ ] Explanation says analytics is off by default
+- [ ] Explanation says analytics is on by default with opt-out
 
 ---
 

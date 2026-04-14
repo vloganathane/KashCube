@@ -115,10 +115,10 @@ The HTML files are standalone and ready to use. To customize:
 When filling out the Play Store Data Safety form, use this guidance:
 
 **Data Collection:**
-- [x] Analytics (optional, off by default)
+- [x] Analytics (on by default, users can opt out)
   - Type: App interactions
   - Purpose: Analytics
-  - Collected: Only if user opts in
+  - Collected: Enabled by default, users can disable in Settings
   - Shared: No
 
 - [ ] Financial info: NO

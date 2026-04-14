@@ -52,7 +52,7 @@
    - One-tap import UI
 
 5. **Settings → Privacy** (Recommended)
-   - Analytics toggle (OFF by default)
+   - Analytics toggle (ON by default)
    - PIN lock option
    - App lock settings
    - Highlights privacy-first features

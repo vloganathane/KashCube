@@ -38,7 +38,7 @@ We explicitly DO NOT collect, store, or transmit:
 - ❌ Advertising IDs
 - ❌ IP addresses
 - ❌ Any financial data to third parties
-- ✅ **Anonymous usage analytics** — opt-in only, off by default (see [Analytics](#analytics--tracking) below)
+- ✅ **Anonymous usage analytics** — on by default (see [Analytics](#analytics--tracking) below), can be disabled
 
 ## Permissions
 
@@ -116,9 +116,9 @@ Since all data is local on your device, you have complete control:
 
 ## Analytics & Tracking
 
-Kash Cube includes **opt-in anonymous usage analytics** powered by Firebase Analytics. This feature is **off by default**. You must explicitly enable it in **Settings → Privacy**.
+Kash Cube includes **anonymous usage analytics** powered by Firebase Analytics. This feature is **on by default**. You can disable it anytime in **Settings → Privacy → Anonymous Analytics**.
 
-### What we collect (only when opted in)
+### What we collect (when enabled)
 - Screen navigation events (e.g., "opened Reports screen")
 - Feature interaction events (e.g., "exported CSV", "enabled App Lock")
 - App session metadata provided automatically by Firebase (OS version, country)
@@ -132,8 +132,8 @@ Kash Cube includes **opt-in anonymous usage analytics** powered by Firebase Anal
 - ❌ Crashlytics or crash data
 
 ### Your control
-- Default state: **disabled**
-- Toggle in **Settings → Privacy → Anonymous Analytics**
+- Default state: **enabled**
+- Toggle in **Settings → Privacy → Anonymous Analytics** to disable
 - Disabling stops all event collection immediately
 - Firebase Analytics data is subject to [Google's Privacy Policy](https://policies.google.com/privacy)
 
@@ -153,13 +153,13 @@ Kash Cube uses these open-source packages:
 - **fl_chart**: Charts rendering (local only)
 - **intl**: Date formatting (local only)
 - **path_provider**: File paths (local only)
-- **firebase_analytics**: Optional analytics (opt-in only, off by default)
+- **firebase_analytics**: Optional analytics (on by default, can be disabled)
 
-Core packages do not collect or transmit data. Firebase Analytics only operates when explicitly enabled by user.
+Core packages do not collect or transmit data. Firebase Analytics only operates when enabled (default state) and can be disabled by user.
 
 ## Compliance
 
-- **GDPR**: Compliant by design (no data collection except opt-in analytics)
+- **GDPR**: Compliant by design (minimal data collection, opt-out available)
 - **CCPA**: Compliant (no data sale, minimal collection)
 - **COPPA**: Compliant (no collection from children)
 - **DPDP Act 2023**: Compliant

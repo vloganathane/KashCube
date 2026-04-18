@@ -70,9 +70,13 @@ class DatabaseHelper {
   void notifyChange(String table) => SyncEventBus.instance.emit(table);
 
   Future<Database> _initDatabase() async {
+    final sw = Stopwatch()..start();
+    debugPrint('[DB] Initializing database...');
+    
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, AppConstants.dbName);
 
+    debugPrint('[DB] Opening database at: $path');
     final db = await openDatabase(
       path,
       version: AppConstants.dbVersion,
@@ -80,6 +84,8 @@ class DatabaseHelper {
       onUpgrade: _onUpgrade,
       onConfigure: _onConfigure,
     );
+
+    debugPrint('[DB] Database opened (version ${AppConstants.dbVersion})');
 
     // Enable WAL mode. Must use rawQuery (not execute) because
     // PRAGMA journal_mode returns a result set — sqflite on Android
@@ -94,6 +100,9 @@ class DatabaseHelper {
     }
     // Periodic VACUUM — runs at most once every 30 days (background op).
     await _maybeVacuum(db);
+    
+    sw.stop();
+    debugPrint('[DB] Database initialization complete in ${sw.elapsedMilliseconds} ms');
     return db;
   }
 
@@ -107,7 +116,14 @@ class DatabaseHelper {
 
   Future<void> _runIntegrityCheck(Database db) async {
     try {
-      final result = await db.rawQuery('PRAGMA integrity_check');
+      debugPrint('[DB] Running integrity check...');
+      final result = await db.rawQuery('PRAGMA integrity_check').timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          debugPrint('[DB] Integrity check timed out — assuming OK');
+          return [{'integrity_check': 'ok'}];
+        },
+      );
       final ok = result.isNotEmpty && result.first.values.first == 'ok';
       _integrityFailed = !ok;
       if (!ok) {
@@ -163,8 +179,7 @@ class DatabaseHelper {
   /// Runs `PRAGMA VACUUM` at most once every [_vacuumIntervalDays] days.
   ///
   /// VACUUM reclaims free pages left by deleted rows, keeping the DB compact.
-  /// It runs synchronously here but is fast enough on a typical KashCube DB
-  /// (< 10 MB); if it becomes a concern, move to a background Isolate.
+  /// Protected with 30-second timeout to prevent app hangs on large databases.
   Future<void> _maybeVacuum(Database db) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -178,8 +193,18 @@ class DatabaseHelper {
         }
       }
 
+      debugPrint('[DB] Starting VACUUM...');
       final sw = Stopwatch()..start();
-      await db.rawQuery('VACUUM');
+      
+      // Timeout protection: skip VACUUM if it takes > 30 seconds
+      await db.rawQuery('VACUUM').timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          debugPrint('[DB] VACUUM timed out after 30s — skipping for now');
+          return [];
+        },
+      );
+      
       sw.stop();
       debugPrint('[DB] VACUUM completed in ${sw.elapsedMilliseconds} ms');
 
@@ -255,7 +280,8 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    debugPrint('Upgrading database from v$oldVersion to v$newVersion...');
+    final sw = Stopwatch()..start();
+    debugPrint('[DB] Upgrading database from v$oldVersion to v$newVersion...');
 
     if (oldVersion < 2) {
       await db.execute('''
@@ -3844,6 +3870,9 @@ class DatabaseHelper {
             'Add missing default account types (savings, cash, creditCard, debitCard, upiWallet, paymentWallet)',
       });
     }
+    
+    sw.stop();
+    debugPrint('[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms');
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.

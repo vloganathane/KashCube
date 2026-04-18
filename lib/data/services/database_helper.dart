@@ -21,10 +21,17 @@ class DatabaseHelper {
 
   Database? _database;
   bool _appLogSchemaEnsured = false;
+  
+  // Mutex to prevent multiple simultaneous database initialization attempts
+  Future<Database>? _initializingFuture;
 
   /// Returns the database instance, creating it if needed.
   ///
   /// Also re-opens the database if the cached handle was closed externally.
+  ///
+  /// Thread-safe: If multiple callers request the database simultaneously,
+  /// they will all wait for the same initialization to complete rather than
+  /// each trying to open their own connection.
   ///
   /// Root cause of `database_closed 1`: workmanager 0.6.0 shares the same
   /// FlutterEngine (and therefore the same sqflite native plugin) between the
@@ -40,9 +47,25 @@ class DatabaseHelper {
   /// Defence-in-depth: if we encounter `database_closed` anyway (hot restart,
   /// unforeseen paths), reset and re-open before rethrowing.
   Future<Database> get database async {
+    // If database is already open, return it immediately
     if (_database != null && _database!.isOpen) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    
+    // If initialization is already in progress, wait for it
+    if (_initializingFuture != null) {
+      debugPrint('[DB] Waiting for existing initialization to complete...');
+      return _initializingFuture!;
+    }
+    
+    // Start new initialization and store the future
+    _initializingFuture = _initDatabase();
+    
+    try {
+      _database = await _initializingFuture!;
+      return _database!;
+    } finally {
+      // Clear the future once initialization completes (success or failure)
+      _initializingFuture = null;
+    }
   }
 
   /// Executes [op] with a valid database handle, recovering once from a

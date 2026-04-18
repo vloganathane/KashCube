@@ -1,7 +1,7 @@
 name: kash_cube
 description: "Privacy-first financial tracker for India. Auto-captures UPI/bank transactions from SMS, manages credits (udhar/khata). 100% local, zero network calls."
 publish_to: 'none'
-version: 1.0.1+3
+version: 1.0.1+4
 
 environment:
   sdk: ^3.11.0

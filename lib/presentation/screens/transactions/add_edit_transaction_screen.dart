@@ -572,9 +572,16 @@ class _AddEditTransactionScreenState
             : cachedAccounts;
     final matchIndex = accounts.indexWhere((a) => a.id == accountId);
     if (matchIndex < 0 || !mounted || _accountId != accountId) return;
-    setState(() {
-      _paymentMethod = accounts[matchIndex].accountType.representativeMethod;
-    });
+    
+    final account = accounts[matchIndex];
+    final validMethods = account.accountType.validPaymentMethods;
+    
+    // Only change payment method if current selection is invalid for this account
+    if (!validMethods.contains(_paymentMethod)) {
+      setState(() {
+        _paymentMethod = account.accountType.representativeMethod;
+      });
+    }
   }
 
   List<String> _categoriesForType(CustomCategoriesState custom) {
@@ -1017,12 +1024,12 @@ class _AddEditTransactionScreenState
 
                   return DropdownButtonFormField<PaymentMethod>(
                     key: _paymentMethodKey,
-                    initialValue: effectivePaymentMethod,
+                    value: effectivePaymentMethod,
                     decoration: InputDecoration(
                       labelText: 'Payment Method',
                       prefixIcon: const Icon(Icons.payment_outlined),
-                      helperText: _accountId != null
-                          ? 'Filtered by account type'
+                      helperText: selectedAccount != null
+                          ? 'Showing ${availableMethods.length} method${availableMethods.length == 1 ? '' : 's'} for ${selectedAccount.accountName}'
                           : null,
                       helperStyle: TextStyle(
                         fontSize: 12,
@@ -1035,14 +1042,11 @@ class _AddEditTransactionScreenState
                               child: Text(method.label),
                             ))
                         .toList(),
-                    onChanged: _accountId != null
-                        ? null // Disabled when account is selected
-                        : (value) {
-                            if (value != null) {
-                              setState(() => _paymentMethod = value);
-                            }
-                          },
-                    disabledHint: Text(effectivePaymentMethod.label),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _paymentMethod = value);
+                      }
+                    },
                   );
                 },
               ),

@@ -273,7 +273,7 @@ class DatabaseHelper {
     await db.insert('schema_version', {
       'version': 52,
       'description': 'Progressive schema seed (fresh install base)',
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
 
     await _createLookupTables(db);
 
@@ -326,7 +326,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 2,
         'description': 'Add bill_attachments table',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 3) {
@@ -364,7 +364,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 3,
         'description': 'Add credit_payments table and direction column',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 4) {
@@ -401,7 +401,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 4,
         'description': 'Add loan_payments table and repayment_frequency',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 5) {
@@ -435,7 +435,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 5,
         'description': 'Add bills table for scheduled payments',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 6) {
@@ -471,7 +471,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 6,
         'description': 'Merge credits into loans (Ledger)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
     if (oldVersion < 7) {
       // Add new unified transaction columns
@@ -543,7 +543,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 7,
         'description': 'Unified transaction model: new types + lending fields',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
     if (oldVersion < 8) {
       // Add to_account_id for Transfer type
@@ -566,7 +566,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 8,
         'description': 'Add to_account_id + pre-seed accounts + Transfer type',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 9) {
@@ -638,7 +638,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 9,
         'description': 'Unified scheduled_payments: merge bills + recurring',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 10) {
@@ -680,7 +680,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 10,
         'description': 'Ensure scheduled_payments table exists (v9 safety)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 11) {
@@ -699,7 +699,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 11,
         'description': 'Add gstin to parties, reminder_sent_at to transactions',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 12) {
@@ -709,7 +709,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 12,
         'description': 'Add address to parties',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 13) {
@@ -813,7 +813,7 @@ class DatabaseHelper {
         'version': 13,
         'description':
             'Business mode: item_catalog, quotes, quote_items, invoices, invoice_items',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 14) {
@@ -840,7 +840,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 14,
         'description': 'Add businesses table (multiple business profiles)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 15) {
@@ -877,7 +877,7 @@ class DatabaseHelper {
         'version': 15,
         'description':
             'Enhanced item catalog: business_id, categories, SKU, favorites, usage tracking',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 16) {
@@ -896,7 +896,7 @@ class DatabaseHelper {
         'version': 16,
         'description':
             'Add business_id to invoices and quotes for multi-business support',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 17) {
@@ -909,7 +909,7 @@ class DatabaseHelper {
         'version': 17,
         'description':
             'Add city, state, pincode to parties for structured addresses',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 18) {
@@ -942,7 +942,7 @@ class DatabaseHelper {
         'version': 18,
         'description':
             'Automatic transaction creation: link transactions to invoices/bookings, track payment details',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 19) {
@@ -1011,7 +1011,7 @@ class DatabaseHelper {
         'version': 19,
         'description':
             'Add bookings table and extend item_catalog for bookable services',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 20) {
@@ -1026,7 +1026,7 @@ class DatabaseHelper {
         'version': 20,
         'description':
             'Add booking_type column (business/personal) to bookings table',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 21) {
@@ -1043,7 +1043,7 @@ class DatabaseHelper {
         'version': 21,
         'description':
             'Add reminder_sent_at to invoices and bookings (Unified Notifications)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 22) {
@@ -1067,7 +1067,7 @@ class DatabaseHelper {
         'version': 22,
         'description':
             'Recreate budgets table with year/month/category/budget_amount schema',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 23) {
@@ -1083,7 +1083,7 @@ class DatabaseHelper {
         'version': 23,
         'description':
             'Add bill_context column to scheduled_payments (personal/business split)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 24) {
@@ -1095,7 +1095,7 @@ class DatabaseHelper {
         'version': 24,
         'description':
             'Add party_context to parties table (personal/business for lender/borrower)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 25) {
@@ -1106,7 +1106,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 25,
         'description': 'Add business_card_image_path to parties table',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 26) {
@@ -1124,7 +1124,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 26,
         'description': 'Add website, social fields to parties & businesses',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 27) {
@@ -1136,7 +1136,7 @@ class DatabaseHelper {
         'version': 27,
         'description':
             'FY settings: invoice_no_format, fiscal_year_start_month/day, auto_reset_invoice_no, current_fy_start',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 28) {
@@ -1153,7 +1153,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 28,
         'description': 'Add unit_types table with seeded defaults',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 29) {
@@ -1164,7 +1164,7 @@ class DatabaseHelper {
         'version': 29,
         'description':
             'Seed software/digital unit types (week, year, license, seat, user, project, task, sprint, feature, screen, page, report, API call, request, token, deployment, instance, GB, MB, TB)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 30) {
@@ -1173,7 +1173,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 30,
         'description': 'Seed nos / nos. unit types',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 32) {
@@ -1213,7 +1213,7 @@ class DatabaseHelper {
         'version': 32,
         'description':
             'GST Phase A: hsn_code/unit/hsn_or_sac on invoice_items+quote_items; invoice_type/place_of_supply/reverse_charge/customer_gstin on invoices+quotes',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 33) {
@@ -1224,7 +1224,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 33,
         'description': 'GST Phase A4: hsn_or_sac column on item_catalog',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 34) {
@@ -1238,7 +1238,7 @@ class DatabaseHelper {
         'version': 34,
         'description':
             'GST Phase C1: irn/irn_ack_no/irn_ack_date/qr_code_data on invoices (e-Invoice placeholders)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 35) {
@@ -1261,7 +1261,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 35,
         'description': 'HSN/SAC master table seeded from bundled CBIC CSVs',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 36) {
@@ -1310,7 +1310,7 @@ class DatabaseHelper {
         'version': 36,
         'description':
             'e-Way Bill fields on invoices + transporters table + GSP settings keys',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 37) {
@@ -1337,7 +1337,7 @@ class DatabaseHelper {
         'version': 37,
         'description':
             'Freight, insurance, packing charges on invoices and quotes (CBIC Rule 46)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 38) {
@@ -1350,7 +1350,7 @@ class DatabaseHelper {
         'version': 38,
         'description':
             'Country and dial code for international customers/vendors (parties + businesses)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 39) {
@@ -1419,7 +1419,7 @@ class DatabaseHelper {
         'version': 39,
         'description':
             'Delivery Challan tables — GST Rule 55 (supply without tax invoice)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 40) {
@@ -1430,7 +1430,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 40,
         'description': 'Add challan_id to invoices for DC → Invoice link-back',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 41) {
@@ -1453,7 +1453,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 41,
         'description': 'Add document_templates table with built-in presets',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 42) {
@@ -1495,7 +1495,7 @@ class DatabaseHelper {
         'version': 42,
         'description':
             'Add booking_items table and paid_amount column for multi-service bookings',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 43) {
@@ -1522,7 +1522,7 @@ class DatabaseHelper {
         'version': 43,
         'description':
             'Add party_reminders table for reminder history tracking',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 44) {
@@ -1552,7 +1552,7 @@ class DatabaseHelper {
         'version': 44,
         'description':
             'Add business_id to credits, loans, party_reminders for personal/business separation',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 45) {
@@ -1568,7 +1568,7 @@ class DatabaseHelper {
         'version': 45,
         'description':
             'Add party_id FK to scheduled_payments for Party 360° aggregation',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 46) {
@@ -1623,7 +1623,7 @@ class DatabaseHelper {
         'version': 46,
         'description':
             'Add party_addresses table; delivery address snapshot columns on delivery_challans and invoices',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 47) {
@@ -1642,7 +1642,7 @@ class DatabaseHelper {
         'version': 47,
         'description':
             'Add original_invoice_id/no/date to invoices for Credit/Debit Note linking',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 48) {
@@ -1714,7 +1714,7 @@ class DatabaseHelper {
         'version': 48,
         'description':
             'Add purchase_bills + purchase_bill_items tables for ITC tracking (Phase G1)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 49) {
@@ -1725,7 +1725,7 @@ class DatabaseHelper {
         'version': 49,
         'description':
             'Add attachment_path to purchase_bills for vendor invoice attachment',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 50) {
@@ -1735,7 +1735,7 @@ class DatabaseHelper {
         'version': 50,
         'description':
             'Add upi_id to businesses; seed industry invoice template presets',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 51) {
@@ -1774,7 +1774,7 @@ class DatabaseHelper {
         'version': 51,
         'description':
             'Inventory Phase A: stock tracking columns on item_catalog + stock_movements table',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 52) {
@@ -1839,7 +1839,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 52,
         'description': 'Staff & Payroll: staff + salary_payments tables',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 53) {
@@ -1856,7 +1856,7 @@ class DatabaseHelper {
         'version': 53,
         'description':
             'Link line items to item catalog: catalog_item_id on invoice_items, delivery_challan_items, purchase_bill_items',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 54) {
@@ -1893,7 +1893,7 @@ class DatabaseHelper {
         'version': 54,
         'description':
             'Link staff to parties: party_id FK on staff, backfill party records for existing staff',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 55) {
@@ -1956,7 +1956,7 @@ class DatabaseHelper {
         'version': 55,
         'description':
             'Per-business inventory: item_stock table, business_id on stock_movements, backfill from item_catalog',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
     if (oldVersion < 56) {
       await db.execute(
@@ -1969,7 +1969,7 @@ class DatabaseHelper {
         'version': 56,
         'description':
             'Physical count: last_counted_qty + last_counted_at on item_stock',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 57) {
@@ -2004,7 +2004,7 @@ class DatabaseHelper {
         'version': 57,
         'description':
             'HRMS: parties gains staff_role/salary/type/join_date; Payroll categories seeded',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v58: Phase 0 — Sync Foundation ───────────────────────────────────────
@@ -2371,7 +2371,7 @@ class DatabaseHelper {
         'version': 58,
         'description':
             'Phase 0: sync_id + version + triggers on all P0 tables; 9 new auth/sync tables; subscription seeded',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v62: Phase D1 — My Identity Foundation ─────────────────────────────
@@ -2471,7 +2471,7 @@ class DatabaseHelper {
         'version': 62,
         'description':
             'Phase D1: my_identity table, linked_business_sessions (replaces sync device_session)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v63: Phase D2 — Context Layer ──────────────────────────────────────
@@ -2517,7 +2517,7 @@ class DatabaseHelper {
         'version': 63,
         'description':
             'Phase D2: context_id on all 13 syncable P0 tables for dual-primary context isolation',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v64: Phase D3 — Linked Sessions Upgrade ────────────────────────────
@@ -2547,7 +2547,7 @@ class DatabaseHelper {
         'version': 64,
         'description':
             'Phase D3: shareable_plan_features on subscription; secondary_display_name on linked_devices',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 65) {
@@ -2579,7 +2579,7 @@ class DatabaseHelper {
         'version': 65,
         'description':
             'Phase D4: payroll_notifications table + sync_outbox.target_identity_id',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 66) {
@@ -2644,7 +2644,7 @@ class DatabaseHelper {
         'description':
             'Migrate recurring_transactions + bills into scheduled_payments; '
             'deprecate legacy tables',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 67) {
@@ -2674,7 +2674,7 @@ class DatabaseHelper {
         'description':
             'Conflict-free numbering: invoice_number_cursors table + '
             'pending_number_since columns on invoices/quotes/delivery_challans',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 68) {
@@ -2696,7 +2696,7 @@ class DatabaseHelper {
         'description':
             'Add missing permission_preset column to linked_devices '
             '(absent from v58 migration, present only in fresh-install schema)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 69) {
@@ -2801,7 +2801,7 @@ class DatabaseHelper {
         'description':
             'P2P LAN sync foundation: updated_by_device_id on 14 tables, '
             'quotes sync columns, trusted_peers + sync_watermarks + invoice_events tables',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 70) {
@@ -2830,7 +2830,7 @@ class DatabaseHelper {
         'version': 70,
         'description':
             'Generic sync engine metadata: sync_table_state table + indexes',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 71) {
@@ -2923,7 +2923,7 @@ class DatabaseHelper {
             'Sync columns on 9 remaining tables: loan_payments, salary_payments, '
             'party_addresses, bill_attachments, stock_movements, document_templates, '
             'staff, bookings, delivery_challans',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 72) {
@@ -2991,7 +2991,7 @@ class DatabaseHelper {
         'description':
             'Timestamps on 6 child tables: quote_items, invoice_items, '
             'booking_items, delivery_challan_items, purchase_bill_items, item_stock',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v73: Sync columns on 3 missed tables ─────────────────────────────────
@@ -3088,7 +3088,7 @@ class DatabaseHelper {
         'version': 73,
         'description':
             'Sync columns on 3 missed tables: recurring_transactions, bills, party_reminders',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 74) {
@@ -3112,7 +3112,7 @@ class DatabaseHelper {
         'version': 74,
         'description':
             'Device-id columns on settings (created_by/updated_by_device_id)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 75) {
@@ -3131,7 +3131,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 75,
         'description': 'Backfill businesses.upi_id missed in _onCreate DDL',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     // ── v76: Rebuild subscription with correct column names ──────────────────
@@ -3272,7 +3272,7 @@ class DatabaseHelper {
         'version': 76,
         'description':
             'Rebuild subscription table: rename legacy columns (purchased_at→plan_started_at, expires_at→plan_expires_at, receipt_data→purchase_token)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 77) {
@@ -3288,7 +3288,7 @@ class DatabaseHelper {
         'version': 77,
         'description':
             'accounts: add credit_limit column; AccountType.cash support',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 78) {
@@ -3321,7 +3321,7 @@ class DatabaseHelper {
         'version': 78,
         'description':
             'accounts: opening_balance column (replaces current_balance); linked_bank_account_id FK',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 79) {
@@ -3347,7 +3347,7 @@ class DatabaseHelper {
       await db.insert('schema_version', {
         'version': 79,
         'description': 'activity_log: generic entity activity/audit log table',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 80) {
@@ -3371,7 +3371,7 @@ class DatabaseHelper {
         'version': 80,
         'description':
             'item_catalog: add mrp and dealer_price price variant columns',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 81) {
@@ -3485,7 +3485,7 @@ class DatabaseHelper {
         'version': 81,
         'description':
             'Lot tracking: stock_lots + lot_movements tables; lot columns on purchase_bill_items and invoice_items',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 82) {
@@ -3523,7 +3523,7 @@ class DatabaseHelper {
         'version': 82,
         'description':
             'Diagnostics logging: app_logs table + indexes for in-app error reporting',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 83) {
@@ -3548,7 +3548,7 @@ class DatabaseHelper {
         'version': 83,
         'description':
             'Unified diagnostics timeline: source, event_name, and session_id on app_logs',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 84) {
@@ -3615,7 +3615,7 @@ class DatabaseHelper {
         'version': 84,
         'description':
             'Media sync foundation: media_assets table + businesses/parties media reference columns',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 85) {
@@ -3638,7 +3638,7 @@ class DatabaseHelper {
         'version': 85,
         'description':
             'M6 key rotation: trusted_peers.key_version + key_rotated_at columns',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 86) {
@@ -3663,7 +3663,7 @@ class DatabaseHelper {
         'version': 86,
         'description':
             'item_catalog: add brand_name, primary_image_path, barcode, and additional_properties_json',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 87) {
@@ -3694,7 +3694,7 @@ class DatabaseHelper {
         'version': 87,
         'description':
             'item_catalog: P0 schema.org/Product commerce fields — mpn, availability, price_currency, price_valid_until, manufacturer_name',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 88) {
@@ -3719,7 +3719,7 @@ class DatabaseHelper {
         'version': 88,
         'description':
             'item_catalog: P1 schema.org/Product fields — color, size, weight, dimensions, material, keywords, country_of_origin, release_date',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 89) {
@@ -3740,7 +3740,7 @@ class DatabaseHelper {
         'version': 89,
         'description':
             'item_catalog: P2 schema.org/Product fields — product_id, asin, logo_path, pattern, slogan, item_condition, model_number',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 90) {
@@ -3832,7 +3832,7 @@ class DatabaseHelper {
         'version': 90,
         'description':
             'P3 schema.org/Product: product_groups, product_relationships, product_reviews tables + product_group_id FK',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 91) {
@@ -3853,7 +3853,7 @@ class DatabaseHelper {
         'version': 91,
         'description':
             'Fix legacy default Cash account mapping (account_type savings -> cash)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
 
     if (oldVersion < 92) {
@@ -3891,7 +3891,7 @@ class DatabaseHelper {
         'version': 92,
         'description':
             'Add missing default account types (savings, cash, creditCard, debitCard, upiWallet, paymentWallet)',
-      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     }
     
     sw.stop();

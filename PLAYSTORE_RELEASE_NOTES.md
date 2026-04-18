@@ -1,14 +1,15 @@
 # Play Store Release Notes
 
-## Version 1.0.1 (Build 2) - 18 April 2026
+## Version 1.0.1 (Build 4) - 18 April 2026
 
 ### For Play Store Console (500 character limit)
 
 ```
-Bug fixes and improvements:
+Critical bug fixes and improvements:
+• Fixed app loading issue after Play Store updates
 • Fixed biometric unlock crash in Settings
-• Fixed PIN lock triggering during normal usage (transactions, keyboard input)
-• Improved payment method selection - now interactive with smart filtering
+• Fixed PIN lock triggering during normal usage
+• Improved payment method selection with smart filtering
 • Reduced app size by 45MB
 
 Better stability and smoother experience!
@@ -17,6 +18,12 @@ Better stability and smoother experience!
 ### Detailed Release Notes (Internal/Website)
 
 **What's Fixed**
+
+⚡ **Critical: App Loading Issue (Build 4)**
+- Fixed infinite loading screen after Play Store updates
+- Resolved database initialization race condition
+- Multiple providers no longer compete for database access on startup
+- App now loads smoothly through terms → setup → home screen
 
 🔒 **Biometric Authentication**
 - Resolved crash when enabling fingerprint/face unlock in Settings
@@ -34,10 +41,11 @@ Better stability and smoother experience!
 - Smart preservation of your selection when switching accounts
 
 📦 **App Size Optimization**
-- Reduced installation size by ~45MB
-- Removed unused Web Companion assets (feature disabled for this release)
-- Faster downloads and less storage usage
-
+- Reduced installation s4)
+- Minimum Android: 8.0 (API 26)
+- Target Android: 14 (API 34)
+- Size: ~15MB (down from ~60MB)
+- AAB Size: 69MB
 **Technical Details**
 
 - Version: 1.0.1 (Build 2)
@@ -69,10 +77,11 @@ Initial Play Store release - Privacy-first financial tracker for India.
 ---
 
 ## Release Checklist
-
-- [x] Version bumped: 1.0.0+1 → 1.0.1+2
-- [x] All fixes tested on emulator
-- [x] Release AAB built: `flutter build appbundle --release`
+4
+- [x] All fixes tested on emulator (database race condition, payment method UX)
+- [x] Release AAB built: `flutter build appbundle --release` (69MB)
+- [x] Critical loading issue verified fixed
+- [ ] AAB signed and verified  tter build appbundle --release`
 - [ ] AAB signed and verified
 - [ ] Tested on physical device
 - [ ] Play Store screenshots updated (if needed)

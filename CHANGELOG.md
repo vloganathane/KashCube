@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.1] - 2026-04-18
 
 ### Fixed
+- **CRITICAL: App Loading Issue (Build 4)**: Fixed infinite loading screen after Play Store updates. Resolved database initialization race condition where multiple providers competed for database access on startup. Implemented initialization mutex in `DatabaseHelper` to ensure single database open operation with all callers waiting for same Future.
 - **Biometric Authentication Crash**: Fixed `PlatformException(no_fragment_activity)` crash when enabling biometric unlock in Settings. Changed `MainActivity` to extend `FlutterFragmentActivity` as required by the `local_auth` plugin.
 - **PIN Lock UX**: Resolved issue where PIN lock screen triggered during normal app usage (transaction saves, keyboard input, dialogs). Implemented intelligent lifecycle state tracking to distinguish real backgrounding from transient UI events.
 - **Payment Method Selection**: Payment method dropdown now remains interactive when an account is selected, showing filtered valid methods for that account type instead of being disabled.

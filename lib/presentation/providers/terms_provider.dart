@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'settings_provider.dart';
@@ -24,9 +25,13 @@ final termsAcceptedProvider =
 class _TermsNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
+    debugPrint('[Terms] Checking terms acceptance...');
     final settings = ref.read(settingsRepositoryProvider);
     final accepted = await settings.get(SettingsKeys.termsAcceptedVersion);
-    return accepted == AppTerms.currentVersion;
+    debugPrint('[Terms] Accepted version: $accepted (current: ${AppTerms.currentVersion})');
+    final result = accepted == AppTerms.currentVersion;
+    debugPrint('[Terms] Result: $result');
+    return result;
   }
 
   /// Persist acceptance with version + timestamp, then enable analytics.

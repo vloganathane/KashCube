@@ -487,8 +487,13 @@ final smsAutoDetectEnabledProvider =
 class SetupWizardNotifier extends AsyncNotifier<bool> {
   @override
   Future<bool> build() async {
+    debugPrint('[Wizard] Checking setup wizard status...');
     final repo = ref.read(settingsRepositoryProvider);
-    return (await repo.get(SettingsKeys.setupWizardDone)) == 'true';
+    final value = await repo.get(SettingsKeys.setupWizardDone);
+    debugPrint('[Wizard] setupWizardDone value: $value');
+    final result = value == 'true';
+    debugPrint('[Wizard] Result: $result');
+    return result;
   }
 
   Future<void> markDone() async {

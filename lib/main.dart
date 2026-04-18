@@ -324,8 +324,10 @@ class _LockGateState extends ConsumerState<_LockGate>
   }
 
   Future<void> _checkLock() async {
+    debugPrint('[LockGate] Checking lock state...');
     final settingsRepo = ref.read(settingsRepositoryProvider);
     final lockEnabled = await settingsRepo.get(SettingsKeys.appLockEnabled);
+    debugPrint('[LockGate] Lock enabled: $lockEnabled');
 
     if (mounted) {
       setState(() {
@@ -333,10 +335,12 @@ class _LockGateState extends ConsumerState<_LockGate>
         _checkedLock = true;
         _ownerChosen = false; // reset on re-lock
       });
+      debugPrint('[LockGate] State updated: isLocked=$_isLocked, checkedLock=$_checkedLock');
     }
 
     // Try biometric first if enabled
     if (_isLocked) {
+      debugPrint('[LockGate] Attempting biometric unlock...');
       await _attemptBiometric();
     }
   }
@@ -382,8 +386,11 @@ class _LockGateState extends ConsumerState<_LockGate>
       setState(() => _ownerChosen = false);
     });
 
+    debugPrint('[LockGate] Build called: checkedLock=$_checkedLock');
+
     if (!_checkedLock) {
       // Splash / loading while we check lock state
+      debugPrint('[LockGate] Showing loading spinner (checking lock)');
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -394,29 +401,38 @@ class _LockGateState extends ConsumerState<_LockGate>
 
     // ── Terms & Conditions gate ──────────────────────────────────────────────
     // Must be accepted before any other screen is shown.
+    debugPrint('[LockGate] Watching termsAcceptedProvider...');
     final termsState = ref.watch(termsAcceptedProvider);
+    debugPrint('[LockGate] termsState: ${termsState.isLoading ? "loading" : termsState.hasValue ? termsState.value : termsState.hasError ? "error: ${termsState.error}" : "unknown"}');
     if (termsState.isLoading) {
+      debugPrint('[LockGate] Showing loading spinner (terms loading)');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     final termsAccepted = termsState.valueOrNull ?? false;
     if (!termsAccepted) {
+      debugPrint('[LockGate] Showing TermsGateScreen');
       return TermsGateScreen(
         onAccepted: () => ref.invalidate(termsAcceptedProvider),
       );
     }
 
     // ── First-run setup wizard ───────────────────────────────────────────────
+    debugPrint('[LockGate] Watching setupWizardDoneProvider...');
     final wizardState = ref.watch(setupWizardDoneProvider);
+    debugPrint('[LockGate] wizardState: ${wizardState.isLoading ? "loading" : wizardState.hasValue ? wizardState.value : wizardState.hasError ? "error: ${wizardState.error}" : "unknown"}');
     if (wizardState.isLoading) {
+      debugPrint('[LockGate] Showing loading spinner (wizard loading)');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (!(wizardState.valueOrNull ?? false)) {
+      debugPrint('[LockGate] Showing SetupWizardScreen');
       return SetupWizardScreen(
         onComplete: () => ref.invalidate(setupWizardDoneProvider),
       );
     }
 
     if (_isLocked) {
+      debugPrint('[LockGate] Showing PinLockScreen');
       return PinLockScreen(
         mode: PinScreenMode.unlock,
         onSuccess: () {

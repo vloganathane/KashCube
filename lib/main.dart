@@ -75,9 +75,11 @@ Future<void> main() async {
         return true;
       };
 
+      // ── Web Companion disabled for Play Store release ──────────────────────
+      // See docs/WEB_COMPANION_REENABLE.md for re-enablement steps
       // Attach the web companion stream listener before the first screen so
       // no browser-connection events are missed.
-      if (!kIsWeb) WebCompanionService.instance.attach();
+      // if (!kIsWeb) WebCompanionService.instance.attach();
 
       // ── runApp() — get the Flutter canvas visible immediately ───────────
       //
@@ -233,9 +235,11 @@ class KashCubeApp extends ConsumerWidget {
     // Skip on web — in_app_purchase is Android/iOS only.
     if (!kIsWeb) ref.watch(iapServiceProvider);
 
+    // ── Web Companion disabled for Play Store release ──────────────────────
+    // See docs/WEB_COMPANION_REENABLE.md for re-enablement steps
     // Start HTTP server at app init so /health & other endpoints are always available.
     // Server persists for the app lifetime, not tied to screen visibility.
-    if (!kIsWeb) ref.watch(httpServerInitProvider);
+    // if (!kIsWeb) ref.watch(httpServerInitProvider);
 
     return MaterialApp(
       title: 'Kash Cube',
@@ -261,6 +265,8 @@ class _LockGateState extends ConsumerState<_LockGate>
   bool _isLocked = true;
   bool _checkedLock = false;
   bool _ownerChosen = false; // set when owner tile is tapped
+  DateTime? _lastPausedTime;
+  AppLifecycleState? _lastState;
 
   @override
   void initState() {
@@ -278,6 +284,12 @@ class _LockGateState extends ConsumerState<_LockGate>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused && !kIsWeb) {
+      // Only track pause time if coming from resumed state (not inactive).
+      // This filters out keyboard/dialog events which go: resumed → inactive → paused.
+      // Real backgrounding goes: resumed → paused directly.
+      if (_lastState == AppLifecycleState.resumed) {
+        _lastPausedTime = DateTime.now();
+      }
       // Checkpoint WAL before the app is backgrounded so Android Auto Backup
       // always captures a fully-consistent main DB file (not a partial WAL).
       DatabaseHelper.instance.withDatabase(
@@ -292,12 +304,23 @@ class _LockGateState extends ConsumerState<_LockGate>
       WebCompanionService.instance.onAppResumed();
     }
     if (state == AppLifecycleState.resumed && _checkedLock && !_isLocked) {
-      // Evict stale/excess PDFs whenever the app comes back to foreground.
-      // PdfCacheManager uses getTemporaryDirectory() — unavailable on web.
-      if (!kIsWeb) PdfCacheManager.instance.evict();
-      // Re-lock when app comes back from background
-      _checkLock();
+      // Only re-lock if the app was genuinely paused (not just inactive states)
+      // and the pause duration was >= 2 seconds.
+      if (_lastPausedTime != null) {
+        final pauseDuration = DateTime.now().difference(_lastPausedTime!);
+        
+        if (pauseDuration.inSeconds >= 2) {
+          // Evict stale/excess PDFs whenever the app comes back to foreground.
+          // PdfCacheManager uses getTemporaryDirectory() — unavailable on web.
+          if (!kIsWeb) PdfCacheManager.instance.evict();
+          // Re-lock when app comes back from background
+          _checkLock();
+        }
+        _lastPausedTime = null; // Reset after handling
+      }
     }
+    
+    _lastState = state; // Track for next transition
   }
 
   Future<void> _checkLock() async {

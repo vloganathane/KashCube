@@ -3785,6 +3785,65 @@ class DatabaseHelper {
             'P3 schema.org/Product: product_groups, product_relationships, product_reviews tables + product_group_id FK',
       });
     }
+
+    if (oldVersion < 91) {
+      // Fix legacy seeded "Cash" account that was stored as savings.
+      await db.rawUpdate(
+        '''
+        UPDATE accounts
+        SET account_type = 'cash'
+        WHERE account_type = 'savings'
+          AND account_name = 'Cash'
+          AND (bank_name IS NULL OR bank_name = '')
+          AND (account_number_last4 IS NULL OR account_number_last4 = '')
+          AND deleted_at IS NULL
+        ''',
+      );
+
+      await db.insert('schema_version', {
+        'version': 91,
+        'description':
+            'Fix legacy default Cash account mapping (account_type savings -> cash)',
+      });
+    }
+
+    if (oldVersion < 92) {
+      // Add missing default account types for existing users.
+      // Only adds account types that don't already exist.
+      final defaultAccounts = [
+        {'account_type': 'savings', 'account_name': 'Savings Account', 'is_primary': 0},
+        {'account_type': 'cash', 'account_name': 'Cash', 'is_primary': 0},
+        {'account_type': 'creditCard', 'account_name': 'Credit Card', 'is_primary': 0},
+        {'account_type': 'debitCard', 'account_name': 'Debit Card', 'is_primary': 0},
+        {'account_type': 'upiWallet', 'account_name': 'UPI Wallet', 'is_primary': 0},
+        {'account_type': 'paymentWallet', 'account_name': 'Payment Wallet', 'is_primary': 0},
+      ];
+
+      for (final account in defaultAccounts) {
+        // Check if this account type already exists (excluding deleted)
+        final existing = await db.query(
+          'accounts',
+          where: 'account_type = ? AND deleted_at IS NULL',
+          whereArgs: [account['account_type']],
+          limit: 1,
+        );
+
+        // Only insert if this account type doesn't exist
+        if (existing.isEmpty) {
+          await db.insert('accounts', {
+            ...account,
+            'is_active': 1,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+
+      await db.insert('schema_version', {
+        'version': 92,
+        'description':
+            'Add missing default account types (savings, cash, creditCard, debitCard, upiWallet, paymentWallet)',
+      });
+    }
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -4119,13 +4178,18 @@ class DatabaseHelper {
 
   Future<void> _seedAccounts(Database db) async {
     final accounts = [
-      {'account_type': 'savings', 'account_name': 'Bank', 'is_primary': 1},
-      {
-        'account_type': 'upiWallet',
-        'account_name': 'UPI / Wallet',
-        'is_primary': 0,
-      },
-      {'account_type': 'savings', 'account_name': 'Cash', 'is_primary': 0},
+      // Primary bank account - most common for UPI/net banking
+      {'account_type': 'savings', 'account_name': 'Savings Account', 'is_primary': 1},
+      // Cash for physical currency transactions
+      {'account_type': 'cash', 'account_name': 'Cash', 'is_primary': 0},
+      // Credit card for credit transactions
+      {'account_type': 'creditCard', 'account_name': 'Credit Card', 'is_primary': 0},
+      // Debit card for direct debit payments
+      {'account_type': 'debitCard', 'account_name': 'Debit Card', 'is_primary': 0},
+      // UPI wallets like PhonePe, GPay, Paytm
+      {'account_type': 'upiWallet', 'account_name': 'UPI Wallet', 'is_primary': 0},
+      // Payment wallets (non-UPI)
+      {'account_type': 'paymentWallet', 'account_name': 'Payment Wallet', 'is_primary': 0},
     ];
     for (final a in accounts) {
       await db.insert('accounts', {

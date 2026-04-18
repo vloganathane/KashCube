@@ -165,17 +165,19 @@ flutter:
     - assets/data/in_pincodes.json
     - assets/hns_sac/HSN_SAC - HSN_MSTR.csv
     - assets/hns_sac/HSN_SAC - SAC_MSTR.csv
-    - assets/web_ui/
-    - assets/web_ui/assets/
-    - assets/web_ui/assets/assets/
-    - assets/web_ui/assets/assets/data/
-    - assets/web_ui/assets/assets/hns_sac/
-    - assets/web_ui/assets/fonts/
-    - assets/web_ui/assets/packages/world_flags/shaders/
-    - assets/web_ui/assets/shaders/
-    - assets/web_ui/canvaskit/
-    - assets/web_ui/canvaskit/chromium/
-    - assets/web_ui/icons/
+    # ── Web Companion assets (44MB) — disabled for Play Store release ──────
+    # See docs/WEB_COMPANION_REENABLE.md for re-enablement steps
+    # - assets/web_ui/
+    # - assets/web_ui/assets/
+    # - assets/web_ui/assets/assets/
+    # - assets/web_ui/assets/assets/data/
+    # - assets/web_ui/assets/assets/hns_sac/
+    # - assets/web_ui/assets/fonts/
+    # - assets/web_ui/assets/packages/world_flags/shaders/
+    # - assets/web_ui/assets/shaders/
+    # - assets/web_ui/canvaskit/
+    # - assets/web_ui/canvaskit/chromium/
+    # - assets/web_ui/icons/
   #         style: italic
   #   - family: Trajan Pro
   #     fonts:

@@ -4,7 +4,7 @@ import android.util.Log
 import com.android.installreferrer.api.InstallReferrerClient
 import com.android.installreferrer.api.InstallReferrerStateListener
 import com.android.installreferrer.api.ReferrerDetails
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -15,7 +15,7 @@ import io.flutter.plugin.common.MethodChannel
  *
  * The channel name must match AppConfig.installReferrerChannel in Dart.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
 
     private val installReferrerChannelName = "com.kashcube/install_referrer"
     private val webRtcPeerOpsChannelName = "kashcube/webrtc_peer_ops"

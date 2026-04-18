@@ -11,6 +11,7 @@ import '../../../core/utils/date_formatter.dart';
 import '../../../core/utils/tutorial_mixin.dart';
 import '../../../core/utils/validators.dart';
 import '../../../data/models/bill_attachment.dart';
+import '../../../data/models/account.dart';
 import '../../../data/models/party.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/suggestion_service.dart';
@@ -563,6 +564,19 @@ class _AddEditTransactionScreenState
     }
   }
 
+  Future<void> _syncPaymentMethodForAccount(int accountId) async {
+    final cachedAccounts = ref.read(accountsProvider).valueOrNull;
+    final List<Account> accounts =
+        (cachedAccounts == null || cachedAccounts.isEmpty)
+            ? await ref.read(accountRepositoryProvider).getAll()
+            : cachedAccounts;
+    final matchIndex = accounts.indexWhere((a) => a.id == accountId);
+    if (matchIndex < 0 || !mounted || _accountId != accountId) return;
+    setState(() {
+      _paymentMethod = accounts[matchIndex].accountType.representativeMethod;
+    });
+  }
+
   List<String> _categoriesForType(CustomCategoriesState custom) {
     if (_type.isTransfer) return ['Transfer'];
     if (_type.isLending || _type.isSettlement || _type.isInvestment) {
@@ -747,6 +761,8 @@ class _AddEditTransactionScreenState
       ref.listen<int?>(defaultAccountIdProvider, (_, next) {
         if (next != null && _accountId == null) {
           setState(() => _accountId = next);
+          // ignore: discarded_futures
+          _syncPaymentMethodForAccount(next);
         }
       });
     }
@@ -895,20 +911,12 @@ class _AddEditTransactionScreenState
                 child: _AccountRow(
                   accountId: _accountId,
                   onChanged: (id) {
-                    setState(() {
-                      _accountId = id;
-                      // Auto-set payment method based on account type
-                      if (id != null) {
-                        final accountsAsync = ref.read(accountsProvider);
-                        accountsAsync.whenData((accounts) {
-                          final account = accounts.firstWhere(
-                            (a) => a.id == id,
-                            orElse: () => accounts.first,
-                          );
-                          _paymentMethod = account.accountType.representativeMethod;
-                        });
-                      }
-                    });
+                    setState(() => _accountId = id);
+                    // Auto-set payment method based on account type.
+                    if (id != null) {
+                      // ignore: discarded_futures
+                      _syncPaymentMethodForAccount(id);
+                    }
                   },
                 ),
               ),
@@ -992,32 +1000,51 @@ class _AddEditTransactionScreenState
             if (_type.isIncome ||
                 _type.isExpense ||
                 _type.isSettlement) ...[
-              DropdownButtonFormField<PaymentMethod>(
-                key: _paymentMethodKey,
-                initialValue: _paymentMethod,
-                decoration: InputDecoration(
-                  labelText: 'Payment Method',
-                  prefixIcon: const Icon(Icons.payment_outlined),
-                  helperText: _accountId != null
-                      ? 'Auto-set from selected account'
-                      : null,
-                  helperStyle: TextStyle(
-                    fontSize: 12,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                items: PaymentMethod.values
-                    .map((method) => DropdownMenuItem(
-                          value: method,
-                          child: Text(method.label),
-                        ))
-                    .toList(),
-                onChanged: _accountId != null
-                    ? null // Disabled when account is selected
-                    : (value) {
-                        if (value != null) setState(() => _paymentMethod = value);
-                      },
-                disabledHint: Text(_paymentMethod.label),
+              Builder(
+                builder: (_) {
+                  final selectedAccount =
+                      (ref.watch(accountsProvider).valueOrNull ?? const <Account>[])
+                          .where((a) => a.id == _accountId)
+                          .firstOrNull;
+                  final effectivePaymentMethod =
+                      selectedAccount?.accountType.representativeMethod ??
+                          _paymentMethod;
+
+                  // Filter payment methods based on selected account type
+                  final availableMethods = selectedAccount != null
+                      ? selectedAccount.accountType.validPaymentMethods
+                      : PaymentMethod.values;
+
+                  return DropdownButtonFormField<PaymentMethod>(
+                    key: _paymentMethodKey,
+                    initialValue: effectivePaymentMethod,
+                    decoration: InputDecoration(
+                      labelText: 'Payment Method',
+                      prefixIcon: const Icon(Icons.payment_outlined),
+                      helperText: _accountId != null
+                          ? 'Filtered by account type'
+                          : null,
+                      helperStyle: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    items: availableMethods
+                        .map((method) => DropdownMenuItem(
+                              value: method,
+                              child: Text(method.label),
+                            ))
+                        .toList(),
+                    onChanged: _accountId != null
+                        ? null // Disabled when account is selected
+                        : (value) {
+                            if (value != null) {
+                              setState(() => _paymentMethod = value);
+                            }
+                          },
+                    disabledHint: Text(effectivePaymentMethod.label),
+                  );
+                },
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -1208,6 +1235,20 @@ class _AddEditTransactionScreenState
       _amountController.text.replaceAll(',', ''),
     );
 
+    var paymentMethodToSave = _paymentMethod;
+    if (_accountId != null) {
+      final cachedAccounts = ref.read(accountsProvider).valueOrNull;
+      final List<Account> accounts =
+          (cachedAccounts == null || cachedAccounts.isEmpty)
+              ? await ref.read(accountRepositoryProvider).getAll()
+              : cachedAccounts;
+      final matchIndex = accounts.indexWhere((a) => a.id == _accountId);
+      if (matchIndex >= 0) {
+        paymentMethodToSave =
+            accounts[matchIndex].accountType.representativeMethod;
+      }
+    }
+
     final transaction = Transaction(
       id: widget.transaction?.id,
       amount: amount,
@@ -1220,7 +1261,7 @@ class _AddEditTransactionScreenState
           : null,
       accountId: _type.isTransfer ? _fromAccountId : _accountId,
       toAccountId: _type.isTransfer ? _toAccountId : widget.transaction?.toAccountId,
-      paymentMethod: _paymentMethod,
+        paymentMethod: paymentMethodToSave,
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
           : null,

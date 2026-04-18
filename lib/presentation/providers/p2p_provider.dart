@@ -190,6 +190,10 @@ final webCompanionProvider = StateNotifierProvider<WebCompanionNotifier, bool>(
 /// the "Open on Laptop" screen is visible). Non-fatal if server fails
 /// to start (e.g., port already in use); "Open on Laptop" screen can
 /// retry via ensureStarted().
+///
+/// ── Web Companion disabled for Play Store release ──────────────────────────
+/// See docs/WEB_COMPANION_REENABLE.md for re-enablement steps
+/*
 final httpServerInitProvider = FutureProvider<void>((ref) async {
   try {
     final db = await DatabaseHelper.instance.database;
@@ -213,6 +217,7 @@ final httpServerInitProvider = FutureProvider<void>((ref) async {
     // Non-fatal — allows app to continue; /health can be retried later.
   }
 });
+*/
 
 // ── Diagnostics ─────────────────────────────────────────────────────────────
 

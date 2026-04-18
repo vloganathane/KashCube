@@ -58,6 +58,34 @@ enum AccountType {
         return PaymentMethod.wallet;
     }
   }
+
+  /// Returns the list of valid payment methods for this account type.
+  /// Used to filter payment method dropdown based on selected account.
+  List<PaymentMethod> get validPaymentMethods {
+    switch (this) {
+      case AccountType.savings:
+      case AccountType.current:
+        return [
+          PaymentMethod.upi,
+          PaymentMethod.netBanking,
+          PaymentMethod.debitCard,
+          PaymentMethod.cheque,
+        ];
+      case AccountType.cash:
+        return [PaymentMethod.cash];
+      case AccountType.creditCard:
+        return [PaymentMethod.creditCard];
+      case AccountType.debitCard:
+        return [PaymentMethod.debitCard];
+      case AccountType.upiWallet:
+        return [
+          PaymentMethod.upi,
+          PaymentMethod.wallet,
+        ];
+      case AccountType.paymentWallet:
+        return [PaymentMethod.wallet];
+    }
+  }
 }
 
 /// A payment account (bank account, card, wallet, or cash).

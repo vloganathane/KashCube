@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
@@ -1654,9 +1655,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return;
       }
 
-      final authenticated = await localAuth.authenticate(
-        localizedReason: 'Verify your identity to enable biometric unlock',
-      );
+      bool authenticated = false;
+      try {
+        authenticated = await localAuth.authenticate(
+          localizedReason: 'Verify your identity to enable biometric unlock',
+        );
+      } on PlatformException {
+        if (context.mounted) {
+          context.showSnackBar(
+            'Biometric authentication is unavailable right now',
+            isError: true,
+          );
+        }
+        return;
+      }
 
       if (authenticated) {
         final repo = ref.read(settingsRepositoryProvider);

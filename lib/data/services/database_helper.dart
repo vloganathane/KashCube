@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -21,7 +22,8 @@ class DatabaseHelper {
 
   Database? _database;
   bool _appLogSchemaEnsured = false;
-  
+  bool _startupMaintenanceScheduled = false;
+
   // Mutex to prevent multiple simultaneous database initialization attempts
   Future<Database>? _initializingFuture;
 
@@ -49,16 +51,16 @@ class DatabaseHelper {
   Future<Database> get database async {
     // If database is already open, return it immediately
     if (_database != null && _database!.isOpen) return _database!;
-    
+
     // If initialization is already in progress, wait for it
     if (_initializingFuture != null) {
       debugPrint('[DB] Waiting for existing initialization to complete...');
       return _initializingFuture!;
     }
-    
+
     // Start new initialization and store the future
     _initializingFuture = _initDatabase();
-    
+
     try {
       _database = await _initializingFuture!;
       return _database!;
@@ -95,7 +97,7 @@ class DatabaseHelper {
   Future<Database> _initDatabase() async {
     final sw = Stopwatch()..start();
     debugPrint('[DB] Initializing database...');
-    
+
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, AppConstants.dbName);
 
@@ -116,17 +118,42 @@ class DatabaseHelper {
     await db.rawQuery('PRAGMA journal_mode=WAL');
     await ensureAppLogSchema(db: db);
 
-    await _runIntegrityCheck(db);
-    // Rolling daily snapshot — only if integrity passed.
-    if (!_integrityFailed) {
-      await _maybeSnapshot(db, path);
-    }
-    // Periodic VACUUM — runs at most once every 30 days (background op).
-    await _maybeVacuum(db);
-    
+    // Keep DB open fast for startup-critical reads (lock, terms, setup wizard).
+    // Expensive maintenance is scheduled in the background.
+    _scheduleStartupMaintenance(db, path);
+
     sw.stop();
-    debugPrint('[DB] Database initialization complete in ${sw.elapsedMilliseconds} ms');
+    debugPrint(
+      '[DB] Database initialization complete in ${sw.elapsedMilliseconds} ms',
+    );
     return db;
+  }
+
+  void _scheduleStartupMaintenance(Database db, String dbPath) {
+    if (_startupMaintenanceScheduled) return;
+    _startupMaintenanceScheduled = true;
+
+    unawaited(
+      Future<void>(() async {
+        final sw = Stopwatch()..start();
+        try {
+          await _runIntegrityCheck(db);
+          // Rolling daily snapshot — only if integrity passed.
+          if (!_integrityFailed) {
+            await _maybeSnapshot(db, dbPath);
+          }
+          // Periodic VACUUM — runs at most once every 30 days.
+          await _maybeVacuum(db);
+        } catch (e) {
+          debugPrint('[DB] Startup maintenance skipped (non-critical): $e');
+        } finally {
+          sw.stop();
+          debugPrint(
+            '[DB] Startup maintenance finished in ${sw.elapsedMilliseconds} ms',
+          );
+        }
+      }),
+    );
   }
 
   // ── Integrity & Snapshot ──────────────────────────────────────────────────
@@ -140,13 +167,17 @@ class DatabaseHelper {
   Future<void> _runIntegrityCheck(Database db) async {
     try {
       debugPrint('[DB] Running integrity check...');
-      final result = await db.rawQuery('PRAGMA integrity_check').timeout(
-        const Duration(seconds: 20),
-        onTimeout: () {
-          debugPrint('[DB] Integrity check timed out — assuming OK');
-          return [{'integrity_check': 'ok'}];
-        },
-      );
+      final result = await db
+          .rawQuery('PRAGMA integrity_check')
+          .timeout(
+            const Duration(seconds: 20),
+            onTimeout: () {
+              debugPrint('[DB] Integrity check timed out — assuming OK');
+              return [
+                {'integrity_check': 'ok'},
+              ];
+            },
+          );
       final ok = result.isNotEmpty && result.first.values.first == 'ok';
       _integrityFailed = !ok;
       if (!ok) {
@@ -218,16 +249,18 @@ class DatabaseHelper {
 
       debugPrint('[DB] Starting VACUUM...');
       final sw = Stopwatch()..start();
-      
+
       // Timeout protection: skip VACUUM if it takes > 30 seconds
-      await db.rawQuery('VACUUM').timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          debugPrint('[DB] VACUUM timed out after 30s — skipping for now');
-          return [];
-        },
-      );
-      
+      await db
+          .rawQuery('VACUUM')
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              debugPrint('[DB] VACUUM timed out after 30s — skipping for now');
+              return [];
+            },
+          );
+
       sw.stop();
       debugPrint('[DB] VACUUM completed in ${sw.elapsedMilliseconds} ms');
 
@@ -245,23 +278,46 @@ class DatabaseHelper {
   }
 
   Future<void> _onCreate(Database db, int version) async {
-    debugPrint('Creating database v$version...');
+    final totalSw = Stopwatch()..start();
+    debugPrint('[DB:onCreate] Starting database creation v$version...');
 
+    var sw = Stopwatch()..start();
     await _createTransactionTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createTransactionTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createCreditAndLoanTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createCreditAndLoanTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createPartyAndAccountTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createPartyAndAccountTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createSchedulingTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createSchedulingTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createBusinessAndCatalogTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createBusinessAndCatalogTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createSalesTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createSalesTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createBookingTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createBookingTables: ${sw.elapsedMilliseconds}ms');
 
     // -- schema_version table
+    sw = Stopwatch()..start();
     await db.execute('''
       CREATE TABLE schema_version (
         version INTEGER PRIMARY KEY,
@@ -274,24 +330,56 @@ class DatabaseHelper {
       'version': 52,
       'description': 'Progressive schema seed (fresh install base)',
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+    sw.stop();
+    debugPrint('[DB:onCreate] schema_version table: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createLookupTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createLookupTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createGstAndLogisticsTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createGstAndLogisticsTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createInventoryAndHrTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createInventoryAndHrTables: ${sw.elapsedMilliseconds}ms');
 
     // ── v58: identity & sync tables (must come before seeding — categories FK
     //    references linked_business_sessions) ─────────────────────────────────
+    sw = Stopwatch()..start();
     await _createSyncAndIdentityTables(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createSyncAndIdentityTables: ${sw.elapsedMilliseconds}ms');
 
+    sw = Stopwatch()..start();
     await _createActivityLogTable(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createActivityLogTable: ${sw.elapsedMilliseconds}ms');
+
+    sw = Stopwatch()..start();
     await _createAppLogsTable(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _createAppLogsTable: ${sw.elapsedMilliseconds}ms');
 
     // Seed default categories + default accounts
+    sw = Stopwatch()..start();
     await _seedCategories(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _seedCategories: ${sw.elapsedMilliseconds}ms');
+
+    sw = Stopwatch()..start();
     await _seedAccounts(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _seedAccounts: ${sw.elapsedMilliseconds}ms');
+
+    sw = Stopwatch()..start();
     await _seedFySettings(db);
+    sw.stop();
+    debugPrint('[DB:onCreate] _seedFySettings: ${sw.elapsedMilliseconds}ms');
 
     await db.insert('schema_version', {
       'version': AppConstants.dbVersion,
@@ -299,7 +387,8 @@ class DatabaseHelper {
       'applied_at': DateTime.now().toIso8601String(),
     });
 
-    debugPrint('Database created successfully.');
+    totalSw.stop();
+    debugPrint('[DB:onCreate] Database creation complete in ${totalSw.elapsedMilliseconds}ms (total)');
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -2450,7 +2539,7 @@ class DatabaseHelper {
         await db.execute(
           'ALTER TABLE linked_devices ADD COLUMN secondary_identity_id TEXT',
         );
-      } catch (e, st) {
+      } catch (e) {
         AppLogger.instance.debug(
           'secondary_identity_id column already exists or migration not applicable',
           category: 'db_schema',
@@ -2459,7 +2548,7 @@ class DatabaseHelper {
       }
       try {
         await db.execute('ALTER TABLE app_users ADD COLUMN identity_id TEXT');
-      } catch (e, st) {
+      } catch (e) {
         AppLogger.instance.debug(
           'identity_id column already exists or migration not applicable',
           category: 'db_schema',
@@ -3837,8 +3926,7 @@ class DatabaseHelper {
 
     if (oldVersion < 91) {
       // Fix legacy seeded "Cash" account that was stored as savings.
-      await db.rawUpdate(
-        '''
+      await db.rawUpdate('''
         UPDATE accounts
         SET account_type = 'cash'
         WHERE account_type = 'savings'
@@ -3846,8 +3934,7 @@ class DatabaseHelper {
           AND (bank_name IS NULL OR bank_name = '')
           AND (account_number_last4 IS NULL OR account_number_last4 = '')
           AND deleted_at IS NULL
-        ''',
-      );
+        ''');
 
       await db.insert('schema_version', {
         'version': 91,
@@ -3860,12 +3947,32 @@ class DatabaseHelper {
       // Add missing default account types for existing users.
       // Only adds account types that don't already exist.
       final defaultAccounts = [
-        {'account_type': 'savings', 'account_name': 'Savings Account', 'is_primary': 0},
+        {
+          'account_type': 'savings',
+          'account_name': 'Savings Account',
+          'is_primary': 0,
+        },
         {'account_type': 'cash', 'account_name': 'Cash', 'is_primary': 0},
-        {'account_type': 'creditCard', 'account_name': 'Credit Card', 'is_primary': 0},
-        {'account_type': 'debitCard', 'account_name': 'Debit Card', 'is_primary': 0},
-        {'account_type': 'upiWallet', 'account_name': 'UPI Wallet', 'is_primary': 0},
-        {'account_type': 'paymentWallet', 'account_name': 'Payment Wallet', 'is_primary': 0},
+        {
+          'account_type': 'creditCard',
+          'account_name': 'Credit Card',
+          'is_primary': 0,
+        },
+        {
+          'account_type': 'debitCard',
+          'account_name': 'Debit Card',
+          'is_primary': 0,
+        },
+        {
+          'account_type': 'upiWallet',
+          'account_name': 'UPI Wallet',
+          'is_primary': 0,
+        },
+        {
+          'account_type': 'paymentWallet',
+          'account_name': 'Payment Wallet',
+          'is_primary': 0,
+        },
       ];
 
       for (final account in defaultAccounts) {
@@ -3893,9 +4000,11 @@ class DatabaseHelper {
             'Add missing default account types (savings, cash, creditCard, debitCard, upiWallet, paymentWallet)',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
-    
+
     sw.stop();
-    debugPrint('[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms');
+    debugPrint(
+      '[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms',
+    );
   }
 
   /// Seeds the [hsn_master] table from the two bundled CBIC CSV assets.
@@ -4231,17 +4340,37 @@ class DatabaseHelper {
   Future<void> _seedAccounts(Database db) async {
     final accounts = [
       // Primary bank account - most common for UPI/net banking
-      {'account_type': 'savings', 'account_name': 'Savings Account', 'is_primary': 1},
+      {
+        'account_type': 'savings',
+        'account_name': 'Savings Account',
+        'is_primary': 1,
+      },
       // Cash for physical currency transactions
       {'account_type': 'cash', 'account_name': 'Cash', 'is_primary': 0},
       // Credit card for credit transactions
-      {'account_type': 'creditCard', 'account_name': 'Credit Card', 'is_primary': 0},
+      {
+        'account_type': 'creditCard',
+        'account_name': 'Credit Card',
+        'is_primary': 0,
+      },
       // Debit card for direct debit payments
-      {'account_type': 'debitCard', 'account_name': 'Debit Card', 'is_primary': 0},
+      {
+        'account_type': 'debitCard',
+        'account_name': 'Debit Card',
+        'is_primary': 0,
+      },
       // UPI wallets like PhonePe, GPay, Paytm
-      {'account_type': 'upiWallet', 'account_name': 'UPI Wallet', 'is_primary': 0},
+      {
+        'account_type': 'upiWallet',
+        'account_name': 'UPI Wallet',
+        'is_primary': 0,
+      },
       // Payment wallets (non-UPI)
-      {'account_type': 'paymentWallet', 'account_name': 'Payment Wallet', 'is_primary': 0},
+      {
+        'account_type': 'paymentWallet',
+        'account_name': 'Payment Wallet',
+        'is_primary': 0,
+      },
     ];
     for (final a in accounts) {
       await db.insert('accounts', {

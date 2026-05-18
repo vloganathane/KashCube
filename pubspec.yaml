@@ -15,6 +15,7 @@ dependencies:
 
   # Local Database
   sqflite: ^2.4.1
+  sqflite_common_ffi: ^2.3.4+4
   sqflite_common_ffi_web: ^1.1.1
   path: ^1.9.1
 
@@ -146,6 +147,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
+  windows:
+    generate: true
+    image_path: "assets/play_store_512.png"
   macos:
     generate: true
     image_path: "assets/play_store_512.png"

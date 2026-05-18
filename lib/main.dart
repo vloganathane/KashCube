@@ -4,7 +4,7 @@ import 'dart:ui';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart'
-  show TargetPlatform, defaultTargetPlatform, debugPrint, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform, debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
@@ -53,10 +53,7 @@ Future<void> main() async {
         originalDebugPrint(message, wrapWidth: wrapWidth);
         if (message == null || AppLogger.shouldSkipTerminalCapture()) return;
         unawaited(
-          AppLogger.instance.recordTerminalLine(
-            message,
-            source: 'debug_print',
-          ),
+          AppLogger.instance.recordTerminalLine(message, source: 'debug_print'),
         );
       };
 
@@ -106,8 +103,9 @@ Future<void> main() async {
           );
           // Disable collection by default; re-enabled below if user consented.
           if (!kIsWeb) {
-            await FirebaseAnalytics.instance
-                .setAnalyticsCollectionEnabled(false);
+            await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(
+              false,
+            );
           }
         } catch (e) {
           // Not fatal — analytics simply stays disabled until configured.
@@ -129,9 +127,7 @@ Future<void> main() async {
       await AppLogger.instance.event(
         'app_start',
         category: 'startup',
-        context: {
-          'platform': kIsWeb ? 'web' : defaultTargetPlatform.name,
-        },
+        context: {'platform': kIsWeb ? 'web' : defaultTargetPlatform.name},
       );
 
       // Now that the DB is open, check the user's analytics consent and
@@ -140,8 +136,9 @@ Future<void> main() async {
         try {
           final repo = SettingsRepositoryImpl();
           final consentVal = await repo.get(SettingsKeys.analyticsConsent);
-          await FirebaseAnalytics.instance
-              .setAnalyticsCollectionEnabled(consentVal == 'true');
+          await FirebaseAnalytics.instance.setAnalyticsCollectionEnabled(
+            consentVal == 'true',
+          );
         } catch (e) {
           // Non-fatal — analytics stays disabled.
           AppLogger.instance.warning(
@@ -208,12 +205,7 @@ Future<void> main() async {
       print: (self, parent, zone, line) {
         parent.print(zone, line);
         if (AppLogger.shouldSkipTerminalCapture(zone)) return;
-        unawaited(
-          AppLogger.instance.recordTerminalLine(
-            line,
-            source: 'print',
-          ),
-        );
+        unawaited(AppLogger.instance.recordTerminalLine(line, source: 'print'));
       },
     ),
   );
@@ -308,7 +300,7 @@ class _LockGateState extends ConsumerState<_LockGate>
       // and the pause duration was >= 2 seconds.
       if (_lastPausedTime != null) {
         final pauseDuration = DateTime.now().difference(_lastPausedTime!);
-        
+
         if (pauseDuration.inSeconds >= 2) {
           // Evict stale/excess PDFs whenever the app comes back to foreground.
           // PdfCacheManager uses getTemporaryDirectory() — unavailable on web.
@@ -319,7 +311,7 @@ class _LockGateState extends ConsumerState<_LockGate>
         _lastPausedTime = null; // Reset after handling
       }
     }
-    
+
     _lastState = state; // Track for next transition
   }
 
@@ -335,7 +327,9 @@ class _LockGateState extends ConsumerState<_LockGate>
         _checkedLock = true;
         _ownerChosen = false; // reset on re-lock
       });
-      debugPrint('[LockGate] State updated: isLocked=$_isLocked, checkedLock=$_checkedLock');
+      debugPrint(
+        '[LockGate] State updated: isLocked=$_isLocked, checkedLock=$_checkedLock',
+      );
     }
 
     // Try biometric first if enabled
@@ -355,7 +349,8 @@ class _LockGateState extends ConsumerState<_LockGate>
 
     try {
       final localAuth = LocalAuthentication();
-      final canAuth = await localAuth.canCheckBiometrics ||
+      final canAuth =
+          await localAuth.canCheckBiometrics ||
           await localAuth.isDeviceSupported();
 
       if (!canAuth) return;
@@ -379,7 +374,6 @@ class _LockGateState extends ConsumerState<_LockGate>
 
   @override
   Widget build(BuildContext context) {
-
     // Listen for switch-user requests from anywhere in the app.
     ref.listen<int>(switchUserProvider, (_, _) {
       ref.read(activeAppUserProvider.notifier).state = null;
@@ -391,19 +385,28 @@ class _LockGateState extends ConsumerState<_LockGate>
     if (!_checkedLock) {
       // Splash / loading while we check lock state
       debugPrint('[LockGate] Showing loading spinner (checking lock)');
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // ── Web platform: bypass all lock/user gates — auth via session token ───
     if (kIsWeb) return const WebConnectScreen();
 
+    // Kick off both reads together so setup status doesn't wait on terms.
+    final termsState = ref.watch(termsAcceptedProvider);
+    final wizardState = ref.watch(setupWizardDoneProvider);
+
     // ── Terms & Conditions gate ──────────────────────────────────────────────
     // Must be accepted before any other screen is shown.
     debugPrint('[LockGate] Watching termsAcceptedProvider...');
-    final termsState = ref.watch(termsAcceptedProvider);
-    debugPrint('[LockGate] termsState: ${termsState.isLoading ? "loading" : termsState.hasValue ? termsState.value : termsState.hasError ? "error: ${termsState.error}" : "unknown"}');
+    debugPrint(
+      '[LockGate] termsState: ${termsState.isLoading
+          ? "loading"
+          : termsState.hasValue
+          ? termsState.value
+          : termsState.hasError
+          ? "error: ${termsState.error}"
+          : "unknown"}',
+    );
     if (termsState.isLoading) {
       debugPrint('[LockGate] Showing loading spinner (terms loading)');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -418,8 +421,15 @@ class _LockGateState extends ConsumerState<_LockGate>
 
     // ── First-run setup wizard ───────────────────────────────────────────────
     debugPrint('[LockGate] Watching setupWizardDoneProvider...');
-    final wizardState = ref.watch(setupWizardDoneProvider);
-    debugPrint('[LockGate] wizardState: ${wizardState.isLoading ? "loading" : wizardState.hasValue ? wizardState.value : wizardState.hasError ? "error: ${wizardState.error}" : "unknown"}');
+    debugPrint(
+      '[LockGate] wizardState: ${wizardState.isLoading
+          ? "loading"
+          : wizardState.hasValue
+          ? wizardState.value
+          : wizardState.hasError
+          ? "error: ${wizardState.error}"
+          : "unknown"}',
+    );
     if (wizardState.isLoading) {
       debugPrint('[LockGate] Showing loading spinner (wizard loading)');
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -448,9 +458,8 @@ class _LockGateState extends ConsumerState<_LockGate>
     final activeUser = ref.watch(activeAppUserProvider);
     final hasUsers = ref.watch(hasAnyAppUserProvider);
     return hasUsers.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => const AppShell(),
       data: (has) {
         // No staff, owner tapped, or staff already authenticated → go straight in.
@@ -464,4 +473,3 @@ class _LockGateState extends ConsumerState<_LockGate>
 }
 
 /// Creates a [LocalAuthentication] instance.
-

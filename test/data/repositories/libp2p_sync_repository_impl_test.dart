@@ -73,16 +73,19 @@ class MockLibP2pDiscovery extends LibP2pDiscovery {
 
   @override
   Future<void> start({
-    required dynamic host, // Using dynamic to avoid importing dart_libp2p in tests
+    required dynamic
+    host, // Using dynamic to avoid importing dart_libp2p in tests
     Map<String, String>? metadata,
   }) async {
     startCalled = true;
     // Emit a test peer immediately
-    _controller.add(SyncPeer(
-      peerId: 'test-peer-123',
-      displayName: 'Test Device',
-      discoveredAt: DateTime.now(),
-    ));
+    _controller.add(
+      SyncPeer(
+        peerId: 'test-peer-123',
+        displayName: 'Test Device',
+        discoveredAt: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -99,6 +102,7 @@ class MockLibP2pDiscovery extends LibP2pDiscovery {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
 
   group('Libp2pSyncRepositoryImpl', () {
     late Libp2pSyncRepositoryImpl repository;
@@ -163,20 +167,14 @@ void main() {
         // Wait for async event processing
         await Future.delayed(const Duration(milliseconds: 100));
 
-        expect(
-          events.whereType<SyncDisconnected>(),
-          isNotEmpty,
-        );
+        expect(events.whereType<SyncDisconnected>(), isNotEmpty);
 
         await subscription.cancel();
       });
 
       test('disconnect() calls LibP2pNode.close()', () async {
         await repository.initialize();
-        
-        // Need to start discovery first to have something to stop
-        await repository.stopDiscovery();
-        
+
         await repository.disconnect();
 
         expect(mockNode.closeCalled, isTrue);
@@ -186,18 +184,14 @@ void main() {
         await repository.initialize();
 
         // Simulate some sync progress
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'test_table',
-            'rows': [
-              {'sync_id': 'row-1', 'value': 'A'}
-            ],
-            'is_final': true,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'test_table',
+          'rows': [
+            {'sync_id': 'row-1', 'value': 'A'},
+          ],
+          'is_final': true,
+        }, 'test-peer');
 
         final progressBefore = await repository.getSyncProgress();
         expect(progressBefore.rowsSynced, 1);
@@ -214,7 +208,7 @@ void main() {
       test('discoverPeers() starts mDNS discovery', () async {
         await repository.initialize();
 
-        final peersStream = repository.discoverPeers();
+        repository.discoverPeers();
 
         // Wait for discovery to start
         await Future.delayed(const Duration(milliseconds: 100));
@@ -232,12 +226,17 @@ void main() {
 
         final subscription = peersStream.listen(peerLists.add);
 
+        // Give discovery subscription time to attach before emitting a peer.
+        await Future.delayed(const Duration(milliseconds: 100));
+
         // Manually emit a peer to trigger the stream
-        mockDiscovery.emitPeer(SyncPeer(
-          peerId: 'test-peer-456',
-          displayName: 'Another Device',
-          discoveredAt: DateTime.now(),
-        ));
+        mockDiscovery.emitPeer(
+          SyncPeer(
+            peerId: 'test-peer-456',
+            displayName: 'Another Device',
+            discoveredAt: DateTime.now(),
+          ),
+        );
 
         // Wait for emission
         await Future.delayed(const Duration(milliseconds: 200));
@@ -265,36 +264,28 @@ void main() {
         await repository.initialize();
 
         // First batch: 3 unique rows
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'row-1', 'amount': 100},
-              {'sync_id': 'row-2', 'amount': 200},
-              {'sync_id': 'row-3', 'amount': 300},
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'row-1', 'amount': 100},
+            {'sync_id': 'row-2', 'amount': 200},
+            {'sync_id': 'row-3', 'amount': 300},
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         // Second batch: 2 duplicates + 1 new
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'row-2', 'amount': 200}, // Duplicate
-              {'sync_id': 'row-3', 'amount': 300}, // Duplicate
-              {'sync_id': 'row-4', 'amount': 400}, // New
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'row-2', 'amount': 200}, // Duplicate
+            {'sync_id': 'row-3', 'amount': 300}, // Duplicate
+            {'sync_id': 'row-4', 'amount': 400}, // New
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         // Verify only 4 unique rows were processed (not 6)
         final progress = await repository.getSyncProgress();
@@ -313,34 +304,26 @@ void main() {
         await tinyRepo.initialize();
 
         // Send 3 rows (exceeds capacity of 2)
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'test_table',
-            'rows': [
-              {'sync_id': 'row-1', 'value': 'A'},
-              {'sync_id': 'row-2', 'value': 'B'},
-              {'sync_id': 'row-3', 'value': 'C'},
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'test_table',
+          'rows': [
+            {'sync_id': 'row-1', 'value': 'A'},
+            {'sync_id': 'row-2', 'value': 'B'},
+            {'sync_id': 'row-3', 'value': 'C'},
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         // Now send row-1 again — it should NOT be filtered (evicted from cache)
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'test_table',
-            'rows': [
-              {'sync_id': 'row-1', 'value': 'A'}, // Re-inserted (was evicted)
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'test_table',
+          'rows': [
+            {'sync_id': 'row-1', 'value': 'A'}, // Re-inserted (was evicted)
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         // Verify 4 rows were processed (3 initial + 1 re-inserted)
         final progress = await tinyRepo.getSyncProgress();
@@ -352,19 +335,15 @@ void main() {
       test('handles rows without sync_id (malformed data)', () async {
         await repository.initialize();
 
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'test_table',
-            'rows': [
-              {'value': 'A'}, // No sync_id
-              {'sync_id': 'row-2', 'value': 'B'},
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'test_table',
+          'rows': [
+            {'value': 'A'}, // No sync_id
+            {'sync_id': 'row-2', 'value': 'B'},
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         // Both rows should pass through (malformed rows not filtered)
         final progress = await repository.getSyncProgress();
@@ -373,69 +352,63 @@ void main() {
     });
 
     group('Frame Handlers', () {
-      test('handleRowsFrame() emits SyncTableCompleted when is_final=true',
-          () async {
-        await repository.initialize();
+      test(
+        'handleRowsFrame() emits SyncTableCompleted when is_final=true',
+        () async {
+          await repository.initialize();
 
-        final events = <SyncEvent>[];
-        repository.events.listen(events.add);
+          final events = <SyncEvent>[];
+          repository.events.listen(events.add);
 
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
+          await mockProtocol.triggerHandler('ROWS', {
             'type': 'ROWS',
             'table': 'transactions',
             'rows': [
-              {'sync_id': 'row-1', 'amount': 100}
+              {'sync_id': 'row-1', 'amount': 100},
             ],
             'is_final': true,
-          },
-          'test-peer',
-        );
+          }, 'test-peer');
 
-        final completedEvents = events.whereType<SyncTableCompleted>();
-        expect(completedEvents, isNotEmpty);
-        expect(completedEvents.first.tableName, 'transactions');
-      });
+          await Future.delayed(const Duration(milliseconds: 50));
 
-      test('handleRowsFrame() does not emit event when is_final=false',
-          () async {
-        await repository.initialize();
+          final completedEvents = events.whereType<SyncTableCompleted>();
+          expect(completedEvents, isNotEmpty);
+          expect(completedEvents.first.tableName, 'transactions');
+        },
+      );
 
-        final events = <SyncEvent>[];
-        repository.events.listen(events.add);
+      test(
+        'handleRowsFrame() does not emit event when is_final=false',
+        () async {
+          await repository.initialize();
 
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
+          final events = <SyncEvent>[];
+          repository.events.listen(events.add);
+
+          await mockProtocol.triggerHandler('ROWS', {
             'type': 'ROWS',
             'table': 'transactions',
             'rows': [
-              {'sync_id': 'row-1', 'amount': 100}
+              {'sync_id': 'row-1', 'amount': 100},
             ],
             'is_final': false,
-          },
-          'test-peer',
-        );
+          }, 'test-peer');
 
-        final completedEvents = events.whereType<SyncTableCompleted>();
-        expect(completedEvents, isEmpty);
-      });
+          final completedEvents = events.whereType<SyncTableCompleted>();
+          expect(completedEvents, isEmpty);
+        },
+      );
 
       test('handlePushFrame() processes live incremental writes', () async {
         await repository.initialize();
 
-        await mockProtocol.triggerHandler(
-          'PUSH',
-          {
-            'type': 'PUSH',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'push-1', 'amount': 500}
-            ],
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('PUSH', {
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'push-1', 'amount': 500},
+          ],
+        }, 'test-peer');
 
         final progress = await repository.getSyncProgress();
         expect(progress.rowsSynced, 1);
@@ -444,17 +417,13 @@ void main() {
       test('handlePushFrame() returns WRITE_OK acknowledgment', () async {
         await repository.initialize();
 
-        final response = await mockProtocol.triggerHandler(
-          'PUSH',
-          {
-            'type': 'PUSH',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'push-1', 'amount': 500}
-            ],
-          },
-          'test-peer',
-        );
+        final response = await mockProtocol.triggerHandler('PUSH', {
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'push-1', 'amount': 500},
+          ],
+        }, 'test-peer');
 
         expect(response, isNotNull);
         expect(response!['type'], 'WRITE_OK');
@@ -466,30 +435,22 @@ void main() {
         await repository.initialize();
 
         // First push
-        await mockProtocol.triggerHandler(
-          'PUSH',
-          {
-            'type': 'PUSH',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'push-1', 'amount': 500}
-            ],
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('PUSH', {
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'push-1', 'amount': 500},
+          ],
+        }, 'test-peer');
 
         // Duplicate push
-        final response = await mockProtocol.triggerHandler(
-          'PUSH',
-          {
-            'type': 'PUSH',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'push-1', 'amount': 500} // Same sync_id
-            ],
-          },
-          'test-peer',
-        );
+        final response = await mockProtocol.triggerHandler('PUSH', {
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'push-1', 'amount': 500}, // Same sync_id
+          ],
+        }, 'test-peer');
 
         final progress = await repository.getSyncProgress();
         expect(progress.rowsSynced, 1); // Only first counted
@@ -502,15 +463,11 @@ void main() {
         final events = <SyncEvent>[];
         repository.events.listen(events.add);
 
-        await mockProtocol.triggerHandler(
-          'ERROR',
-          {
-            'type': 'ERROR',
-            'code': 'DB_CONSTRAINT',
-            'message': 'Foreign key violation',
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ERROR', {
+          'type': 'ERROR',
+          'code': 'DB_CONSTRAINT',
+          'message': 'Foreign key violation',
+        }, 'test-peer');
 
         final errorEvents = events.whereType<SyncError>();
         expect(errorEvents, isNotEmpty);
@@ -520,11 +477,9 @@ void main() {
       test('handlePingFrame() responds with PONG', () async {
         await repository.initialize();
 
-        final response = await mockProtocol.triggerHandler(
-          'PING',
-          {'type': 'PING'},
-          'test-peer',
-        );
+        final response = await mockProtocol.triggerHandler('PING', {
+          'type': 'PING',
+        }, 'test-peer');
 
         expect(response, isNotNull);
         expect(response!['type'], 'PONG');
@@ -534,28 +489,22 @@ void main() {
         await repository.initialize();
 
         // Should not throw
-        await mockProtocol.triggerHandler(
-          'PONG',
-          {'type': 'PONG'},
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('PONG', {
+          'type': 'PONG',
+        }, 'test-peer');
       });
 
       test('handleSyncPlanFrame() logs advertised tables', () async {
         await repository.initialize();
 
         // Should not throw
-        await mockProtocol.triggerHandler(
-          'SYNC_PLAN',
-          {
-            'type': 'SYNC_PLAN',
-            'tables': [
-              {'name': 'transactions', 'mode': 'delta_ts'},
-              {'name': 'credits', 'mode': 'snapshot'},
-            ],
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('SYNC_PLAN', {
+          'type': 'SYNC_PLAN',
+          'tables': [
+            {'name': 'transactions', 'mode': 'delta_ts'},
+            {'name': 'credits', 'mode': 'snapshot'},
+          ],
+        }, 'test-peer');
       });
     });
 
@@ -563,40 +512,31 @@ void main() {
       test('getSyncProgress() returns correct rowsSynced count', () async {
         await repository.initialize();
 
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'row-1', 'amount': 100},
-              {'sync_id': 'row-2', 'amount': 200},
-            ],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'row-1', 'amount': 100},
+            {'sync_id': 'row-2', 'amount': 200},
+          ],
+          'is_final': false,
+        }, 'test-peer');
 
         final progress = await repository.getSyncProgress();
         expect(progress.rowsSynced, 2);
       });
 
-      test('getSyncProgress() tracks completedTables after is_final',
-          () async {
+      test('getSyncProgress() tracks completedTables after is_final', () async {
         await repository.initialize();
 
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'row-1', 'amount': 100}
-            ],
-            'is_final': true,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'row-1', 'amount': 100},
+          ],
+          'is_final': true,
+        }, 'test-peer');
 
         final progress = await repository.getSyncProgress();
         expect(progress.completedTables, contains('transactions'));
@@ -607,28 +547,20 @@ void main() {
         await repository.initialize();
 
         // Add one pending table
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'table1',
-            'rows': [],
-            'is_final': false,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'table1',
+          'rows': [],
+          'is_final': false,
+        }, 'test-peer');
 
         // Complete it
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'table1',
-            'rows': [],
-            'is_final': true,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'table1',
+          'rows': [],
+          'is_final': true,
+        }, 'test-peer');
 
         final progress = await repository.getSyncProgress();
         expect(progress.percentComplete, 100.0);
@@ -643,18 +575,16 @@ void main() {
         repository.events.listen(events.add);
 
         // Complete one table
-        await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            'table': 'transactions',
-            'rows': [
-              {'sync_id': 'row-1', 'amount': 100}
-            ],
-            'is_final': true,
-          },
-          'test-peer',
-        );
+        await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': [
+            {'sync_id': 'row-1', 'amount': 100},
+          ],
+          'is_final': true,
+        }, 'test-peer');
+
+        await Future.delayed(const Duration(milliseconds: 50));
 
         final completedEvents = events.whereType<SyncCompleted>();
         expect(completedEvents, isNotEmpty);
@@ -666,15 +596,11 @@ void main() {
       test('handleRowsFrame() returns ERROR on malformed frame', () async {
         await repository.initialize();
 
-        final response = await mockProtocol.triggerHandler(
-          'ROWS',
-          {
-            'type': 'ROWS',
-            // Missing 'table' field
-            'rows': [],
-          },
-          'test-peer',
-        );
+        final response = await mockProtocol.triggerHandler('ROWS', {
+          'type': 'ROWS',
+          // Missing 'table' field
+          'rows': [],
+        }, 'test-peer');
 
         expect(response, isNotNull);
         expect(response!['type'], 'ERROR');
@@ -684,14 +610,10 @@ void main() {
       test('handlePushFrame() returns ERROR on malformed frame', () async {
         await repository.initialize();
 
-        final response = await mockProtocol.triggerHandler(
-          'PUSH',
-          {
-            'type': 'PUSH',
-            // Missing 'table' and 'rows'
-          },
-          'test-peer',
-        );
+        final response = await mockProtocol.triggerHandler('PUSH', {
+          'type': 'PUSH',
+          // Missing 'table' and 'rows'
+        }, 'test-peer');
 
         expect(response, isNotNull);
         expect(response!['type'], 'ERROR');

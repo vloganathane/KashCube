@@ -7,6 +7,7 @@ import 'package:kash_cube/domain/repositories/sync_repository.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
+  databaseFactory = databaseFactoryFfi;
 
   group('WebRTCSyncRepositoryImpl', () {
     late WebRTCSyncRepositoryImpl repository;
@@ -49,14 +50,22 @@ void main() {
     });
 
     group('Connection Lifecycle', () {
-      test('connect() transitions to connected state', () async {
-        // SKIP: Phase 0 — connect() is a stub (transport is in WebSyncNotifier)
-        // This will be fully tested once WebSyncNotifier delegates to repository
-      }, skip: 'Phase 0: connect() is a stub');
+      test(
+        'connect() transitions to connected state',
+        () async {
+          // SKIP: Phase 0 — connect() is a stub (transport is in WebSyncNotifier)
+          // This will be fully tested once WebSyncNotifier delegates to repository
+        },
+        skip: 'Phase 0: connect() is a stub',
+      );
 
-      test('disconnect() transitions to disconnected state', () async {
-        // SKIP: Phase 0 — disconnect() doesn't have full cleanup yet
-      }, skip: 'Phase 0: disconnect() needs transport integration');
+      test(
+        'disconnect() transitions to disconnected state',
+        () async {
+          // SKIP: Phase 0 — disconnect() doesn't have full cleanup yet
+        },
+        skip: 'Phase 0: disconnect() needs transport integration',
+      );
 
       test('disconnect() emits SyncDisconnected event', () async {
         await repository.initialize();
@@ -67,10 +76,7 @@ void main() {
 
         await repository.disconnect();
 
-        expect(
-          events.whereType<SyncDisconnected>(),
-          isNotEmpty,
-        );
+        expect(events.whereType<SyncDisconnected>(), isNotEmpty);
       });
     });
 
@@ -165,56 +171,64 @@ void main() {
     });
 
     group('Message Handlers', () {
-      test('handleRowsMessage() emits SyncTableCompleted when is_final=true',
-          () async {
-        await repository.initialize();
-        await repository.connect(peerId: 'test-peer');
+      test(
+        'handleRowsMessage() emits SyncTableCompleted when is_final=true',
+        () async {
+          await repository.initialize();
+          await repository.connect(peerId: 'test-peer');
 
-        final events = <SyncEvent>[];
-        final eventsFuture = repository.events.toList();
-        repository.events.listen(events.add);
+          final events = <SyncEvent>[];
+          repository.events.listen(events.add);
 
-        await repository.handleRowsMessage({
-          'table': 'transactions',
-          'rows': [
-            {'sync_id': 'row-1', 'amount': 100},
-          ],
-          'is_final': true, // Final frame
-        });
+          await repository.handleRowsMessage({
+            'table': 'transactions',
+            'rows': [
+              {'sync_id': 'row-1', 'amount': 100},
+            ],
+            'is_final': true, // Final frame
+          });
 
-        // Wait a bit for event emission
-        await Future.delayed(const Duration(milliseconds: 100));
+          // Wait a bit for event emission
+          await Future.delayed(const Duration(milliseconds: 100));
 
-        final completedEvents =
-            events.whereType<SyncTableCompleted>().toList();
-        expect(completedEvents, isNotEmpty,
-            reason: 'SyncTableCompleted event should be emitted');
-        if (completedEvents.isNotEmpty) {
-          expect(completedEvents.first.tableName, 'transactions');
-          expect(completedEvents.first.rowsProcessed, 1);
-        }
-      });
+          final completedEvents = events
+              .whereType<SyncTableCompleted>()
+              .toList();
+          expect(
+            completedEvents,
+            isNotEmpty,
+            reason: 'SyncTableCompleted event should be emitted',
+          );
+          if (completedEvents.isNotEmpty) {
+            expect(completedEvents.first.tableName, 'transactions');
+            expect(completedEvents.first.rowsProcessed, 1);
+          }
+        },
+      );
 
-      test('handleRowsMessage() does not emit event when is_final=false',
-          () async {
-        await repository.initialize();
-        await repository.connect(peerId: 'test-peer');
+      test(
+        'handleRowsMessage() does not emit event when is_final=false',
+        () async {
+          await repository.initialize();
+          await repository.connect(peerId: 'test-peer');
 
-        final events = <SyncEvent>[];
-        repository.events.listen(events.add);
+          final events = <SyncEvent>[];
+          repository.events.listen(events.add);
 
-        await repository.handleRowsMessage({
-          'table': 'transactions',
-          'rows': [
-            {'sync_id': 'row-1', 'amount': 100},
-          ],
-          'is_final': false, // Not final
-        });
+          await repository.handleRowsMessage({
+            'table': 'transactions',
+            'rows': [
+              {'sync_id': 'row-1', 'amount': 100},
+            ],
+            'is_final': false, // Not final
+          });
 
-        final completedEvents =
-            events.whereType<SyncTableCompleted>().toList();
-        expect(completedEvents, isEmpty);
-      });
+          final completedEvents = events
+              .whereType<SyncTableCompleted>()
+              .toList();
+          expect(completedEvents, isEmpty);
+        },
+      );
 
       test('handlePushMessage() processes live incremental writes', () async {
         await repository.initialize();
@@ -232,32 +246,34 @@ void main() {
         expect(progress.rowsSynced, 2);
       });
 
-      test('handlePushMessage() logs dedupe when all rows are duplicates',
-          () async {
-        await repository.initialize();
-        await repository.connect(peerId: 'test-peer');
+      test(
+        'handlePushMessage() logs dedupe when all rows are duplicates',
+        () async {
+          await repository.initialize();
+          await repository.connect(peerId: 'test-peer');
 
-        // Send initial rows
-        await repository.handleRowsMessage({
-          'table': 'transactions',
-          'rows': [
-            {'sync_id': 'row-1', 'amount': 100},
-          ],
-          'is_final': false,
-        });
+          // Send initial rows
+          await repository.handleRowsMessage({
+            'table': 'transactions',
+            'rows': [
+              {'sync_id': 'row-1', 'amount': 100},
+            ],
+            'is_final': false,
+          });
 
-        // Send same row via PUSH (should be deduped)
-        await repository.handlePushMessage({
-          'table': 'transactions',
-          'rows': [
-            {'sync_id': 'row-1', 'amount': 100}, // Duplicate
-          ],
-        });
+          // Send same row via PUSH (should be deduped)
+          await repository.handlePushMessage({
+            'table': 'transactions',
+            'rows': [
+              {'sync_id': 'row-1', 'amount': 100}, // Duplicate
+            ],
+          });
 
-        // Verify only 1 row processed (second was deduped)
-        final progress = await repository.getSyncProgress();
-        expect(progress.rowsSynced, 1);
-      });
+          // Verify only 1 row processed (second was deduped)
+          final progress = await repository.getSyncProgress();
+          expect(progress.rowsSynced, 1);
+        },
+      );
 
       test('handleSyncPlanMessage() logs advertised tables', () async {
         await repository.initialize();
@@ -344,8 +360,7 @@ void main() {
         expect(progress.rowsSynced, 2);
       });
 
-      test('getSyncProgress() tracks completedTables after is_final',
-          () async {
+      test('getSyncProgress() tracks completedTables after is_final', () async {
         await repository.initialize();
         await repository.connect(peerId: 'test-peer');
 
@@ -370,10 +385,7 @@ void main() {
         await repository.initialize();
         await repository.connect(peerId: 'test-peer');
 
-        expect(
-          events.whereType<SyncStarted>(),
-          isNotEmpty,
-        );
+        expect(events.whereType<SyncStarted>(), isNotEmpty);
       });
 
       test('emits SyncError when connection fails', () async {

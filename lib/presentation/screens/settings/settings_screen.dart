@@ -727,8 +727,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           Consumer(
                             builder: (context, ref, _) {
                               final hasUsers = ref.watch(hasAnyAppUserProvider);
-                              if (hasUsers.valueOrNull != true)
+                              if (hasUsers.valueOrNull != true) {
                                 return const SizedBox.shrink();
+                              }
                               return ListTile(
                                 leading: const Icon(
                                   Icons.switch_account_outlined,

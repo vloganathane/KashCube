@@ -70,20 +70,26 @@ class BookingConfirmationPdfService {
     // Build notes: date-range / duration / time info
     final notesParts = <String>[];
     if (booking.endDatetime != null) {
-      final nights =
-          booking.endDatetime!.difference(booking.startDatetime).inDays;
+      final nights = booking.endDatetime!
+          .difference(booking.startDatetime)
+          .inDays;
       notesParts.add(
-          'Period: ${fmt.format(booking.startDatetime)} – ${fmt.format(booking.endDatetime!)}');
-      if (nights > 0) notesParts.add('Duration: $nights night${nights == 1 ? '' : 's'}');
+        'Period: ${fmt.format(booking.startDatetime)} – ${fmt.format(booking.endDatetime!)}',
+      );
+      if (nights > 0) {
+        notesParts.add('Duration: $nights night${nights == 1 ? '' : 's'}');
+      }
     } else {
-      notesParts.add('Date: ${fmt.format(booking.startDatetime)} at ${timeFmt.format(booking.startDatetime)}');
+      notesParts.add(
+        'Date: ${fmt.format(booking.startDatetime)} at ${timeFmt.format(booking.startDatetime)}',
+      );
       if (booking.durationMinutes != null && booking.durationMinutes! > 0) {
         final mins = booking.durationMinutes!;
         final durationStr = mins < 60
             ? '$mins min'
             : mins % 60 == 0
-                ? '${mins ~/ 60} hr'
-                : '${mins ~/ 60} hr ${mins % 60} min';
+            ? '${mins ~/ 60} hr'
+            : '${mins ~/ 60} hr ${mins % 60} min';
         notesParts.add('Duration: $durationStr');
       }
     }
@@ -136,9 +142,7 @@ class BookingConfirmationPdfService {
         email: customerParty?.email,
         state: customerParty?.state,
       ),
-      notes: notesParts.length > 1
-          ? notesParts.sublist(1).join('\n')
-          : null,
+      notes: notesParts.length > 1 ? notesParts.sublist(1).join('\n') : null,
       lineItems: lineItems,
       totals: PdfTotals(
         subtotal: booking.totalAmount,
@@ -155,10 +159,11 @@ class BookingConfirmationPdfService {
 
   PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo) {
     if (business == null) return const PdfPartyInfo(name: 'Your Business');
-    final addressParts = [business.address, business.city, business.state]
-        .where((e) => e != null && e.isNotEmpty)
-        .cast<String>()
-        .toList();
+    final addressParts = [
+      business.address,
+      business.city,
+      business.state,
+    ].where((e) => e != null && e.isNotEmpty).cast<String>().toList();
     return PdfPartyInfo(
       name: business.name,
       gstin: business.gstNo,
@@ -192,7 +197,7 @@ class BookingConfirmationPdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to load business logo in booking confirmation PDF',
         category: 'booking_confirmation_pdf',

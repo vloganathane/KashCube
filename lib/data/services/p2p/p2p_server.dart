@@ -48,29 +48,35 @@ class P2pServer {
   // Injected at [start] time by the coordinator.
   Future<Uint8List?> Function(String identityId)? _secretForPeer;
   Future<Map<String, dynamic>> Function(String table, int afterVersion)?
-      _pullHandler;
+  _pullHandler;
   Future<void> Function(String table, List<Map<String, dynamic>> rows)?
-      _pushHandler;
-  Future<bool> Function(String identityId, String publicKeyBase64,
-      String displayName, String proof)? _pairHandler;
+  _pushHandler;
+  Future<bool> Function(
+    String identityId,
+    String publicKeyBase64,
+    String displayName,
+    String proof,
+  )?
+  _pairHandler;
 
-    // Local identity metadata for legacy HTTP discovery fallback.
-    String? _localIdentityId;
-    String? _localDisplayName;
+  // Local identity metadata for legacy HTTP discovery fallback.
+  String? _localIdentityId;
+  String? _localDisplayName;
 
   // ── Web companion ─────────────────────────────────────────────────────────
 
   String? _webDeviceName;
-  int?    _webSchemaVersion;
+  int? _webSchemaVersion;
   Future<void> Function(String table, Map<String, dynamic> row)? _webOnWrite;
   Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)?
-      _webOnSignalFrame;
+  _webOnSignalFrame;
   Future<void> Function(String? sessionId)? _webOnSignalSessionClosed;
   Future<Map<String, dynamic>> Function({
     required String fileName,
     required String mimeType,
     required Uint8List bytes,
-  })? _webOnMediaUpload;
+  })?
+  _webOnMediaUpload;
   WebBrowserSession? _activeSession;
 
   /// Call this (after [start]) to enable the browser web companion routes.
@@ -80,19 +86,22 @@ class P2pServer {
   /// [onWrite]       — called when the browser submits a WRITE message.
   void enableWebCompanion({
     required String deviceName,
-    required int    schemaVersion,
-    required Future<void> Function(String table, Map<String, dynamic> row) onWrite,
-    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)? onSignalFrame,
+    required int schemaVersion,
+    required Future<void> Function(String table, Map<String, dynamic> row)
+    onWrite,
+    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame)?
+    onSignalFrame,
     Future<void> Function(String? sessionId)? onSignalSessionClosed,
     required Future<Map<String, dynamic>> Function({
       required String fileName,
       required String mimeType,
       required Uint8List bytes,
-    }) onMediaUpload,
+    })
+    onMediaUpload,
   }) {
-    _webDeviceName    = deviceName;
+    _webDeviceName = deviceName;
     _webSchemaVersion = schemaVersion;
-    _webOnWrite       = onWrite;
+    _webOnWrite = onWrite;
     _webOnSignalFrame = onSignalFrame;
     _webOnSignalSessionClosed = onSignalSessionClosed;
     _webOnMediaUpload = onMediaUpload;
@@ -122,7 +131,8 @@ class P2pServer {
   /// Emits `true` when a browser authenticates (AUTH_OK sent).
   /// Consumers can use this to trigger analytics or UI updates.
   final _browserConnectionController = StreamController<bool>.broadcast();
-  Stream<bool> get browserConnectionStream => _browserConnectionController.stream;
+  Stream<bool> get browserConnectionStream =>
+      _browserConnectionController.stream;
 
   // ── HTTP request log ──────────────────────────────────────────────────────
 
@@ -145,8 +155,9 @@ class P2pServer {
   }
 
   void _addHttpLog(String message) {
-    final n  = DateTime.now();
-    final ts = '${n.hour.toString().padLeft(2, '0')}:'
+    final n = DateTime.now();
+    final ts =
+        '${n.hour.toString().padLeft(2, '0')}:'
         '${n.minute.toString().padLeft(2, '0')}:'
         '${n.second.toString().padLeft(2, '0')}';
     final entry = '$ts  $message';
@@ -176,21 +187,29 @@ class P2pServer {
     required String localDisplayName,
     required Future<Uint8List?> Function(String identityId) secretForPeer,
     required Future<Map<String, dynamic>> Function(
-            String table, int afterVersion)
-        onPull,
+      String table,
+      int afterVersion,
+    )
+    onPull,
     required Future<void> Function(
-            String table, List<Map<String, dynamic>> rows)
-        onPush,
-    required Future<bool> Function(String identityId, String publicKeyBase64,
-            String displayName, String proof)
-        onPairRequest,
+      String table,
+      List<Map<String, dynamic>> rows,
+    )
+    onPush,
+    required Future<bool> Function(
+      String identityId,
+      String publicKeyBase64,
+      String displayName,
+      String proof,
+    )
+    onPairRequest,
   }) async {
     if (_server != null) return;
 
     _secretForPeer = secretForPeer;
-    _pullHandler   = onPull;
-    _pushHandler   = onPush;
-    _pairHandler   = onPairRequest;
+    _pullHandler = onPull;
+    _pushHandler = onPush;
+    _pairHandler = onPairRequest;
     _localIdentityId = localIdentityId;
     _localDisplayName = localDisplayName;
 
@@ -211,7 +230,7 @@ class P2pServer {
       ..get('/discover', _discoverHandler)
       ..post('/pair', _pairHandlerRoute)
       ..post('/media/upload', _mediaUploadRoute)
-      ..get('/ws',    _wsHandler());
+      ..get('/ws', _wsHandler());
 
     // Layer 2 — HMAC-gated P2P sync routes
     final syncRouter = Router()
@@ -224,7 +243,11 @@ class P2pServer {
 
     // Pre-warm web UI extraction before serving requests so the first browser
     // hit does not pay extraction latency (or see transient 500s).
-    await WebUiExtractor.instance.extractNow();
+    try {
+      await WebUiExtractor.instance.extractNow();
+    } catch (e) {
+      debugPrint('[P2P] Web UI prewarm skipped: $e');
+    }
 
     // Layer 3 — static web UI (pre-extracted from assets/web_ui/)
     final staticHandler = _buildStaticHandler();
@@ -262,9 +285,7 @@ class P2pServer {
         shared: false,
         poweredByHeader: 'KashCube',
       );
-      _addHttpLog(
-        'PORT fallback ${AppConstants.p2pPort} -> ${_server!.port}',
-      );
+      _addHttpLog('PORT fallback ${AppConstants.p2pPort} -> ${_server!.port}');
     }
     _staticReady = true;
     debugPrint('[P2P] Server listening on 0.0.0.0:${_server!.port}');
@@ -284,45 +305,45 @@ class P2pServer {
   /// Browser sends AUTH message with session token; token validated via
   /// [WebSessionService]. No HMAC required — token possession = auth.
   Handler _wsHandler() => webSocketHandler(
-        (WebSocketChannel channel, String? _) {
-          if (_webDeviceName == null || _webSchemaVersion == null) {
-            _addHttpLog('WS  /ws  REJECTED (web companion not enabled)');
-            channel.sink.close();
-            return;
+    (WebSocketChannel channel, String? _) {
+      if (_webDeviceName == null || _webSchemaVersion == null) {
+        _addHttpLog('WS  /ws  REJECTED (web companion not enabled)');
+        channel.sink.close();
+        return;
+      }
+      // Dispose any existing session (one browser at a time).
+      _activeSession?.dispose();
+      _addHttpLog('WS  /ws  CONNECTED');
+      late final WebBrowserSession session;
+      session = WebBrowserSession(
+        channel: channel,
+        validateToken: WebSessionService.instance.validateAndConsume,
+        validateSession: WebSessionService.instance.validateSession,
+        getSessionToken: () => WebSessionService.instance.sessionToken,
+        onWrite: _webOnWrite ?? (_, p2) async {},
+        onSignalFrame: _webOnSignalFrame,
+        schemaVersion: _webSchemaVersion!,
+        deviceName: _webDeviceName!,
+        onAuthenticated: (_) {
+          if (!_browserConnectionController.isClosed) {
+            _browserConnectionController.add(true);
           }
-          // Dispose any existing session (one browser at a time).
-          _activeSession?.dispose();
-          _addHttpLog('WS  /ws  CONNECTED');
-          late final WebBrowserSession session;
-          session = WebBrowserSession(
-            channel:         channel,
-            validateToken:   WebSessionService.instance.validateAndConsume,
-            validateSession: WebSessionService.instance.validateSession,
-            getSessionToken: () => WebSessionService.instance.sessionToken,
-            onWrite:         _webOnWrite ?? (_, p2) async {},
-            onSignalFrame:   _webOnSignalFrame,
-            schemaVersion:   _webSchemaVersion!,
-            deviceName:      _webDeviceName!,
-            onAuthenticated: (_) {
-              if (!_browserConnectionController.isClosed) {
-                _browserConnectionController.add(true);
-              }
-            },
-            onDisposed: () {
-              final sessionId = session.authenticatedSessionId;
-              unawaited(_webOnSignalSessionClosed?.call(sessionId));
-              _activeSession = null;
-              if (!_browserConnectionController.isClosed) {
-                _browserConnectionController.add(false);
-              }
-            },
-          );
-          _activeSession = session;
-          session.attach();
-          WebSessionService.instance.activeSession = session;
         },
-        allowedOrigins: null, // allow all origins — server is local-only
+        onDisposed: () {
+          final sessionId = session.authenticatedSessionId;
+          unawaited(_webOnSignalSessionClosed?.call(sessionId));
+          _activeSession = null;
+          if (!_browserConnectionController.isClosed) {
+            _browserConnectionController.add(false);
+          }
+        },
       );
+      _activeSession = session;
+      session.attach();
+      WebSessionService.instance.activeSession = session;
+    },
+    allowedOrigins: null, // allow all origins — server is local-only
+  );
 
   /// Returns a shelf handler that lazily extracts `assets/web_ui/` to a temp
   /// directory and serves it with `shelf_static`.
@@ -342,17 +363,14 @@ class P2pServer {
           );
         } catch (e) {
           debugPrint('[P2P] Static handler init error: $e');
-          return Response.internalServerError(
-            body: 'Web UI not available: $e',
-          );
+          return Response.internalServerError(body: 'Web UI not available: $e');
         }
       }
       final response = await cached!(request);
       // Add CORS for the static web UI (browser same-origin allows /ws).
-      return response.change(headers: {
-        ...response.headers,
-        'Access-Control-Allow-Origin': '*',
-      });
+      return response.change(
+        headers: {...response.headers, 'Access-Control-Allow-Origin': '*'},
+      );
     };
   }
 
@@ -401,17 +419,22 @@ class P2pServer {
   }
 
   Future<Response> _pairHandlerRoute(Request request) async {
-    final body        = await _readBody(request);
-    final identityId  = body['identity_id']  as String?;
-    final publicKey   = body['public_key']   as String?;
+    final body = await _readBody(request);
+    final identityId = body['identity_id'] as String?;
+    final publicKey = body['public_key'] as String?;
     final displayName = body['display_name'] as String? ?? 'Unknown Device';
-    final proof       = body['proof']        as String?;
+    final proof = body['proof'] as String?;
 
     if (identityId == null || publicKey == null || proof == null) {
       return Response(400, body: jsonEncode({'error': 'missing fields'}));
     }
 
-    final accepted = await _pairHandler!(identityId, publicKey, displayName, proof);
+    final accepted = await _pairHandler!(
+      identityId,
+      publicKey,
+      displayName,
+      proof,
+    );
     if (!accepted) {
       return Response(403, body: jsonEncode({'error': 'invalid proof'}));
     }
@@ -423,7 +446,7 @@ class P2pServer {
 
   Future<Response> _pullHandlerRoute(Request request) async {
     final body = await _readBody(request);
-    final table       = body['table'] as String?;
+    final table = body['table'] as String?;
     final afterVersion = body['after_version'] as int?;
 
     if (table == null || afterVersion == null) {
@@ -438,9 +461,9 @@ class P2pServer {
   }
 
   Future<Response> _pushHandlerRoute(Request request) async {
-    final body  = await _readBody(request);
+    final body = await _readBody(request);
     final table = body['table'] as String?;
-    final rows  = (body['rows'] as List?)?.cast<Map<String, dynamic>>();
+    final rows = (body['rows'] as List?)?.cast<Map<String, dynamic>>();
 
     if (table == null || rows == null) {
       return Response(400, body: jsonEncode({'error': 'missing params'}));
@@ -558,11 +581,14 @@ class P2pServer {
         }
 
         final identityId = request.headers['x-kash-id'];
-        final signature  = request.headers['x-kash-sig'];
-        final timestamp  = request.headers['x-kash-ts'];
+        final signature = request.headers['x-kash-sig'];
+        final timestamp = request.headers['x-kash-ts'];
 
         if (identityId == null || signature == null || timestamp == null) {
-          return Response(401, body: jsonEncode({'error': 'missing auth headers'}));
+          return Response(
+            401,
+            body: jsonEncode({'error': 'missing auth headers'}),
+          );
         }
 
         final secret = await _secretForPeer!(identityId);
@@ -574,16 +600,19 @@ class P2pServer {
         final bodyBytes = await request.read().expand((b) => b).toList();
 
         final valid = P2pAuthService.instance.verifyRequest(
-          method:       request.method,
-          path:         '/${request.url.path}',
-          receivedTs:   timestamp,
-          body:         bodyBytes,
+          method: request.method,
+          path: '/${request.url.path}',
+          receivedTs: timestamp,
+          body: bodyBytes,
           sharedSecret: secret,
-          receivedSig:  signature,
+          receivedSig: signature,
         );
 
         if (!valid) {
-          return Response(401, body: jsonEncode({'error': 'invalid signature'}));
+          return Response(
+            401,
+            body: jsonEncode({'error': 'invalid signature'}),
+          );
         }
 
         // Re-attach the buffered body for downstream handlers.

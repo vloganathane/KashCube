@@ -32,10 +32,10 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
     int inboundDedupeCapacity = 512,
     void Function(Map<String, dynamic>)? sendMessage,
     void Function(String)? notifyTableChanged,
-  })  : _dbHelper = dbHelper ?? DatabaseHelper.instance,
-        _inboundDedupeCapacity = inboundDedupeCapacity,
-        _sendMessage = sendMessage,
-        _notifyTableChanged = notifyTableChanged;
+  }) : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+       _inboundDedupeCapacity = inboundDedupeCapacity,
+       _sendMessage = sendMessage,
+       _notifyTableChanged = notifyTableChanged;
 
   final DatabaseHelper _dbHelper;
   final int _inboundDedupeCapacity;
@@ -49,7 +49,6 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
       StreamController<SyncEvent>.broadcast();
 
   SyncConnectionState _currentState = SyncConnectionState.disconnected;
-  String? _connectedPeerId;
   final Set<String> _completedTables = {};
   final Set<String> _pendingTables = {};
   int _rowsSynced = 0;
@@ -77,22 +76,19 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
       return; // Already connected/connecting
     }
 
-    _connectedPeerId = peerId;
     _emitState(SyncConnectionState.connecting);
 
     try {
       // TODO: Establish WebSocket or WebRTC connection
       // For now, simulate connection (actual logic in WebSyncNotifier)
-      
+
       _emitState(SyncConnectionState.connected);
       _eventsController.add(const SyncStarted());
     } catch (e, stack) {
       _emitState(SyncConnectionState.error);
-      _eventsController.add(SyncError(
-        message: 'Connection failed',
-        error: e,
-        stackTrace: stack,
-      ));
+      _eventsController.add(
+        SyncError(message: 'Connection failed', error: e, stackTrace: stack),
+      );
       rethrow;
     }
   }
@@ -102,12 +98,11 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
     if (_currentState == SyncConnectionState.disconnected) return;
 
     // TODO: Close WebSocket/WebRTC connection
-    
-    _connectedPeerId = null;
+
     _completedTables.clear();
     _pendingTables.clear();
     _rowsSynced = 0;
-    
+
     _emitState(SyncConnectionState.disconnected);
     _eventsController.add(const SyncDisconnected(reason: 'User disconnect'));
   }
@@ -151,28 +146,32 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
     try {
       // TODO: Implement pull request (PULL message)
       // For now, this is a placeholder — WebSyncNotifier still handles PULL/ROWS flow
-      
+
       // Simulate sync completion
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       _completedTables.add(tableName);
       _pendingTables.remove(tableName);
-      
-      _eventsController.add(SyncTableCompleted(
-        tableName: tableName,
-        rowsProcessed: 0, // TODO: Track actual count
-      ));
+
+      _eventsController.add(
+        SyncTableCompleted(
+          tableName: tableName,
+          rowsProcessed: 0, // TODO: Track actual count
+        ),
+      );
 
       if (_pendingTables.isEmpty) {
         _emitState(SyncConnectionState.connected);
       }
     } catch (e, stack) {
       _emitState(SyncConnectionState.error);
-      _eventsController.add(SyncError(
-        message: 'Sync failed for table $tableName',
-        error: e,
-        stackTrace: stack,
-      ));
+      _eventsController.add(
+        SyncError(
+          message: 'Sync failed for table $tableName',
+          error: e,
+          stackTrace: stack,
+        ),
+      );
       rethrow;
     }
   }
@@ -185,7 +184,7 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
 
     final db = await _dbHelper.database;
     final plans = await SyncTableRegistry.instance.discoverSyncPlans(db);
-    
+
     _completedTables.clear();
     _rowsSynced = 0;
     final startTime = DateTime.now();
@@ -195,10 +194,9 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
     }
 
     final duration = DateTime.now().difference(startTime);
-    _eventsController.add(SyncCompleted(
-      totalRowsSynced: _rowsSynced,
-      duration: duration,
-    ));
+    _eventsController.add(
+      SyncCompleted(totalRowsSynced: _rowsSynced, duration: duration),
+    );
   }
 
   @override
@@ -245,22 +243,29 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
 
     if (isFinal) {
       _completedTables.add(table);
-      _eventsController.add(SyncTableCompleted(
-        tableName: table,
-        rowsProcessed: filteredRows.length,
-      ));
+      _eventsController.add(
+        SyncTableCompleted(
+          tableName: table,
+          rowsProcessed: filteredRows.length,
+        ),
+      );
 
-      debugPrint('[WebRTCSync] Table synced: $table (${filteredRows.length} rows)');
+      debugPrint(
+        '[WebRTCSync] Table synced: $table (${filteredRows.length} rows)',
+      );
 
       // Check if all pending tables are done
-      if (_pendingTables.isNotEmpty && _pendingTables.every(_completedTables.contains)) {
+      if (_pendingTables.isNotEmpty &&
+          _pendingTables.every(_completedTables.contains)) {
         _pendingTables.clear();
         _emitState(SyncConnectionState.connected);
-        
-        _eventsController.add(SyncCompleted(
-          totalRowsSynced: _rowsSynced,
-          duration: Duration.zero, // TODO: Track sync start time
-        ));
+
+        _eventsController.add(
+          SyncCompleted(
+            totalRowsSynced: _rowsSynced,
+            duration: Duration.zero, // TODO: Track sync start time
+          ),
+        );
       }
     }
   }
@@ -281,7 +286,9 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
     final filteredRows = _filterNewInboundRows(table, rows);
 
     if (filteredRows.isEmpty) {
-      debugPrint('[WebRTCSync] PUSH deduped: $table (${rows.length} duplicate row(s))');
+      debugPrint(
+        '[WebRTCSync] PUSH deduped: $table (${rows.length} duplicate row(s))',
+      );
       return;
     }
 
@@ -353,11 +360,7 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
       throw StateError('No send callback configured');
     }
 
-    sendHook({
-      'type': 'PUSH',
-      'table': table,
-      'rows': rows,
-    });
+    sendHook({'type': 'PUSH', 'table': table, 'rows': rows});
   }
 
   // ── Events ──────────────────────────────────────────────────────────────
@@ -447,7 +450,7 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
         }
       }
       await batch.commit(noResult: true);
-    } catch (e, stack) {
+    } catch (e) {
       debugPrint('[WebRTCSync] Upsert error for $table: $e');
       // Don't rethrow — partial failure shouldn't block entire sync
     }
@@ -460,7 +463,8 @@ class WebRTCSyncRepositoryImpl implements SyncRepository {
   void _markOutboundWatermarkFromRows(String table, List<dynamic> rows) {
     if (rows.isEmpty) return;
 
-    var maxTs = _outboundLastSentAt[table] ??
+    var maxTs =
+        _outboundLastSentAt[table] ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     for (final row in rows) {

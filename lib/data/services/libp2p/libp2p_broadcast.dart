@@ -116,7 +116,8 @@ class LibP2pBroadcast {
     };
 
     debugPrint(
-      '[LibP2pBroadcast] Publishing to $topic (${_peerStreams.length} peers): $msgId',
+      '[LibP2pBroadcast] Publishing to $topic from ${_node.localPeerId} '
+      '(${_peerStreams.length} peers): $msgId',
     );
 
     // Broadcast to all connected peers

@@ -4,7 +4,7 @@ import 'package:web/web.dart' as web;
 import '../../data/services/app_logger.dart';
 
 const _kSessionId = 'kc_session_id';
-const _kWsUrl     = 'kc_ws_url';
+const _kWsUrl = 'kc_ws_url';
 
 Map<String, String> getUrlParams() {
   try {
@@ -64,7 +64,7 @@ void saveSession(String sessionId, String wsUrl) {
   try {
     web.window.sessionStorage.setItem(_kSessionId, sessionId);
     web.window.sessionStorage.setItem(_kWsUrl, wsUrl);
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to save session to sessionStorage',
       category: 'web_session',
@@ -78,7 +78,7 @@ String? getSavedSessionId() {
   try {
     final v = web.window.sessionStorage.getItem(_kSessionId);
     return (v == null || v.isEmpty) ? null : v;
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to retrieve session ID from sessionStorage',
       category: 'web_session',
@@ -93,7 +93,7 @@ String? getSavedWsUrl() {
   try {
     final v = web.window.sessionStorage.getItem(_kWsUrl);
     return (v == null || v.isEmpty) ? null : v;
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to retrieve WebSocket URL from sessionStorage',
       category: 'web_session',
@@ -108,7 +108,7 @@ void clearSession() {
   try {
     web.window.sessionStorage.removeItem(_kSessionId);
     web.window.sessionStorage.removeItem(_kWsUrl);
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to clear session from sessionStorage',
       category: 'web_session',

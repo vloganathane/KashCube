@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart'
-  show TargetPlatform, defaultTargetPlatform, kIsWeb;
-import 'package:sqflite/sqflite.dart';
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 // sqflite_common_ffi_web registers the WASM SQLite factory for the browser.

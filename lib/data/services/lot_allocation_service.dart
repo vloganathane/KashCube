@@ -27,18 +27,18 @@ class LotAllocation {
   final String? expiryDate;
 
   Map<String, dynamic> toMap() => {
-        'lot_id': lotId,
-        'qty': qty,
-        if (lotNo != null) 'lot_no': lotNo,
-        if (expiryDate != null) 'expiry_date': expiryDate,
-      };
+    'lot_id': lotId,
+    'qty': qty,
+    if (lotNo != null) 'lot_no': lotNo,
+    if (expiryDate != null) 'expiry_date': expiryDate,
+  };
 
   factory LotAllocation.fromMap(Map<String, dynamic> m) => LotAllocation(
-        lotId: m['lot_id'] as int,
-        qty: (m['qty'] as num).toDouble(),
-        lotNo: m['lot_no'] as String?,
-        expiryDate: m['expiry_date'] as String?,
-      );
+    lotId: m['lot_id'] as int,
+    qty: (m['qty'] as num).toDouble(),
+    lotNo: m['lot_no'] as String?,
+    expiryDate: m['expiry_date'] as String?,
+  );
 
   /// Serialize a list of allocations to a JSON string for DB storage.
   static String encodeList(List<LotAllocation> list) =>
@@ -52,7 +52,7 @@ class LotAllocation {
       return list
           .map((e) => LotAllocation.fromMap(e as Map<String, dynamic>))
           .toList();
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to decode lot allocation JSON',
         category: 'lot_allocation',
@@ -115,21 +115,26 @@ class LotAllocationService {
     );
     final lotId = await db.insert('stock_lots', lot.toMap());
 
-    await db.insert('lot_movements', LotMovement(
-      businessId: businessId,
-      itemId: itemId,
-      lotId: lotId,
-      movementType: LotMovementType.purchaseIn,
-      qty: qty,
-      lotQtyAfter: qty,
-      referenceType: 'purchase_bill',
-      referenceId: purchaseBillId,
-      notes: notes,
-      createdAt: now,
-    ).toMap());
+    await db.insert(
+      'lot_movements',
+      LotMovement(
+        businessId: businessId,
+        itemId: itemId,
+        lotId: lotId,
+        movementType: LotMovementType.purchaseIn,
+        qty: qty,
+        lotQtyAfter: qty,
+        referenceType: 'purchase_bill',
+        referenceId: purchaseBillId,
+        notes: notes,
+        createdAt: now,
+      ).toMap(),
+    );
 
-    debugPrint('[Lot] Created lot $lotId for item $itemId qty=$qty '
-        'lot_no=${lot.lotNo} expiry=${lot.expiryDate}');
+    debugPrint(
+      '[Lot] Created lot $lotId for item $itemId qty=$qty '
+      'lot_no=${lot.lotNo} expiry=${lot.expiryDate}',
+    );
     return lotId;
   }
 
@@ -159,7 +164,8 @@ class LotAllocationService {
     assert(qty > 0);
     final db = await _db.database;
 
-    final lots = await db.rawQuery('''
+    final lots = await db.rawQuery(
+      '''
       SELECT id, lot_no, expiry_date, qty_remaining
       FROM stock_lots
       WHERE business_id = ? AND item_id = ? AND qty_remaining > 0 AND status = 'active'
@@ -168,7 +174,9 @@ class LotAllocationService {
         expiry_date ASC,
         created_at ASC,
         id ASC
-    ''', [businessId, itemId]);
+    ''',
+      [businessId, itemId],
+    );
 
     if (lots.isEmpty) return [];
 
@@ -216,18 +224,22 @@ class LotAllocationService {
         }
         await txn.insert('lot_movements', movMap);
 
-        allocations.add(LotAllocation(
-          lotId: lotId,
-          qty: take,
-          lotNo: lot['lot_no'] as String?,
-          expiryDate: lot['expiry_date'] as String?,
-        ));
+        allocations.add(
+          LotAllocation(
+            lotId: lotId,
+            qty: take,
+            lotNo: lot['lot_no'] as String?,
+            expiryDate: lot['expiry_date'] as String?,
+          ),
+        );
         needed -= take;
       }
     });
 
-    debugPrint('[Lot] FEFO allocated ${qty - needed}/$qty for item $itemId '
-        'via $referenceType #$referenceId in ${allocations.length} lot(s)');
+    debugPrint(
+      '[Lot] FEFO allocated ${qty - needed}/$qty for item $itemId '
+      'via $referenceType #$referenceId in ${allocations.length} lot(s)',
+    );
     return allocations;
   }
 
@@ -238,7 +250,9 @@ class LotAllocationService {
   /// Re-activates depleted lots whose [qty_remaining] rises above 0 after the
   /// reversal. Safe to call even when no lot movements exist (no-op).
   Future<void> reverseLotMovements(
-      String referenceType, int referenceId) async {
+    String referenceType,
+    int referenceId,
+  ) async {
     final db = await _db.database;
     final movements = await db.query(
       'lot_movements',
@@ -261,13 +275,12 @@ class LotAllocationService {
         );
         if (lotRows.isEmpty) continue;
 
-        final currentRemaining =
-            (lotRows.first['qty_remaining'] as num).toDouble();
+        final currentRemaining = (lotRows.first['qty_remaining'] as num)
+            .toDouble();
         final qtyIn = (lotRows.first['qty_in'] as num).toDouble();
         // originalQty is negative for outbound movements; subtracting it
         // adds back the quantity.
-        final newRemaining =
-            (currentRemaining - originalQty).clamp(0.0, qtyIn);
+        final newRemaining = (currentRemaining - originalQty).clamp(0.0, qtyIn);
 
         await txn.update(
           'stock_lots',
@@ -297,15 +310,19 @@ class LotAllocationService {
       }
     });
 
-    debugPrint('[Lot] Reversed lot movements for $referenceType #$referenceId '
-        '(${movements.length} movement(s))');
+    debugPrint(
+      '[Lot] Reversed lot movements for $referenceType #$referenceId '
+      '(${movements.length} movement(s))',
+    );
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   /// Persists a FEFO allocation snapshot to [invoice_items.lot_allocation_json].
   Future<void> saveAllocationToInvoiceItem(
-      int invoiceItemId, List<LotAllocation> allocations) async {
+    int invoiceItemId,
+    List<LotAllocation> allocations,
+  ) async {
     if (allocations.isEmpty) return;
     final db = await _db.database;
     await db.update(
@@ -319,14 +336,17 @@ class LotAllocationService {
   /// Returns active / partially-consumed lots for an item, FEFO-ordered.
   Future<List<StockLot>> getLotsForItem(int itemId, int businessId) async {
     final db = await _db.database;
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM stock_lots
       WHERE item_id = ? AND business_id = ? AND status != 'depleted'
       ORDER BY
         CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END ASC,
         expiry_date ASC,
         created_at ASC
-    ''', [itemId, businessId]);
+    ''',
+      [itemId, businessId],
+    );
     return rows.map(StockLot.fromMap).toList();
   }
 
@@ -341,14 +361,17 @@ class LotAllocationService {
         .add(Duration(days: daysAhead))
         .toIso8601String()
         .substring(0, 10);
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM stock_lots
       WHERE business_id = ?
         AND status = 'active'
         AND expiry_date IS NOT NULL
         AND expiry_date <= ?
       ORDER BY expiry_date ASC
-    ''', [businessId, cutoff]);
+    ''',
+      [businessId, cutoff],
+    );
     return rows.map(StockLot.fromMap).toList();
   }
 }

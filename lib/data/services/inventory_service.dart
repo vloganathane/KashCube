@@ -236,8 +236,9 @@ class InventoryService {
         'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
         [businessId, itemId],
       );
-      current =
-          rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+      current = rows.isNotEmpty
+          ? (rows.first['stock_qty'] as num).toDouble()
+          : 0.0;
     } else {
       final rows = await db.query(
         'item_catalog',
@@ -337,18 +338,20 @@ class InventoryService {
       'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
       [businessId, itemId],
     );
-    final bookStock =
-        rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+    final bookStock = rows.isNotEmpty
+        ? (rows.first['stock_qty'] as num).toDouble()
+        : 0.0;
     final delta = actualQty - bookStock;
     if (delta != 0) {
       await _applyMovement(
         itemId: itemId,
         delta: delta,
         type: StockMovementType.physicalCount,
-        notes: notes ??
+        notes:
+            notes ??
             'Physical count – actual '
-            '${actualQty.toStringAsFixed(actualQty % 1 == 0 ? 0 : 2)}, '
-            'book ${bookStock.toStringAsFixed(bookStock % 1 == 0 ? 0 : 2)}',
+                '${actualQty.toStringAsFixed(actualQty % 1 == 0 ? 0 : 2)}, '
+                'book ${bookStock.toStringAsFixed(bookStock % 1 == 0 ? 0 : 2)}',
         businessId: businessId,
       );
     }
@@ -421,8 +424,9 @@ class InventoryService {
           'SELECT stock_qty FROM item_stock WHERE business_id = ? AND item_id = ?',
           [businessId, itemId],
         );
-        currentStock =
-            rows.isNotEmpty ? (rows.first['stock_qty'] as num).toDouble() : 0.0;
+        currentStock = rows.isNotEmpty
+            ? (rows.first['stock_qty'] as num).toDouble()
+            : 0.0;
         newStock = currentStock + delta;
 
         await txn.rawInsert(
@@ -495,7 +499,7 @@ class InventoryService {
         'WHERE track_inventory = 1 AND stock_qty <= low_stock_threshold',
       );
       return (result.first['c'] as int? ?? 0);
-    } catch (e, st) {
+    } catch (e) {
       // Fallback for pre-v55 databases.
       AppLogger.instance.debug(
         'item_stock table not available; using item_catalog fallback',
@@ -528,7 +532,7 @@ class InventoryService {
         [limit],
       );
       return rows.map((r) => r['name'] as String).toList();
-    } catch (e, st) {
+    } catch (e) {
       // Fallback for pre-v55 databases.
       AppLogger.instance.debug(
         'item_stock table not available; using item_catalog fallback',

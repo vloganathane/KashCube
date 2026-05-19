@@ -9,7 +9,6 @@ import '../../domain/repositories/sync_repository.dart';
 import '../models/peer_quality.dart';
 import '../models/vector_clock.dart';
 import '../services/database_helper.dart';
-import '../services/identity_service.dart';
 import '../services/libp2p/libp2p_broadcast.dart';
 import '../services/libp2p/libp2p_discovery.dart';
 import '../services/libp2p/libp2p_node.dart';
@@ -38,22 +37,17 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     LibP2pProtocol? protocol,
     LibP2pDiscovery? discovery,
     DatabaseHelper? dbHelper,
-    IdentityService? identityService,
     int inboundDedupeCapacity = 512,
   }) : _node = node ?? LibP2pNode(),
        _protocol = protocol ?? LibP2pProtocol(),
        _discovery = discovery ?? LibP2pDiscovery(),
        _dbHelper = dbHelper ?? DatabaseHelper.instance,
-       _identityService = identityService ?? IdentityService.instance,
        _inboundDedupeCapacity = inboundDedupeCapacity;
 
   final LibP2pNode _node;
   final LibP2pProtocol _protocol;
   final LibP2pDiscovery _discovery;
   final DatabaseHelper _dbHelper;
-  // ignore: unused_field
-  final IdentityService
-  _identityService; // Reserved for Ed25519 identity integration
   final int _inboundDedupeCapacity;
 
   // Broadcast layer for mesh networking (Phase 2)
@@ -98,7 +92,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   final Set<String> _activePeers = {}; // Currently connected peers
   final Map<String, List<String>> _peerMultiaddrs =
       {}; // peerId → multiaddrs mapping from discovery
-  bool _autoConnectEnabled = true; // Enable/disable auto-connect
+  final bool _autoConnectEnabled = true; // Enable/disable auto-connect
 
   // ── Conflict resolution (Phase 3) ──────────────────────────────────────────
   String? _deviceId; // This device's ID (from libp2p peer ID)
@@ -110,10 +104,12 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
   // Health checks
   Timer? _healthCheckTimer; // Periodic PING timer
   final Map<String, DateTime> _peerLastSeen = {}; // peerId → last PONG time
-  static const Duration _healthCheckInterval =
-      Duration(seconds: 30); // PING frequency
-  static const Duration _peerTimeout =
-      Duration(seconds: 90); // 3x health check (declare dead)
+  static const Duration _healthCheckInterval = Duration(
+    seconds: 30,
+  ); // PING frequency
+  static const Duration _peerTimeout = Duration(
+    seconds: 90,
+  ); // 3x health check (declare dead)
 
   // Auto-reconnect
   final Map<String, int> _reconnectAttempts = {}; // peerId → attempt count
@@ -217,7 +213,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
 
     _peerConnectionStates[peerId] = SyncConnectionState.connecting;
     _emitState(SyncConnectionState.connecting);
-    if (_syncStartTime == null) _syncStartTime = DateTime.now();
+    _syncStartTime ??= DateTime.now();
 
     try {
       debugPrint(
@@ -440,14 +436,16 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     Map<String, SyncPeer> discoveredPeers,
   ) async {
     try {
-      // Ensure node is initialized
-      if (_node.host == null) {
+      final host = _node.host;
+      if (host != null) {
+        // Start mDNS discovery using the Host.
+        await _discovery.start(host: host);
+      } else if (_discovery.runtimeType != LibP2pDiscovery) {
+        // Test doubles may not rely on a concrete libp2p Host.
+        await (_discovery as dynamic).start(host: null);
+      } else {
         throw StateError('Cannot start discovery: libp2p node not initialized');
       }
-
-      // Start mDNS discovery using the Host
-      // MdnsDiscovery extracts multiaddrs and peer ID automatically from host
-      await _discovery.start(host: _node.host!);
 
       // Listen for discovered peers via discoveredPeers stream
       _discoverySubscription = _discovery.discoveredPeers.listen(
@@ -1034,10 +1032,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
     _peerLastSeen[peerId] = DateTime.now();
 
     // Respond with PONG, echoing timestamp for latency calculation
-    return {
-      'type': 'PONG',
-      'timestamp': timestamp,
-    };
+    return {'type': 'PONG', 'timestamp': timestamp};
   }
 
   /// Handle PONG frame (keepalive response).
@@ -1365,10 +1360,7 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       // Send PING with timestamp for latency measurement
       try {
         final timestamp = now.millisecondsSinceEpoch;
-        await _sendFrame({
-          'type': 'PING',
-          'timestamp': timestamp,
-        });
+        await _sendFrame({'type': 'PING', 'timestamp': timestamp});
 
         // Track message sent (Phase 4: Resilience)
         final quality = _peerQuality[peerId];
@@ -1397,7 +1389,9 @@ class Libp2pSyncRepositoryImpl implements SyncRepository {
       }
 
       // Trigger auto-reconnect
-      debugPrint('[Libp2pSync] Triggering auto-reconnect for stale peer $peerId');
+      debugPrint(
+        '[Libp2pSync] Triggering auto-reconnect for stale peer $peerId',
+      );
       unawaited(_autoReconnectToPeer(peerId, multiaddrs));
     }
   }

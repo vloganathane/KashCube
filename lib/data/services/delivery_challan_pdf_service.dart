@@ -57,8 +57,10 @@ class DeliveryChallanPdfService {
     String? termsAndConditions,
     bool showFreeWatermark = false,
   }) {
-    final hasTransport = (challan.vehicleNo != null && challan.vehicleNo!.isNotEmpty) ||
-        (challan.transporterName != null && challan.transporterName!.isNotEmpty) ||
+    final hasTransport =
+        (challan.vehicleNo != null && challan.vehicleNo!.isNotEmpty) ||
+        (challan.transporterName != null &&
+            challan.transporterName!.isNotEmpty) ||
         challan.distanceKm != null;
 
     return PdfDocumentData(
@@ -81,15 +83,17 @@ class DeliveryChallanPdfService {
       placeOfSupply: challan.placeOfSupply,
       notes: challan.notes,
       lineItems: challan.items
-          .map((item) => PdfLineItem(
-                name: item.itemName,
-                description: item.description,
-                hsnCode: item.hsnCode,
-                qty: item.qty,
-                unit: item.unit,
-                unitPrice: item.unitPrice,
-                lineTotal: item.lineTotal,
-              ))
+          .map(
+            (item) => PdfLineItem(
+              name: item.itemName,
+              description: item.description,
+              hsnCode: item.hsnCode,
+              qty: item.qty,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              lineTotal: item.lineTotal,
+            ),
+          )
           .toList(),
       totals: PdfTotals(
         subtotal: challan.subtotal,
@@ -115,13 +119,15 @@ class DeliveryChallanPdfService {
 
   PdfPartyInfo? _buildShipTo(DeliveryChallan challan) {
     final parts = [
-      if (challan.deliveryAddress != null && challan.deliveryAddress!.isNotEmpty)
+      if (challan.deliveryAddress != null &&
+          challan.deliveryAddress!.isNotEmpty)
         challan.deliveryAddress!,
       if (challan.deliveryCity != null && challan.deliveryCity!.isNotEmpty)
         challan.deliveryCity!,
       if (challan.deliveryState != null && challan.deliveryState!.isNotEmpty)
         challan.deliveryState!,
-      if (challan.deliveryPincode != null && challan.deliveryPincode!.isNotEmpty)
+      if (challan.deliveryPincode != null &&
+          challan.deliveryPincode!.isNotEmpty)
         challan.deliveryPincode!,
     ];
     if (parts.isEmpty) return null;
@@ -136,10 +142,11 @@ class DeliveryChallanPdfService {
 
   PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo) {
     if (business == null) return const PdfPartyInfo(name: 'Your Business');
-    final addressParts = [business.address, business.city, business.state]
-        .where((e) => e != null && e.isNotEmpty)
-        .cast<String>()
-        .toList();
+    final addressParts = [
+      business.address,
+      business.city,
+      business.state,
+    ].where((e) => e != null && e.isNotEmpty).cast<String>().toList();
     return PdfPartyInfo(
       name: business.name,
       gstin: business.gstNo,
@@ -173,7 +180,7 @@ class DeliveryChallanPdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to load business logo in delivery challan PDF',
         category: 'delivery_challan_pdf',

@@ -22,10 +22,8 @@ class PaymentPreferencesService {
 
     // Convert string back to PaymentMethod enum
     try {
-      return PaymentMethod.values.firstWhere(
-        (m) => m.name == methodName,
-      );
-    } catch (e, st) {
+      return PaymentMethod.values.firstWhere((m) => m.name == methodName);
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to parse payment method enum',
         category: 'payment_preferences',

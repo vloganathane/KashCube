@@ -25,7 +25,6 @@ import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
 import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/notification_provider.dart';
-import 'presentation/providers/p2p_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_auto_refresh_provider.dart';
 import 'presentation/providers/terms_provider.dart';
@@ -318,7 +317,15 @@ class _LockGateState extends ConsumerState<_LockGate>
   Future<void> _checkLock() async {
     debugPrint('[LockGate] Checking lock state...');
     final settingsRepo = ref.read(settingsRepositoryProvider);
-    final lockEnabled = await settingsRepo.get(SettingsKeys.appLockEnabled);
+    final lockEnabled = await settingsRepo
+        .get(SettingsKeys.appLockEnabled)
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            debugPrint('[LockGate] Timeout reading app lock setting; defaulting to unlocked');
+            return null;
+          },
+        );
     debugPrint('[LockGate] Lock enabled: $lockEnabled');
 
     if (mounted) {
@@ -362,7 +369,7 @@ class _LockGateState extends ConsumerState<_LockGate>
       if (authenticated && mounted) {
         setState(() => _isLocked = false);
       }
-    } catch (e, st) {
+    } catch (e) {
       // Biometric failed or cancelled — user can enter PIN manually
       AppLogger.instance.debug(
         'Biometric unlock attempt failed or cancelled',
@@ -473,3 +480,4 @@ class _LockGateState extends ConsumerState<_LockGate>
 }
 
 /// Creates a [LocalAuthentication] instance.
+

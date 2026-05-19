@@ -73,7 +73,9 @@ class PdfCacheManager {
       }
 
       // Sort oldest-first and trim to cap.
-      fresh.sort((a, b) => a.statSync().modified.compareTo(b.statSync().modified));
+      fresh.sort(
+        (a, b) => a.statSync().modified.compareTo(b.statSync().modified),
+      );
       while (fresh.length > _maxFiles) {
         final oldest = fresh.removeAt(0);
         await oldest.delete();
@@ -109,7 +111,7 @@ class PdfCacheManager {
         }
       }
       return total;
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to calculate PDF cache size',
         category: 'pdf_cache',

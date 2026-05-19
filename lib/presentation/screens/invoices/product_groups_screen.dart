@@ -15,7 +15,8 @@ class ProductGroupsScreen extends ConsumerStatefulWidget {
   const ProductGroupsScreen({super.key});
 
   @override
-  ConsumerState<ProductGroupsScreen> createState() => _ProductGroupsScreenState();
+  ConsumerState<ProductGroupsScreen> createState() =>
+      _ProductGroupsScreenState();
 }
 
 class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
@@ -88,11 +89,15 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
                 // Search filter
                 if (_search.isNotEmpty) {
                   filtered = filtered
-                      .where((g) =>
-                          g.name.toLowerCase().contains(_search.toLowerCase()) ||
-                          (g.description ?? '')
-                              .toLowerCase()
-                              .contains(_search.toLowerCase()))
+                      .where(
+                        (g) =>
+                            g.name.toLowerCase().contains(
+                              _search.toLowerCase(),
+                            ) ||
+                            (g.description ?? '').toLowerCase().contains(
+                              _search.toLowerCase(),
+                            ),
+                      )
                       .toList();
                 }
 
@@ -104,7 +109,10 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: 80),
+                  padding: const EdgeInsets.only(
+                    top: AppSpacing.sm,
+                    bottom: 80,
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (_, i) => _GroupTile(
                     group: filtered[i],
@@ -121,7 +129,10 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
     );
   }
 
-  Future<void> _showGroupSheet(BuildContext context, {ProductGroup? group}) async {
+  Future<void> _showGroupSheet(
+    BuildContext context, {
+    ProductGroup? group,
+  }) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -141,7 +152,9 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
       useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Group?'),
-        content: Text('"${group.name}" and its variant configuration will be removed.'),
+        content: Text(
+          '"${group.name}" and its variant configuration will be removed.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -162,7 +175,9 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
   Future<void> _viewGroupMembers(ProductGroup group) async {
     final catalogAsync = ref.read(catalogProvider);
     final allItems = catalogAsync.valueOrNull ?? [];
-    final members = allItems.where((item) => item.productGroupId == group.id).toList();
+    final members = allItems
+        .where((item) => item.productGroupId == group.id)
+        .toList();
 
     if (!mounted) return;
 
@@ -170,10 +185,7 @@ class _ProductGroupsScreenState extends ConsumerState<ProductGroupsScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _GroupMembersSheet(
-        group: group,
-        members: members,
-      ),
+      builder: (_) => _GroupMembersSheet(group: group, members: members),
     );
   }
 }
@@ -197,7 +209,9 @@ class _EmptyState extends StatelessWidget {
             Icon(
               hasSearch ? Icons.search_off : Icons.palette_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: AppSpacing.base),
             Text(
@@ -210,10 +224,9 @@ class _EmptyState extends StatelessWidget {
                   ? 'Try a different search term'
                   : 'Create variant families to organize products by color, size, or other attributes.',
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
             if (!hasSearch) ...[
               const SizedBox(height: AppSpacing.lg),
@@ -249,7 +262,8 @@ class _GroupTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Count member products
     final catalogAsync = ref.watch(catalogProvider);
-    final memberCount = catalogAsync.whenOrNull(
+    final memberCount =
+        catalogAsync.whenOrNull(
           data: (items) =>
               items.where((item) => item.productGroupId == group.id).length,
         ) ??
@@ -295,7 +309,8 @@ class _GroupTile extends ConsumerWidget {
                   ...variesBy.map((attr) => _AttributeChip(attribute: attr)),
                 _InfoChip(
                   icon: Icons.inventory_2_outlined,
-                  label: '$memberCount ${memberCount == 1 ? 'variant' : 'variants'}',
+                  label:
+                      '$memberCount ${memberCount == 1 ? 'variant' : 'variants'}',
                 ),
               ],
             ),
@@ -328,12 +343,18 @@ class _GroupTile extends ConsumerWidget {
               value: 'delete',
               child: Row(
                 children: [
-                  Icon(Icons.delete_outline,
-                      size: 20, color: Theme.of(context).colorScheme.error),
+                  Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text('Delete',
-                      style:
-                          TextStyle(color: Theme.of(context).colorScheme.error)),
+                  Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -425,11 +446,7 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: Theme.of(context).colorScheme.outline,
-          ),
+          Icon(icon, size: 12, color: Theme.of(context).colorScheme.outline),
           const SizedBox(width: 4),
           Text(
             label,
@@ -485,7 +502,9 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Form(
@@ -495,7 +514,9 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                widget.group == null ? 'New Product Group' : 'Edit Product Group',
+                widget.group == null
+                    ? 'New Product Group'
+                    : 'Edit Product Group',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: AppSpacing.base),
@@ -526,11 +547,16 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
                   labelText: 'Varies By *',
                   border: OutlineInputBorder(),
                   hintText: 'color, size',
-                  helperText: 'Comma-separated attributes (e.g., color, size, material)',
+                  helperText:
+                      'Comma-separated attributes (e.g., color, size, material)',
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Required';
-                  final attrs = v.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+                  final attrs = v
+                      .split(',')
+                      .map((e) => e.trim())
+                      .where((e) => e.isNotEmpty)
+                      .toList();
                   if (attrs.isEmpty) return 'Enter at least one attribute';
                   return null;
                 },
@@ -595,9 +621,9 @@ class _GroupFormSheetState extends State<_GroupFormSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -634,8 +660,9 @@ class _GroupMembersSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color:
-                      Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -656,7 +683,8 @@ class _GroupMembersSheet extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${members.length} ${members.length == 1 ? 'variant' : 'variants'}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
                                   color: Theme.of(context).colorScheme.outline,
                                 ),
                           ),
@@ -685,10 +713,9 @@ class _GroupMembersSheet extends StatelessWidget {
                               Icon(
                                 Icons.inventory_outlined,
                                 size: 48,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .outline
-                                    .withValues(alpha: 0.5),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outline.withValues(alpha: 0.5),
                               ),
                               const SizedBox(height: AppSpacing.base),
                               Text(
@@ -699,11 +726,11 @@ class _GroupMembersSheet extends StatelessWidget {
                               Text(
                                 'Link items to this group by setting their Product Group ID in the item editor.',
                                 textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
-                                      color: Theme.of(context).colorScheme.outline,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outline,
                                     ),
                               ),
                             ],
@@ -714,15 +741,16 @@ class _GroupMembersSheet extends StatelessWidget {
                         controller: scrollController,
                         padding: const EdgeInsets.all(AppSpacing.base),
                         itemCount: members.length,
-                        separatorBuilder: (_, __) =>
+                        separatorBuilder: (_, _) =>
                             const SizedBox(height: AppSpacing.sm),
                         itemBuilder: (context, index) {
                           final item = members[index];
                           return Card(
                             child: ListTile(
                               leading: CircleAvatar(
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.primaryContainer,
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primaryContainer,
                                 child: Icon(
                                   Icons.inventory_2_outlined,
                                   color: Theme.of(context).colorScheme.primary,
@@ -733,9 +761,8 @@ class _GroupMembersSheet extends StatelessWidget {
                               subtitle: _buildVariantDetails(context, item),
                               trailing: Text(
                                 '₹${item.unitPrice.toStringAsFixed(0)}',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                             ),
                           );

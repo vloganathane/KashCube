@@ -78,20 +78,20 @@ class _AddEditTransactionScreenState
   final _interestRateController = TextEditingController();
 
   // Keys used by the guided Add Transaction tutorial flow (Quick mode).
-  final _amountFieldKey   = GlobalKey();
+  final _amountFieldKey = GlobalKey();
   final _categoryFieldKey = GlobalKey();
-  final _saveButtonKey    = GlobalKey();
+  final _saveButtonKey = GlobalKey();
 
   // Keys used by the Detail field-reference mode (all form fields).
-  final _typeChipsKey     = GlobalKey();
-  final _accountFieldKey  = GlobalKey();
-  final _partyFieldKey    = GlobalKey();
-  final _dateTimeKey      = GlobalKey();
+  final _typeChipsKey = GlobalKey();
+  final _accountFieldKey = GlobalKey();
+  final _partyFieldKey = GlobalKey();
+  final _dateTimeKey = GlobalKey();
   final _paymentMethodKey = GlobalKey();
-  final _modeKey          = GlobalKey();
-  final _notesKey         = GlobalKey();
-  final _addCategoryKey   = GlobalKey();
-  final _billAttachKey    = GlobalKey();
+  final _modeKey = GlobalKey();
+  final _notesKey = GlobalKey();
+  final _addCategoryKey = GlobalKey();
+  final _billAttachKey = GlobalKey();
 
   late TransactionType _type;
   late TransactionMode _mode;
@@ -152,7 +152,8 @@ class _AddEditTransactionScreenState
     } else {
       _type = widget.initialType ?? TransactionType.expense;
       _mode = TransactionMode.personal;
-      _category = widget.initialCategory ?? AppConstants.defaultCategories.first;
+      _category =
+          widget.initialCategory ?? AppConstants.defaultCategories.first;
       _paymentMethod = PaymentMethod.upi;
       _date = DateTime.now();
       _time = TimeOfDay.now();
@@ -161,7 +162,9 @@ class _AddEditTransactionScreenState
       }
       if (widget.initialAmount != null) {
         final rawAmount = widget.initialAmount!.toStringAsFixed(
-          widget.initialAmount! == widget.initialAmount!.roundToDouble() ? 0 : 2,
+          widget.initialAmount! == widget.initialAmount!.roundToDouble()
+              ? 0
+              : 2,
         );
         _amountController.text = IndianCurrencyInputFormatter.format(rawAmount);
       }
@@ -200,7 +203,8 @@ class _AddEditTransactionScreenState
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'What happened?',
-              message: 'Spent / Earned for everyday money.\n'
+              message:
+                  'Spent / Earned for everyday money.\n'
                   'Lent / Borrowed for money between people.\n'
                   'Invested / Redeemed for savings & MF.',
             ),
@@ -218,7 +222,8 @@ class _AddEditTransactionScreenState
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'Amount',
-              message: 'Enter in rupees. Indian comma formatting\n'
+              message:
+                  'Enter in rupees. Indian comma formatting\n'
                   'is applied automatically — ₹1,23,456.',
             ),
           ),
@@ -236,7 +241,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Account',
-                message: 'Which bank or wallet this came from or\n'
+                message:
+                    'Which bank or wallet this came from or\n'
                     'went to. Leave blank to record without\n'
                     'account tracking.',
               ),
@@ -255,7 +261,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Category',
-                message: 'Affects your Reports breakdown.\n'
+                message:
+                    'Affects your Reports breakdown.\n'
                     'Tap "+ Add custom category" to create\n'
                     'your own.',
               ),
@@ -274,7 +281,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: '+ Add custom category',
-                message: 'Create categories that don\'t exist yet —\n'
+                message:
+                    'Create categories that don\'t exist yet —\n'
                     'e.g. Pet Care, Side Hustle, School Fees.\n'
                     'They appear in Reports immediately.',
               ),
@@ -293,7 +301,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Party / Merchant',
-                message: 'Who you paid or received from.\n'
+                message:
+                    'Who you paid or received from.\n'
                     'Tap the contacts icon to pick from\n'
                     'your saved parties.',
               ),
@@ -311,7 +320,8 @@ class _AddEditTransactionScreenState
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'Date & Time',
-              message: 'Defaults to now. Tap either field\n'
+              message:
+                  'Defaults to now. Tap either field\n'
                   'to change for past or future transactions.',
             ),
           ),
@@ -329,7 +339,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Payment Method',
-                message: 'UPI, Cash, Card, Net Banking, or Wallet.\n'
+                message:
+                    'UPI, Cash, Card, Net Banking, or Wallet.\n'
                     'Auto-updates when you pick an Account.',
               ),
             ),
@@ -347,7 +358,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Personal / Business',
-                message: 'Personal: your own ledger.\n'
+                message:
+                    'Personal: your own ledger.\n'
                     'Business: records in P&L and can\n'
                     'appear on invoices.',
               ),
@@ -366,7 +378,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Notes (optional)',
-                message: 'Add context — ref numbers, descriptions,\n'
+                message:
+                    'Add context — ref numbers, descriptions,\n'
                     'or reminders. Optional but fully\n'
                     'searchable in Transactions.',
               ),
@@ -385,7 +398,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Attach Bill / Receipt',
-                message: 'Photo or PDF of the bill. Stored\n'
+                message:
+                    'Photo or PDF of the bill. Stored\n'
                     'locally — viewable from the transaction\n'
                     'detail screen anytime.',
               ),
@@ -403,7 +417,8 @@ class _AddEditTransactionScreenState
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'Save',
-              message: 'Saves and returns. Balance, reports,\n'
+              message:
+                  'Saves and returns. Balance, reports,\n'
                   'and party ledger update instantly.',
             ),
           ),
@@ -456,7 +471,9 @@ class _AddEditTransactionScreenState
       focusAnimationDuration: const Duration(milliseconds: 400),
       onClickTarget: scrollToNext,
       onClickOverlay: scrollToNext,
-      onSkip: () { return true; },
+      onSkip: () {
+        return true;
+      },
       onFinish: () {},
     ).show(context: context);
   }
@@ -481,7 +498,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Enter the amount',
-                message: 'Type the amount in rupees — income,\n'
+                message:
+                    'Type the amount in rupees — income,\n'
                     'expense, cash, UPI, anything.',
               ),
             ),
@@ -499,7 +517,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Pick a category',
-                message: 'Categorise the transaction so your\n'
+                message:
+                    'Categorise the transaction so your\n'
                     'reports stay meaningful.',
               ),
             ),
@@ -517,7 +536,8 @@ class _AddEditTransactionScreenState
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Save your transaction',
-                message: 'Tap here when you\'re done — your\n'
+                message:
+                    'Tap here when you\'re done — your\n'
                     'balance updates instantly.',
               ),
             ),
@@ -536,7 +556,8 @@ class _AddEditTransactionScreenState
       alignSkip: Alignment.topRight,
       paddingFocus: 8,
       pulseEnable: true,
-      onFinish: () {}, // user still fills and saves; orchestrator advances in _save()
+      onFinish:
+          () {}, // user still fills and saves; orchestrator advances in _save()
       onSkip: () {
         Future(() {
           flowNotifier.abandon();
@@ -568,14 +589,14 @@ class _AddEditTransactionScreenState
     final cachedAccounts = ref.read(accountsProvider).valueOrNull;
     final List<Account> accounts =
         (cachedAccounts == null || cachedAccounts.isEmpty)
-            ? await ref.read(accountRepositoryProvider).getAll()
-            : cachedAccounts;
+        ? await ref.read(accountRepositoryProvider).getAll()
+        : cachedAccounts;
     final matchIndex = accounts.indexWhere((a) => a.id == accountId);
     if (matchIndex < 0 || !mounted || _accountId != accountId) return;
-    
+
     final account = accounts[matchIndex];
     final validMethods = account.accountType.validPaymentMethods;
-    
+
     // Only change payment method if current selection is invalid for this account
     if (!validMethods.contains(_paymentMethod)) {
       setState(() {
@@ -590,9 +611,10 @@ class _AddEditTransactionScreenState
       return ['Lending / Credit', 'Investment', 'Other'];
     }
     final typeKey = _type == TransactionType.income ? 'income' : 'expense';
-    return buildCategoryList(custom, typeKey)
-        .where((c) => c != kAddCustomCategorysentinel)
-        .toList();
+    return buildCategoryList(
+      custom,
+      typeKey,
+    ).where((c) => c != kAddCustomCategorysentinel).toList();
   }
 
   Widget _buildCategoryDropdown() {
@@ -630,9 +652,11 @@ class _AddEditTransactionScreenState
               value: cat,
               child: Row(
                 children: [
-                  Icon(Icons.label_off_outlined,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.error),
+                  Icon(
+                    Icons.label_off_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -647,9 +671,9 @@ class _AddEditTransactionScreenState
                   Text(
                     'deleted',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                          fontStyle: FontStyle.italic,
-                        ),
+                      color: Theme.of(context).colorScheme.error,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ],
               ),
@@ -740,9 +764,11 @@ class _AddEditTransactionScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.lock_outline,
-                    size: 48,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.lock_outline,
+                  size: 48,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(height: AppSpacing.md),
                 Text(
                   'Managed by Loan contract',
@@ -753,7 +779,8 @@ class _AddEditTransactionScreenState
                 Text(
                   'This transaction was auto-created from a Loan. Edit it from the Loans screen instead.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -780,322 +807,333 @@ class _AddEditTransactionScreenState
           final step = ref.read(tutorialFlowProvider);
           if (step.isAddTxFlow) {
             ref.read(tutorialFlowProvider.notifier).abandon();
-            ref.read(settingsRepositoryProvider)
+            ref
+                .read(settingsRepositoryProvider)
                 .set(SettingsKeys.tutorialTxFlowDone, 'true');
           }
         }
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          // ? help button — Quick + Detail on new, Detail only on edit
-          if (widget.isEditing)
-            IconButton(
-              icon: const Icon(Icons.help_outline_rounded),
-              tooltip: 'Field reference',
-              onPressed: _showDetailModeMark,
-            )
-          else
-            PopupMenuButton<int>(
-              icon: const Icon(Icons.help_outline_rounded),
-              tooltip: 'Help guides',
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 0, child: Text('Quick guide')),
-                PopupMenuItem(value: 1, child: Text('Field reference')),
-              ],
-              onSelected: (v) =>
-                  v == 0 ? _restartFormTutorial() : _showDetailModeMark(),
+        appBar: AppBar(
+          title: Text(title),
+          actions: [
+            // ? help button — Quick + Detail on new, Detail only on edit
+            if (widget.isEditing)
+              IconButton(
+                icon: const Icon(Icons.help_outline_rounded),
+                tooltip: 'Field reference',
+                onPressed: _showDetailModeMark,
+              )
+            else
+              PopupMenuButton<int>(
+                icon: const Icon(Icons.help_outline_rounded),
+                tooltip: 'Help guides',
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 0, child: Text('Quick guide')),
+                  PopupMenuItem(value: 1, child: Text('Field reference')),
+                ],
+                onSelected: (v) =>
+                    v == 0 ? _restartFormTutorial() : _showDetailModeMark(),
+              ),
+            if (widget.isEditing)
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                onPressed: _confirmDelete,
+              ),
+          ],
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.base,
+              AppSpacing.base,
             ),
-          if (widget.isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _confirmDelete,
+            child: FilledButton.icon(
+              key: _saveButtonKey,
+              onPressed: _isSaving ? null : _save,
+              icon: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Icon(widget.isEditing ? Icons.check : Icons.add),
+              label: Text(
+                widget.isEditing ? 'Update Transaction' : 'Add Transaction',
+              ),
             ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
-          child: FilledButton.icon(
-            key: _saveButtonKey,
-            onPressed: _isSaving ? null : _save,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : Icon(widget.isEditing ? Icons.check : Icons.add),
-            label: Text(
-                widget.isEditing ? 'Update Transaction' : 'Add Transaction'),
           ),
         ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            // Transaction type selector — progressive disclosure chips
-            KeyedSubtree(
-              key: _typeChipsKey,
-              child: _TypeSelector(
-                selected: _type,
-                onChanged: (type) {
-                  setState(() {
-                    _type = type;
-                    // Reset category when type group changes
-                    final custom = ref.read(customCategoriesProvider);
-                    final cats = _categoriesForType(custom)
-                        .where((c) => c != kAddCustomCategorysentinel)
-                        .toList();
-                    if (!cats.contains(_category)) {
-                      _category = cats.first;
-                    }
-                    // Reset mode — only personal/business apply to income/expense
-                    if (!type.isIncome && !type.isExpense) {
-                      _mode = TransactionMode.personal;
-                    }
-                    // Transfer accounts reset
-                    if (!type.isTransfer) {
-                      _fromAccountId = null;
-                      _toAccountId = null;
-                    }
-                  });
-                },
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Amount Field
-            TextFormField(
-              key: _amountFieldKey,
-              controller: _amountController,
-              decoration: InputDecoration(
-                labelText: 'Amount',
-                prefixText: '₹ ',
-                prefixStyle: TextStyle(
-                  color: context.colorScheme.onSurface,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-                hintText: '0',
-              ),
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'RobotoMono',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [IndianCurrencyInputFormatter()],
-              validator: Validators.validateAmount,
-              // Disable autofocus when the tutorial is guiding through this form;
-              // opening the keyboard shifts the ListView layout before the coach
-              // mark captures the widget position, making the spotlight miss.
-              autofocus: !widget.isEditing &&
-                  ref.watch(tutorialFlowProvider) != TutorialFlowStep.addTxAmount,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Transfer: From / To account pickers
-            if (_type.isTransfer) ...[  
-              _TransferAccountRow(
-                fromAccountId: _fromAccountId,
-                toAccountId: _toAccountId,
-                onFromChanged: (id) => setState(() => _fromAccountId = id),
-                onToChanged: (id) => setState(() => _toAccountId = id),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // Account picker — for all non-transfer types
-            if (!_type.isTransfer) ...[  
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.base),
+            children: [
+              // Transaction type selector — progressive disclosure chips
               KeyedSubtree(
-                key: _accountFieldKey,
-                child: _AccountRow(
-                  accountId: _accountId,
-                  onChanged: (id) {
-                    setState(() => _accountId = id);
-                    // Auto-set payment method based on account type.
-                    if (id != null) {
-                      // ignore: discarded_futures
-                      _syncPaymentMethodForAccount(id);
-                    }
+                key: _typeChipsKey,
+                child: _TypeSelector(
+                  selected: _type,
+                  onChanged: (type) {
+                    setState(() {
+                      _type = type;
+                      // Reset category when type group changes
+                      final custom = ref.read(customCategoriesProvider);
+                      final cats = _categoriesForType(
+                        custom,
+                      ).where((c) => c != kAddCustomCategorysentinel).toList();
+                      if (!cats.contains(_category)) {
+                        _category = cats.first;
+                      }
+                      // Reset mode — only personal/business apply to income/expense
+                      if (!type.isIncome && !type.isExpense) {
+                        _mode = TransactionMode.personal;
+                      }
+                      // Transfer accounts reset
+                      if (!type.isTransfer) {
+                        _fromAccountId = null;
+                        _toAccountId = null;
+                      }
+                    });
                   },
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
+              const SizedBox(height: AppSpacing.xl),
 
-            // Category — only for income / expense
-            if (_type.isIncome || _type.isExpense) ...[
-              KeyedSubtree(
-                key: _categoryFieldKey,
-                child: _buildCategoryDropdown(),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  key: _addCategoryKey,
-                  onPressed: _showAddCategoryDialog,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add custom category'),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+              // Amount Field
+              TextFormField(
+                key: _amountFieldKey,
+                controller: _amountController,
+                decoration: InputDecoration(
+                  labelText: 'Amount',
+                  prefixText: '₹ ',
+                  prefixStyle: TextStyle(
+                    color: context.colorScheme.onSurface,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
                   ),
+                  hintText: '0',
                 ),
-              ),
-              if (_type.isExpense)
-                _BudgetHintRow(category: _category),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // Party Name — not for transfer
-            if (!_type.isTransfer) ...[  
-              KeyedSubtree(
-                key: _partyFieldKey,
-                child: _buildPartyNameField(),
-              ),
-              if (_activeSuggestion != null && !_suggestionApplied)
-                _buildSuggestionChip(),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // Due date — for lent / borrowed
-            if (_type == TransactionType.lent || _type == TransactionType.borrowed) ...[
-              _DueDateField(
-                dueDate: _dueDate,
-                onChanged: (d) => setState(() => _dueDate = d),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // Interest section
-              _InterestSection(
-                selectedType: _interestType,
-                rateController: _interestRateController,
-                onTypeChanged: (t) => setState(() => _interestType = t),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // Date & Time Row
-            Row(
-              key: _dateTimeKey,
-              children: [
-                Expanded(
-                  child: _DateField(
-                    date: _date,
-                    onChanged: (date) => setState(() => _date = date),
-                  ),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'RobotoMono',
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _TimeField(
-                    time: _time,
-                    onChanged: (time) => setState(() => _time = time),
-                  ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
+                inputFormatters: [IndianCurrencyInputFormatter()],
+                validator: Validators.validateAmount,
+                // Disable autofocus when the tutorial is guiding through this form;
+                // opening the keyboard shifts the ListView layout before the coach
+                // mark captures the widget position, making the spotlight miss.
+                autofocus:
+                    !widget.isEditing &&
+                    ref.watch(tutorialFlowProvider) !=
+                        TutorialFlowStep.addTxAmount,
+                textInputAction: TextInputAction.next,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Transfer: From / To account pickers
+              if (_type.isTransfer) ...[
+                _TransferAccountRow(
+                  fromAccountId: _fromAccountId,
+                  toAccountId: _toAccountId,
+                  onFromChanged: (id) => setState(() => _fromAccountId = id),
+                  onToChanged: (id) => setState(() => _toAccountId = id),
+                ),
+                const SizedBox(height: AppSpacing.lg),
               ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
 
-            // Payment Method — for income / expense / settlement only
-            if (_type.isIncome ||
-                _type.isExpense ||
-                _type.isSettlement) ...[
-              Builder(
-                builder: (_) {
-                  final selectedAccount =
-                      (ref.watch(accountsProvider).valueOrNull ?? const <Account>[])
-                          .where((a) => a.id == _accountId)
-                          .firstOrNull;
-                  final effectivePaymentMethod =
-                      selectedAccount?.accountType.representativeMethod ??
-                          _paymentMethod;
-
-                  // Filter payment methods based on selected account type
-                  final availableMethods = selectedAccount != null
-                      ? selectedAccount.accountType.validPaymentMethods
-                      : PaymentMethod.values;
-
-                  return DropdownButtonFormField<PaymentMethod>(
-                    key: _paymentMethodKey,
-                    value: effectivePaymentMethod,
-                    decoration: InputDecoration(
-                      labelText: 'Payment Method',
-                      prefixIcon: const Icon(Icons.payment_outlined),
-                      helperText: selectedAccount != null
-                          ? 'Showing ${availableMethods.length} method${availableMethods.length == 1 ? '' : 's'} for ${selectedAccount.accountName}'
-                          : null,
-                      helperStyle: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    items: availableMethods
-                        .map((method) => DropdownMenuItem(
-                              value: method,
-                              child: Text(method.label),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _paymentMethod = value);
+              // Account picker — for all non-transfer types
+              if (!_type.isTransfer) ...[
+                KeyedSubtree(
+                  key: _accountFieldKey,
+                  child: _AccountRow(
+                    accountId: _accountId,
+                    onChanged: (id) {
+                      setState(() => _accountId = id);
+                      // Auto-set payment method based on account type.
+                      if (id != null) {
+                        // ignore: discarded_futures
+                        _syncPaymentMethodForAccount(id);
                       }
                     },
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-
-            // Mode Toggle — only relevant for income / expense
-            if (_type.isIncome || _type.isExpense) ...[  
-              KeyedSubtree(
-                key: _modeKey,
-                child: _ModeChips(
-                  selected: _mode,
-                  onChanged: (mode) => setState(() => _mode = mode),
+                  ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Category — only for income / expense
+              if (_type.isIncome || _type.isExpense) ...[
+                KeyedSubtree(
+                  key: _categoryFieldKey,
+                  child: _buildCategoryDropdown(),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    key: _addCategoryKey,
+                    onPressed: _showAddCategoryDialog,
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text('Add custom category'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                  ),
+                ),
+                if (_type.isExpense) _BudgetHintRow(category: _category),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Party Name — not for transfer
+              if (!_type.isTransfer) ...[
+                KeyedSubtree(
+                  key: _partyFieldKey,
+                  child: _buildPartyNameField(),
+                ),
+                if (_activeSuggestion != null && !_suggestionApplied)
+                  _buildSuggestionChip(),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Due date — for lent / borrowed
+              if (_type == TransactionType.lent ||
+                  _type == TransactionType.borrowed) ...[
+                _DueDateField(
+                  dueDate: _dueDate,
+                  onChanged: (d) => setState(() => _dueDate = d),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                // Interest section
+                _InterestSection(
+                  selectedType: _interestType,
+                  rateController: _interestRateController,
+                  onTypeChanged: (t) => setState(() => _interestType = t),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Date & Time Row
+              Row(
+                key: _dateTimeKey,
+                children: [
+                  Expanded(
+                    child: _DateField(
+                      date: _date,
+                      onChanged: (date) => setState(() => _date = date),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: _TimeField(
+                      time: _time,
+                      onChanged: (time) => setState(() => _time = time),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.lg),
+
+              // Payment Method — for income / expense / settlement only
+              if (_type.isIncome || _type.isExpense || _type.isSettlement) ...[
+                Builder(
+                  builder: (_) {
+                    final selectedAccount =
+                        (ref.watch(accountsProvider).valueOrNull ??
+                                const <Account>[])
+                            .where((a) => a.id == _accountId)
+                            .firstOrNull;
+                    final effectivePaymentMethod =
+                        selectedAccount?.accountType.representativeMethod ??
+                        _paymentMethod;
+
+                    // Filter payment methods based on selected account type
+                    final availableMethods = selectedAccount != null
+                        ? selectedAccount.accountType.validPaymentMethods
+                        : PaymentMethod.values;
+
+                    return DropdownButtonFormField<PaymentMethod>(
+                      key: _paymentMethodKey,
+                      initialValue: effectivePaymentMethod,
+                      decoration: InputDecoration(
+                        labelText: 'Payment Method',
+                        prefixIcon: const Icon(Icons.payment_outlined),
+                        helperText: selectedAccount != null
+                            ? 'Showing ${availableMethods.length} method${availableMethods.length == 1 ? '' : 's'} for ${selectedAccount.accountName}'
+                            : null,
+                        helperStyle: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                      items: availableMethods
+                          .map(
+                            (method) => DropdownMenuItem(
+                              value: method,
+                              child: Text(method.label),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _paymentMethod = value);
+                        }
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Mode Toggle — only relevant for income / expense
+              if (_type.isIncome || _type.isExpense) ...[
+                KeyedSubtree(
+                  key: _modeKey,
+                  child: _ModeChips(
+                    selected: _mode,
+                    onChanged: (mode) => setState(() => _mode = mode),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+
+              // Notes
+              TextFormField(
+                key: _notesKey,
+                controller: _notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (optional)',
+                  prefixIcon: Icon(Icons.note_outlined),
+                  hintText: 'Add a note...',
+                ),
+                maxLines: 2,
+                maxLength: 500,
+                validator: Validators.validateNotes,
+                textInputAction: TextInputAction.done,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+
+              // Bill Attachment — only for income / expense
+              if (_type.isIncome || _type.isExpense) ...[
+                KeyedSubtree(key: _billAttachKey, child: _buildBillSection()),
+                const SizedBox(height: AppSpacing.xxl),
+              ] else
+                const SizedBox(height: AppSpacing.xxl),
+
+              const SizedBox(height: AppSpacing.xl),
             ],
-
-            // Notes
-            TextFormField(
-              key: _notesKey,
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
-                prefixIcon: Icon(Icons.note_outlined),
-                hintText: 'Add a note...',
-              ),
-              maxLines: 2,
-              maxLength: 500,
-              validator: Validators.validateNotes,
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Bill Attachment — only for income / expense
-            if (_type.isIncome || _type.isExpense) ...[
-              KeyedSubtree(
-                key: _billAttachKey,
-                child: _buildBillSection(),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-            ] else
-              const SizedBox(height: AppSpacing.xxl),
-
-            const SizedBox(height: AppSpacing.xl),
-          ],
+          ),
         ),
-      ),
-    ), // Scaffold
+      ), // Scaffold
     ); // PopScope
   }
 
@@ -1128,8 +1166,7 @@ class _AddEditTransactionScreenState
           final autoMode = switch ((party.partyType, party.partyContext)) {
             (PartyType.vendor, _) ||
             (PartyType.customer, _) ||
-            (_, 'business') =>
-              TransactionMode.business,
+            (_, 'business') => TransactionMode.business,
             _ => TransactionMode.personal,
           };
           setState(() => _mode = autoMode);
@@ -1171,7 +1208,9 @@ class _AddEditTransactionScreenState
               TextButton(
                 onPressed: _applySuggestion,
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                  ),
                   visualDensity: VisualDensity.compact,
                 ),
                 child: const Text('Apply'),
@@ -1210,9 +1249,9 @@ class _AddEditTransactionScreenState
     setState(() {
       // Apply category if it exists in current type's list
       final custom = ref.read(customCategoriesProvider);
-      final cats = _categoriesForType(custom)
-          .where((c) => c != kAddCustomCategorysentinel)
-          .toList();
+      final cats = _categoriesForType(
+        custom,
+      ).where((c) => c != kAddCustomCategorysentinel).toList();
       if (cats.contains(suggestion.category)) {
         _category = suggestion.category;
       }
@@ -1235,17 +1274,15 @@ class _AddEditTransactionScreenState
       _time.minute,
     );
 
-    final amount = double.parse(
-      _amountController.text.replaceAll(',', ''),
-    );
+    final amount = double.parse(_amountController.text.replaceAll(',', ''));
 
     var paymentMethodToSave = _paymentMethod;
     if (_accountId != null) {
       final cachedAccounts = ref.read(accountsProvider).valueOrNull;
       final List<Account> accounts =
           (cachedAccounts == null || cachedAccounts.isEmpty)
-              ? await ref.read(accountRepositoryProvider).getAll()
-              : cachedAccounts;
+          ? await ref.read(accountRepositoryProvider).getAll()
+          : cachedAccounts;
       final matchIndex = accounts.indexWhere((a) => a.id == _accountId);
       if (matchIndex >= 0) {
         paymentMethodToSave =
@@ -1264,8 +1301,10 @@ class _AddEditTransactionScreenState
           ? _partyNameController.text.trim()
           : null,
       accountId: _type.isTransfer ? _fromAccountId : _accountId,
-      toAccountId: _type.isTransfer ? _toAccountId : widget.transaction?.toAccountId,
-        paymentMethod: paymentMethodToSave,
+      toAccountId: _type.isTransfer
+          ? _toAccountId
+          : widget.transaction?.toAccountId,
+      paymentMethod: paymentMethodToSave,
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
           : null,
@@ -1321,7 +1360,8 @@ class _AddEditTransactionScreenState
         if (!widget.isEditing) {
           final step = ref.read(tutorialFlowProvider);
           if (step.isAddTxFlow) {
-            ref.read(tutorialFlowProvider.notifier)
+            ref
+                .read(tutorialFlowProvider.notifier)
                 .advance(TutorialFlowStep.addTxResult);
           }
         }
@@ -1376,10 +1416,7 @@ class _AddEditTransactionScreenState
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Bill / Receipt',
-            style: context.textTheme.bodySmall,
-          ),
+          Text('Bill / Receipt', style: context.textTheme.bodySmall),
           const SizedBox(height: AppSpacing.sm),
           BillPreviewCard(
             filePath: _existingBill!.filePath,
@@ -1398,10 +1435,7 @@ class _AddEditTransactionScreenState
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Bill / Receipt',
-            style: context.textTheme.bodySmall,
-          ),
+          Text('Bill / Receipt', style: context.textTheme.bodySmall),
           const SizedBox(height: AppSpacing.sm),
           BillPreviewCard(
             filePath: _pendingBill!.filePath,
@@ -1570,8 +1604,9 @@ class _TransferAccountRow extends ConsumerWidget {
       data: (accounts) {
         String nameFor(int? id) {
           if (id == null) return 'Select account';
-          return accounts.firstWhere((a) => a.id == id,
-              orElse: () => accounts.first).accountName;
+          return accounts
+              .firstWhere((a) => a.id == id, orElse: () => accounts.first)
+              .accountName;
         }
 
         return Column(
@@ -1614,10 +1649,7 @@ class _TransferAccountRow extends ConsumerWidget {
 
 /// Single account picker row — used for income, expense, and other non-transfer types.
 class _AccountRow extends ConsumerWidget {
-  const _AccountRow({
-    required this.accountId,
-    required this.onChanged,
-  });
+  const _AccountRow({required this.accountId, required this.onChanged});
 
   final int? accountId;
   final ValueChanged<int?> onChanged;
@@ -1631,9 +1663,10 @@ class _AccountRow extends ConsumerWidget {
         String accountName() {
           if (accountId == null) return 'Select account (optional)';
           return accounts
-              .where((a) => a.id == accountId)
-              .map((a) => a.accountName)
-              .firstOrNull ?? 'Select account (optional)';
+                  .where((a) => a.id == accountId)
+                  .map((a) => a.accountName)
+                  .firstOrNull ??
+              'Select account (optional)';
         }
 
         return _AccountTile(
@@ -1641,10 +1674,7 @@ class _AccountRow extends ConsumerWidget {
           accountName: accountName(),
           accountId: accountId,
           onTap: () async {
-            final picked = await showAccountPicker(
-              context,
-              title: 'Account',
-            );
+            final picked = await showAccountPicker(context, title: 'Account');
             if (picked != null) onChanged(picked.id);
           },
           onClear: accountId != null ? () => onChanged(null) : null,
@@ -1681,10 +1711,7 @@ class _AccountTile extends StatelessWidget {
           labelText: label,
           prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
           suffixIcon: onClear != null
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: onClear,
-                )
+              ? IconButton(icon: const Icon(Icons.clear), onPressed: onClear)
               : const Icon(Icons.expand_more),
         ),
         child: Text(accountName),
@@ -1743,8 +1770,7 @@ class _DueDateField extends StatelessWidget {
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
-          initialDate:
-              dueDate ?? DateTime.now().add(const Duration(days: 30)),
+          initialDate: dueDate ?? DateTime.now().add(const Duration(days: 30)),
           firstDate: DateTime.now().subtract(const Duration(days: 365)),
           lastDate: DateTime.now().add(const Duration(days: 3650)),
         );
@@ -1820,13 +1846,17 @@ class _InterestSection extends StatelessWidget {
               suffixText: '%',
             ),
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.]'))],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[\d.]')),
+            ],
           ),
         ],
       ],
     );
   }
-}/// Tappable time field that opens a TimePicker.
+}
+
+/// Tappable time field that opens a TimePicker.
 class _TimeField extends StatelessWidget {
   final TimeOfDay time;
   final ValueChanged<TimeOfDay> onChanged;
@@ -1849,10 +1879,7 @@ class _TimeField extends StatelessWidget {
           labelText: 'Time',
           prefixIcon: Icon(Icons.access_time_outlined),
         ),
-        child: Text(
-          time.format(context),
-          style: context.textTheme.bodyLarge,
-        ),
+        child: Text(time.format(context), style: context.textTheme.bodyLarge),
       ),
     );
   }
@@ -1884,7 +1911,10 @@ class IndianCurrencyInputFormatter extends TextInputFormatter {
 
     // Preserve cursor: count non-comma chars after cursor in the pre-format text
     final cursorPos = newValue.selection.end.clamp(0, text.length);
-    final sigCharsAfterCursor = text.substring(cursorPos).replaceAll(',', '').length;
+    final sigCharsAfterCursor = text
+        .substring(cursorPos)
+        .replaceAll(',', '')
+        .length;
 
     // Find matching position in formatted result by counting back
     int newCursor = result.length;
@@ -1988,21 +2018,18 @@ class _BudgetHintRow extends ConsumerWidget {
           Expanded(
             child: Text(
               statusText,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: statusColor),
+              style: context.textTheme.labelSmall?.copyWith(color: statusColor),
             ),
           ),
           // Mini progress bar
           SizedBox(
             width: 60,
             child: ClipRRect(
-              borderRadius:
-                  BorderRadius.circular(AppSpacing.radiusFull),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 4,
-                backgroundColor:
-                    context.colorScheme.surfaceContainerHighest,
+                backgroundColor: context.colorScheme.surfaceContainerHighest,
                 color: statusColor,
               ),
             ),
@@ -2012,4 +2039,3 @@ class _BudgetHintRow extends ConsumerWidget {
     );
   }
 }
-

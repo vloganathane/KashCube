@@ -15,49 +15,49 @@ import '../../data/services/app_logger.dart';
 class HomeWidgetId {
   HomeWidgetId._();
 
-  static const todayCashflow      = 'today_cashflow';
-  static const upcoming           = 'upcoming';
-  static const upcomingBookings   = 'upcoming_bookings';
-  static const pendingSms         = 'pending_sms';
-  static const alerts             = 'alerts';
-  static const budgets            = 'budgets';
-  static const reportsShortcut    = 'reports_shortcut';
+  static const todayCashflow = 'today_cashflow';
+  static const upcoming = 'upcoming';
+  static const upcomingBookings = 'upcoming_bookings';
+  static const pendingSms = 'pending_sms';
+  static const alerts = 'alerts';
+  static const budgets = 'budgets';
+  static const reportsShortcut = 'reports_shortcut';
   static const recentTransactions = 'recent_transactions';
 
   /// Human-readable labels used in the Customise Home screen.
   static const Map<String, String> labels = {
-    todayCashflow:      "Today's Activity",
-    upcoming:           'Upcoming Payments',
-    upcomingBookings:   'Upcoming Bookings',
-    pendingSms:         'Pending SMS Review',
-    alerts:             'Alerts',
-    budgets:            'Monthly Budgets',
-    reportsShortcut:    'Reports Shortcut',
+    todayCashflow: "Today's Activity",
+    upcoming: 'Upcoming Payments',
+    upcomingBookings: 'Upcoming Bookings',
+    pendingSms: 'Pending SMS Review',
+    alerts: 'Alerts',
+    budgets: 'Monthly Budgets',
+    reportsShortcut: 'Reports Shortcut',
     recentTransactions: 'Recent Transactions',
   };
 
   /// Icon for each section (used in the Customise Home list).
   static const Map<String, String> iconKeys = {
-    todayCashflow:      'today_cashflow',
-    upcoming:           'upcoming',
-    upcomingBookings:   'upcoming_bookings',
-    pendingSms:         'pending_sms',
-    alerts:             'alerts',
-    budgets:            'budgets',
-    reportsShortcut:    'reports_shortcut',
+    todayCashflow: 'today_cashflow',
+    upcoming: 'upcoming',
+    upcomingBookings: 'upcoming_bookings',
+    pendingSms: 'pending_sms',
+    alerts: 'alerts',
+    budgets: 'budgets',
+    reportsShortcut: 'reports_shortcut',
     recentTransactions: 'recent_transactions',
   };
 
   /// Factory-default config — all widgets enabled and ordered.
   static const List<HomeWidgetConfig> defaults = [
-    HomeWidgetConfig(id: todayCashflow,      enabled: true,  order: 0),
-    HomeWidgetConfig(id: upcoming,           enabled: true,  order: 1),
-    HomeWidgetConfig(id: upcomingBookings,   enabled: true,  order: 2),
-    HomeWidgetConfig(id: pendingSms,         enabled: true,  order: 3),
-    HomeWidgetConfig(id: alerts,             enabled: true,  order: 4),
-    HomeWidgetConfig(id: budgets,            enabled: true,  order: 5),
-    HomeWidgetConfig(id: reportsShortcut,    enabled: true,  order: 6),
-    HomeWidgetConfig(id: recentTransactions, enabled: true,  order: 7),
+    HomeWidgetConfig(id: todayCashflow, enabled: true, order: 0),
+    HomeWidgetConfig(id: upcoming, enabled: true, order: 1),
+    HomeWidgetConfig(id: upcomingBookings, enabled: true, order: 2),
+    HomeWidgetConfig(id: pendingSms, enabled: true, order: 3),
+    HomeWidgetConfig(id: alerts, enabled: true, order: 4),
+    HomeWidgetConfig(id: budgets, enabled: true, order: 5),
+    HomeWidgetConfig(id: reportsShortcut, enabled: true, order: 6),
+    HomeWidgetConfig(id: recentTransactions, enabled: true, order: 7),
   ];
 
   /// Canonical ordering of all widget IDs (for merge / migration).
@@ -78,8 +78,8 @@ class HomeWidgetId {
 /// Immutable configuration for one home-screen section.
 class HomeWidgetConfig {
   final String id;
-  final bool   enabled;
-  final int    order;
+  final bool enabled;
+  final int order;
 
   const HomeWidgetConfig({
     required this.id,
@@ -88,22 +88,22 @@ class HomeWidgetConfig {
   });
 
   HomeWidgetConfig copyWith({bool? enabled, int? order}) => HomeWidgetConfig(
-        id:      id,
-        enabled: enabled ?? this.enabled,
-        order:   order   ?? this.order,
-      );
+    id: id,
+    enabled: enabled ?? this.enabled,
+    order: order ?? this.order,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id':      id,
-        'enabled': enabled,
-        'order':   order,
-      };
+    'id': id,
+    'enabled': enabled,
+    'order': order,
+  };
 
   factory HomeWidgetConfig.fromJson(Map<String, dynamic> json) =>
       HomeWidgetConfig(
-        id:      json['id']      as String,
-        enabled: json['enabled'] as bool?  ?? true,
-        order:   json['order']   as int?   ?? 0,
+        id: json['id'] as String,
+        enabled: json['enabled'] as bool? ?? true,
+        order: json['order'] as int? ?? 0,
       );
 
   // ── Codec helpers ──────────────────────────────────────────────────────────
@@ -117,25 +117,28 @@ class HomeWidgetConfig {
   static List<HomeWidgetConfig> decodeList(String? json) {
     if (json == null || json.isEmpty) return List.of(HomeWidgetId.defaults);
     try {
-      final raw     = jsonDecode(json) as List<dynamic>;
+      final raw = jsonDecode(json) as List<dynamic>;
       final decoded = raw
-          .map((e) =>
-              HomeWidgetConfig.fromJson(e as Map<String, dynamic>))
+          .map((e) => HomeWidgetConfig.fromJson(e as Map<String, dynamic>))
           .toList();
 
       // Merge any IDs added since the user last saved preferences.
       final existingIds = decoded.map((c) => c.id).toSet();
       for (final id in HomeWidgetId.all) {
         if (!existingIds.contains(id)) {
-          final def =
-              HomeWidgetId.defaults.firstWhere((c) => c.id == id);
-          decoded.add(HomeWidgetConfig(
-              id: id, enabled: def.enabled, order: decoded.length));
+          final def = HomeWidgetId.defaults.firstWhere((c) => c.id == id);
+          decoded.add(
+            HomeWidgetConfig(
+              id: id,
+              enabled: def.enabled,
+              order: decoded.length,
+            ),
+          );
         }
       }
 
       return decoded..sort((a, b) => a.order.compareTo(b.order));
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to decode home widget config from preferences',
         category: 'home_widget_config',

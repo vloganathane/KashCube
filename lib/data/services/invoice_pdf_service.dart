@@ -39,8 +39,8 @@ class InvoicePdfService {
     final logo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
-            ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
-            : null;
+        ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
+        : null;
     final data = _invoiceToData(
       invoice,
       business: business,
@@ -68,8 +68,8 @@ class InvoicePdfService {
     final logo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
-            ? await _buildUpiQrBytes(business, quote.total, quote.quoteNo)
-            : null;
+        ? await _buildUpiQrBytes(business, quote.total, quote.quoteNo)
+        : null;
     final data = _quoteToData(
       quote,
       business: business,
@@ -113,9 +113,10 @@ class InvoicePdfService {
       type: PdfDocumentType.invoice,
       docNumber: invoice.invoiceNo,
       typeLabel: invoice.invoiceType.label.toUpperCase(),
-      subTypeLabel: (invoice.invoiceType == InvoiceType.creditNote ||
-                    invoice.invoiceType == InvoiceType.debitNote) &&
-                   invoice.originalInvoiceNo != null
+      subTypeLabel:
+          (invoice.invoiceType == InvoiceType.creditNote ||
+                  invoice.invoiceType == InvoiceType.debitNote) &&
+              invoice.originalInvoiceNo != null
           ? 'Against: ${invoice.originalInvoiceNo}'
           : null,
       statusLabel: invoice.status.label,
@@ -136,17 +137,19 @@ class InvoicePdfService {
       reverseCharge: invoice.reverseCharge,
       notes: invoice.notes,
       lineItems: invoice.items
-          .map((item) => PdfLineItem(
-                name: item.itemName,
-                description: item.description,
-                hsnCode: item.hsnCode,
-                qty: item.qty,
-                unit: item.unit,
-                unitPrice: item.unitPrice,
-                taxPct: item.taxPct,
-                discountPct: item.discountPct,
-                lineTotal: item.lineTotal,
-              ))
+          .map(
+            (item) => PdfLineItem(
+              name: item.itemName,
+              description: item.description,
+              hsnCode: item.hsnCode,
+              qty: item.qty,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              taxPct: item.taxPct,
+              discountPct: item.discountPct,
+              lineTotal: item.lineTotal,
+            ),
+          )
           .toList(),
       totals: PdfTotals(
         subtotal: invoice.subtotal,
@@ -169,13 +172,15 @@ class InvoicePdfService {
 
   PdfPartyInfo? _buildShipTo(Invoice invoice) {
     final parts = [
-      if (invoice.deliveryAddress != null && invoice.deliveryAddress!.isNotEmpty)
+      if (invoice.deliveryAddress != null &&
+          invoice.deliveryAddress!.isNotEmpty)
         invoice.deliveryAddress!,
       if (invoice.deliveryCity != null && invoice.deliveryCity!.isNotEmpty)
         invoice.deliveryCity!,
       if (invoice.deliveryState != null && invoice.deliveryState!.isNotEmpty)
         invoice.deliveryState!,
-      if (invoice.deliveryPincode != null && invoice.deliveryPincode!.isNotEmpty)
+      if (invoice.deliveryPincode != null &&
+          invoice.deliveryPincode!.isNotEmpty)
         invoice.deliveryPincode!,
     ];
     if (parts.isEmpty) return null;
@@ -243,17 +248,19 @@ class InvoicePdfService {
       reverseCharge: quote.reverseCharge,
       notes: quote.notes,
       lineItems: quote.items
-          .map((item) => PdfLineItem(
-                name: item.itemName,
-                description: item.description,
-                hsnCode: item.hsnCode,
-                qty: item.qty,
-                unit: item.unit,
-                unitPrice: item.unitPrice,
-                taxPct: item.taxPct,
-                discountPct: item.discountPct,
-                lineTotal: item.lineTotal,
-              ))
+          .map(
+            (item) => PdfLineItem(
+              name: item.itemName,
+              description: item.description,
+              hsnCode: item.hsnCode,
+              qty: item.qty,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              taxPct: item.taxPct,
+              discountPct: item.discountPct,
+              lineTotal: item.lineTotal,
+            ),
+          )
           .toList(),
       totals: PdfTotals(
         subtotal: itemSubtotal,
@@ -275,10 +282,11 @@ class InvoicePdfService {
 
   PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo) {
     if (business == null) return const PdfPartyInfo(name: 'Your Business');
-    final addressParts = [business.address, business.city, business.state]
-        .where((e) => e != null && e.isNotEmpty)
-        .cast<String>()
-        .toList();
+    final addressParts = [
+      business.address,
+      business.city,
+      business.state,
+    ].where((e) => e != null && e.isNotEmpty).cast<String>().toList();
     return PdfPartyInfo(
       name: business.name,
       gstin: business.gstNo,
@@ -296,27 +304,39 @@ class InvoicePdfService {
     String? buyerState,
   }) {
     return GstCalculator.summarise(
-      sellerState: sellerState,
-      buyerState: buyerState,
-      items: splitInputs,
-    )
-        .map((r) => PdfGstRow(
-              codeLabel: r.codeLabel,
-              taxableAmount: r.taxableAmount,
-              gstPct: r.gstPct,
-              cgst: r.cgst,
-              sgst: r.sgst,
-              igst: r.igst,
-              total: r.total,
-              isInterState: r.isInterState,
-            ))
+          sellerState: sellerState,
+          buyerState: buyerState,
+          items: splitInputs,
+        )
+        .map(
+          (r) => PdfGstRow(
+            codeLabel: r.codeLabel,
+            taxableAmount: r.taxableAmount,
+            gstPct: r.gstPct,
+            cgst: r.cgst,
+            sgst: r.sgst,
+            igst: r.igst,
+            total: r.total,
+            isInterState: r.isInterState,
+          ),
+        )
         .toList();
   }
 
   String _shortDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -366,7 +386,7 @@ class InvoicePdfService {
       if (await file.exists()) {
         return pw.MemoryImage(await file.readAsBytes());
       }
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to load business logo',
         category: 'invoice_pdf',
@@ -413,7 +433,7 @@ class InvoicePdfService {
       final image = await painter.toImage(200);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to generate UPI QR code',
         category: 'invoice_pdf',

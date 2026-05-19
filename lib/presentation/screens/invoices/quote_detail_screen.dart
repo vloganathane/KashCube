@@ -200,26 +200,23 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
         padding: padding,
         child: Row(
           children: [
-            if (_canConvert) ...
-              [
-                Expanded(
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.receipt_long_outlined),
-                    label: const Text('Convert to Invoice'),
-                    onPressed: _loading ? null : _convertToInvoice,
-                  ),
+            if (_canConvert) ...[
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.receipt_long_outlined),
+                  label: const Text('Convert to Invoice'),
+                  onPressed: _loading ? null : _convertToInvoice,
                 ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
             Expanded(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.cancel_outlined),
                 label: const Text('Rejected'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: Theme.of(context).colorScheme.error,
-                  side: BorderSide(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                  side: BorderSide(color: Theme.of(context).colorScheme.error),
                 ),
                 onPressed: _loading ? null : _markRejected,
               ),
@@ -246,13 +243,13 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     final notifier = ref.read(quotesProvider.notifier);
     Navigator.of(context)
         .pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => QuoteBuilderScreen(quoteId: quote.id),
-      ),
-    )
+          MaterialPageRoute(
+            builder: (_) => QuoteBuilderScreen(quoteId: quote.id),
+          ),
+        )
         .then((_) {
-      notifier.load();
-    });
+          notifier.load();
+        });
   }
 
   Future<void> _previewPdf() async {
@@ -260,9 +257,13 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     try {
       final business = ref.read(activeBusinessProvider);
       final party = quote.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
+          ? await ref
+                .read(partyRepositoryProvider)
+                .getById(quote.customerPartyId!)
           : null;
-      final tc = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+      final tc = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         quote,
         business: business,
@@ -273,9 +274,9 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       if (!kIsWeb) await OpenFile.open(pdfFile.path);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Preview failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Preview failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -286,10 +287,16 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'quote');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'quote',
+      );
       if (!mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -302,9 +309,13 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     try {
       final business = ref.read(activeBusinessProvider);
       final party = quote.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(quote.customerPartyId!)
+          ? await ref
+                .read(partyRepositoryProvider)
+                .getById(quote.customerPartyId!)
           : null;
-      final tc = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+      final tc = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         quote,
         business: business,
@@ -315,7 +326,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       );
       if (!mounted) return;
       final due = quote.validUntil;
-      final message = 'Hi ${quote.customerName},\n\n'
+      final message =
+          'Hi ${quote.customerName},\n\n'
           'Quote ${quote.quoteNo} for ${CurrencyFormatter.format(quote.total)}'
           '${due != null ? '\nValid till ${DateFormatter.formatFull(due)}' : ''}'
           '\n\n— ${business?.name ?? 'My Business'}';
@@ -331,9 +343,9 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Share failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Share failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -346,7 +358,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: Text(
-            'Create a new invoice from ${quote.quoteNo}? The quote will be marked as accepted.'),
+          'Create a new invoice from ${quote.quoteNo}? The quote will be marked as accepted.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -363,12 +376,15 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
 
     setState(() => _loading = true);
     try {
-      final invoice =
-          await ref.read(quotesProvider.notifier).convertToInvoice(quote.id!);
+      final invoice = await ref
+          .read(quotesProvider.notifier)
+          .convertToInvoice(quote.id!);
       if (!mounted) return;
       if (invoice == null || invoice.id == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Conversion failed: could not create invoice')),
+          const SnackBar(
+            content: Text('Conversion failed: could not create invoice'),
+          ),
         );
         return;
       }
@@ -379,9 +395,9 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Conversion failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Conversion failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -398,16 +414,15 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     if (reason == null || !mounted) return;
     setState(() => _loading = true);
     try {
-      await ref.read(quotesProvider.notifier).markRejected(
-            quote.id!,
-            reason: reason.isEmpty ? null : reason,
-          );
+      await ref
+          .read(quotesProvider.notifier)
+          .markRejected(quote.id!, reason: reason.isEmpty ? null : reason);
       if (mounted) ref.invalidate(activityLogProvider(('quote', quote.id!)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -467,15 +482,13 @@ class _ActivityCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.history_outlined,
-                        size: 18, color: cs.outline),
+                    Icon(Icons.history_outlined, size: 18, color: cs.outline),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       'Activity',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
@@ -519,16 +532,13 @@ class _ActivityRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  log.message as String,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
+                Text(log.message, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 2),
                 Text(
-                  DateFormatter.formatDateTime(log.createdAt as DateTime),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.outline,
-                      ),
+                  DateFormatter.formatDateTime(log.createdAt),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.outline),
                 ),
               ],
             ),
@@ -593,8 +603,8 @@ class _RejectionReasonSheetState extends State<_RejectionReasonSheet> {
                     child: Text(
                       'Reason for rejection',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -650,9 +660,7 @@ class _RejectionReasonSheetState extends State<_RejectionReasonSheet> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: cs.error,
-                      ),
+                      style: FilledButton.styleFrom(backgroundColor: cs.error),
                       // Allow confirm with no reason (skip reason = empty string sentinel).
                       onPressed: () {
                         final reason = _isOther
@@ -703,8 +711,8 @@ class _HeaderCard extends StatelessWidget {
                   child: Text(
                     quote.customerName,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 Container(
@@ -769,10 +777,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -801,79 +806,81 @@ class _LineItemsCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('Item',
-                      style: TextStyle(
-                          fontSize: 12, color: cs.outline)),
+                  child: Text(
+                    'Item',
+                    style: TextStyle(fontSize: 12, color: cs.outline),
+                  ),
                 ),
                 SizedBox(
                   width: 50,
-                  child: Text('Qty',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: 12, color: cs.outline)),
+                  child: Text(
+                    'Qty',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: cs.outline),
+                  ),
                 ),
                 SizedBox(
                   width: 80,
-                  child: Text('Total',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                          fontSize: 12, color: cs.outline)),
+                  child: Text(
+                    'Total',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(fontSize: 12, color: cs.outline),
+                  ),
                 ),
               ],
             ),
             const Divider(),
-            ...quote.items.map((item) => Padding(
-                  padding:
-                      const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.itemName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                            if (item.description != null &&
-                                item.description!.isNotEmpty)
-                              Text(
-                                item.description!,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: cs.outline,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        width: 50,
-                        child: Text(
-                          item.qty % 1 == 0
-                              ? item.qty.toInt().toString()
-                              : item.qty.toStringAsFixed(2),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 80,
-                        child: Text(
-                          CurrencyFormatter.format(item.lineTotal),
-                          textAlign: TextAlign.right,
-                          style: const TextStyle(
+            ...quote.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.itemName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
                               fontSize: 13,
-                              fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          if (item.description != null &&
+                              item.description!.isNotEmpty)
+                            Text(
+                              item.description!,
+                              style: TextStyle(fontSize: 12, color: cs.outline),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(
+                      width: 50,
+                      child: Text(
+                        item.qty % 1 == 0
+                            ? item.qty.toInt().toString()
+                            : item.qty.toStringAsFixed(2),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 80,
+                      child: Text(
+                        CurrencyFormatter.format(item.lineTotal),
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -894,28 +901,36 @@ class _TotalsCard extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
           children: [
-            _TotalsRow(label: 'Subtotal',
-                value: CurrencyFormatter.format(quote.subtotal)),
+            _TotalsRow(
+              label: 'Subtotal',
+              value: CurrencyFormatter.format(quote.subtotal),
+            ),
             if (quote.discountPct > 0)
               _TotalsRow(
-                  label: 'Discount (${quote.discountPct.toStringAsFixed(0)}%)',
-                  value: '-${CurrencyFormatter.format(quote.subtotal * quote.discountPct / 100)}'),
+                label: 'Discount (${quote.discountPct.toStringAsFixed(0)}%)',
+                value:
+                    '-${CurrencyFormatter.format(quote.subtotal * quote.discountPct / 100)}',
+              ),
             if (quote.taxTotal > 0)
               _TotalsRow(
-                  label: 'Tax',
-                  value: CurrencyFormatter.format(quote.taxTotal)),
+                label: 'Tax',
+                value: CurrencyFormatter.format(quote.taxTotal),
+              ),
             if (quote.freightAmt > 0)
               _TotalsRow(
-                  label: 'Freight',
-                  value: CurrencyFormatter.format(quote.freightAmt)),
+                label: 'Freight',
+                value: CurrencyFormatter.format(quote.freightAmt),
+              ),
             if (quote.insuranceAmt > 0)
               _TotalsRow(
-                  label: 'Insurance',
-                  value: CurrencyFormatter.format(quote.insuranceAmt)),
+                label: 'Insurance',
+                value: CurrencyFormatter.format(quote.insuranceAmt),
+              ),
             if (quote.packingAmt > 0)
               _TotalsRow(
-                  label: 'Packing',
-                  value: CurrencyFormatter.format(quote.packingAmt)),
+                label: 'Packing',
+                value: CurrencyFormatter.format(quote.packingAmt),
+              ),
             const Divider(),
             _TotalsRow(
               label: 'Total',
@@ -930,8 +945,11 @@ class _TotalsCard extends StatelessWidget {
 }
 
 class _TotalsRow extends StatelessWidget {
-  const _TotalsRow(
-      {required this.label, required this.value, this.bold = false});
+  const _TotalsRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+  });
   final String label;
   final String value;
   final bool bold;
@@ -1031,15 +1049,15 @@ class _LinkedInvoiceCard extends ConsumerWidget {
                     Text(
                       'Converted Invoice',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       invoice.invoiceNo,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1056,9 +1074,9 @@ class _LinkedInvoiceCard extends ConsumerWidget {
                 child: Text(
                   invoice.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),

@@ -71,7 +71,7 @@ String? decodeVCardUri(Uri uri) {
       return null;
     }
     return decoded;
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to decode vCard URI',
       category: 'deep_link_vcard',
@@ -91,12 +91,14 @@ String? decodeVCardUri(Uri uri) {
 String? decodeInstallReferrer(String referrer) {
   try {
     if (referrer.isEmpty) return null;
-    final decoded = utf8.decode(base64Url.decode(base64Url.normalize(referrer)));
+    final decoded = utf8.decode(
+      base64Url.decode(base64Url.normalize(referrer)),
+    );
     if (!decoded.trimLeft().toUpperCase().startsWith('BEGIN:VCARD')) {
       return null;
     }
     return decoded;
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to decode install referrer vCard',
       category: 'deep_link_vcard',

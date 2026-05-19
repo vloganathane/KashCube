@@ -31,17 +31,28 @@ class ProductGroup extends Equatable {
   final DateTime updatedAt;
   final DateTime? deletedAt;
 
-  /// Helper to parse variesBy JSON array into List<String>.
+  /// Helper to parse variesBy JSON array into `List<String>`.
   List<String> get variesByList {
     if (variesBy == null || variesBy!.isEmpty) return [];
-    
+
     // Try parsing as JSON array first
     try {
-      final decoded = variesBy!.replaceAll('[', '').replaceAll(']', '').replaceAll('"', '');
-      return decoded.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      final decoded = variesBy!
+          .replaceAll('[', '')
+          .replaceAll(']', '')
+          .replaceAll('"', '');
+      return decoded
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
     } catch (_) {
       // Fallback: treat as comma-separated string
-      return variesBy!.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      return variesBy!
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
   }
 
@@ -66,35 +77,35 @@ class ProductGroup extends Equatable {
   }
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'name': name,
-        if (description != null) 'description': description,
-        if (variesBy != null) 'varies_by': variesBy,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-        if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'name': name,
+    if (description != null) 'description': description,
+    if (variesBy != null) 'varies_by': variesBy,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+    if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
+  };
 
   factory ProductGroup.fromMap(Map<String, dynamic> map) => ProductGroup(
-        id: map['id'] as int?,
-        name: map['name'] as String,
-        description: map['description'] as String?,
-        variesBy: map['varies_by'] as String?,
-        createdAt: DateTime.parse(map['created_at'] as String),
-        updatedAt: DateTime.parse(map['updated_at'] as String),
-        deletedAt: map['deleted_at'] != null
-            ? DateTime.parse(map['deleted_at'] as String)
-            : null,
-      );
+    id: map['id'] as int?,
+    name: map['name'] as String,
+    description: map['description'] as String?,
+    variesBy: map['varies_by'] as String?,
+    createdAt: DateTime.parse(map['created_at'] as String),
+    updatedAt: DateTime.parse(map['updated_at'] as String),
+    deletedAt: map['deleted_at'] != null
+        ? DateTime.parse(map['deleted_at'] as String)
+        : null,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        variesBy,
-        createdAt,
-        updatedAt,
-        deletedAt,
-      ];
+    id,
+    name,
+    description,
+    variesBy,
+    createdAt,
+    updatedAt,
+    deletedAt,
+  ];
 }

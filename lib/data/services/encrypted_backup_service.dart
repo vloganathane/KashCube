@@ -89,18 +89,12 @@ Future<Uint8List> _derivePbkdf2({
   required String passphrase,
   required Uint8List salt,
 }) {
-  return compute(
-    _pbkdf2Work,
-    {'passphrase': passphrase, 'salt': salt},
-  );
+  return compute(_pbkdf2Work, {'passphrase': passphrase, 'salt': salt});
 }
 
 /// Top-level function required by [compute].
 Uint8List _pbkdf2Work(Map<String, dynamic> args) {
-  return _pbkdf2(
-    args['passphrase'] as String,
-    args['salt'] as Uint8List,
-  );
+  return _pbkdf2(args['passphrase'] as String, args['salt'] as Uint8List);
 }
 
 /// Pure PBKDF2-HMAC-SHA256: one block (32-byte output) with 100k iterations.
@@ -242,8 +236,13 @@ class EncryptedBackupService {
 
     // 7. Assemble file bytes
     final magicBytes = utf8.encode(_magic);
-    final totalLen = magicBytes.length + 1 + _saltLength + _ivLength +
-        _schemaFieldLength + ciphertextWithTag.length;
+    final totalLen =
+        magicBytes.length +
+        1 +
+        _saltLength +
+        _ivLength +
+        _schemaFieldLength +
+        ciphertextWithTag.length;
     final output = BytesBuilder(copy: false);
     output.add(magicBytes);
     output.addByte(_fmtVersion);
@@ -261,15 +260,22 @@ class EncryptedBackupService {
     final appDir = await getApplicationDocumentsDirectory();
     final exportsDir = Directory(p.join(appDir.path, 'exports'));
     await exportsDir.create(recursive: true);
-    final timestamp =
-        DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
-    final outFile = File(p.join(exportsDir.path, 'kash_cube_$timestamp.kashcube'));
+    final timestamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .split('.')
+        .first;
+    final outFile = File(
+      p.join(exportsDir.path, 'kash_cube_$timestamp.kashcube'),
+    );
     await outFile.writeAsBytes(output.takeBytes());
 
     // Record last backup date
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-        _prefLastBackupDate, DateTime.now().toIso8601String());
+      _prefLastBackupDate,
+      DateTime.now().toIso8601String(),
+    );
     debugPrint('[EncBackup] Exported to ${outFile.path}');
     return outFile;
   }
@@ -287,7 +293,9 @@ class EncryptedBackupService {
   ///
   /// The caller must restart the app (or re-open the DB) after restore.
   Future<Map<String, dynamic>> importEncrypted(
-      String filePath, String passphrase) async {
+    String filePath,
+    String passphrase,
+  ) async {
     // ── Lockout check ──────────────────────────────────────────────────────
     if (await isLockedOut()) {
       final mins = await lockoutMinutesRemaining();
@@ -302,7 +310,9 @@ class EncryptedBackupService {
 
     // ── Validate header ────────────────────────────────────────────────────
     if (bytes.length < 4 + 1 + _saltLength + _ivLength + _schemaFieldLength) {
-      throw const BackupFormatException('File is too small — not a valid .kashcube file');
+      throw const BackupFormatException(
+        'File is too small — not a valid .kashcube file',
+      );
     }
 
     final magic = utf8.decode(bytes.sublist(0, 4));
@@ -312,7 +322,9 @@ class EncryptedBackupService {
 
     final version = bytes[4];
     if (version != _fmtVersion) {
-      throw BackupFormatException('Unsupported backup format version: $version');
+      throw BackupFormatException(
+        'Unsupported backup format version: $version',
+      );
     }
 
     var offset = 5;
@@ -323,13 +335,16 @@ class EncryptedBackupService {
     offset += _ivLength;
 
     final schemaBuf = ByteData.sublistView(
-        Uint8List.fromList(bytes.sublist(offset, offset + _schemaFieldLength)));
+      Uint8List.fromList(bytes.sublist(offset, offset + _schemaFieldLength)),
+    );
     final fileSchemaVersion = schemaBuf.getUint32(0, Endian.big);
     offset += _schemaFieldLength;
 
     final ciphertextWithTag = bytes.sublist(offset);
 
-    debugPrint('[EncBackup] File schema: $fileSchemaVersion, current: ${AppConstants.dbVersion}');
+    debugPrint(
+      '[EncBackup] File schema: $fileSchemaVersion, current: ${AppConstants.dbVersion}',
+    );
 
     // ── Derive key & decrypt ───────────────────────────────────────────────
     debugPrint('[EncBackup] Deriving key for import…');
@@ -343,9 +358,11 @@ class EncryptedBackupService {
       final aesKey = enc.Key(Uint8List.fromList(keyBytes));
       final aesIv = enc.IV(Uint8List.fromList(iv));
       final encrypter = enc.Encrypter(enc.AES(aesKey, mode: enc.AESMode.gcm));
-      plaintext =
-          encrypter.decryptBytes(enc.Encrypted(Uint8List.fromList(ciphertextWithTag)), iv: aesIv);
-    } catch (e, st) {
+      plaintext = encrypter.decryptBytes(
+        enc.Encrypted(Uint8List.fromList(ciphertextWithTag)),
+        iv: aesIv,
+      );
+    } catch (e) {
       AppLogger.instance.warning(
         'Backup decryption failed',
         category: 'encrypted_backup',
@@ -357,13 +374,11 @@ class EncryptedBackupService {
 
     // ── Parse manifest ─────────────────────────────────────────────────────
     final manifestLen = ByteData.sublistView(
-            Uint8List.fromList(plaintext.sublist(0, 4)))
-        .getUint32(0, Endian.big);
-    final manifestJson =
-        utf8.decode(plaintext.sublist(4, 4 + manifestLen));
+      Uint8List.fromList(plaintext.sublist(0, 4)),
+    ).getUint32(0, Endian.big);
+    final manifestJson = utf8.decode(plaintext.sublist(4, 4 + manifestLen));
     final manifest = jsonDecode(manifestJson) as Map<String, dynamic>;
-    final dbBytes = Uint8List.fromList(
-        plaintext.sublist(4 + manifestLen));
+    final dbBytes = Uint8List.fromList(plaintext.sublist(4 + manifestLen));
 
     // ── Restore to DB path ─────────────────────────────────────────────────
     final dbPath = await getDatabasesPath();

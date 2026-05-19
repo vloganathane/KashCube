@@ -27,7 +27,15 @@ class _TermsNotifier extends AsyncNotifier<bool> {
   Future<bool> build() async {
     debugPrint('[Terms] Checking terms acceptance...');
     final settings = ref.read(settingsRepositoryProvider);
-    final accepted = await settings.get(SettingsKeys.termsAcceptedVersion);
+    final accepted = await settings
+        .get(SettingsKeys.termsAcceptedVersion)
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            debugPrint('[Terms] Timeout reading acceptance version; defaulting to not accepted');
+            return null;
+          },
+        );
     debugPrint('[Terms] Accepted version: $accepted (current: ${AppTerms.currentVersion})');
     final result = accepted == AppTerms.currentVersion;
     debugPrint('[Terms] Result: $result');

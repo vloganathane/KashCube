@@ -489,7 +489,15 @@ class SetupWizardNotifier extends AsyncNotifier<bool> {
   Future<bool> build() async {
     debugPrint('[Wizard] Checking setup wizard status...');
     final repo = ref.read(settingsRepositoryProvider);
-    final value = await repo.get(SettingsKeys.setupWizardDone);
+    final value = await repo
+        .get(SettingsKeys.setupWizardDone)
+        .timeout(
+          const Duration(seconds: 8),
+          onTimeout: () {
+            debugPrint('[Wizard] Timeout reading setup wizard status; defaulting to not done');
+            return null;
+          },
+        );
     debugPrint('[Wizard] setupWizardDone value: $value');
     final result = value == 'true';
     debugPrint('[Wizard] Result: $result');

@@ -143,7 +143,8 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     Duration heartbeatInterval = const Duration(seconds: 15),
     Duration heartbeatTimeout = const Duration(seconds: 45),
   }) : _peerOpsFactory = peerOpsFactory ?? ((_) => NoopWebRtcPeerOps()),
-       _controlPlaneChannel = controlPlaneChannel ?? WebSocketSyncTransportChannel(),
+       _controlPlaneChannel =
+           controlPlaneChannel ?? WebSocketSyncTransportChannel(),
        _heartbeatInterval = heartbeatInterval,
        _heartbeatTimeout = heartbeatTimeout;
 
@@ -221,7 +222,10 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     bool drainIce = true,
   }) {
     final runtime = ensurePeerRuntime(sessionId);
-    final snapshot = negotiationSnapshot(sessionId: sessionId, drainIce: drainIce);
+    final snapshot = negotiationSnapshot(
+      sessionId: sessionId,
+      drainIce: drainIce,
+    );
 
     if (snapshot.localOfferSdp != null) {
       runtime.applyLocalOffer(snapshot.localOfferSdp!);
@@ -333,7 +337,9 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     }
 
     if (_shouldUseDataPlane(type: type, sessionId: targetSessionId)) {
-      unawaited(_sendViaDataPlane(payload: payload, sessionId: targetSessionId));
+      unawaited(
+        _sendViaDataPlane(payload: payload, sessionId: targetSessionId),
+      );
       return;
     }
 
@@ -349,10 +355,7 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
     return _activeSessionId;
   }
 
-  bool _shouldUseDataPlane({
-    required String type,
-    required String? sessionId,
-  }) {
+  bool _shouldUseDataPlane({required String type, required String? sessionId}) {
     if (!SyncSignalingMessages.isDataPlaneEligibleType(type)) {
       return false;
     }
@@ -423,6 +426,9 @@ class WebRtcSyncTransportChannel implements SyncTransportChannel {
           );
           debugPrint('[WebRtcSyncTransportChannel] Heartbeat timeout detected');
         }
+
+        // Do not overwrite the outstanding ping timestamp until a PONG arrives.
+        return;
       }
 
       _controlPlaneChannel.sendJson(<String, dynamic>{

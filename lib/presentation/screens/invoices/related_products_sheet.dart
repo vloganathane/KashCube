@@ -24,7 +24,9 @@ class RelatedProductsSheet extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
-    final relationshipsAsync = ref.watch(productRelationshipsProvider(item.id!));
+    final relationshipsAsync = ref.watch(
+      productRelationshipsProvider(item.id!),
+    );
 
     return DraggableScrollableSheet(
       initialChildSize: 0.7,
@@ -47,11 +49,13 @@ class RelatedProductsSheet extends ConsumerWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               // Header
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.base),
@@ -68,7 +72,8 @@ class RelatedProductsSheet extends ConsumerWidget {
                           const SizedBox(height: 4),
                           Text(
                             item.name,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
                                   color: Theme.of(context).colorScheme.outline,
                                 ),
                           ),
@@ -88,17 +93,21 @@ class RelatedProductsSheet extends ConsumerWidget {
               // Content
               Expanded(
                 child: relationshipsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(
                     child: Text(
                       'Error: $e',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
                   data: (relationships) {
                     if (relationships.isEmpty) {
                       return _EmptyState(
-                        onAdd: () => _showAddRelationshipSheet(context, ref, item.id!),
+                        onAdd: () =>
+                            _showAddRelationshipSheet(context, ref, item.id!),
                       );
                     }
 
@@ -106,7 +115,8 @@ class RelatedProductsSheet extends ConsumerWidget {
                       controller: scrollController,
                       padding: const EdgeInsets.all(AppSpacing.base),
                       itemCount: relationships.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppSpacing.sm),
                       itemBuilder: (context, index) {
                         final relationship = relationships[index];
                         return _RelationshipTile(
@@ -136,7 +146,8 @@ class RelatedProductsSheet extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.base),
                   child: FilledButton.icon(
-                    onPressed: () => _showAddRelationshipSheet(context, ref, item.id!),
+                    onPressed: () =>
+                        _showAddRelationshipSheet(context, ref, item.id!),
                     icon: const Icon(Icons.add),
                     label: const Text('Add Related Product'),
                     style: FilledButton.styleFrom(
@@ -165,10 +176,9 @@ class RelatedProductsSheet extends ConsumerWidget {
     );
 
     if (result != null && context.mounted) {
-      await ref.read(productRelationshipsProvider(productId).notifier).add(
-            relatedProductId: result.relatedProductId,
-            type: result.type,
-          );
+      await ref
+          .read(productRelationshipsProvider(productId).notifier)
+          .add(relatedProductId: result.relatedProductId, type: result.type);
     }
   }
 
@@ -233,7 +243,9 @@ class _EmptyState extends StatelessWidget {
             Icon(
               Icons.link_off_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.5),
             ),
             const SizedBox(height: AppSpacing.base),
             Text(
@@ -244,10 +256,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Link accessories, spare parts, or related items to help with cross-selling.',
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -315,8 +326,8 @@ class _RelationshipTile extends ConsumerWidget {
                   Text(
                     CurrencyFormatter.format(relatedItem.unitPrice),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
                   ),
                 ],
               ],
@@ -338,12 +349,18 @@ class _RelationshipTile extends ConsumerWidget {
                   value: 'remove',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline,
-                          size: 20, color: Theme.of(context).colorScheme.error),
+                      Icon(
+                        Icons.delete_outline,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
-                      Text('Remove',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.error)),
+                      Text(
+                        'Remove',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -395,7 +412,8 @@ class _RelationshipTile extends ConsumerWidget {
                         ),
                         Text(
                           type.description,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.outline,
                               ),
                         ),
@@ -469,7 +487,9 @@ class _RelationshipTypeBadge extends StatelessWidget {
       ProductRelationshipType.accessory => const Color(0xFF1976D2), // Blue
       ProductRelationshipType.sparePart => const Color(0xFFE65100), // Orange
       ProductRelationshipType.consumable => const Color(0xFF7B1FA2), // Purple
-      ProductRelationshipType.relatedProduct => const Color(0xFF388E3C), // Green
+      ProductRelationshipType.relatedProduct => const Color(
+        0xFF388E3C,
+      ), // Green
     };
   }
 }
@@ -545,7 +565,9 @@ class _AddRelationshipSheetState extends ConsumerState<_AddRelationshipSheet> {
             ...ProductRelationshipType.values.map((type) {
               return RadioListTile<ProductRelationshipType>(
                 value: type,
+                // ignore: deprecated_member_use
                 groupValue: _selectedType,
+                // ignore: deprecated_member_use
                 onChanged: (value) {
                   if (value != null) {
                     setState(() => _selectedType = value);

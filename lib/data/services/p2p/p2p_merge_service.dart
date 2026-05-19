@@ -18,14 +18,14 @@ const _invoiceTable = 'invoices';
 /// Higher ordinal wins in a tie-break. `cancelled` is handled separately:
 /// it always wins over any non-cancelled status (even `paid`).
 const _invoiceStatusOrdinal = <String, int>{
-  'draft':         0,
+  'draft': 0,
   'pendingNumber': 1,
-  'sent':          2,
-  'overdue':       2, // same "sent" tier — whichever is newer wins
-  'viewed':        3,
+  'sent': 2,
+  'overdue': 2, // same "sent" tier — whichever is newer wins
+  'viewed': 3,
   'partiallyPaid': 4,
-  'paid':          5,
-  'cancelled':     6, // special — beats everything
+  'paid': 5,
+  'cancelled': 6, // special — beats everything
 };
 
 /// Merges remote rows into the local SQLite database using Last-Write-Wins
@@ -65,8 +65,8 @@ class P2pMergeService {
     SyncMode mode = SyncMode.deltaTs,
   }) async {
     var inserted = 0;
-    var updated  = 0;
-    var skipped  = 0;
+    var updated = 0;
+    var skipped = 0;
 
     for (final remote in remoteRows) {
       final keyValue = remote[keyColumn];
@@ -76,12 +76,7 @@ class P2pMergeService {
         continue;
       }
 
-      final existing = await _fetchByKey(
-        db,
-        table,
-        keyColumn,
-        keyValue,
-      );
+      final existing = await _fetchByKey(db, table, keyColumn, keyValue);
       if (existing == null) {
         // New row — insert it.
         await _insertRow(
@@ -94,10 +89,10 @@ class P2pMergeService {
         inserted++;
       } else {
         final shouldApply = _shouldApplyRemote(
-          table:    table,
-          local:    existing,
-          remote:   remote,
-          mode:     mode,
+          table: table,
+          local: existing,
+          remote: remote,
+          mode: mode,
         );
         if (shouldApply) {
           await _updateRow(
@@ -119,10 +114,10 @@ class P2pMergeService {
       '[Merge] $table → inserted=$inserted updated=$updated skipped=$skipped',
     );
     return MergeResult(
-      table:    table,
+      table: table,
       inserted: inserted,
-      updated:  updated,
-      skipped:  skipped,
+      updated: updated,
+      skipped: skipped,
     );
   }
 
@@ -141,23 +136,23 @@ class P2pMergeService {
     required Map<String, dynamic> remote,
     required SyncMode mode,
   }) {
-    final localTs  = _parseTs(local['updated_at']);
+    final localTs = _parseTs(local['updated_at']);
     final remoteTs = _parseTs(remote['updated_at']);
 
     // Rule 1 — soft-delete: a deleted remote wins if newer.
     final remoteDeleted = remote['deleted_at'] != null;
-    final localDeleted  = local['deleted_at']  != null;
+    final localDeleted = local['deleted_at'] != null;
     if (remoteDeleted && !localDeleted) {
       return remoteTs != null && (localTs == null || remoteTs.isAfter(localTs));
     }
 
     // Rule 2 — invoice state machine.
     if (table == _invoiceTable) {
-      final localStatus  = local['status']  as String? ?? 'draft';
+      final localStatus = local['status'] as String? ?? 'draft';
       final remoteStatus = remote['status'] as String? ?? 'draft';
       final decision = _resolveInvoiceStatus(localStatus, remoteStatus);
       if (decision == _StatusDecision.remoteWins) return true;
-      if (decision == _StatusDecision.localWins)  return false;
+      if (decision == _StatusDecision.localWins) return false;
       // _StatusDecision.useLww → fall through to rule 3.
     }
 
@@ -171,7 +166,7 @@ class P2pMergeService {
 
     // Rule 3 — LWW.
     if (remoteTs == null) return false;
-    if (localTs  == null) return true;
+    if (localTs == null) return true;
     return remoteTs.isAfter(localTs);
   }
 
@@ -193,12 +188,12 @@ class P2pMergeService {
   ) {
     if (localStatus == remoteStatus) return _StatusDecision.useLww;
 
-    final localOrd  = _invoiceStatusOrdinal[localStatus]  ?? 0;
+    final localOrd = _invoiceStatusOrdinal[localStatus] ?? 0;
     final remoteOrd = _invoiceStatusOrdinal[remoteStatus] ?? 0;
 
     // `cancelled` (ordinal 6) always wins over everything else.
     if (remoteStatus == 'cancelled') return _StatusDecision.remoteWins;
-    if (localStatus  == 'cancelled') return _StatusDecision.localWins;
+    if (localStatus == 'cancelled') return _StatusDecision.localWins;
 
     if (remoteOrd > localOrd) return _StatusDecision.remoteWins;
     if (remoteOrd < localOrd) return _StatusDecision.localWins;
@@ -228,18 +223,13 @@ class P2pMergeService {
     Map<String, dynamic> remote,
     String deviceId, {
     required bool preserveId,
-  }
-  ) async {
+  }) async {
     final row = _prepareRow(remote, deviceId);
     if (!preserveId) {
       // Remove integer PK so SQLite assigns its own.
       row.remove('id');
     }
-    await db.insert(
-      table,
-      row,
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await db.insert(table, row, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> _updateRow(
@@ -251,14 +241,9 @@ class P2pMergeService {
     required String keyColumn,
   }) async {
     final row = _prepareRow(remote, deviceId);
-    row.remove('id');      // don't overwrite integer PK if present
+    row.remove('id'); // don't overwrite integer PK if present
     row.remove(keyColumn); // immutable after creation
-    await db.update(
-      table,
-      row,
-      where: '$keyColumn = ?',
-      whereArgs: [keyValue],
-    );
+    await db.update(table, row, where: '$keyColumn = ?', whereArgs: [keyValue]);
   }
 
   /// Cleans the remote row map before writing: strips unknown fields and
@@ -283,7 +268,7 @@ class P2pMergeService {
     if (value == null) return null;
     try {
       return DateTime.parse(value as String).toUtc();
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to parse sync merge timestamp',
         category: 'p2p_merge',
@@ -323,6 +308,5 @@ class MergeResult {
   bool get hadChanges => inserted > 0 || updated > 0;
 
   @override
-  String toString() =>
-      'MergeResult($table: +$inserted ~$updated =$skipped)';
+  String toString() => 'MergeResult($table: +$inserted ~$updated =$skipped)';
 }

@@ -34,7 +34,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (trimmed.isEmpty) return;
     await IdentityRepositoryImpl().updateDisplayName(trimmed);
     // Keep personal card name in sync with identity display name
-    await ref.read(settingsRepositoryProvider).set(SettingsKeys.ownerName, trimmed);
+    await ref
+        .read(settingsRepositoryProvider)
+        .set(SettingsKeys.ownerName, trimmed);
     ref.invalidate(myIdentityProvider);
     if (mounted) setState(() => _editingName = false);
   }
@@ -62,7 +64,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           String? qrPayload;
           try {
             qrPayload = IdentityService.instance.identityQrPayload();
-          } catch (e, st) {
+          } catch (e) {
             // identity not yet loaded in memory
             AppLogger.instance.debug(
               'Identity QR payload generation failed',
@@ -115,8 +117,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             ),
                             const SizedBox(width: 8),
                             FilledButton(
-                              onPressed: () =>
-                                  _saveName(_nameController.text),
+                              onPressed: () => _saveName(_nameController.text),
                               child: const Text('Save'),
                             ),
                           ],
@@ -130,8 +131,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                         const SizedBox(height: 4),
                         TextButton.icon(
-                          onPressed: () =>
-                              setState(() => _editingName = true),
+                          onPressed: () => setState(() => _editingName = true),
                           icon: const Icon(Icons.edit_outlined, size: 16),
                           label: const Text('Edit name'),
                         ),
@@ -212,8 +212,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           'Scan this on another device to link your identity',
                         ),
                         trailing: TextButton(
-                          onPressed: () =>
-                              setState(() => _showQr = !_showQr),
+                          onPressed: () => setState(() => _showQr = !_showQr),
                           child: Text(_showQr ? 'Hide' : 'Show QR'),
                         ),
                       ),

@@ -25,7 +25,10 @@ class P2pAuthService {
   static const _clockSkewSeconds = 30;
 
   final _aesGcm = AesGcm.with256bits();
-  final _hkdf   = Hkdf(hmac: Hmac.sha256(), outputLength: 32); // cryptography Hmac
+  final _hkdf = Hkdf(
+    hmac: Hmac.sha256(),
+    outputLength: 32,
+  ); // cryptography Hmac
 
   // ── 1. Shared secret derivation ──────────────────────────────────────────
 
@@ -79,21 +82,32 @@ class P2pAuthService {
     required Uint8List rawSecret,
     required Uint8List deviceKey,
   }) async {
-    final key        = SecretKey(deviceKey.sublist(0, 32));
-    final nonce      = _randomBytes(12);
-    final secretBox  = await _aesGcm.encrypt(
+    final key = SecretKey(deviceKey.sublist(0, 32));
+    final nonce = _randomBytes(12);
+    final secretBox = await _aesGcm.encrypt(
       rawSecret,
       secretKey: key,
       nonce: nonce,
     );
-    final combined = Uint8List(
-        nonce.length + secretBox.cipherText.length + secretBox.mac.bytes.length)
-      ..setRange(0, nonce.length, nonce)
-      ..setRange(nonce.length,
-          nonce.length + secretBox.cipherText.length, secretBox.cipherText)
-      ..setRange(nonce.length + secretBox.cipherText.length,
-          nonce.length + secretBox.cipherText.length + secretBox.mac.bytes.length,
-          secretBox.mac.bytes);
+    final combined =
+        Uint8List(
+            nonce.length +
+                secretBox.cipherText.length +
+                secretBox.mac.bytes.length,
+          )
+          ..setRange(0, nonce.length, nonce)
+          ..setRange(
+            nonce.length,
+            nonce.length + secretBox.cipherText.length,
+            secretBox.cipherText,
+          )
+          ..setRange(
+            nonce.length + secretBox.cipherText.length,
+            nonce.length +
+                secretBox.cipherText.length +
+                secretBox.mac.bytes.length,
+            secretBox.mac.bytes,
+          );
     return base64.encode(combined);
   }
 
@@ -103,14 +117,14 @@ class P2pAuthService {
     required String encryptedBase64,
     required Uint8List deviceKey,
   }) async {
-    final bytes   = base64.decode(encryptedBase64);
-    final nonce   = bytes.sublist(0, 12);
-    final cipher  = bytes.sublist(12, bytes.length - 16);
-    final mac     = bytes.sublist(bytes.length - 16);
+    final bytes = base64.decode(encryptedBase64);
+    final nonce = bytes.sublist(0, 12);
+    final cipher = bytes.sublist(12, bytes.length - 16);
+    final mac = bytes.sublist(bytes.length - 16);
 
-    final key     = SecretKey(deviceKey.sublist(0, 32));
-    final box     = SecretBox(cipher, nonce: nonce, mac: Mac(mac));
-    final plain   = await _aesGcm.decrypt(box, secretKey: key);
+    final key = SecretKey(deviceKey.sublist(0, 32));
+    final box = SecretBox(cipher, nonce: nonce, mac: Mac(mac));
+    final plain = await _aesGcm.decrypt(box, secretKey: key);
     return Uint8List.fromList(plain);
   }
 
@@ -169,7 +183,7 @@ class P2pAuthService {
     DateTime ts;
     try {
       ts = DateTime.parse(receivedTs).toUtc();
-    } catch (e, st) {
+    } catch (e) {
       AppLogger.instance.debug(
         'Failed to parse P2P request timestamp',
         category: 'p2p_auth',
@@ -182,10 +196,10 @@ class P2pAuthService {
 
     // 2. Re-derive expected HMAC and constant-time compare.
     final expected = signRequest(
-      method:       method,
-      path:         path,
-      timestamp:    receivedTs,
-      body:         body,
+      method: method,
+      path: path,
+      timestamp: receivedTs,
+      body: body,
       sharedSecret: sharedSecret,
     );
     return _constantTimeEquals(expected, receivedSig);
@@ -195,17 +209,14 @@ class P2pAuthService {
 
   /// Generates a 32-byte cryptographically random nonce for the QR code
   /// pairing handshake. Encoded as hex for embedding in the QR payload.
-  String generatePairingNonce() => _randomBytes(32).map(
-        (b) => b.toRadixString(16).padLeft(2, '0'),
-      ).join();
+  String generatePairingNonce() =>
+      _randomBytes(32).map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   Uint8List _randomBytes(int length) {
     final rng = Random.secure();
-    return Uint8List.fromList(
-      List.generate(length, (_) => rng.nextInt(256)),
-    );
+    return Uint8List.fromList(List.generate(length, (_) => rng.nextInt(256)));
   }
 
   /// Constant-time string comparison to prevent timing attacks.

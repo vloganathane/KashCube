@@ -51,7 +51,7 @@ final identityInitProvider = FutureProvider<void>((ref) async {
   String defaultName;
   try {
     defaultName = kIsWeb ? 'KashCube Web' : Platform.localHostname;
-  } catch (e, st) {
+  } catch (e) {
     AppLogger.instance.debug(
       'Failed to get device hostname for identity init',
       category: 'identity_provider',
@@ -60,8 +60,10 @@ final identityInitProvider = FutureProvider<void>((ref) async {
     defaultName = 'Me';
   }
   await DatabaseHelper.instance.withDatabase(
-    (db) => IdentityService.instance
-        .ensureIdentityInitialized(db, displayName: defaultName),
+    (db) => IdentityService.instance.ensureIdentityInitialized(
+      db,
+      displayName: defaultName,
+    ),
   );
 });
 

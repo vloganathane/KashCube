@@ -115,10 +115,10 @@ class SmsParser {
 
   // Date patterns
   static final _datePatterns = [
-    RegExp(r'(\d{2})-([A-Za-z]{3})-(\d{2,4})'),  // 24-Feb-26 or 24-Feb-2026
-    RegExp(r'(\d{2})-(\d{2})-(\d{4})'),           // 24-02-2026
-    RegExp(r'(\d{2})/(\d{2})/(\d{4})'),           // 24/02/2026
-    RegExp(r'(\d{2})([A-Z]{3})\b'),               // 24FEB
+    RegExp(r'(\d{2})-([A-Za-z]{3})-(\d{2,4})'), // 24-Feb-26 or 24-Feb-2026
+    RegExp(r'(\d{2})-(\d{2})-(\d{4})'), // 24-02-2026
+    RegExp(r'(\d{2})/(\d{2})/(\d{4})'), // 24/02/2026
+    RegExp(r'(\d{2})([A-Z]{3})\b'), // 24FEB
   ];
 
   // ----------- UPI Patterns -----------
@@ -313,7 +313,9 @@ class SmsParser {
   }
 
   /// Parses a batch of SMS messages.
-  static List<ParsedSms> parseBatch(List<({String body, String sender})> messages) {
+  static List<ParsedSms> parseBatch(
+    List<({String body, String sender})> messages,
+  ) {
     final results = <ParsedSms>[];
     for (final msg in messages) {
       final parsed = parse(msg.body, msg.sender);
@@ -327,12 +329,15 @@ class SmsParser {
   /// Generates a deduplication hash for a parsed transaction.
   static String generateDedupeHash(ParsedSms parsed) {
     final date = parsed.date ?? DateTime.now();
-    final dateKey = '${date.year}-${date.month}-${date.day}-${date.hour}-${date.minute}';
-    final merchantKey = parsed.partyName?.toLowerCase().replaceAll(RegExp(r'\W'), '') ?? '';
+    final dateKey =
+        '${date.year}-${date.month}-${date.day}-${date.hour}-${date.minute}';
+    final merchantKey =
+        parsed.partyName?.toLowerCase().replaceAll(RegExp(r'\W'), '') ?? '';
     // Include UPI/bank reference numbers so two transactions with the same
     // amount + party + minute but different refs are NOT treated as duplicates.
     final refKey = parsed.upiRefNo ?? parsed.referenceId ?? '';
-    final key = '${parsed.amount}-$dateKey-$merchantKey-${parsed.direction.name}-$refKey';
+    final key =
+        '${parsed.amount}-$dateKey-$merchantKey-${parsed.direction.name}-$refKey';
     return sha256.convert(utf8.encode(key)).toString();
   }
 
@@ -340,7 +345,11 @@ class SmsParser {
   // UPI Parsing
   // ---------------------------------------------------------------------------
 
-  static ParsedSms? _tryParseUpi(String sms, String sender, String institution) {
+  static ParsedSms? _tryParseUpi(
+    String sms,
+    String sender,
+    String institution,
+  ) {
     // PhonePe Sent
     var match = _phonePeSent.firstMatch(sms);
     if (match != null) {
@@ -499,7 +508,11 @@ class SmsParser {
   // Credit Card Parsing
   // ---------------------------------------------------------------------------
 
-  static ParsedSms? _tryParseCreditCard(String sms, String sender, String normalizedSender) {
+  static ParsedSms? _tryParseCreditCard(
+    String sms,
+    String sender,
+    String normalizedSender,
+  ) {
     // HDFC Credit Card
     var match = _hdfcCc.firstMatch(sms);
     if (match != null) {
@@ -681,7 +694,9 @@ class SmsParser {
       sms: sms,
       sender: sender,
       amount: _parseAmount(match.group(1)!),
-      partyName: match.group(2) != null ? 'ATM ${_cleanPartyName(match.group(2))}' : 'ATM Withdrawal',
+      partyName: match.group(2) != null
+          ? 'ATM ${_cleanPartyName(match.group(2))}'
+          : 'ATM Withdrawal',
       direction: TransactionDirection.sent,
       sourceType: SmsSourceType.atm,
       accountLast4: _extractLast4(sms),
@@ -875,7 +890,7 @@ class SmsParser {
         final year = int.parse(match.group(3)!);
         return DateTime(year, month, day);
       }
-    } catch (e, st) {
+    } catch (e) {
       // Date parsing error — fall through
       AppLogger.instance.debug(
         'Failed to parse SMS date',
@@ -888,14 +903,27 @@ class SmsParser {
 
   static int? _monthFromAbbrev(String abbrev) {
     const months = {
-      'JAN': 1, 'FEB': 2, 'MAR': 3, 'APR': 4, 'MAY': 5, 'JUN': 6,
-      'JUL': 7, 'AUG': 8, 'SEP': 9, 'OCT': 10, 'NOV': 11, 'DEC': 12,
+      'JAN': 1,
+      'FEB': 2,
+      'MAR': 3,
+      'APR': 4,
+      'MAY': 5,
+      'JUN': 6,
+      'JUL': 7,
+      'AUG': 8,
+      'SEP': 9,
+      'OCT': 10,
+      'NOV': 11,
+      'DEC': 12,
     };
     return months[abbrev.toUpperCase()];
   }
 
   /// Extract party name from generic SMS using "to" / "from" / "at" keywords.
-  static String? _extractPartyFromGeneric(String sms, TransactionDirection direction) {
+  static String? _extractPartyFromGeneric(
+    String sms,
+    TransactionDirection direction,
+  ) {
     if (direction == TransactionDirection.sent) {
       // Look for "to {name}" or "at {name}"
       final pattern = RegExp(
@@ -933,7 +961,15 @@ class SmsParser {
     // Remove trailing dots, commas
     cleaned = cleaned.replaceAll(RegExp(r'[.,;:]+$'), '').trim();
     // Remove "Pvt Ltd", "Private Limited" etc.
-    cleaned = cleaned.replaceAll(RegExp(r'\s+(?:Pvt|Private|Ltd|Limited|Inc)\s*\.?\s*$', caseSensitive: false), '').trim();
+    cleaned = cleaned
+        .replaceAll(
+          RegExp(
+            r'\s+(?:Pvt|Private|Ltd|Limited|Inc)\s*\.?\s*$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .trim();
     // Normalize whitespace
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
     // Don't return very short names or names that look like codes
@@ -945,8 +981,14 @@ class SmsParser {
   /// Check if institution is a UPI app (used to gate generic UPI pattern matching).
   static bool _isUpiApp(String institution) {
     return const {
-      'PhonePe', 'Google Pay', 'Paytm', 'BHIM', 'Amazon Pay',
-      'Fi Money', 'Slice', 'Jupiter',
+      'PhonePe',
+      'Google Pay',
+      'Paytm',
+      'BHIM',
+      'Amazon Pay',
+      'Fi Money',
+      'Slice',
+      'Jupiter',
     }.contains(institution);
   }
 

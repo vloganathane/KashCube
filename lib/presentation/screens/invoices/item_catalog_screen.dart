@@ -537,11 +537,15 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       text: item == null ? '' : item.lowStockThreshold.toStringAsFixed(2),
     );
     _mpnCtrl = TextEditingController(text: item?.mpn ?? '');
-    _manufacturerCtrl = TextEditingController(text: item?.manufacturerName ?? '');
+    _manufacturerCtrl = TextEditingController(
+      text: item?.manufacturerName ?? '',
+    );
     _colorCtrl = TextEditingController(text: item?.color ?? '');
     _sizeCtrl = TextEditingController(text: item?.size ?? '');
     _weightValueCtrl = TextEditingController(
-      text: item?.weightValue != null ? item!.weightValue!.toStringAsFixed(1) : '',
+      text: item?.weightValue != null
+          ? item!.weightValue!.toStringAsFixed(1)
+          : '',
     );
     _widthCtrl = TextEditingController(
       text: item?.widthCm != null ? item!.widthCm!.toStringAsFixed(1) : '',
@@ -639,7 +643,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             Container(
               width: 40,
               height: 4,
-              margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.md),
+              margin: const EdgeInsets.only(
+                top: AppSpacing.md,
+                bottom: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
@@ -683,7 +690,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             Container(
               width: 40,
               height: 4,
-              margin: const EdgeInsets.only(top: AppSpacing.md, bottom: AppSpacing.md),
+              margin: const EdgeInsets.only(
+                top: AppSpacing.md,
+                bottom: AppSpacing.md,
+              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(2),
@@ -764,17 +774,29 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
       widthCm: double.tryParse(_widthCtrl.text),
       heightCm: double.tryParse(_heightCtrl.text),
       depthCm: double.tryParse(_depthCtrl.text),
-      material: _materialCtrl.text.trim().isEmpty ? null : _materialCtrl.text.trim(),
-      keywords: _keywordsCtrl.text.trim().isEmpty ? null : _keywordsCtrl.text.trim(),
+      material: _materialCtrl.text.trim().isEmpty
+          ? null
+          : _materialCtrl.text.trim(),
+      keywords: _keywordsCtrl.text.trim().isEmpty
+          ? null
+          : _keywordsCtrl.text.trim(),
       countryOfOrigin: _countryOfOrigin,
       releaseDate: _releaseDate,
-      productId: _productIdCtrl.text.trim().isEmpty ? null : _productIdCtrl.text.trim(),
+      productId: _productIdCtrl.text.trim().isEmpty
+          ? null
+          : _productIdCtrl.text.trim(),
       asin: _asinCtrl.text.trim().isEmpty ? null : _asinCtrl.text.trim(),
-      logoPath: _logoPathCtrl.text.trim().isEmpty ? null : _logoPathCtrl.text.trim(),
-      pattern: _patternCtrl.text.trim().isEmpty ? null : _patternCtrl.text.trim(),
+      logoPath: _logoPathCtrl.text.trim().isEmpty
+          ? null
+          : _logoPathCtrl.text.trim(),
+      pattern: _patternCtrl.text.trim().isEmpty
+          ? null
+          : _patternCtrl.text.trim(),
       slogan: _sloganCtrl.text.trim().isEmpty ? null : _sloganCtrl.text.trim(),
       itemCondition: _itemCondition,
-      modelNumber: _modelNumberCtrl.text.trim().isEmpty ? null : _modelNumberCtrl.text.trim(),
+      modelNumber: _modelNumberCtrl.text.trim().isEmpty
+          ? null
+          : _modelNumberCtrl.text.trim(),
       productGroupId: _productGroupId,
       createdAt: widget.item?.createdAt ?? now,
       updatedAt: now,
@@ -858,7 +880,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                     ),
                     child: _saving
@@ -1073,7 +1097,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                       decoration: InputDecoration(
                         labelText: 'Color',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1089,7 +1115,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                       decoration: InputDecoration(
                         labelText: 'Size',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1281,7 +1309,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
           child: Column(
             children: [
               DropdownButtonFormField<String>(
-                value: _priceCurrency,
+                initialValue: _priceCurrency,
                 decoration: InputDecoration(
                   labelText: 'Currency',
                   border: OutlineInputBorder(
@@ -1317,7 +1345,8 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                       IconButton(
                         icon: const Icon(Icons.clear, size: 18),
                         tooltip: 'Clear date',
-                        onPressed: () => setState(() => _priceValidUntil = null),
+                        onPressed: () =>
+                            setState(() => _priceValidUntil = null),
                       ),
                     IconButton(
                       icon: const Icon(Icons.calendar_today_outlined, size: 18),
@@ -1327,7 +1356,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                           context: context,
                           initialDate: _priceValidUntil ?? DateTime.now(),
                           firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 3650),
+                          ),
                         );
                         if (picked != null && mounted) {
                           setState(() => _priceValidUntil = picked);
@@ -1367,7 +1398,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                           context: context,
                           initialDate: _releaseDate ?? DateTime.now(),
                           firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 3650)),
+                          lastDate: DateTime.now().add(
+                            const Duration(days: 3650),
+                          ),
                         );
                         if (picked != null && mounted) {
                           setState(() => _releaseDate = picked);
@@ -1398,7 +1431,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
         ),
         const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String>(
-          value: _availability,
+          initialValue: _availability,
           decoration: InputDecoration(
             labelText: 'Availability',
             border: OutlineInputBorder(
@@ -1413,7 +1446,10 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
             DropdownMenuItem(value: 'InStock', child: Text('In Stock')),
             DropdownMenuItem(value: 'OutOfStock', child: Text('Out of Stock')),
             DropdownMenuItem(value: 'PreOrder', child: Text('Pre-Order')),
-            DropdownMenuItem(value: 'Discontinued', child: Text('Discontinued')),
+            DropdownMenuItem(
+              value: 'Discontinued',
+              child: Text('Discontinued'),
+            ),
           ],
           onChanged: (v) => setState(() => _availability = v ?? 'InStock'),
         ),
@@ -1473,11 +1509,15 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _weightValueCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Weight',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1502,11 +1542,15 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _widthCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Width (cm)',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1519,11 +1563,15 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _heightCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Height (cm)',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1536,11 +1584,15 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                   Expanded(
                     child: TextFormField(
                       controller: _depthCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Depth (cm)',
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.base,
@@ -1553,7 +1605,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
-                value: _countryOfOrigin,
+                initialValue: _countryOfOrigin,
                 decoration: InputDecoration(
                   labelText: 'Country of Origin',
                   border: OutlineInputBorder(
@@ -1619,7 +1671,11 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                     child: OutlinedButton.icon(
                       onPressed: _pickLogoImage,
                       icon: const Icon(Icons.image_outlined),
-                      label: Text(_logoPathCtrl.text.isEmpty ? 'Pick Logo' : 'Change Logo'),
+                      label: Text(
+                        _logoPathCtrl.text.isEmpty
+                            ? 'Pick Logo'
+                            : 'Change Logo',
+                      ),
                     ),
                   ),
                   if (_logoPathCtrl.text.isNotEmpty) ...[
@@ -1744,8 +1800,9 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
               ),
               const SizedBox(height: AppSpacing.md),
               DropdownButtonFormField<String>(
-                value: _itemCondition,
-                onChanged: (val) => setState(() => _itemCondition = val ?? 'NewCondition'),
+                initialValue: _itemCondition,
+                onChanged: (val) =>
+                    setState(() => _itemCondition = val ?? 'NewCondition'),
                 decoration: InputDecoration(
                   labelText: 'Item Condition',
                   border: OutlineInputBorder(
@@ -1759,8 +1816,14 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
                 items: const [
                   DropdownMenuItem(value: 'NewCondition', child: Text('New')),
                   DropdownMenuItem(value: 'UsedCondition', child: Text('Used')),
-                  DropdownMenuItem(value: 'RefurbishedCondition', child: Text('Refurbished')),
-                  DropdownMenuItem(value: 'DamagedCondition', child: Text('Damaged')),
+                  DropdownMenuItem(
+                    value: 'RefurbishedCondition',
+                    child: Text('Refurbished'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'DamagedCondition',
+                    child: Text('Damaged'),
+                  ),
                 ],
               ),
             ],
@@ -1818,9 +1881,7 @@ class _ItemFormSheetState extends ConsumerState<_ItemFormSheet> {
         ),
       ),
       child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-        ),
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.base,
@@ -2159,7 +2220,10 @@ class _ItemImagePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hasImage = imagePath != null && imagePath!.isNotEmpty && File(imagePath!).existsSync();
+    final hasImage =
+        imagePath != null &&
+        imagePath!.isNotEmpty &&
+        File(imagePath!).existsSync();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2170,10 +2234,9 @@ class _ItemImagePicker extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Primary Image',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: cs.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: cs.outline),
             ),
             const Spacer(),
             if (hasImage)
@@ -2214,18 +2277,26 @@ class _ItemImagePicker extends StatelessWidget {
               height: 140,
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: cs.outlineVariant, style: BorderStyle.solid, width: 1.5),
+                  color: cs.outlineVariant,
+                  style: BorderStyle.solid,
+                  width: 1.5,
+                ),
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo_outlined,
-                      size: 40, color: cs.primary),
+                  Icon(Icons.add_a_photo_outlined, size: 40, color: cs.primary),
                   const SizedBox(height: AppSpacing.sm),
-                  Text('Tap to add item image',
-                      style: TextStyle(color: cs.primary, fontSize: 14, fontWeight: FontWeight.w500)),
+                  Text(
+                    'Tap to add item image',
+                    style: TextStyle(
+                      color: cs.primary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2235,13 +2306,13 @@ class _ItemImagePicker extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context, ColorScheme cs) => Container(
-        height: 200,
-        decoration: BoxDecoration(
-          color: cs.errorContainer,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        child: Center(
-          child: Icon(Icons.broken_image_outlined, size: 48, color: cs.error),
-        ),
-      );
+    height: 200,
+    decoration: BoxDecoration(
+      color: cs.errorContainer,
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+    ),
+    child: Center(
+      child: Icon(Icons.broken_image_outlined, size: 48, color: cs.error),
+    ),
+  );
 }

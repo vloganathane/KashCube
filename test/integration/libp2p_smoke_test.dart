@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 // Integration smoke tests for libp2p implementation
 //
 // These tests verify the core libp2p integration works with real components:
@@ -8,8 +10,6 @@
 // - mDNS peer discovery (optional, may be flaky)
 //
 // Run with: flutter test test/integration/libp2p_smoke_test.dart
-
-import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/services/libp2p/libp2p_discovery.dart';
@@ -35,10 +35,10 @@ void main() {
       // Start listening
       await node.start();
       expect(node.isStarted, true, reason: 'Node should be started');
-      
+
       // Wait a moment for addresses to be populated
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       // Note: listeningAddrs may be empty if no interfaces are available
       // This is acceptable for smoke test - just verify peer ID exists
       // expect(
@@ -48,7 +48,11 @@ void main() {
       // );
 
       // Verify peer ID was generated
-      expect(node.localPeerId, isNotNull, reason: 'Peer ID should be generated');
+      expect(
+        node.localPeerId,
+        isNotNull,
+        reason: 'Peer ID should be generated',
+      );
       print('Node started with peer ID: ${node.localPeerId}');
       print('Listening on: ${node.listeningAddrs.join(", ")}');
 
@@ -72,10 +76,7 @@ void main() {
       protocol.registerHandler('PING', (frame, peerId) async {
         pingReceived = true;
         print('PING received from peer: $peerId');
-        return {
-          'type': 'PONG',
-          'timestamp': DateTime.now().toIso8601String(),
-        };
+        return {'type': 'PONG', 'timestamp': DateTime.now().toIso8601String()};
       });
 
       // Register protocol with node
@@ -83,7 +84,11 @@ void main() {
       node.registerProtocol('/kash-sync/1.0.0', handler);
 
       // Verify handler registered but not invoked yet
-      expect(pingReceived, false, reason: 'PING handler should not be called yet');
+      expect(
+        pingReceived,
+        false,
+        reason: 'PING handler should not be called yet',
+      );
 
       await node.close();
     });
@@ -100,14 +105,16 @@ void main() {
         await node1.initialize(listenAddrs: ['/ip4/127.0.0.1/tcp/0']);
         await node1.start();
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         final node1PeerId = node1.localPeerId!;
-        
+
         if (node1.listeningAddrs.isEmpty) {
-          print('Warning: Node 1 has no listening addresses - skipping connection test');
+          print(
+            'Warning: Node 1 has no listening addresses - skipping connection test',
+          );
           return; // Skip test if no addresses available
         }
-        
+
         final node1Addr = node1.listeningAddrs.first;
         print('Node 1 started: $node1Addr (peer: $node1PeerId)');
 
@@ -167,10 +174,12 @@ void main() {
         node1.registerProtocol('/kash-sync/1.0.0', handler1);
 
         if (node1.listeningAddrs.isEmpty) {
-          print('Warning: Node 1 has no listening addresses - skipping frame test');
+          print(
+            'Warning: Node 1 has no listening addresses - skipping frame test',
+          );
           return; // Skip test if no addresses available
         }
-        
+
         final node1Multiaddr =
             '${node1.listeningAddrs.first}/p2p/${node1.localPeerId}';
         print('Node 1 ready at: $node1Multiaddr');
@@ -199,7 +208,11 @@ void main() {
         // Wait for handler to process (frame I/O is async)
         await Future.delayed(const Duration(milliseconds: 500));
 
-        expect(receivedFrames.length, 1, reason: 'Should receive exactly 1 PING');
+        expect(
+          receivedFrames.length,
+          1,
+          reason: 'Should receive exactly 1 PING',
+        );
         expect(receivedFrames.first['type'], 'PING');
         expect(receivedFrames.first['message'], 'Hello from Node 2');
         print('✓ PING received successfully');

@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/libp2p_sync_repository_impl.dart';
 import '../../data/repositories/webrtc_sync_repository_impl.dart';
 import '../../data/services/database_helper.dart';
-import '../../data/services/identity_service.dart';
 import '../../data/services/libp2p/libp2p_discovery.dart';
 import '../../data/services/libp2p/libp2p_node.dart';
 import '../../data/services/libp2p/libp2p_protocol.dart';
@@ -53,7 +52,6 @@ final libp2pSyncRepositoryProvider = Provider<SyncRepository>(
     protocol: ref.watch(libp2pProtocolProvider),
     discovery: ref.watch(libp2pDiscoveryProvider),
     dbHelper: DatabaseHelper.instance,
-    identityService: IdentityService.instance,
     inboundDedupeCapacity: 512,
   ),
 );

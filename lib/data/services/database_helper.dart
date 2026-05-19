@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -98,7 +99,7 @@ class DatabaseHelper {
     final sw = Stopwatch()..start();
     debugPrint('[DB] Initializing database...');
 
-    final dbPath = await getDatabasesPath();
+    final dbPath = await _resolveDatabaseDirectory();
     final path = join(dbPath, AppConstants.dbName);
 
     debugPrint('[DB] Opening database at: $path');
@@ -127,6 +128,26 @@ class DatabaseHelper {
       '[DB] Database initialization complete in ${sw.elapsedMilliseconds} ms',
     );
     return db;
+  }
+
+  Future<String> _resolveDatabaseDirectory() async {
+    if (kIsWeb) return getDatabasesPath();
+
+    // Desktop installs may run from protected folders (e.g. Program Files).
+    // Always place SQLite under user-writable Application Support.
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      final supportDir = await getApplicationSupportDirectory();
+      final dbDir = Directory(join(supportDir.path, 'databases'));
+      if (!await dbDir.exists()) {
+        await dbDir.create(recursive: true);
+      }
+      debugPrint('[DB] Using desktop DB dir: ${dbDir.path}');
+      return dbDir.path;
+    }
+
+    return getDatabasesPath();
   }
 
   void _scheduleStartupMaintenance(Database db, String dbPath) {

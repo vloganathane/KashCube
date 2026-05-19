@@ -82,11 +82,13 @@ class P2pCoordinator {
   static final P2pCoordinator instance = P2pCoordinator._();
 
   Database? _db;
-  String?   _identityId;
-  String?   _displayName;
-  Uint8List? _deviceKeyBytes; // Ed25519 seed — used to decrypt stored peer secrets
+  String? _identityId;
+  String? _displayName;
+  Uint8List?
+  _deviceKeyBytes; // Ed25519 seed — used to decrypt stored peer secrets
 
   bool _running = false;
+
   /// True while a start() call is in progress — prevents concurrent starts
   /// (e.g. _restore() + UI toggle racing before the server is bound).
   bool _startInProgress = false;
@@ -162,9 +164,12 @@ class P2pCoordinator {
   /// Loads the Ed25519 private key seed from [IdentityService] — used as a
   /// fallback in [pairWithPeer] when the coordinator has not been started yet.
   Future<Uint8List> _loadDeviceKeyBytes() async {
-    final seedB64 = await IdentityService.instance.exportIdentityPrivateKeySeed();
+    final seedB64 = await IdentityService.instance
+        .exportIdentityPrivateKeySeed();
     if (seedB64 == null) {
-      throw StateError('[P2pCoordinator] Identity key not found — ensure identity is initialized before pairing.');
+      throw StateError(
+        '[P2pCoordinator] Identity key not found — ensure identity is initialized before pairing.',
+      );
     }
     return Uint8List.fromList(base64.decode(seedB64));
   }
@@ -190,10 +195,15 @@ class P2pCoordinator {
     _startInProgress = true;
     _running = true;
     _db = db;
-    _identityId  = identity.identityId;
+    _identityId = identity.identityId;
     _displayName = displayName;
 
-    _emit(const SyncStatus(phase: SyncPhase.starting, message: 'Starting P2P sync…'));
+    _emit(
+      const SyncStatus(
+        phase: SyncPhase.starting,
+        message: 'Starting P2P sync…',
+      ),
+    );
 
     // Decrypt peer secrets using the Ed25519 private key seed.
     final seedB64 = await identity.exportIdentityPrivateKeySeed();
@@ -209,10 +219,10 @@ class P2pCoordinator {
     await P2pServer.instance.start(
       localIdentityId: _identityId!,
       localDisplayName: displayName,
-      secretForPeer:  _secretForPeer,
-      onPull:         _handlePull,
-      onPush:         _handlePush,
-      onPairRequest:  _handlePairRequest,
+      secretForPeer: _secretForPeer,
+      onPull: _handlePull,
+      onPush: _handlePush,
+      onPairRequest: _handlePairRequest,
     );
 
     final port = P2pServer.instance.port!;
@@ -224,9 +234,9 @@ class P2pCoordinator {
     // Web Companion or manual-IP pairing.
     try {
       await P2pDiscoveryService.instance.startBroadcast(
-        identityId:   _identityId!,
-        displayName:  displayName,
-        port:         port,
+        identityId: _identityId!,
+        displayName: displayName,
+        port: port,
         businessName: businessName,
       );
     } catch (e) {
@@ -236,7 +246,7 @@ class P2pCoordinator {
     try {
       await P2pDiscoveryService.instance.startDiscovery(
         localIdentityId: _identityId!,
-        onTrusted:       _isTrustedPeer,
+        onTrusted: _isTrustedPeer,
       );
     } catch (e) {
       debugPrint('[P2pCoordinator] mDNS discovery unavailable (non-fatal): $e');
@@ -250,16 +260,15 @@ class P2pCoordinator {
 
     _startWebPushLoop();
 
-    _emit(SyncStatus(
-      phase:   SyncPhase.idle,
-      message: 'Listening on port $port',
-    ));
+    _emit(
+      SyncStatus(phase: SyncPhase.idle, message: 'Listening on port $port'),
+    );
 
     // Enable web companion on the shared server.
     P2pServer.instance.enableWebCompanion(
-      deviceName:    displayName,
+      deviceName: displayName,
       schemaVersion: AppConstants.dbVersion,
-      onWrite:       _handleWebWrite,
+      onWrite: _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
       onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
@@ -298,8 +307,9 @@ class P2pCoordinator {
       }
 
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
-      final deltaVersion =
-          plans.where((p) => p.mode == SyncMode.deltaVersion).length;
+      final deltaVersion = plans
+          .where((p) => p.mode == SyncMode.deltaVersion)
+          .length;
       final snapshot = plans.where((p) => p.mode == SyncMode.snapshot).length;
 
       debugPrint(
@@ -327,9 +337,9 @@ class P2pCoordinator {
     // Full coordinator already running — just ensure web companion is enabled.
     if (_running && P2pServer.instance.port != null) {
       P2pServer.instance.enableWebCompanion(
-        deviceName:    displayName,
+        deviceName: displayName,
         schemaVersion: AppConstants.dbVersion,
-        onWrite:       _handleWebWrite,
+        onWrite: _handleWebWrite,
         onSignalFrame: _handleWebSignalFrame,
         onSignalSessionClosed: _handleWebSignalSessionClosed,
         onMediaUpload: _handleWebMediaUpload,
@@ -339,8 +349,8 @@ class P2pCoordinator {
     // Server-only already up.
     if (_serverOnlyMode && P2pServer.instance.port != null) return;
 
-    _db          = db;
-    _identityId  = identity.identityId;
+    _db = db;
+    _identityId = identity.identityId;
     _displayName = displayName;
 
     final seedB64 = await identity.exportIdentityPrivateKeySeed();
@@ -354,16 +364,16 @@ class P2pCoordinator {
     await P2pServer.instance.start(
       localIdentityId: _identityId!,
       localDisplayName: displayName,
-      secretForPeer:  _secretForPeer,
-      onPull:         _handlePull,
-      onPush:         _handlePush,
-      onPairRequest:  _handlePairRequest,
+      secretForPeer: _secretForPeer,
+      onPull: _handlePull,
+      onPush: _handlePush,
+      onPairRequest: _handlePairRequest,
     );
 
     P2pServer.instance.enableWebCompanion(
-      deviceName:    displayName,
+      deviceName: displayName,
       schemaVersion: AppConstants.dbVersion,
-      onWrite:       _handleWebWrite,
+      onWrite: _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
       onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
@@ -372,7 +382,9 @@ class P2pCoordinator {
     WebCompanionService.instance.attach();
 
     _serverOnlyMode = true;
-    debugPrint('[P2pCoordinator] Server-only mode started on port ${P2pServer.instance.port}');
+    debugPrint(
+      '[P2pCoordinator] Server-only mode started on port ${P2pServer.instance.port}',
+    );
   }
 
   /// Stops the HTTP server when it was started via [startServerOnly] and the
@@ -450,7 +462,7 @@ class P2pCoordinator {
       // This ensures newly-paired peers sync immediately without waiting for
       // the next mDNS event to re-resolve and re-set isTrusted.
       if (!_isTrustedPeer(peer.identityId)) continue;
-      if (!peer.isReachable)                continue;
+      if (!peer.isReachable) continue;
       if (_activeSyncs.contains(peer.identityId)) continue;
       _syncWithPeer(peer); // fire and forget — errors caught internally
     }
@@ -466,11 +478,13 @@ class P2pCoordinator {
       return;
     }
 
-    _emit(SyncStatus(
-      phase:    SyncPhase.syncing,
-      peerName: peer.displayName,
-      message:  'Syncing with ${peer.displayName}…',
-    ));
+    _emit(
+      SyncStatus(
+        phase: SyncPhase.syncing,
+        peerName: peer.displayName,
+        message: 'Syncing with ${peer.displayName}…',
+      ),
+    );
 
     try {
       final secret = await _secretForPeer(peer.identityId);
@@ -480,17 +494,17 @@ class P2pCoordinator {
       }
 
       final client = P2pClient(
-        baseUrl:      peer.baseUrl,
-        identityId:   _identityId!,
+        baseUrl: peer.baseUrl,
+        identityId: _identityId!,
         sharedSecret: secret,
       );
 
       // Send a back-pair notification so the peer stores us as a trusted
       // device if it hasn't already (makes pairing bidirectional).
       await client.pair(
-        myIdentityId:      _identityId!,
+        myIdentityId: _identityId!,
         myPublicKeyBase64: IdentityService.instance.identityPublicKeyBase64,
-        myDisplayName:     _displayName ?? 'KashCube',
+        myDisplayName: _displayName ?? 'KashCube',
       );
 
       // Confirm it's still a KashCube server.
@@ -512,10 +526,10 @@ class P2pCoordinator {
       for (final table in syncTables) {
         try {
           final result = await _syncTable(
-            db:         db,
-            client:     client,
-            peer:       peer,
-            table:      table,
+            db: db,
+            client: client,
+            peer: peer,
+            table: table,
           );
           if (result != null) allResults.add(result);
         } catch (e) {
@@ -529,21 +543,27 @@ class P2pCoordinator {
       // Stamp last_seen_at on the TrustedPeer row.
       await _stampLastSeen(db, peer.identityId);
 
-      _emit(SyncStatus(
-        phase:    SyncPhase.done,
-        peerName: peer.displayName,
-        message:  'Sync complete with ${peer.displayName}',
-        results:  allResults,
-      ));
+      _emit(
+        SyncStatus(
+          phase: SyncPhase.done,
+          peerName: peer.displayName,
+          message: 'Sync complete with ${peer.displayName}',
+          results: allResults,
+        ),
+      );
 
-      debugPrint('[P2pCoordinator] Sync done with ${peer.displayName} '
-          '(${allResults.fold(0, (s, r) => s + r.inserted + r.updated)} changes)');
+      debugPrint(
+        '[P2pCoordinator] Sync done with ${peer.displayName} '
+        '(${allResults.fold(0, (s, r) => s + r.inserted + r.updated)} changes)',
+      );
     } catch (e) {
-      _emit(SyncStatus(
-        phase:    SyncPhase.error,
-        peerName: peer.displayName,
-        message:  'Sync failed: $e',
-      ));
+      _emit(
+        SyncStatus(
+          phase: SyncPhase.error,
+          peerName: peer.displayName,
+          message: 'Sync failed: $e',
+        ),
+      );
       debugPrint('[P2pCoordinator] Sync error with ${peer.displayName}: $e');
     } finally {
       _activeSyncs.remove(peer.identityId);
@@ -563,28 +583,25 @@ class P2pCoordinator {
     required String table,
   }) async {
     final watermarkTs = await getWatermarkForTest(db, peer.identityId, table);
-    final afterMs     = watermarkTs?.millisecondsSinceEpoch ?? 0;
+    final afterMs = watermarkTs?.millisecondsSinceEpoch ?? 0;
 
     // ── Pull remote rows ──────────────────────────────────────────────────
-    final pullResponse = await client.pull(
-      table:        table,
-      afterVersion: afterMs,
-    );
+    final pullResponse = await client.pull(table: table, afterVersion: afterMs);
 
     MergeResult? mergeResult;
     if (pullResponse != null) {
-      final remoteRows = (pullResponse['rows'] as List?)
-          ?.cast<Map<String, dynamic>>() ?? [];
+      final remoteRows =
+          (pullResponse['rows'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
       if (remoteRows.isNotEmpty) {
         final plan = _webSyncPlans[table];
         mergeResult = await P2pMergeService.instance.mergeTable(
-          db:         db,
-          table:      table,
+          db: db,
+          table: table,
           remoteRows: remoteRows,
-          deviceId:   _identityId!,
-          keyColumn:  plan?.keyColumn ?? 'sync_id',
-          mode:       plan?.mode ?? SyncMode.deltaTs,
+          deviceId: _identityId!,
+          keyColumn: plan?.keyColumn ?? 'sync_id',
+          mode: plan?.mode ?? SyncMode.deltaTs,
         );
       }
     }
@@ -630,13 +647,17 @@ class P2pCoordinator {
         return [];
       }
 
-      final cutoff = DateTime.fromMillisecondsSinceEpoch(afterEpochMs, isUtc: true)
-          .toIso8601String();
+      final cutoff = DateTime.fromMillisecondsSinceEpoch(
+        afterEpochMs,
+        isUtc: true,
+      ).toIso8601String();
       final where = <String>[];
       final args = <Object?>[];
 
       if (hasUpdatedAt && hasCreatedAt) {
-        where.add("${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
+        where.add(
+          "${sqlUtcExpr('COALESCE(updated_at, created_at)')} > julianday(?)",
+        );
         args.add(cutoff);
       } else if (hasUpdatedAt) {
         where.add("${sqlUtcExpr('updated_at')} > julianday(?)");
@@ -654,10 +675,10 @@ class P2pCoordinator {
       final orderBy = hasUpdatedAt && hasCreatedAt
           ? ' ORDER BY ${sqlUtcExpr('COALESCE(updated_at, created_at)')} ASC'
           : hasUpdatedAt
-              ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
-              : hasCreatedAt
-                  ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
-                  : '';
+          ? ' ORDER BY ${sqlUtcExpr('updated_at')} ASC'
+          : hasCreatedAt
+          ? ' ORDER BY ${sqlUtcExpr('created_at')} ASC'
+          : '';
 
       return await db.rawQuery(
         'SELECT * FROM $table$whereSql$orderBy LIMIT 500',
@@ -751,10 +772,12 @@ class P2pCoordinator {
       final enc = rows.first['shared_secret_enc'] as String;
       return await P2pAuthService.instance.decryptSecret(
         encryptedBase64: enc,
-        deviceKey:       _deviceKeyBytes!,
+        deviceKey: _deviceKeyBytes!,
       );
     } catch (e) {
-      debugPrint('[P2pCoordinator] Cannot decrypt secret for $peerIdentityId: $e');
+      debugPrint(
+        '[P2pCoordinator] Cannot decrypt secret for $peerIdentityId: $e',
+      );
       return null;
     }
   }
@@ -797,12 +820,12 @@ class P2pCoordinator {
     if (_db == null) return;
     final plan = _webSyncPlans[table];
     await P2pMergeService.instance.mergeTable(
-      db:         _db!,
-      table:      table,
+      db: _db!,
+      table: table,
       remoteRows: rows,
-      deviceId:   _identityId!,
-      keyColumn:  plan?.keyColumn ?? 'sync_id',
-      mode:       plan?.mode ?? SyncMode.deltaTs,
+      deviceId: _identityId!,
+      keyColumn: plan?.keyColumn ?? 'sync_id',
+      mode: plan?.mode ?? SyncMode.deltaTs,
     );
   }
 
@@ -814,6 +837,7 @@ class P2pCoordinator {
       _statusController.add(status);
     }
   }
+
   /// Handles a back-pair request from [identityId].
   ///
   /// Derives the shared secret from our own pubkey + their pubkey, verifies
@@ -829,28 +853,34 @@ class P2pCoordinator {
     if (_isTrustedPeer(identityId)) return true;
 
     try {
-      final myPubKeyBytes     = base64.decode(IdentityService.instance.identityPublicKeyBase64);
-      final peerPubKeyBytes   = base64.decode(peerPublicKeyBase64);
-      final sharedSecret      = await P2pAuthService.instance.deriveSharedSecret(
-        localPubKey:  Uint8List.fromList(myPubKeyBytes),
+      final myPubKeyBytes = base64.decode(
+        IdentityService.instance.identityPublicKeyBase64,
+      );
+      final peerPubKeyBytes = base64.decode(peerPublicKeyBase64);
+      final sharedSecret = await P2pAuthService.instance.deriveSharedSecret(
+        localPubKey: Uint8List.fromList(myPubKeyBytes),
         remotePubKey: Uint8List.fromList(peerPubKeyBytes),
       );
 
       final expectedProof = P2pAuthService.instance.signPairProof(
-        sharedSecret:     sharedSecret,
+        sharedSecret: sharedSecret,
         senderIdentityId: identityId,
       );
       if (expectedProof != proof) {
-        debugPrint('[P2pCoordinator] Back-pair rejected — invalid proof from $identityId');
+        debugPrint(
+          '[P2pCoordinator] Back-pair rejected — invalid proof from $identityId',
+        );
         return false;
       }
 
       await pairWithPeer(
-        peerIdentityId:  identityId,
+        peerIdentityId: identityId,
         peerDisplayName: displayName,
-        sharedSecret:    sharedSecret,
+        sharedSecret: sharedSecret,
       );
-      debugPrint('[P2pCoordinator] Back-paired with $displayName ($identityId)');
+      debugPrint(
+        '[P2pCoordinator] Back-paired with $displayName ($identityId)',
+      );
       return true;
     } catch (e) {
       debugPrint('[P2pCoordinator] Back-pair error from $identityId: $e');
@@ -861,11 +891,14 @@ class P2pCoordinator {
 
   /// Enables web companion on the shared server (idempotent — can be called
   /// after [start] if the display name changes).
-  void enableWebCompanion({required String deviceName, required int schemaVersion}) {
+  void enableWebCompanion({
+    required String deviceName,
+    required int schemaVersion,
+  }) {
     P2pServer.instance.enableWebCompanion(
-      deviceName:    deviceName,
+      deviceName: deviceName,
       schemaVersion: schemaVersion,
-      onWrite:       _handleWebWrite,
+      onWrite: _handleWebWrite,
       onSignalFrame: _handleWebSignalFrame,
       onSignalSessionClosed: _handleWebSignalSessionClosed,
       onMediaUpload: _handleWebMediaUpload,
@@ -919,8 +952,8 @@ class P2pCoordinator {
           final plan = _webSyncPlans[table]!;
 
           final query = GenericSyncQueryBuilder.buildOutboundQuery(
-            plan:         plan,
-            since:        _webLastPushedAt[table],
+            plan: plan,
+            since: _webLastPushedAt[table],
             afterVersion: _webLastPushedVersion[table],
           );
           final rows = await db.rawQuery(query.sql, query.args);
@@ -936,10 +969,10 @@ class P2pCoordinator {
             if (_identityId != null) {
               await SyncTableStateStore.instance.updateProgress(
                 peerIdentityId: _identityId!,
-                tableName:      table,
-                syncMode:       plan.mode,
+                tableName: table,
+                syncMode: plan.mode,
                 schemaFingerprint: plan.schemaFingerprint,
-                lastSyncedAt:   newTs,
+                lastSyncedAt: newTs,
               );
             }
           } else if (plan.mode == SyncMode.deltaVersion) {
@@ -949,10 +982,10 @@ class P2pCoordinator {
               if (_identityId != null) {
                 await SyncTableStateStore.instance.updateProgress(
                   peerIdentityId: _identityId!,
-                  tableName:      table,
-                  syncMode:       plan.mode,
+                  tableName: table,
+                  syncMode: plan.mode,
                   schemaFingerprint: plan.schemaFingerprint,
-                  lastVersion:    newVer,
+                  lastVersion: newVer,
                 );
               }
             }
@@ -968,20 +1001,24 @@ class P2pCoordinator {
   }
 
   List<String> _peerSyncTables() {
-    final tables = _webSyncPlans.values
-        .where((plan) => plan.isP2pEligible && plan.mode == SyncMode.deltaTs)
-        .map((plan) => plan.tableName)
-        .toList()
-      ..sort();
+    final tables =
+        _webSyncPlans.values
+            .where(
+              (plan) => plan.isP2pEligible && plan.mode == SyncMode.deltaTs,
+            )
+            .map((plan) => plan.tableName)
+            .toList()
+          ..sort();
     return tables;
   }
 
   List<String> _webMirrorTables() {
-    final tables = _webSyncPlans.values
-        .where((plan) => plan.isWebEligible)
-        .map((plan) => plan.tableName)
-        .toList()
-      ..sort();
+    final tables =
+        _webSyncPlans.values
+            .where((plan) => plan.isWebEligible)
+            .map((plan) => plan.tableName)
+            .toList()
+          ..sort();
     return tables;
   }
 
@@ -1010,12 +1047,12 @@ class P2pCoordinator {
     // are merged correctly. Falls back to 'sync_id' for tables not yet discovered.
     final plan = _webSyncPlans[table];
     await P2pMergeService.instance.mergeTable(
-      db:         db,
-      table:      table,
+      db: db,
+      table: table,
       remoteRows: [normalized],
-      deviceId:   _identityId!,
-      keyColumn:  plan?.keyColumn ?? 'sync_id',
-      mode:       plan?.mode ?? SyncMode.deltaTs,
+      deviceId: _identityId!,
+      keyColumn: plan?.keyColumn ?? 'sync_id',
+      mode: plan?.mode ?? SyncMode.deltaTs,
     );
     DatabaseHelper.instance.notifyChange(table);
     // Push the merged row back to the browser session if active.
@@ -1029,41 +1066,50 @@ class P2pCoordinator {
     debugPrint('[P2pCoordinator] Web signaling frame received: $type');
 
     if (!SyncSignalingMessages.isWebRtcSignalType(type)) {
-      return [_signalError(
-        code: 'UNSUPPORTED_SIGNAL_TYPE',
-        reason: 'Unsupported signaling frame type',
-        sourceType: type,
-      )];
+      return [
+        _signalError(
+          code: 'UNSUPPORTED_SIGNAL_TYPE',
+          reason: 'Unsupported signaling frame type',
+          sourceType: type,
+        ),
+      ];
     }
 
     final sessionId = frame['session_id']?.toString();
     if (sessionId == null || sessionId.isEmpty) {
-      return [_signalError(
-        code: 'MISSING_SESSION_ID',
-        reason: 'session_id is required for signaling frames',
-        sourceType: type,
-      )];
+      return [
+        _signalError(
+          code: 'MISSING_SESSION_ID',
+          reason: 'session_id is required for signaling frames',
+          sourceType: type,
+        ),
+      ];
     }
 
     if (SyncSignalingMessages.requiresSdp(type)) {
       final sdp = frame['sdp']?.toString();
       if (sdp == null || sdp.isEmpty) {
-        return [_signalError(
-          code: 'MISSING_SDP',
-          reason: 'sdp is required for offer/answer frames',
-          sourceType: type,
-          sessionId: sessionId,
-        )];
+        return [
+          _signalError(
+            code: 'MISSING_SDP',
+            reason: 'sdp is required for offer/answer frames',
+            sourceType: type,
+            sessionId: sessionId,
+          ),
+        ];
       }
     }
 
-    if (SyncSignalingMessages.requiresCandidate(type) && frame['candidate'] == null) {
-      return [_signalError(
-        code: 'MISSING_ICE_CANDIDATE',
-        reason: 'candidate is required for ice candidate frames',
-        sourceType: type,
-        sessionId: sessionId,
-      )];
+    if (SyncSignalingMessages.requiresCandidate(type) &&
+        frame['candidate'] == null) {
+      return [
+        _signalError(
+          code: 'MISSING_ICE_CANDIDATE',
+          reason: 'candidate is required for ice candidate frames',
+          sourceType: type,
+          sessionId: sessionId,
+        ),
+      ];
     }
 
     _pruneStaleWebSignalState();
@@ -1073,38 +1119,51 @@ class P2pCoordinator {
       () => <String, dynamic>{},
     );
 
-    final hasOffer = sessionState.containsKey(SyncSignalingMessages.signalOffer.toLowerCase());
-    final hasAnswer = sessionState.containsKey(SyncSignalingMessages.signalAnswer.toLowerCase());
+    final hasOffer = sessionState.containsKey(
+      SyncSignalingMessages.signalOffer.toLowerCase(),
+    );
+    final hasAnswer = sessionState.containsKey(
+      SyncSignalingMessages.signalAnswer.toLowerCase(),
+    );
 
     if (type == SyncSignalingMessages.signalOffer && hasOffer) {
-      return [_signalError(
-        code: 'DUPLICATE_OFFER',
-        reason: 'Offer already staged for this session',
-        sourceType: type,
-        sessionId: sessionId,
-      )];
+      return [
+        _signalError(
+          code: 'DUPLICATE_OFFER',
+          reason: 'Offer already staged for this session',
+          sourceType: type,
+          sessionId: sessionId,
+        ),
+      ];
     }
 
     if (type == SyncSignalingMessages.signalAnswer && !hasOffer) {
-      return [_signalError(
-        code: 'ANSWER_BEFORE_OFFER',
-        reason: 'Answer cannot be processed before an offer',
-        sourceType: type,
-        sessionId: sessionId,
-      )];
+      return [
+        _signalError(
+          code: 'ANSWER_BEFORE_OFFER',
+          reason: 'Answer cannot be processed before an offer',
+          sourceType: type,
+          sessionId: sessionId,
+        ),
+      ];
     }
 
-    if (type == SyncSignalingMessages.signalIceCandidate && !hasOffer && !hasAnswer) {
-      return [_signalError(
-        code: 'ICE_BEFORE_NEGOTIATION',
-        reason: 'ICE candidate requires staged offer/answer context',
-        sourceType: type,
-        sessionId: sessionId,
-      )];
+    if (type == SyncSignalingMessages.signalIceCandidate &&
+        !hasOffer &&
+        !hasAnswer) {
+      return [
+        _signalError(
+          code: 'ICE_BEFORE_NEGOTIATION',
+          reason: 'ICE candidate requires staged offer/answer context',
+          sourceType: type,
+          sessionId: sessionId,
+        ),
+      ];
     }
 
     if (type == SyncSignalingMessages.signalIceCandidate) {
-      final candidates = (sessionState['ice_candidates'] as List<dynamic>?) ?? <dynamic>[];
+      final candidates =
+          (sessionState['ice_candidates'] as List<dynamic>?) ?? <dynamic>[];
       candidates.add(Map<String, dynamic>.from(frame));
       sessionState['ice_candidates'] = candidates;
     }
@@ -1131,7 +1190,9 @@ class P2pCoordinator {
       // Create local peer connection adapter to process this offer.
       // The adapter will generate an answer when the browser sends SIGNAL_ANSWER.
       if (!_webRtcAdapters.containsKey(sessionId)) {
-        _webRtcAdapters[sessionId] = LocalPeerConnectionAdapter(sessionId: sessionId);
+        _webRtcAdapters[sessionId] = LocalPeerConnectionAdapter(
+          sessionId: sessionId,
+        );
       }
 
       // Feed offer into adapter for later use when generating answer.
@@ -1171,7 +1232,9 @@ class P2pCoordinator {
         ),
       ];
 
-      final candidates = (sessionState['ice_candidates'] as List<dynamic>?) ?? const <dynamic>[];
+      final candidates =
+          (sessionState['ice_candidates'] as List<dynamic>?) ??
+          const <dynamic>[];
       for (final item in candidates) {
         if (item is! Map) continue;
         final candidateFrame = Map<String, dynamic>.from(item);
@@ -1186,25 +1249,21 @@ class P2pCoordinator {
         });
       }
       sessionState['ice_candidates'] = <dynamic>[];
-     // Retrieve generated answer from adapter and send back to browser
-     final adapter = _webRtcAdapters[sessionId];
-     if (adapter != null && adapter.hasAnswer) {
-       final answerSdp = adapter.getAnswerSdp();
-       if (answerSdp != null) {
-         responses.insert(
-           1,
-           {
-             'type': SyncSignalingMessages.signalAnswer,
-             'session_id': sessionId,
-             'sdp': answerSdp,
-           },
-         );
-         debugPrint(
-           '[P2pCoordinator] Generated and returned answer SDP to browser for session $sessionId',
-         );
-       }
-     }
-
+      // Retrieve generated answer from adapter and send back to browser
+      final adapter = _webRtcAdapters[sessionId];
+      if (adapter != null && adapter.hasAnswer) {
+        final answerSdp = adapter.getAnswerSdp();
+        if (answerSdp != null) {
+          responses.insert(1, {
+            'type': SyncSignalingMessages.signalAnswer,
+            'session_id': sessionId,
+            'sdp': answerSdp,
+          });
+          debugPrint(
+            '[P2pCoordinator] Generated and returned answer SDP to browser for session $sessionId',
+          );
+        }
+      }
 
       return responses;
     }
@@ -1234,20 +1293,6 @@ class P2pCoordinator {
     };
   }
 
-  Map<String, dynamic> _signalUnsupported({
-    required String sourceType,
-    required String sessionId,
-    required String code,
-    required String reason,
-  }) {
-    return {
-      'type': SyncSignalingMessages.signalUnsupported,
-      'reason': reason,
-      'code': code,
-      'source_type': sourceType,
-      'session_id': sessionId,
-    };
-  }
   Map<String, dynamic> _signalError({
     required String code,
     required String reason,
@@ -1269,13 +1314,17 @@ class P2pCoordinator {
     }
     final removed = _webRtcSignalState.remove(sessionId);
     if (removed != null) {
-      debugPrint('[P2pCoordinator] Cleared staged signaling state for session $sessionId');
+      debugPrint(
+        '[P2pCoordinator] Cleared staged signaling state for session $sessionId',
+      );
     }
 
     // Clean up local peer adapter for this session
     final adapter = _webRtcAdapters.remove(sessionId);
     if (adapter != null) {
-      debugPrint('[P2pCoordinator] Cleared local peer adapter for session $sessionId');
+      debugPrint(
+        '[P2pCoordinator] Cleared local peer adapter for session $sessionId',
+      );
     }
   }
 
@@ -1305,11 +1354,15 @@ class P2pCoordinator {
 
     final entries = _webRtcSignalState.entries.toList()
       ..sort((a, b) {
-        final aTs = DateTime.tryParse(a.value['updated_at']?.toString() ?? '')
-                ?.toUtc() ??
+        final aTs =
+            DateTime.tryParse(
+              a.value['updated_at']?.toString() ?? '',
+            )?.toUtc() ??
             DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-        final bTs = DateTime.tryParse(b.value['updated_at']?.toString() ?? '')
-                ?.toUtc() ??
+        final bTs =
+            DateTime.tryParse(
+              b.value['updated_at']?.toString() ?? '',
+            )?.toUtc() ??
             DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
         return aTs.compareTo(bTs);
       });
@@ -1347,7 +1400,9 @@ class P2pCoordinator {
     if (table == AppTables.businesses && columns.contains('logo_path')) {
       final mediaId = normalized['logo_media_id']?.toString();
       final logoPath = normalized['logo_path']?.toString();
-      if (mediaId != null && mediaId.isNotEmpty && (logoPath == null || logoPath.isEmpty)) {
+      if (mediaId != null &&
+          mediaId.isNotEmpty &&
+          (logoPath == null || logoPath.isEmpty)) {
         final resolved = await _resolveMediaPath(db, mediaId);
         if (resolved != null) {
           normalized['logo_path'] = resolved;
@@ -1355,10 +1410,13 @@ class P2pCoordinator {
       }
     }
 
-    if (table == AppTables.parties && columns.contains('business_card_image_path')) {
+    if (table == AppTables.parties &&
+        columns.contains('business_card_image_path')) {
       final mediaId = normalized['business_card_media_id']?.toString();
       final imagePath = normalized['business_card_image_path']?.toString();
-      if (mediaId != null && mediaId.isNotEmpty && (imagePath == null || imagePath.isEmpty)) {
+      if (mediaId != null &&
+          mediaId.isNotEmpty &&
+          (imagePath == null || imagePath.isEmpty)) {
         final resolved = await _resolveMediaPath(db, mediaId);
         if (resolved != null) {
           normalized['business_card_image_path'] = resolved;
@@ -1423,20 +1481,16 @@ class P2pCoordinator {
     final localPath = p.join(mediaDir.path, '$mediaId$ext');
     await File(localPath).writeAsBytes(bytes, flush: true);
 
-    await db.insert(
-      AppTables.mediaAssets,
-      {
-        'media_id': mediaId,
-        'sha256': sha,
-        'mime_type': mimeType,
-        'byte_size': bytes.length,
-        'origin': 'web',
-        'local_path': localPath,
-        'created_at': now.toIso8601String(),
-        'updated_at': now.toIso8601String(),
-      },
-      conflictAlgorithm: ConflictAlgorithm.abort,
-    );
+    await db.insert(AppTables.mediaAssets, {
+      'media_id': mediaId,
+      'sha256': sha,
+      'mime_type': mimeType,
+      'byte_size': bytes.length,
+      'origin': 'web',
+      'local_path': localPath,
+      'created_at': now.toIso8601String(),
+      'updated_at': now.toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.abort);
 
     DatabaseHelper.instance.notifyChange(AppTables.mediaAssets);
 
@@ -1450,9 +1504,14 @@ class P2pCoordinator {
     };
   }
 
-  String _guessMediaExtension({required String fileName, required String mimeType}) {
+  String _guessMediaExtension({
+    required String fileName,
+    required String mimeType,
+  }) {
     final lowerName = fileName.toLowerCase();
-    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return '.jpg';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) {
+      return '.jpg';
+    }
     if (lowerName.endsWith('.png')) return '.png';
     if (lowerName.endsWith('.webp')) return '.webp';
     if (mimeType.contains('png')) return '.png';
@@ -1501,12 +1560,12 @@ class P2pCoordinator {
       deviceKey: keyBytes,
     );
     final peer = TrustedPeer(
-      peerIdentityId:  peerIdentityId,
-      peerName:        peerDisplayName,
-      businessId:      businessId,
+      peerIdentityId: peerIdentityId,
+      peerName: peerDisplayName,
+      businessId: businessId,
       sharedSecretEnc: enc,
-      pairedAt:        DateTime.now().toUtc(),
-      isActive:        true,
+      pairedAt: DateTime.now().toUtc(),
+      isActive: true,
     );
     await db.insert(
       'trusted_peers',
@@ -1515,7 +1574,9 @@ class P2pCoordinator {
     );
     // Update in-memory cache so subsequent discoveries mark this peer trusted.
     _trustedPeerIds.add(peerIdentityId);
-    debugPrint('[P2pCoordinator] Paired with $peerDisplayName ($peerIdentityId)');
+    debugPrint(
+      '[P2pCoordinator] Paired with $peerDisplayName ($peerIdentityId)',
+    );
 
     // If the coordinator is already running and this peer is visible on the
     // LAN right now, kick off an immediate sync cycle.  This sends the

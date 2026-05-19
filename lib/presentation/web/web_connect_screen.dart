@@ -226,10 +226,14 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                         size: 14,
                         color: context.colorScheme.onSurfaceVariant),
                     const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'Browser auth stays on your local Wi-Fi — never sent to the internet',
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant,
+                    Flexible(
+                      child: Text(
+                        'Browser auth stays on your local Wi-Fi — never sent to the internet',
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                        softWrap: true,
                       ),
                     ),
                   ],

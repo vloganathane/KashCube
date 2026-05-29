@@ -743,8 +743,91 @@ class PdfLayoutEngine {
       );
     }).toList();
 
+    // Auto-adjust column widths based on content lengths and available page
+    // width. We build a simple heuristic: compute max character length per
+    // column, convert to a desired width (points) using a char width factor,
+    // clamp to min/max per-column, then if the sum exceeds available width
+    // reduce non-item columns first and give remaining space to the item
+    // column so it wraps naturally.
+    final colCount = headers.children.length;
+
+    // Gather text content per column (headers + each row)
+    final colsText = List.generate(colCount, (_) => <String>[]);
+    for (var c = 0; c < colCount; c++) {
+      colsText[c].add((headers.children[c] as pw.Padding)
+          .child // pw.Text
+          .toString());
+    }
+
+    // Extract raw strings from items
+    for (var item in items) {
+      final row = <String>[];
+      // Build same sequence as _buildItemCells: idx, name+desc, maybe hsn, qty,...
+      row.add(''); // idx placeholder (number width is small)
+      row.add(item.name + (item.description != null ? '\n${item.description}' : ''));
+      if (hasHsn) row.add(item.hsnCode ?? '');
+      row.add(item.qty == item.qty.truncateToDouble() ? item.qty.toStringAsFixed(0) : item.qty.toStringAsFixed(2));
+      if (hasUnit) row.add(item.unit ?? '');
+      row.add(fmt.format(item.unitPrice.abs()));
+      if (hasTax) row.add(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—');
+      if (hasDiscount) row.add(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—');
+      row.add(fmt.format(item.lineTotal.abs()));
+
+      for (var c = 0; c < colCount; c++) {
+        colsText[c].add(c < row.length ? row[c] : '');
+      }
+    }
+
+    // Char width factor (approx points per character at the chosen font size)
+    const double charWidth = 4.5; // conservative estimate for font-size ~9
+    // Min/max widths per column (points)
+    const double minIndexW = 14;
+    const double minNumericW = 26;
+    const double maxNumericW = 90;
+    const double minAmountW = 50;
+
+    // Compute desired widths
+    final desired = <double>[];
+    for (var c = 0; c < colCount; c++) {
+      final maxLen = colsText[c].fold<int>(0, (p, s) => s.length > p ? s.length : p);
+      desired.add(maxLen * charWidth + 12); // padding
+    }
+
+    // Determine page inner width (page width minus margins used in MultiPage)
+    final pageWidth = t.pageFormat.width;
+    final horizontalMargin = t.isThermal ? (4 * PdfPageFormat.mm) : 32.0;
+    final innerWidth = pageWidth - horizontalMargin * 2;
+
+    // Allocate widths with sensible clamps
+    final columnWidths = <int, pw.TableColumnWidth>{};
+    if (colCount >= 2) {
+      // Index column
+      columnWidths[0] = pw.FixedColumnWidth(desired[0].clamp(minIndexW, minNumericW));
+
+      // Amount (last) tentative
+      final lastIdx = colCount - 1;
+      double amountW = desired[lastIdx].clamp(minAmountW, maxNumericW);
+      columnWidths[lastIdx] = pw.FixedColumnWidth(amountW);
+
+      // Other numeric columns fixed within range, build list
+      for (var i = 2; i < lastIdx; i++) {
+        columnWidths[i] = pw.FixedColumnWidth(desired[i].clamp(minNumericW, maxNumericW));
+      }
+
+      // Remaining width goes to item/description column (index 1)
+      // Compute used width by fixed columns
+      double used = 0;
+      for (var entry in columnWidths.entries) {
+        used += (entry.value as pw.FixedColumnWidth).width;
+      }
+      final remaining = innerWidth - used;
+      final itemW = remaining > 80 ? remaining : desired[1].clamp(80.0, innerWidth * 0.7);
+      columnWidths[1] = pw.FixedColumnWidth(itemW);
+    }
+
     return pw.Table(
       border: pw.TableBorder.all(color: _divider, width: 0.5),
+      columnWidths: columnWidths,
       children: [headers, ...dataRows],
     );
   }
@@ -772,7 +855,7 @@ class PdfLayoutEngine {
       children: labels
           .map((h) => pw.Padding(
                 padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 6, vertical: 6),
+                    horizontal: 4, vertical: 4),
                 child: pw.Text(
                   h,
                   style: pw.TextStyle(
@@ -821,7 +904,7 @@ class PdfLayoutEngine {
 
   pw.Widget _cell(String text, {bool bold = false}) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: pw.Text(
         text,
         style: pw.TextStyle(
@@ -835,7 +918,7 @@ class PdfLayoutEngine {
 
   pw.Widget _cellWidget(pw.Widget child) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: child,
     );
   }
@@ -844,10 +927,10 @@ class PdfLayoutEngine {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(name, style: const pw.TextStyle(fontSize: 9, color: _dark)),
+        pw.Text(name, style: const pw.TextStyle(fontSize: 8.5, color: _dark)),
         if (description != null && description.isNotEmpty)
           pw.Text(description,
-              style: const pw.TextStyle(fontSize: 8, color: _muted)),
+              style: const pw.TextStyle(fontSize: 7.5, color: _muted)),
       ],
     );
   }

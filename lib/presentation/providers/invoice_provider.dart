@@ -82,12 +82,40 @@ class CatalogNotifier
   }
 
   Future<void> add(ItemCatalog item) async {
-    await _repo.insert(item, activeBusinessId: _businessId);
+    final id = await _repo.insert(item, activeBusinessId: _businessId);
+    // Persist explicit stock quantity via InventoryService when a business
+    // context is active. item_catalog.stock_qty is a legacy column and
+    // per-business stock is owned by item_stock and InventoryService.
+    if (_businessId != null) {
+      try {
+        await InventoryService.instance.setStock(
+          id,
+          item.stockQty,
+          businessId: _businessId,
+        );
+      } catch (e) {
+        // Non-fatal: log and continue to refresh the UI.
+        AppLogger.instance.debug('Failed to set initial stock',
+            category: 'catalog', error: e);
+      }
+    }
     await load();
   }
 
   Future<void> edit(ItemCatalog item) async {
     await _repo.update(item, activeBusinessId: _businessId);
+    if (_businessId != null && item.id != null) {
+      try {
+        await InventoryService.instance.setStock(
+          item.id!,
+          item.stockQty,
+          businessId: _businessId,
+        );
+      } catch (e) {
+        AppLogger.instance.debug('Failed to update stock',
+            category: 'catalog', error: e);
+      }
+    }
     await load();
   }
 

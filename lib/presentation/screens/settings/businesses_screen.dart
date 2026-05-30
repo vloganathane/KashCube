@@ -297,7 +297,7 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   late final TextEditingController _city;
   late final TextEditingController _state;
   late final TextEditingController _pincode;
-  late final TextEditingController _phone;
+  late List<TextEditingController> _phoneControllers;
   late final TextEditingController _email;
   late final TextEditingController _gst;
   late final TextEditingController _website;
@@ -324,7 +324,16 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
     _city      = TextEditingController(text: b?.city ?? '');
     _state     = TextEditingController(text: b?.state ?? '');
     _pincode   = TextEditingController(text: b?.pincode ?? '');
-    _phone     = TextEditingController(text: b?.phones != null ? b!.phones!.join(', ') : (b?.phone ?? ''));
+    // Initialize dynamic phone controllers. Prefer `phones` list if present,
+    // otherwise fall back to legacy `phone` column.
+    final phoneList = <String>[];
+    if (b?.phones != null && b!.phones!.isNotEmpty) {
+      phoneList.addAll(b.phones!);
+    } else if (b?.phone != null && b!.phone!.isNotEmpty) {
+      phoneList.add(b!.phone!);
+    }
+    if (phoneList.isEmpty) phoneList.add('');
+    _phoneControllers = phoneList.map((p) => TextEditingController(text: p)).toList();
     _email     = TextEditingController(text: b?.email ?? '');
     _gst       = TextEditingController(text: b?.gstNo ?? '');
     _website   = TextEditingController(text: b?.website ?? '');
@@ -352,10 +361,13 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
     _pincode.removeListener(_onPincodeChanged);
     for (final c in [
       _name, _ownerName, _address, _city, _state,
-      _pincode, _phone, _email, _gst,
+      _pincode, _email, _gst,
       _website, _whatsapp, _linkedin, _instagram, _upiId,
     ]) {
       c.dispose();
+    }
+    for (final pc in _phoneControllers) {
+      pc.dispose();
     }
     super.dispose();
   }
@@ -440,18 +452,14 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       pincode: nullIfEmpty(_pincode),
       country: _selectedCountry?.name.common,
       dialCode: _selectedCountry != null ? _dialCode : null,
-      // Parse multiple phone numbers (comma or semicolon separated).
+      // Collect phones from controllers. First non-empty is primary.
       phones: (() {
-        final raw = _phone.text;
-        if (raw.trim().isEmpty) return null;
-        final parts = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        final parts = _phoneControllers.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList();
         if (parts.isEmpty) return null;
         return parts.map((p) => PhoneUtils.normalize(p, dialCode: _dialCode) ?? p).toList();
       })(),
       phone: (() {
-        final raw = _phone.text;
-        if (raw.trim().isEmpty) return null;
-        final first = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+        final first = _phoneControllers.map((c) => c.text.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
         return first.isEmpty ? null : PhoneUtils.normalize(first, dialCode: _dialCode);
       })(),
       email: nullIfEmpty(_email),
@@ -571,35 +579,66 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // Phone + Email
-              Row(
+              // Phone(s)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
-                      decoration: InputDecoration(
-                        labelText: 'Phone',
-                        border: const OutlineInputBorder(),
-                        prefixIcon: const Icon(Icons.phone_outlined),
-                        prefixText: '+$_dialCode ',
+                  for (var i = 0; i < _phoneControllers.length; i++)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _phoneControllers[i],
+                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              decoration: InputDecoration(
+                                labelText: i == 0 ? 'Phone (primary)' : 'Additional phone',
+                                border: const OutlineInputBorder(),
+                                prefixIcon: const Icon(Icons.phone_outlined),
+                                prefixText: '+$_dialCode ',
+                              ),
+                              keyboardType: TextInputType.phone,
+                            ),
+                          ),
+                          if (i > 0) ...[
+                            const SizedBox(width: AppSpacing.sm),
+                            IconButton(
+                              icon: const Icon(Icons.remove_circle_outline),
+                              tooltip: 'Remove',
+                              onPressed: () {
+                                setState(() {
+                                  final c = _phoneControllers.removeAt(i);
+                                  c.dispose();
+                                });
+                              },
+                            ),
+                          ]
+                        ],
                       ),
-                      keyboardType: TextInputType.phone,
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add phone'),
+                      onPressed: () {
+                        setState(() {
+                          _phoneControllers.add(TextEditingController());
+                        });
+                      },
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _email,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
+                  const SizedBox(height: AppSpacing.sm),
+                  // Email
+                  TextFormField(
+                    controller: _email,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email_outlined),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
                 ],
               ),

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:async';
 
 import 'package:flutter/material.dart' show Color;
 import 'package:pdf/pdf.dart';
@@ -16,6 +17,12 @@ import 'app_logger.dart';
 import 'gst_calculator.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
+
+class _LogoInfo {
+  _LogoInfo({this.image, this.isWide = false});
+  final pw.MemoryImage? image;
+  final bool isWide;
+}
 
 /// Thin adapter that serialises [Invoice] / [Quote] domain objects into
 /// [PdfDocumentData] and delegates all rendering to [PdfLayoutEngine].
@@ -36,7 +43,7 @@ class InvoicePdfService {
     bool showFreeWatermark = false,
     bool showUpiQr = false,
   }) async {
-    final logo = business != null ? await _loadLogo(business) : null;
+    final logoInfo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
         ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
@@ -45,7 +52,8 @@ class InvoicePdfService {
       invoice,
       business: business,
       customerParty: customerParty,
-      logo: logo,
+      logo: logoInfo?.image,
+      logoIsWide: logoInfo?.isWide ?? false,
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
@@ -65,7 +73,7 @@ class InvoicePdfService {
     bool showFreeWatermark = false,
     bool showUpiQr = false,
   }) async {
-    final logo = business != null ? await _loadLogo(business) : null;
+    final logoInfo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
         ? await _buildUpiQrBytes(business, quote.total, quote.quoteNo)
@@ -74,7 +82,8 @@ class InvoicePdfService {
       quote,
       business: business,
       customerParty: customerParty,
-      logo: logo,
+      logo: logoInfo?.image,
+      logoIsWide: logoInfo?.isWide ?? false,
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
@@ -93,6 +102,7 @@ class InvoicePdfService {
     Business? business,
     Party? customerParty,
     pw.MemoryImage? logo,
+    bool logoIsWide = false,
     String? termsAndConditions,
     bool showFreeWatermark = false,
     Uint8List? upiQrBytes,
@@ -123,7 +133,7 @@ class InvoicePdfService {
       statusColor: _invoiceStatusColor(invoice.status),
       issueDate: invoice.issueDate,
       dueDate: invoice.dueDate,
-      seller: _sellerInfo(business, logo),
+      seller: _sellerInfo(business, logo, logoIsWide: logoIsWide),
       buyer: PdfPartyInfo(
         name: invoice.customerName,
         gstin: invoice.customerGstin ?? customerParty?.gstin,
@@ -199,6 +209,7 @@ class InvoicePdfService {
     Business? business,
     Party? customerParty,
     pw.MemoryImage? logo,
+    bool logoIsWide = false,
     String? termsAndConditions,
     bool showFreeWatermark = false,
     Uint8List? upiQrBytes,
@@ -235,7 +246,7 @@ class InvoicePdfService {
       statusColor: _quoteStatusColor(quote.status),
       issueDate: quote.createdAt,
       validUntil: quote.validUntil,
-      seller: _sellerInfo(business, logo),
+      seller: _sellerInfo(business, logo, logoIsWide: logoIsWide),
       buyer: PdfPartyInfo(
         name: quote.customerName,
         gstin: quote.customerGstin ?? customerParty?.gstin,
@@ -280,7 +291,7 @@ class InvoicePdfService {
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
-  PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo) {
+  PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo, {bool logoIsWide = false}) {
     if (business == null) return const PdfPartyInfo(name: 'Your Business');
     final addressParts = [
       business.address,
@@ -296,6 +307,7 @@ class InvoicePdfService {
       email: business.email,
       state: business.state,
       logoImage: logo,
+      logoIsWide: logoIsWide,
     );
   }
 
@@ -380,12 +392,21 @@ class InvoicePdfService {
 
   // ── Logo loader ────────────────────────────────────────────────────────────
 
-  Future<pw.MemoryImage?> _loadLogo(Business business) async {
+  Future<_LogoInfo?> _loadLogo(Business business) async {
     if (business.logoPath == null || business.logoPath!.isEmpty) return null;
     try {
       final file = File(business.logoPath!);
-      if (await file.exists()) {
-        return pw.MemoryImage(await file.readAsBytes());
+      if (!await file.exists()) return null;
+      final bytes = await file.readAsBytes();
+      try {
+        final completer = Completer<ui.Image>();
+        ui.decodeImageFromList(bytes, (img) => completer.complete(img));
+        final img = await completer.future;
+        final isWide = img.width / img.height > 1.4;
+        return _LogoInfo(image: pw.MemoryImage(bytes), isWide: isWide);
+      } catch (e) {
+        AppLogger.instance.debug('Logo decode failed, using default sizing', category: 'invoice_pdf', error: e);
+        return _LogoInfo(image: pw.MemoryImage(bytes), isWide: false);
       }
     } catch (e) {
       AppLogger.instance.debug(

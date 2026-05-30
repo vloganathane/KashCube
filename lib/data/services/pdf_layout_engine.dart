@@ -300,51 +300,103 @@ class PdfLayoutEngine {
     final fgMuted = isBanner ? PdfColors.white : _muted;
 
     // Business info column ──────────────────────────────────────────────────
-    final businessCol = pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
-      children: [
-        if (logo != null) ...[
-          pw.Container(width: 48, height: 48, child: pw.Image(logo)),
-          pw.SizedBox(width: 12),
-        ],
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                seller.name.isNotEmpty ? seller.name : 'Your Business',
-                style: pw.TextStyle(
-                  fontSize: 16,
-                  fontWeight: pw.FontWeight.bold,
-                  color: fg,
-                ),
-              ),
-              if (seller.gstin != null && seller.gstin!.isNotEmpty) ...[
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  'GSTIN: ${seller.gstin}',
-                  style: pw.TextStyle(fontSize: 9, color: fgMuted),
-                ),
-              ],
-              if (_addressLine(seller) != null) ...[
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  _addressLine(seller)!,
-                  style: pw.TextStyle(fontSize: 9, color: fgMuted),
-                ),
-              ],
-              if (_contactLine(seller) != null) ...[
-                pw.SizedBox(height: 2),
-                pw.Text(
-                  _contactLine(seller)!,
-                  style: pw.TextStyle(fontSize: 9, color: fgMuted),
-                ),
-              ],
-            ],
+    late final pw.Widget businessCol;
+    if (logo != null && data.seller.logoIsWide) {
+      // Wide logo: render logo to the left (capped box) and text to the right.
+      businessCol = pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Container(
+            width: 160,
+            height: 60,
+            child: pw.Image(logo, fit: pw.BoxFit.contain),
           ),
-        ),
-      ],
-    );
+          pw.SizedBox(width: 12),
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  seller.name.isNotEmpty ? seller.name : 'Your Business',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: fg,
+                  ),
+                ),
+                if (seller.gstin != null && seller.gstin!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'GSTIN: ${seller.gstin}',
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+                if (_addressLine(seller) != null) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    _addressLine(seller)!,
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+                if (_contactLine(seller) != null) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    _contactLine(seller)!,
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      businessCol = pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          if (logo != null) ...[
+            pw.Container(width: 48, height: 48, child: pw.Image(logo, fit: pw.BoxFit.contain)),
+            pw.SizedBox(width: 12),
+          ],
+          pw.Expanded(
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  seller.name.isNotEmpty ? seller.name : 'Your Business',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: fg,
+                  ),
+                ),
+                if (seller.gstin != null && seller.gstin!.isNotEmpty) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'GSTIN: ${seller.gstin}',
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+                if (_addressLine(seller) != null) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    _addressLine(seller)!,
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+                if (_contactLine(seller) != null) ...[
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    _contactLine(seller)!,
+                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      );
+    }
 
     // Document meta column ─────────────────────────────────────────────────
     final docMetaCol = pw.Column(

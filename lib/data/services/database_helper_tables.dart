@@ -551,6 +551,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         state TEXT,
         pincode TEXT,
         phone TEXT,
+        phones_json TEXT,
         email TEXT,
         gst_no TEXT,
         logo_path TEXT,

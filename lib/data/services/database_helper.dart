@@ -583,6 +583,14 @@ class DatabaseHelper {
         'description': 'Merge credits into loans (Ledger)',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
+    if (oldVersion < 93) {
+      // Add phones_json to businesses to support multiple phone numbers.
+      await db.execute("ALTER TABLE businesses ADD COLUMN phones_json TEXT");
+      await db.insert('schema_version', {
+        'version': 93,
+        'description': 'Add phones_json to businesses for multiple phone numbers',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
     if (oldVersion < 7) {
       // Add new unified transaction columns
       await db.execute(

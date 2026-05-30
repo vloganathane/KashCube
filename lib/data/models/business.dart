@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:equatable/equatable.dart';
 
 /// A business profile used for invoicing.
@@ -14,6 +16,7 @@ class Business extends Equatable {
     this.dialCode,
     this.phone,
     this.email,
+    this.phones,
     this.gstNo,
     this.logoPath,
     this.logoMediaId,
@@ -39,6 +42,8 @@ class Business extends Equatable {
   /// Dial code digits without '+' (e.g. '91', '971'). Null means '91' (India).
   final String? dialCode;
   final String? phone;
+  /// Additional phone numbers for the business. First element is primary.
+  final List<String>? phones;
   final String? email;
   final String? gstNo;
 
@@ -98,6 +103,7 @@ class Business extends Equatable {
     String? linkedin,
     String? instagram,
     String? upiId,
+    List<String>? phones,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -122,6 +128,7 @@ class Business extends Equatable {
         linkedin: linkedin ?? this.linkedin,
         instagram: instagram ?? this.instagram,
         upiId: upiId ?? this.upiId,
+        phones: phones ?? this.phones,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -136,6 +143,7 @@ class Business extends Equatable {
         'country': country,
         'dial_code': dialCode,
         'phone': phone,
+        'phones_json': phones == null ? null : jsonEncode(phones),
         'email': email,
         'gst_no': gstNo,
         'logo_path': logoPath,
@@ -172,10 +180,21 @@ class Business extends Equatable {
         linkedin: map['linkedin'] as String?,
         instagram: map['instagram'] as String?,
         upiId: map['upi_id'] as String?,
+        phones: (() {
+          try {
+            final raw = map['phones_json'] as String?;
+            if (raw != null && raw.isNotEmpty) {
+              final decoded = jsonDecode(raw);
+              if (decoded is List) return decoded.cast<String>();
+            }
+          } catch (_) {}
+          final single = map['phone'] as String?;
+          return single == null ? null : <String>[single];
+        })(),
         createdAt: DateTime.parse(map['created_at'] as String),
         updatedAt: DateTime.parse(map['updated_at'] as String),
       );
 
   @override
-  List<Object?> get props => [id, name, gstNo, phone, isActive, upiId, logoMediaId];
+  List<Object?> get props => [id, name, gstNo, phone, phones, isActive, upiId, logoMediaId];
 }

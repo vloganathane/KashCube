@@ -177,10 +177,11 @@ class _BusinessTile extends StatelessWidget {
             Wrap(
               spacing: AppSpacing.sm,
               children: [
-                if (business.phone != null && business.phone!.isNotEmpty)
-                  _Badge(
-                      icon: Icons.phone_outlined,
-                      label: '+91 ${business.phone!}'),
+                for (final p in (business.phones ?? (business.phone == null ? [] : [business.phone!])))
+                  if (p.isNotEmpty)
+                    _Badge(
+                        icon: Icons.phone_outlined,
+                        label: PhoneUtils.formatDisplay(p, dialCode: business.dialCode ?? '91') ?? p),
                 if (business.gstNo != null && business.gstNo!.isNotEmpty)
                   _Badge(
                       icon: Icons.receipt_outlined,
@@ -196,13 +197,17 @@ class _BusinessTile extends StatelessWidget {
               icon: const Icon(Icons.qr_code_2_outlined),
               tooltip: 'Show QR',
               onPressed: () => showVCardQrDialog(
-                context,
-                vcard: vCardFromBusiness(business),
-                displayName:
-                    (business.ownerName?.isNotEmpty ?? false)
-                        ? business.ownerName!
-                        : business.name,
-                subtitle: PhoneUtils.formatDisplay(business.phone, dialCode: business.dialCode ?? '91') ?? business.email,
+              context,
+              vcard: vCardFromBusiness(business),
+              displayName:
+                (business.ownerName?.isNotEmpty ?? false)
+                  ? business.ownerName!
+                  : business.name,
+              subtitle: PhoneUtils.formatDisplay(
+                  (business.phones != null && business.phones!.isNotEmpty)
+                    ? business.phones!.first
+                    : business.phone,
+                  dialCode: business.dialCode ?? '91') ?? business.email,
               ),
             ),
             PopupMenuButton<String>(
@@ -319,7 +324,7 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
     _city      = TextEditingController(text: b?.city ?? '');
     _state     = TextEditingController(text: b?.state ?? '');
     _pincode   = TextEditingController(text: b?.pincode ?? '');
-    _phone     = TextEditingController(text: b?.phone ?? '');
+    _phone     = TextEditingController(text: b?.phones != null ? b!.phones!.join(', ') : (b?.phone ?? ''));
     _email     = TextEditingController(text: b?.email ?? '');
     _gst       = TextEditingController(text: b?.gstNo ?? '');
     _website   = TextEditingController(text: b?.website ?? '');
@@ -435,7 +440,20 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       pincode: nullIfEmpty(_pincode),
       country: _selectedCountry?.name.common,
       dialCode: _selectedCountry != null ? _dialCode : null,
-      phone: PhoneUtils.normalize(_phone.text, dialCode: _dialCode),
+      // Parse multiple phone numbers (comma or semicolon separated).
+      phones: (() {
+        final raw = _phone.text;
+        if (raw.trim().isEmpty) return null;
+        final parts = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+        if (parts.isEmpty) return null;
+        return parts.map((p) => PhoneUtils.normalize(p, dialCode: _dialCode) ?? p).toList();
+      })(),
+      phone: (() {
+        final raw = _phone.text;
+        if (raw.trim().isEmpty) return null;
+        final first = raw.split(RegExp(r'[;,]')).map((s) => s.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
+        return first.isEmpty ? null : PhoneUtils.normalize(first, dialCode: _dialCode);
+      })(),
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
       logoPath: _logoPath,

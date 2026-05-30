@@ -223,6 +223,7 @@ class PdfPartyInfo {
     this.gstin,
     this.address,
     this.phone,
+    this.phones,
     this.email,
     this.state,
     this.logoImage,
@@ -232,6 +233,7 @@ class PdfPartyInfo {
   final String? gstin;
   final String? address;
   final String? phone;
+  final List<String>? phones;
   final String? email;
   final String? state;
 

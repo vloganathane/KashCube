@@ -510,8 +510,11 @@ class PdfLayoutEngine {
   }
 
   String? _contactLine(PdfPartyInfo p) {
-    final parts = [p.phone, p.email]
-        .where((e) => e != null && e.isNotEmpty);
+    final phonePart = (p.phones != null && p.phones!.isNotEmpty)
+      ? p.phones!.join(', ')
+      : p.phone;
+    final parts = [if (phonePart != null && phonePart.isNotEmpty) 'Ph: $phonePart', p.email]
+      .where((e) => e != null && e.isNotEmpty);
     return parts.isEmpty ? null : parts.join(' | ');
   }
 
@@ -602,7 +605,8 @@ class PdfLayoutEngine {
       p.name,
       if (p.gstin != null && p.gstin!.isNotEmpty) 'GSTIN: ${p.gstin}',
       if (p.address != null && p.address!.isNotEmpty) p.address!,
-      if (p.phone != null && p.phone!.isNotEmpty) 'Ph: ${p.phone}',
+      if ((p.phones != null && p.phones!.isNotEmpty) || (p.phone != null && p.phone!.isNotEmpty))
+        'Ph: ${(p.phones != null && p.phones!.isNotEmpty) ? p.phones!.join(', ') : p.phone}',
       if (includeEmail && p.email != null && p.email!.isNotEmpty) p.email!,
     ];
   }

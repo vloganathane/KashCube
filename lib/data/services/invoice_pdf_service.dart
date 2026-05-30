@@ -292,6 +292,7 @@ class InvoicePdfService {
       gstin: business.gstNo,
       address: addressParts.isEmpty ? null : addressParts.join(', '),
       phone: business.phone,
+      phones: business.phones,
       email: business.email,
       state: business.state,
       logoImage: logo,

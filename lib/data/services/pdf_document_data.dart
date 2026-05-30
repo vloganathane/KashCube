@@ -227,6 +227,7 @@ class PdfPartyInfo {
     this.email,
     this.state,
     this.logoImage,
+    this.logoIsWide = false,
   });
 
   final String name;
@@ -239,6 +240,8 @@ class PdfPartyInfo {
 
   /// Pre-loaded logo bytes — set only on the seller; null on buyer.
   final pw.MemoryImage? logoImage;
+  /// True when the logo is significantly wider than it is tall.
+  final bool logoIsWide;
 }
 
 // ── Line items ────────────────────────────────────────────────────────────────

@@ -847,9 +847,12 @@ INSERT INTO schema_version (version, description) VALUES
 (1, 'Initial schema with transactions, credits, loans');
 ```
 
-Current runtime schema version: `94`. Version `94` adds advanced PDF template
+Current runtime schema version: `95`. Version `94` adds advanced PDF template
 layout fields to `document_templates`: font family, body/title sizes, page
 margin, section spacing, item-column width percentage, and header alignment.
+Version `95` adds `builder_config_json`, a structured local configuration for
+section ordering, table columns, typography, header layout, totals, payment,
+and footer controls.
 
 ---
 

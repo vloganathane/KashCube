@@ -4087,6 +4087,17 @@ class DatabaseHelper {
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
+    if (oldVersion < 95) {
+      await db.execute(
+        "ALTER TABLE document_templates ADD COLUMN builder_config_json TEXT NOT NULL DEFAULT '{}'",
+      );
+      await db.insert('schema_version', {
+        'version': 95,
+        'description':
+            'Add structured PDF template builder configuration for sections, columns, typography, totals, payment, and footer',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
     sw.stop();
     debugPrint(
       '[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms',

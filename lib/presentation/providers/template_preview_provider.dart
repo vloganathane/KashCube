@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/pdf.dart';
 import 'package:printing/printing.dart';
+import 'dart:convert';
 
 import '../../data/models/document_template_record.dart';
 import '../../data/services/pdf_document_data.dart';
@@ -29,6 +30,7 @@ String templatePreviewKey(DocumentTemplateRecord record, int dpi) =>
     '|${record.sectionSpacing}'
     '|${record.itemColumnWidthPct}'
     '|${record.headerAlignmentName}'
+    '|${base64Url.encode(utf8.encode(record.builderConfigJson))}'
     '|$dpi';
 
 // ── Isolate entry-point ──────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ final templatePreviewProvider = FutureProvider.autoDispose
       ref.keepAlive();
 
       final template = _templateFromKey(key);
-      final dpi = double.parse(key.split('|')[13]);
+      final dpi = double.parse(key.split('|')[14]);
 
       // ── Step 1: PDF bytes in a background isolate ──────────────────────────
       final pdfBytes = await compute(_buildSamplePdfBytes, template);
@@ -80,7 +82,7 @@ DocumentTemplate _templateFromKey(String key) {
   final p = key.split('|');
   // p[0] = id, p[1] = accentColorHex (#RRGGBB), p[2] = headerStyleName,
   // p[3] = showLogo, p[4] = amountDecimalDigits, p[5] = pageSizeName,
-  // p[6..12] = advanced layout settings, p[13] = dpi
+  // p[6..12] = advanced layout settings, p[13] = builder config, p[14] = dpi
 
   final accentHex = p[1].replaceFirst('#', '');
   final accentInt = int.tryParse(accentHex, radix: 16) ?? 0x1B5E20;
@@ -112,6 +114,7 @@ DocumentTemplate _templateFromKey(String key) {
     headerAlignment: p[12] == 'right'
         ? PdfHeaderAlignment.right
         : PdfHeaderAlignment.left,
+    config: PdfTemplateConfig.decode(utf8.decode(base64Url.decode(p[13]))),
   );
 }
 

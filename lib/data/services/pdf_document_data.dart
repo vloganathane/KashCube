@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:convert';
 
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -18,6 +19,395 @@ enum PdfHeaderStyle {
 enum PdfFontFamily { helvetica, times, courier }
 
 enum PdfHeaderAlignment { left, right }
+
+enum PdfTextAlign { left, center, right }
+
+class PdfTemplateColumn {
+  const PdfTemplateColumn({
+    required this.id,
+    required this.label,
+    required this.widthPct,
+    required this.alignment,
+    this.visible = true,
+  });
+
+  final String id;
+  final String label;
+  final double widthPct;
+  final PdfTextAlign alignment;
+  final bool visible;
+
+  PdfTemplateColumn copyWith({
+    String? label,
+    double? widthPct,
+    PdfTextAlign? alignment,
+    bool? visible,
+  }) => PdfTemplateColumn(
+    id: id,
+    label: label ?? this.label,
+    widthPct: widthPct ?? this.widthPct,
+    alignment: alignment ?? this.alignment,
+    visible: visible ?? this.visible,
+  );
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'label': label,
+    'widthPct': widthPct,
+    'alignment': alignment.name,
+    'visible': visible,
+  };
+
+  factory PdfTemplateColumn.fromJson(Map<String, Object?> json) =>
+      PdfTemplateColumn(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        widthPct: (json['widthPct'] as num).toDouble(),
+        alignment: PdfTextAlign.values.firstWhere(
+          (value) => value.name == json['alignment'],
+          orElse: () => PdfTextAlign.left,
+        ),
+        visible: json['visible'] as bool? ?? true,
+      );
+}
+
+class PdfTemplateConfig {
+  const PdfTemplateConfig({
+    this.sectionOrder = defaultSectionOrder,
+    this.hiddenSections = const {},
+    this.columns = defaultColumns,
+    this.businessFontSize = 16,
+    this.headingFontSize = 10,
+    this.totalsFontSize = 12,
+    this.footerFontSize = 8,
+    this.businessBold = true,
+    this.headingBold = true,
+    this.totalsBold = true,
+    this.rowDensity = 'standard',
+    this.logoPosition = 'besideLeft',
+    this.logoSize = 48,
+    this.titleStyle = 'plain',
+    this.dividerThickness = 2,
+    this.totalsAlignment = 'right',
+    this.showSubtotal = true,
+    this.showTaxBreakdown = true,
+    this.showPaid = true,
+    this.showBalance = true,
+    this.showAmountInWords = false,
+    this.balanceColorHex = '#C62828',
+    this.paymentDisplay = 'qr',
+    this.paymentText = '',
+    this.footerMessage = '',
+    this.showTerms = true,
+    this.showSignature = true,
+    this.signatureLabel = 'Authorised Signatory',
+    this.signatureAlignment = 'right',
+    this.showGeneratedDate = true,
+    this.showDocumentNumber = true,
+    this.showDates = true,
+    this.showGstin = true,
+    this.showAddresses = true,
+    this.showNotes = true,
+  });
+
+  static const defaultSectionOrder = [
+    'header',
+    'parties',
+    'items',
+    'gst',
+    'totals',
+    'transport',
+    'footer',
+  ];
+
+  static const defaultColumns = [
+    PdfTemplateColumn(
+      id: 'index',
+      label: '#',
+      widthPct: 4,
+      alignment: PdfTextAlign.left,
+    ),
+    PdfTemplateColumn(
+      id: 'item',
+      label: 'Item / Description',
+      widthPct: 35,
+      alignment: PdfTextAlign.left,
+    ),
+    PdfTemplateColumn(
+      id: 'hsn',
+      label: 'HSN',
+      widthPct: 8,
+      alignment: PdfTextAlign.left,
+    ),
+    PdfTemplateColumn(
+      id: 'qty',
+      label: 'Qty',
+      widthPct: 7,
+      alignment: PdfTextAlign.right,
+    ),
+    PdfTemplateColumn(
+      id: 'unit',
+      label: 'Unit',
+      widthPct: 6,
+      alignment: PdfTextAlign.left,
+    ),
+    PdfTemplateColumn(
+      id: 'rate',
+      label: 'Rate',
+      widthPct: 11,
+      alignment: PdfTextAlign.right,
+    ),
+    PdfTemplateColumn(
+      id: 'tax',
+      label: 'Tax %',
+      widthPct: 7,
+      alignment: PdfTextAlign.right,
+    ),
+    PdfTemplateColumn(
+      id: 'discount',
+      label: 'Disc %',
+      widthPct: 7,
+      alignment: PdfTextAlign.right,
+    ),
+    PdfTemplateColumn(
+      id: 'amount',
+      label: 'Amount',
+      widthPct: 15,
+      alignment: PdfTextAlign.right,
+    ),
+  ];
+
+  final List<String> sectionOrder;
+  final Set<String> hiddenSections;
+  final List<PdfTemplateColumn> columns;
+  final double businessFontSize;
+  final double headingFontSize;
+  final double totalsFontSize;
+  final double footerFontSize;
+  final bool businessBold;
+  final bool headingBold;
+  final bool totalsBold;
+  final String rowDensity;
+  final String logoPosition;
+  final double logoSize;
+  final String titleStyle;
+  final double dividerThickness;
+  final String totalsAlignment;
+  final bool showSubtotal;
+  final bool showTaxBreakdown;
+  final bool showPaid;
+  final bool showBalance;
+  final bool showAmountInWords;
+  final String balanceColorHex;
+  final String paymentDisplay;
+  final String paymentText;
+  final String footerMessage;
+  final bool showTerms;
+  final bool showSignature;
+  final String signatureLabel;
+  final String signatureAlignment;
+  final bool showGeneratedDate;
+  final bool showDocumentNumber;
+  final bool showDates;
+  final bool showGstin;
+  final bool showAddresses;
+  final bool showNotes;
+
+  double get rowVerticalPadding {
+    switch (rowDensity) {
+      case 'compact':
+        return 2;
+      case 'spacious':
+        return 7;
+      default:
+        return 4;
+    }
+  }
+
+  bool shows(String section) => !hiddenSections.contains(section);
+
+  PdfTemplateConfig copyWith({
+    List<String>? sectionOrder,
+    Set<String>? hiddenSections,
+    List<PdfTemplateColumn>? columns,
+    double? businessFontSize,
+    double? headingFontSize,
+    double? totalsFontSize,
+    double? footerFontSize,
+    bool? businessBold,
+    bool? headingBold,
+    bool? totalsBold,
+    String? rowDensity,
+    String? logoPosition,
+    double? logoSize,
+    String? titleStyle,
+    double? dividerThickness,
+    String? totalsAlignment,
+    bool? showSubtotal,
+    bool? showTaxBreakdown,
+    bool? showPaid,
+    bool? showBalance,
+    bool? showAmountInWords,
+    String? balanceColorHex,
+    String? paymentDisplay,
+    String? paymentText,
+    String? footerMessage,
+    bool? showTerms,
+    bool? showSignature,
+    String? signatureLabel,
+    String? signatureAlignment,
+    bool? showGeneratedDate,
+    bool? showDocumentNumber,
+    bool? showDates,
+    bool? showGstin,
+    bool? showAddresses,
+    bool? showNotes,
+  }) => PdfTemplateConfig(
+    sectionOrder: sectionOrder ?? this.sectionOrder,
+    hiddenSections: hiddenSections ?? this.hiddenSections,
+    columns: columns ?? this.columns,
+    businessFontSize: businessFontSize ?? this.businessFontSize,
+    headingFontSize: headingFontSize ?? this.headingFontSize,
+    totalsFontSize: totalsFontSize ?? this.totalsFontSize,
+    footerFontSize: footerFontSize ?? this.footerFontSize,
+    businessBold: businessBold ?? this.businessBold,
+    headingBold: headingBold ?? this.headingBold,
+    totalsBold: totalsBold ?? this.totalsBold,
+    rowDensity: rowDensity ?? this.rowDensity,
+    logoPosition: logoPosition ?? this.logoPosition,
+    logoSize: logoSize ?? this.logoSize,
+    titleStyle: titleStyle ?? this.titleStyle,
+    dividerThickness: dividerThickness ?? this.dividerThickness,
+    totalsAlignment: totalsAlignment ?? this.totalsAlignment,
+    showSubtotal: showSubtotal ?? this.showSubtotal,
+    showTaxBreakdown: showTaxBreakdown ?? this.showTaxBreakdown,
+    showPaid: showPaid ?? this.showPaid,
+    showBalance: showBalance ?? this.showBalance,
+    showAmountInWords: showAmountInWords ?? this.showAmountInWords,
+    balanceColorHex: balanceColorHex ?? this.balanceColorHex,
+    paymentDisplay: paymentDisplay ?? this.paymentDisplay,
+    paymentText: paymentText ?? this.paymentText,
+    footerMessage: footerMessage ?? this.footerMessage,
+    showTerms: showTerms ?? this.showTerms,
+    showSignature: showSignature ?? this.showSignature,
+    signatureLabel: signatureLabel ?? this.signatureLabel,
+    signatureAlignment: signatureAlignment ?? this.signatureAlignment,
+    showGeneratedDate: showGeneratedDate ?? this.showGeneratedDate,
+    showDocumentNumber: showDocumentNumber ?? this.showDocumentNumber,
+    showDates: showDates ?? this.showDates,
+    showGstin: showGstin ?? this.showGstin,
+    showAddresses: showAddresses ?? this.showAddresses,
+    showNotes: showNotes ?? this.showNotes,
+  );
+
+  String encode() => jsonEncode({
+    'sectionOrder': sectionOrder,
+    'hiddenSections': hiddenSections.toList(),
+    'columns': columns.map((column) => column.toJson()).toList(),
+    'businessFontSize': businessFontSize,
+    'headingFontSize': headingFontSize,
+    'totalsFontSize': totalsFontSize,
+    'footerFontSize': footerFontSize,
+    'businessBold': businessBold,
+    'headingBold': headingBold,
+    'totalsBold': totalsBold,
+    'rowDensity': rowDensity,
+    'logoPosition': logoPosition,
+    'logoSize': logoSize,
+    'titleStyle': titleStyle,
+    'dividerThickness': dividerThickness,
+    'totalsAlignment': totalsAlignment,
+    'showSubtotal': showSubtotal,
+    'showTaxBreakdown': showTaxBreakdown,
+    'showPaid': showPaid,
+    'showBalance': showBalance,
+    'showAmountInWords': showAmountInWords,
+    'balanceColorHex': balanceColorHex,
+    'paymentDisplay': paymentDisplay,
+    'paymentText': paymentText,
+    'footerMessage': footerMessage,
+    'showTerms': showTerms,
+    'showSignature': showSignature,
+    'signatureLabel': signatureLabel,
+    'signatureAlignment': signatureAlignment,
+    'showGeneratedDate': showGeneratedDate,
+    'showDocumentNumber': showDocumentNumber,
+    'showDates': showDates,
+    'showGstin': showGstin,
+    'showAddresses': showAddresses,
+    'showNotes': showNotes,
+  });
+
+  factory PdfTemplateConfig.decode(String raw) {
+    if (raw.isEmpty || raw == '{}') return const PdfTemplateConfig();
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      return PdfTemplateConfig(
+        sectionOrder:
+            (json['sectionOrder'] as List?)?.cast<String>() ??
+            defaultSectionOrder,
+        hiddenSections:
+            (json['hiddenSections'] as List?)?.cast<String>().toSet() ??
+            const {},
+        columns:
+            (json['columns'] as List?)
+                ?.map(
+                  (value) => PdfTemplateColumn.fromJson(
+                    (value as Map).cast<String, Object?>(),
+                  ),
+                )
+                .toList() ??
+            defaultColumns,
+        businessFontSize: (json['businessFontSize'] as num?)?.toDouble() ?? 16,
+        headingFontSize: (json['headingFontSize'] as num?)?.toDouble() ?? 10,
+        totalsFontSize: (json['totalsFontSize'] as num?)?.toDouble() ?? 12,
+        footerFontSize: (json['footerFontSize'] as num?)?.toDouble() ?? 8,
+        businessBold: json['businessBold'] as bool? ?? true,
+        headingBold: json['headingBold'] as bool? ?? true,
+        totalsBold: json['totalsBold'] as bool? ?? true,
+        rowDensity: json['rowDensity'] as String? ?? 'standard',
+        logoPosition: _normalizedLogoPosition(
+          json['logoPosition'] as String? ?? 'besideLeft',
+        ),
+        logoSize: (json['logoSize'] as num?)?.toDouble() ?? 48,
+        titleStyle: json['titleStyle'] as String? ?? 'plain',
+        dividerThickness: (json['dividerThickness'] as num?)?.toDouble() ?? 2,
+        totalsAlignment: json['totalsAlignment'] as String? ?? 'right',
+        showSubtotal: json['showSubtotal'] as bool? ?? true,
+        showTaxBreakdown: json['showTaxBreakdown'] as bool? ?? true,
+        showPaid: json['showPaid'] as bool? ?? true,
+        showBalance: json['showBalance'] as bool? ?? true,
+        showAmountInWords: json['showAmountInWords'] as bool? ?? false,
+        balanceColorHex: json['balanceColorHex'] as String? ?? '#C62828',
+        paymentDisplay: json['paymentDisplay'] as String? ?? 'qr',
+        paymentText: json['paymentText'] as String? ?? '',
+        footerMessage: json['footerMessage'] as String? ?? '',
+        showTerms: json['showTerms'] as bool? ?? true,
+        showSignature: json['showSignature'] as bool? ?? true,
+        signatureLabel:
+            json['signatureLabel'] as String? ?? 'Authorised Signatory',
+        signatureAlignment: json['signatureAlignment'] as String? ?? 'right',
+        showGeneratedDate: json['showGeneratedDate'] as bool? ?? true,
+        showDocumentNumber: json['showDocumentNumber'] as bool? ?? true,
+        showDates: json['showDates'] as bool? ?? true,
+        showGstin: json['showGstin'] as bool? ?? true,
+        showAddresses: json['showAddresses'] as bool? ?? true,
+        showNotes: json['showNotes'] as bool? ?? true,
+      );
+    } catch (_) {
+      return const PdfTemplateConfig();
+    }
+  }
+}
+
+String _normalizedLogoPosition(String value) {
+  return switch (value) {
+    'left' => 'besideLeft',
+    'center' => 'aboveCenter',
+    'right' => 'besideRight',
+    _ => value,
+  };
+}
 
 /// Output paper / roll size for PDF generation.
 enum PageSize {
@@ -89,6 +479,7 @@ class DocumentTemplate {
     this.sectionSpacing = 20,
     this.itemColumnWidthPct = 45,
     this.headerAlignment = PdfHeaderAlignment.left,
+    this.config = const PdfTemplateConfig(),
   });
 
   final String id;
@@ -112,6 +503,7 @@ class DocumentTemplate {
   final double sectionSpacing;
   final double itemColumnWidthPct;
   final PdfHeaderAlignment headerAlignment;
+  final PdfTemplateConfig config;
 
   /// True when this template targets a 58 mm or 80 mm thermal roll.
   bool get isThermal => pageSize.isThermal;

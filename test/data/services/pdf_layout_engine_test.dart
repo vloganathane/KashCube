@@ -6,7 +6,7 @@ import 'package:pdf/pdf.dart';
 
 void main() {
   test('document template record persists advanced layout settings', () {
-    const record = DocumentTemplateRecord(
+    final record = DocumentTemplateRecord(
       id: 7,
       name: 'Advanced',
       basedOn: 'modern',
@@ -22,6 +22,11 @@ void main() {
       sectionSpacing: 14,
       itemColumnWidthPct: 55,
       headerAlignmentName: 'right',
+      builderConfigJson: PdfTemplateConfig(
+        hiddenSections: {'gst'},
+        rowDensity: 'compact',
+        footerMessage: 'Please retain this invoice.',
+      ).encode(),
       isActive: true,
       isPreset: false,
       createdAt: '2026-05-31T00:00:00.000',
@@ -39,6 +44,24 @@ void main() {
     expect(restored.sectionSpacing, 14);
     expect(restored.itemColumnWidthPct, 55);
     expect(restored.headerAlignmentName, 'right');
+    expect(restored.builderConfig.hiddenSections, contains('gst'));
+    expect(restored.builderConfig.rowDensity, 'compact');
+    expect(restored.builderConfig.footerMessage, 'Please retain this invoice.');
+  });
+
+  test('normalizes legacy logo positions', () {
+    expect(
+      PdfTemplateConfig.decode('{"logoPosition":"left"}').logoPosition,
+      'besideLeft',
+    );
+    expect(
+      PdfTemplateConfig.decode('{"logoPosition":"center"}').logoPosition,
+      'aboveCenter',
+    );
+    expect(
+      PdfTemplateConfig.decode('{"logoPosition":"right"}').logoPosition,
+      'besideRight',
+    );
   });
 
   test(
@@ -56,6 +79,38 @@ void main() {
         sectionSpacing: 12,
         itemColumnWidthPct: 60,
         headerAlignment: PdfHeaderAlignment.right,
+        config: PdfTemplateConfig(
+          sectionOrder: ['header', 'items', 'parties', 'totals', 'footer'],
+          columns: [
+            PdfTemplateColumn(
+              id: 'item',
+              label: 'Service',
+              widthPct: 65,
+              alignment: PdfTextAlign.left,
+            ),
+            PdfTemplateColumn(
+              id: 'qty',
+              label: 'Hours',
+              widthPct: 10,
+              alignment: PdfTextAlign.right,
+            ),
+            PdfTemplateColumn(
+              id: 'amount',
+              label: 'Fee',
+              widthPct: 25,
+              alignment: PdfTextAlign.right,
+            ),
+          ],
+          rowDensity: 'compact',
+          totalsAlignment: 'left',
+          showAmountInWords: true,
+          paymentDisplay: 'text',
+          paymentText: 'UPI: sample@upi',
+          footerMessage: 'Custom footer message',
+          signatureLabel: 'Approved by',
+          titleStyle: 'boxed',
+          dividerThickness: 4,
+        ),
       );
       final data = PdfDocumentData(
         type: PdfDocumentType.invoice,

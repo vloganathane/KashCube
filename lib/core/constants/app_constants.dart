@@ -10,7 +10,7 @@ class AppConstants {
 
   // Database
   static const String dbName = 'kash_cube.db';
-  static const int dbVersion = 94;
+  static const int dbVersion = 95;
 
   // P2P LAN sync
   /// Preferred port for the on-device HTTP server.

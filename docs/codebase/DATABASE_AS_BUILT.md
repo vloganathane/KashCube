@@ -85,7 +85,7 @@ This trigger sets `updated_at = datetime('now')` if caller didn’t mutate `upda
 | `purchase_bills` | `id` PK, `sync_id` UNIQUE | vendor info, bill/due dates, place_of_supply, reverse_charge, subtotal + IGST/CGST/SGST/CESS totals, ITC fields, payment status, attachment | `vendor_party_id -> parties.id` (SET NULL), `context_id -> linked_business_sessions.id` | business_id, bill_date, status, reverse_charge, context |
 | `purchase_bill_items` | `id` PK | qty/rate/tax/discount/line_total, tax amount columns, hsn/unit, lot/expiry/mfg | `bill_id -> purchase_bills.id` (CASCADE) | none explicit |
 | `invoice_number_cursors` | `doc_type` PK | prefix, last_seq, updated_at | none | PK lookup only |
-| `document_templates` | `id` PK, `sync_id` UNIQUE | based_on preset, accent color, header style, logo/decimal/page settings, advanced font/layout/column settings, active/preset flags | none | seeded presets; no explicit index |
+| `document_templates` | `id` PK, `sync_id` UNIQUE | based_on preset, accent color, header style, logo/decimal/page settings, advanced font/layout settings, structured builder JSON, active/preset flags | none | seeded presets; no explicit index |
 
 ### D) Catalog, Stock, and Units
 

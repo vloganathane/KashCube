@@ -23,6 +23,7 @@ class DocumentTemplateRecord {
     this.sectionSpacing = 20,
     this.itemColumnWidthPct = 45,
     this.headerAlignmentName = 'left',
+    this.builderConfigJson = '{}',
     required this.isActive,
     required this.isPreset,
     required this.createdAt,
@@ -54,6 +55,7 @@ class DocumentTemplateRecord {
   final double sectionSpacing;
   final double itemColumnWidthPct;
   final String headerAlignmentName;
+  final String builderConfigJson;
 
   final bool isActive;
   final bool isPreset;
@@ -77,6 +79,8 @@ class DocumentTemplateRecord {
   );
 
   bool get isThermal => pageSize.isThermal;
+  PdfTemplateConfig get builderConfig =>
+      PdfTemplateConfig.decode(builderConfigJson);
 
   // ─── Conversions ───────────────────────────────────────────────────────────
 
@@ -103,6 +107,7 @@ class DocumentTemplateRecord {
     headerAlignment: headerAlignmentName == 'right'
         ? PdfHeaderAlignment.right
         : PdfHeaderAlignment.left,
+    config: builderConfig,
   );
 
   Map<String, Object?> toMap() => {
@@ -120,6 +125,7 @@ class DocumentTemplateRecord {
     'section_spacing': sectionSpacing,
     'item_column_width_pct': itemColumnWidthPct,
     'header_alignment': headerAlignmentName,
+    'builder_config_json': builderConfigJson,
     'is_active': isActive ? 1 : 0,
     'is_preset': isPreset ? 1 : 0,
     'created_at': createdAt,
@@ -143,6 +149,7 @@ class DocumentTemplateRecord {
         itemColumnWidthPct:
             (m['item_column_width_pct'] as num?)?.toDouble() ?? 45,
         headerAlignmentName: m['header_alignment'] as String? ?? 'left',
+        builderConfigJson: m['builder_config_json'] as String? ?? '{}',
         isActive: (m['is_active'] as int) == 1,
         isPreset: (m['is_preset'] as int) == 1,
         createdAt: m['created_at'] as String,
@@ -164,6 +171,7 @@ class DocumentTemplateRecord {
     double? sectionSpacing,
     double? itemColumnWidthPct,
     String? headerAlignmentName,
+    String? builderConfigJson,
     bool? isActive,
     bool? isPreset,
     String? createdAt,
@@ -183,6 +191,7 @@ class DocumentTemplateRecord {
     sectionSpacing: sectionSpacing ?? this.sectionSpacing,
     itemColumnWidthPct: itemColumnWidthPct ?? this.itemColumnWidthPct,
     headerAlignmentName: headerAlignmentName ?? this.headerAlignmentName,
+    builderConfigJson: builderConfigJson ?? this.builderConfigJson,
     isActive: isActive ?? this.isActive,
     isPreset: isPreset ?? this.isPreset,
     createdAt: createdAt ?? this.createdAt,

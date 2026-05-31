@@ -1,6 +1,6 @@
 # Auto-Generated Database Table Inventory
 
-Generated at: `2026-05-31T08:59:20+00:00`
+Generated at: `2026-05-31T13:24:20+00:00`
 Source: `lib/data/services/database_helper_tables.dart`
 
 Total tables: **61**
@@ -931,7 +931,7 @@ Total tables: **61**
 
 ### `document_templates`
 
-- Columns: **24** | Table constraints: **0** | Indexes: **0**
+- Columns: **25** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -950,6 +950,7 @@ Total tables: **61**
 | `section_spacing` | `REAL` | NOT NULL DEFAULT 20 | Domain-specific field |
 | `item_column_width_pct` | `REAL` | NOT NULL DEFAULT 45 | Rate/percentage value |
 | `header_alignment` | `TEXT` | NOT NULL DEFAULT 'left' | Domain-specific field |
+| `builder_config_json` | `TEXT` | NOT NULL DEFAULT '{}' | Domain-specific field |
 | `is_active` | `INTEGER` | NOT NULL DEFAULT 0 | Boolean-like flag (0/1) |
 | `is_preset` | `INTEGER` | NOT NULL DEFAULT 0 | Boolean-like flag (0/1) |
 | `sync_id` | `TEXT` | UNIQUE DEFAULT (lower(hex(randomblob(16)))) | Cross-device immutable row identity |

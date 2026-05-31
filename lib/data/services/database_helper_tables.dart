@@ -1141,6 +1141,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         section_spacing       REAL NOT NULL DEFAULT 20,
         item_column_width_pct REAL NOT NULL DEFAULT 45,
         header_alignment      TEXT NOT NULL DEFAULT 'left',
+        builder_config_json   TEXT NOT NULL DEFAULT '{}',
         is_active             INTEGER NOT NULL DEFAULT 0,
         is_preset             INTEGER NOT NULL DEFAULT 0,
         sync_id               TEXT UNIQUE DEFAULT (lower(hex(randomblob(16)))),

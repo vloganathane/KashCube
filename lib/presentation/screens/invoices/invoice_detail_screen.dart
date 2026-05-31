@@ -33,6 +33,7 @@ import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import '../../widgets/reminder_bottom_sheet.dart';
 import '../../widgets/upgrade_prompt_sheet.dart';
+import '../../widgets/template_selector.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../../../data/models/delivery_challan.dart';
 import '../../providers/delivery_challan_provider.dart';
@@ -193,6 +194,8 @@ class _InvoiceDetailView extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
+          const TemplateSelector(),
+          const SizedBox(height: AppSpacing.md),
           _HeaderCard(invoice: invoice),
           // EWB status badge
           if (invoice.hasEwb) ...[

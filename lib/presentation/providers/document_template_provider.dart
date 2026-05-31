@@ -21,7 +21,7 @@ final documentTemplateRepositoryProvider = Provider<DocumentTemplateRepository>(
 class DocumentTemplateListNotifier
     extends StateNotifier<AsyncValue<List<DocumentTemplateRecord>>> {
   DocumentTemplateListNotifier(this._repo, this._settingsRef)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     _load();
   }
 
@@ -31,6 +31,12 @@ class DocumentTemplateListNotifier
   Future<void> _load() async {
     try {
       final list = await _repo.getAll();
+      final active = _activeFrom(list);
+      if (active != null) {
+        await _settingsRef
+            .read(documentTemplateProvider.notifier)
+            .setTemplate(active.toDocumentTemplate());
+      }
       state = AsyncValue.data(list);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -41,11 +47,14 @@ class DocumentTemplateListNotifier
   /// (used by the PDF engine) synchronised.
   Future<void> setActive(int id) async {
     await _repo.setActive(id);
-    final record = (await _repo.getAll()).firstWhere((r) => r.id == id);
+    final record = await _repo.getActive();
+    if (record == null) {
+      throw StateError('No active document template after setting $id.');
+    }
     final template = record.toDocumentTemplate();
     // Keep existing settings notifier in sync so PDFs pick up the change
     // immediately without a hot-reload.
-    _settingsRef
+    await _settingsRef
         .read(documentTemplateProvider.notifier)
         .setTemplate(template);
     await _load();
@@ -62,7 +71,7 @@ class DocumentTemplateListNotifier
     await _repo.update(record);
     // If the saved record is active, propagate the change to the PDF engine.
     if (record.isActive) {
-      _settingsRef
+      await _settingsRef
           .read(documentTemplateProvider.notifier)
           .setTemplate(record.toDocumentTemplate());
     }
@@ -77,12 +86,22 @@ class DocumentTemplateListNotifier
 
   /// Forcefully reloads the list from the database.
   Future<void> reload() => _load();
+
+  DocumentTemplateRecord? _activeFrom(List<DocumentTemplateRecord> list) {
+    for (final record in list) {
+      if (record.isActive) return record;
+    }
+    return null;
+  }
 }
 
-final documentTemplatesProvider = StateNotifierProvider<
-    DocumentTemplateListNotifier, AsyncValue<List<DocumentTemplateRecord>>>(
-  (ref) => DocumentTemplateListNotifier(
-    ref.read(documentTemplateRepositoryProvider),
-    ref,
-  ),
-);
+final documentTemplatesProvider =
+    StateNotifierProvider<
+      DocumentTemplateListNotifier,
+      AsyncValue<List<DocumentTemplateRecord>>
+    >(
+      (ref) => DocumentTemplateListNotifier(
+        ref.read(documentTemplateRepositoryProvider),
+        ref,
+      ),
+    );

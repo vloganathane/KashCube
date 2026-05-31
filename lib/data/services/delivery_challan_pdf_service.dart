@@ -9,6 +9,7 @@ import '../../data/services/app_logger.dart';
 import '../models/business.dart';
 import '../models/delivery_challan.dart';
 import '../models/party.dart';
+import 'document_template_service.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
 
@@ -40,9 +41,10 @@ class DeliveryChallanPdfService {
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
     );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
       data,
-      DocumentTemplate.active,
+      template,
       'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
     );
   }

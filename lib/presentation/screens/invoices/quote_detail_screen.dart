@@ -18,6 +18,7 @@ import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/upgrade_prompt_sheet.dart';
+import '../../widgets/template_selector.dart';
 import '../settings/upgrade_screen.dart';
 import 'invoice_detail_screen.dart';
 import 'quote_builder_screen.dart';
@@ -140,6 +141,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
+          const TemplateSelector(),
+          const SizedBox(height: AppSpacing.md),
           _HeaderCard(quote: quote),
           const SizedBox(height: AppSpacing.base),
           _LineItemsCard(quote: quote),

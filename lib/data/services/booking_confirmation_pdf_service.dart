@@ -10,6 +10,7 @@ import '../models/booking.dart';
 import '../models/booking_item.dart';
 import '../models/business.dart';
 import '../models/party.dart';
+import 'document_template_service.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
 
@@ -46,9 +47,10 @@ class BookingConfirmationPdfService {
     final ref = (booking.bookingRef ?? 'BK-${booking.id}')
         .replaceAll('/', '-')
         .replaceAll(' ', '_');
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generate(
       data,
-      DocumentTemplate.active,
+      template,
       'Booking_$ref.pdf',
     );
   }

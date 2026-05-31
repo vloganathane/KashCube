@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/subscription_tier.dart';
+import '../../data/repositories/document_template_repository_impl.dart';
 import '../../data/repositories/settings_repository_impl.dart';
 import '../../data/services/backup_service.dart';
 import '../../data/services/csv_export_service.dart';
@@ -330,15 +331,30 @@ final libp2pSyncEnabledProvider =
 // ---------------------------------------------------------------------------
 
 class DocumentTemplateNotifier extends StateNotifier<DocumentTemplate> {
-  DocumentTemplateNotifier(this._repo) : super(DocumentTemplate.modern) {
+  DocumentTemplateNotifier(
+    this._repo, [
+    DocumentTemplateRepositoryImpl? templateRepo,
+  ]) : _templateRepo = templateRepo ?? DocumentTemplateRepositoryImpl(),
+       super(DocumentTemplate.modern) {
     _load();
   }
 
   final SettingsRepository _repo;
+  final DocumentTemplateRepositoryImpl _templateRepo;
 
   Future<void> _load() async {
+    final activeRecord = await _templateRepo.getActive();
+    if (activeRecord != null) {
+      final template = activeRecord.toDocumentTemplate();
+      DocumentTemplate.setActive(template);
+      state = template;
+      return;
+    }
+
     final stored = await _repo.get(SettingsKeys.documentTemplate);
-    final template = DocumentTemplate.fromId(stored ?? DocumentTemplate.modern.id);
+    final template = DocumentTemplate.fromId(
+      stored ?? DocumentTemplate.modern.id,
+    );
     DocumentTemplate.setActive(template);
     state = template;
   }

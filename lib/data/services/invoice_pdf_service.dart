@@ -14,6 +14,7 @@ import '../models/invoice.dart';
 import '../models/party.dart';
 import '../models/quote.dart';
 import 'app_logger.dart';
+import 'document_template_service.dart';
 import 'gst_calculator.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
@@ -58,9 +59,10 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
     );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
       data,
-      DocumentTemplate.active,
+      template,
       'Invoice_${invoice.invoiceNo}.pdf',
     );
   }
@@ -88,9 +90,10 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
     );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
       data,
-      DocumentTemplate.active,
+      template,
       'Quote_${quote.quoteNo}.pdf',
     );
   }
@@ -291,7 +294,11 @@ class InvoicePdfService {
 
   // ── Shared helpers ─────────────────────────────────────────────────────────
 
-  PdfPartyInfo _sellerInfo(Business? business, pw.MemoryImage? logo, {bool logoIsWide = false}) {
+  PdfPartyInfo _sellerInfo(
+    Business? business,
+    pw.MemoryImage? logo, {
+    bool logoIsWide = false,
+  }) {
     if (business == null) return const PdfPartyInfo(name: 'Your Business');
     final addressParts = [
       business.address,
@@ -405,7 +412,11 @@ class InvoicePdfService {
         final isWide = img.width / img.height > 1.4;
         return _LogoInfo(image: pw.MemoryImage(bytes), isWide: isWide);
       } catch (e) {
-        AppLogger.instance.debug('Logo decode failed, using default sizing', category: 'invoice_pdf', error: e);
+        AppLogger.instance.debug(
+          'Logo decode failed, using default sizing',
+          category: 'invoice_pdf',
+          error: e,
+        );
         return _LogoInfo(image: pw.MemoryImage(bytes), isWide: false);
       }
     } catch (e) {

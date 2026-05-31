@@ -62,7 +62,11 @@ class DocumentTemplateListNotifier
 
   /// Inserts a new custom template record.
   Future<void> create(DocumentTemplateRecord record) async {
-    await _repo.insert(record);
+    final id = await _repo.insert(record);
+    if (record.isActive) {
+      await setActive(id);
+      return;
+    }
     await _load();
   }
 

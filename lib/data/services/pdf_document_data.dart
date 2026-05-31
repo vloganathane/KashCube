@@ -15,6 +15,10 @@ enum PdfHeaderStyle {
   minimal,
 }
 
+enum PdfFontFamily { helvetica, times, courier }
+
+enum PdfHeaderAlignment { left, right }
+
 /// Output paper / roll size for PDF generation.
 enum PageSize {
   a4,
@@ -40,15 +44,9 @@ enum PageSize {
       case PageSize.letter:
         return PdfPageFormat.letter;
       case PageSize.thermal58:
-        return PdfPageFormat(
-          58 * PdfPageFormat.mm,
-          200 * PdfPageFormat.mm,
-        );
+        return PdfPageFormat(58 * PdfPageFormat.mm, 200 * PdfPageFormat.mm);
       case PageSize.thermal80:
-        return PdfPageFormat(
-          80 * PdfPageFormat.mm,
-          200 * PdfPageFormat.mm,
-        );
+        return PdfPageFormat(80 * PdfPageFormat.mm, 200 * PdfPageFormat.mm);
     }
   }
 
@@ -84,6 +82,13 @@ class DocumentTemplate {
     this.showLogo = true,
     this.amountDecimalDigits = 2,
     this.pageSize = PageSize.a4,
+    this.fontFamily = PdfFontFamily.helvetica,
+    this.bodyFontSize = 9,
+    this.titleFontSize = 22,
+    this.pageMargin = 32,
+    this.sectionSpacing = 20,
+    this.itemColumnWidthPct = 45,
+    this.headerAlignment = PdfHeaderAlignment.left,
   });
 
   final String id;
@@ -100,6 +105,13 @@ class DocumentTemplate {
 
   /// Output paper / roll size.
   final PageSize pageSize;
+  final PdfFontFamily fontFamily;
+  final double bodyFontSize;
+  final double titleFontSize;
+  final double pageMargin;
+  final double sectionSpacing;
+  final double itemColumnWidthPct;
+  final PdfHeaderAlignment headerAlignment;
 
   /// True when this template targets a 58 mm or 80 mm thermal roll.
   bool get isThermal => pageSize.isThermal;
@@ -197,8 +209,15 @@ class DocumentTemplate {
   );
 
   static const List<DocumentTemplate> presets = [
-    classic, modern, plain, receipt,
-    pharmacy, restaurant, service, freelancer, generic,
+    classic,
+    modern,
+    plain,
+    receipt,
+    pharmacy,
+    restaurant,
+    service,
+    freelancer,
+    generic,
   ];
 
   static DocumentTemplate fromId(String id) =>
@@ -240,6 +259,7 @@ class PdfPartyInfo {
 
   /// Pre-loaded logo bytes — set only on the seller; null on buyer.
   final pw.MemoryImage? logoImage;
+
   /// True when the logo is significantly wider than it is tall.
   final bool logoIsWide;
 }
@@ -397,8 +417,8 @@ class PdfDocumentData {
   final PdfColor statusColor;
 
   final DateTime issueDate;
-  final DateTime? dueDate;     // invoice only
-  final DateTime? validUntil;  // quote only
+  final DateTime? dueDate; // invoice only
+  final DateTime? validUntil; // quote only
 
   final PdfPartyInfo seller;
   final PdfPartyInfo buyer;

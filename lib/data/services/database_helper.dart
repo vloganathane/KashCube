@@ -305,27 +305,37 @@ class DatabaseHelper {
     var sw = Stopwatch()..start();
     await _createTransactionTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createTransactionTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createTransactionTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createCreditAndLoanTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createCreditAndLoanTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createCreditAndLoanTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createPartyAndAccountTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createPartyAndAccountTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createPartyAndAccountTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createSchedulingTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createSchedulingTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createSchedulingTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createBusinessAndCatalogTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createBusinessAndCatalogTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createBusinessAndCatalogTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createSalesTables(db);
@@ -335,7 +345,9 @@ class DatabaseHelper {
     sw = Stopwatch()..start();
     await _createBookingTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createBookingTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createBookingTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     // -- schema_version table
     sw = Stopwatch()..start();
@@ -352,39 +364,53 @@ class DatabaseHelper {
       'description': 'Progressive schema seed (fresh install base)',
     }, conflictAlgorithm: ConflictAlgorithm.replace);
     sw.stop();
-    debugPrint('[DB:onCreate] schema_version table: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] schema_version table: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createLookupTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createLookupTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createLookupTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createGstAndLogisticsTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createGstAndLogisticsTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createGstAndLogisticsTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createInventoryAndHrTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createInventoryAndHrTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createInventoryAndHrTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     // ── v58: identity & sync tables (must come before seeding — categories FK
     //    references linked_business_sessions) ─────────────────────────────────
     sw = Stopwatch()..start();
     await _createSyncAndIdentityTables(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createSyncAndIdentityTables: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createSyncAndIdentityTables: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createActivityLogTable(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createActivityLogTable: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createActivityLogTable: ${sw.elapsedMilliseconds}ms',
+    );
 
     sw = Stopwatch()..start();
     await _createAppLogsTable(db);
     sw.stop();
-    debugPrint('[DB:onCreate] _createAppLogsTable: ${sw.elapsedMilliseconds}ms');
+    debugPrint(
+      '[DB:onCreate] _createAppLogsTable: ${sw.elapsedMilliseconds}ms',
+    );
 
     // Seed default categories + default accounts
     sw = Stopwatch()..start();
@@ -409,7 +435,9 @@ class DatabaseHelper {
     });
 
     totalSw.stop();
-    debugPrint('[DB:onCreate] Database creation complete in ${totalSw.elapsedMilliseconds}ms (total)');
+    debugPrint(
+      '[DB:onCreate] Database creation complete in ${totalSw.elapsedMilliseconds}ms (total)',
+    );
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -588,7 +616,8 @@ class DatabaseHelper {
       await db.execute("ALTER TABLE businesses ADD COLUMN phones_json TEXT");
       await db.insert('schema_version', {
         'version': 93,
-        'description': 'Add phones_json to businesses for multiple phone numbers',
+        'description':
+            'Add phones_json to businesses for multiple phone numbers',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
     if (oldVersion < 7) {
@@ -4027,6 +4056,34 @@ class DatabaseHelper {
         'version': 92,
         'description':
             'Add missing default account types (savings, cash, creditCard, debitCard, upiWallet, paymentWallet)',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 94) {
+      await db.execute(
+        "ALTER TABLE document_templates ADD COLUMN font_family TEXT NOT NULL DEFAULT 'helvetica'",
+      );
+      await db.execute(
+        'ALTER TABLE document_templates ADD COLUMN body_font_size REAL NOT NULL DEFAULT 9',
+      );
+      await db.execute(
+        'ALTER TABLE document_templates ADD COLUMN title_font_size REAL NOT NULL DEFAULT 22',
+      );
+      await db.execute(
+        'ALTER TABLE document_templates ADD COLUMN page_margin REAL NOT NULL DEFAULT 32',
+      );
+      await db.execute(
+        'ALTER TABLE document_templates ADD COLUMN section_spacing REAL NOT NULL DEFAULT 20',
+      );
+      await db.execute(
+        'ALTER TABLE document_templates ADD COLUMN item_column_width_pct REAL NOT NULL DEFAULT 45',
+      );
+      await db.execute(
+        "ALTER TABLE document_templates ADD COLUMN header_alignment TEXT NOT NULL DEFAULT 'left'",
+      );
+      await db.insert('schema_version', {
+        'version': 94,
+        'description': 'Add advanced PDF document template layout settings',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 

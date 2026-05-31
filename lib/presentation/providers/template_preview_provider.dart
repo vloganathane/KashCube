@@ -22,6 +22,13 @@ String templatePreviewKey(DocumentTemplateRecord record, int dpi) =>
     '|${record.showLogo}'
     '|${record.amountDecimalDigits}'
     '|${record.pageSizeName}'
+    '|${record.fontFamilyName}'
+    '|${record.bodyFontSize}'
+    '|${record.titleFontSize}'
+    '|${record.pageMargin}'
+    '|${record.sectionSpacing}'
+    '|${record.itemColumnWidthPct}'
+    '|${record.headerAlignmentName}'
     '|$dpi';
 
 // ── Isolate entry-point ──────────────────────────────────────────────────────
@@ -48,33 +55,32 @@ Future<Uint8List> _buildSamplePdfBytes(DocumentTemplate template) async {
 ///
 /// [ref.keepAlive()] ensures list-screen thumbnails are not re-rendered when
 /// the user scrolls or rebuilds the list.
-final templatePreviewProvider =
-    FutureProvider.autoDispose.family<Uint8List?, String>(
-  (ref, key) async {
-    // Keep the result alive for the lifetime of the app session so scrolling
-    // the template list doesn't re-trigger expensive PDF → raster pipelines.
-    ref.keepAlive();
+final templatePreviewProvider = FutureProvider.autoDispose
+    .family<Uint8List?, String>((ref, key) async {
+      // Keep the result alive for the lifetime of the app session so scrolling
+      // the template list doesn't re-trigger expensive PDF → raster pipelines.
+      ref.keepAlive();
 
-    final template = _templateFromKey(key);
-    final dpi = double.parse(key.split('|')[6]);
+      final template = _templateFromKey(key);
+      final dpi = double.parse(key.split('|')[13]);
 
-    // ── Step 1: PDF bytes in a background isolate ──────────────────────────
-    final pdfBytes = await compute(_buildSamplePdfBytes, template);
+      // ── Step 1: PDF bytes in a background isolate ──────────────────────────
+      final pdfBytes = await compute(_buildSamplePdfBytes, template);
 
-    // ── Step 2: Rasterise first page on the main isolate ─────────────────
-    // Printing.raster uses platform channels → must run on main isolate.
-    final rasters = Printing.raster(pdfBytes, pages: [0], dpi: dpi);
-    final firstPage = await rasters.first;
-    return firstPage.toPng();
-  },
-);
+      // ── Step 2: Rasterise first page on the main isolate ─────────────────
+      // Printing.raster uses platform channels → must run on main isolate.
+      final rasters = Printing.raster(pdfBytes, pages: [0], dpi: dpi);
+      final firstPage = await rasters.first;
+      return firstPage.toPng();
+    });
 
 // ── Key codec ────────────────────────────────────────────────────────────────
 
 DocumentTemplate _templateFromKey(String key) {
   final p = key.split('|');
   // p[0] = id, p[1] = accentColorHex (#RRGGBB), p[2] = headerStyleName,
-  // p[3] = showLogo, p[4] = amountDecimalDigits, p[5] = pageSizeName, p[6] = dpi
+  // p[3] = showLogo, p[4] = amountDecimalDigits, p[5] = pageSizeName,
+  // p[6..12] = advanced layout settings, p[13] = dpi
 
   final accentHex = p[1].replaceFirst('#', '');
   final accentInt = int.tryParse(accentHex, radix: 16) ?? 0x1B5E20;
@@ -94,6 +100,18 @@ DocumentTemplate _templateFromKey(String key) {
     showLogo: p[3] == 'true',
     amountDecimalDigits: int.tryParse(p[4]) ?? 0,
     pageSize: pageSize,
+    fontFamily: PdfFontFamily.values.firstWhere(
+      (f) => f.name == p[6],
+      orElse: () => PdfFontFamily.helvetica,
+    ),
+    bodyFontSize: double.tryParse(p[7]) ?? 9,
+    titleFontSize: double.tryParse(p[8]) ?? 22,
+    pageMargin: double.tryParse(p[9]) ?? 32,
+    sectionSpacing: double.tryParse(p[10]) ?? 20,
+    itemColumnWidthPct: double.tryParse(p[11]) ?? 45,
+    headerAlignment: p[12] == 'right'
+        ? PdfHeaderAlignment.right
+        : PdfHeaderAlignment.left,
   );
 }
 
@@ -166,11 +184,7 @@ PdfDocumentData _sampleDocumentData() {
         lineTotal: 2000,
       ),
     ],
-    totals: const PdfTotals(
-      subtotal: 7500,
-      grandTotal: 8750,
-      paidAmount: 8750,
-    ),
+    totals: const PdfTotals(subtotal: 7500, grandTotal: 8750, paidAmount: 8750),
     footerNote: 'Thank you for your business!',
   );
 }

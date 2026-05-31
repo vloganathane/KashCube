@@ -330,7 +330,7 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
     if (b?.phones != null && b!.phones!.isNotEmpty) {
       phoneList.addAll(b.phones!);
     } else if (b?.phone != null && b!.phone!.isNotEmpty) {
-      phoneList.add(b!.phone!);
+      phoneList.add(b.phone!);
     }
     if (phoneList.isEmpty) phoneList.add('');
     _phoneControllers = phoneList.map((p) => TextEditingController(text: p)).toList();

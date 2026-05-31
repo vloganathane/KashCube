@@ -48,8 +48,7 @@ class TemplateBuilderScreen extends ConsumerStatefulWidget {
       _TemplateBuilderScreenState();
 }
 
-class _TemplateBuilderScreenState
-    extends ConsumerState<TemplateBuilderScreen> {
+class _TemplateBuilderScreenState extends ConsumerState<TemplateBuilderScreen> {
   late final TextEditingController _nameCtrl;
 
   late String _pageSizeName;
@@ -57,6 +56,13 @@ class _TemplateBuilderScreenState
   late String _accentHex;
   late bool _showLogo;
   late int _decimalDigits;
+  late String _fontFamilyName;
+  late double _bodyFontSize;
+  late double _titleFontSize;
+  late double _pageMargin;
+  late double _sectionSpacing;
+  late double _itemColumnWidthPct;
+  late String _headerAlignmentName;
 
   bool _saving = false;
 
@@ -70,6 +76,13 @@ class _TemplateBuilderScreenState
     _accentHex = r?.accentColorHex ?? '#1B5E20';
     _showLogo = r?.showLogo ?? true;
     _decimalDigits = r?.amountDecimalDigits ?? 0;
+    _fontFamilyName = r?.fontFamilyName ?? 'helvetica';
+    _bodyFontSize = r?.bodyFontSize ?? 9;
+    _titleFontSize = r?.titleFontSize ?? 22;
+    _pageMargin = r?.pageMargin ?? 32;
+    _sectionSpacing = r?.sectionSpacing ?? 20;
+    _itemColumnWidthPct = r?.itemColumnWidthPct ?? 45;
+    _headerAlignmentName = r?.headerAlignmentName ?? 'left';
   }
 
   @override
@@ -83,9 +96,10 @@ class _TemplateBuilderScreenState
   bool get _isThermal =>
       _pageSizeName == 'thermal58' || _pageSizeName == 'thermal80';
 
-  DocumentTemplateRecord _toRecord({bool isActive = false}) {
+  DocumentTemplateRecord _toRecord({bool? isActive}) {
     final now = DateTime.now().toIso8601String();
     final basedOn = widget.existing?.basedOn ?? 'modern';
+    final shouldBeActive = isActive ?? widget.existing?.isActive ?? true;
     if (widget.existing != null) {
       return widget.existing!.copyWith(
         name: _nameCtrl.text.trim(),
@@ -94,7 +108,14 @@ class _TemplateBuilderScreenState
         showLogo: _isThermal ? false : _showLogo,
         amountDecimalDigits: _decimalDigits,
         pageSizeName: _pageSizeName,
-        isActive: isActive,
+        fontFamilyName: _fontFamilyName,
+        bodyFontSize: _bodyFontSize,
+        titleFontSize: _titleFontSize,
+        pageMargin: _pageMargin,
+        sectionSpacing: _sectionSpacing,
+        itemColumnWidthPct: _itemColumnWidthPct,
+        headerAlignmentName: _headerAlignmentName,
+        isActive: shouldBeActive,
       );
     }
     return DocumentTemplateRecord(
@@ -106,7 +127,14 @@ class _TemplateBuilderScreenState
       showLogo: _isThermal ? false : _showLogo,
       amountDecimalDigits: _decimalDigits,
       pageSizeName: _pageSizeName,
-      isActive: isActive,
+      fontFamilyName: _fontFamilyName,
+      bodyFontSize: _bodyFontSize,
+      titleFontSize: _titleFontSize,
+      pageMargin: _pageMargin,
+      sectionSpacing: _sectionSpacing,
+      itemColumnWidthPct: _itemColumnWidthPct,
+      headerAlignmentName: _headerAlignmentName,
+      isActive: shouldBeActive,
       isPreset: false,
       createdAt: now,
     );
@@ -149,13 +177,15 @@ class _TemplateBuilderScreenState
           if (_saving)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.base),
-              child: Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              child: Center(
+                child: SizedBox.square(
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
             )
           else
-            TextButton(
-              onPressed: _save,
-              child: const Text('Save'),
-            ),
+            TextButton(onPressed: _save, child: const Text('Save')),
         ],
       ),
       body: ListView(
@@ -198,8 +228,7 @@ class _TemplateBuilderScreenState
                 ChoiceChip(
                   label: Text(s.label),
                   selected: _pageSizeName == s.name,
-                  onSelected: (_) =>
-                      setState(() => _pageSizeName = s.name),
+                  onSelected: (_) => setState(() => _pageSizeName = s.name),
                 ),
             ],
           ),
@@ -285,15 +314,152 @@ class _TemplateBuilderScreenState
             contentPadding: EdgeInsets.zero,
             title: const Text('Show paise (two decimal places)'),
             subtitle: Text(
-              _decimalDigits == 2 ? '₹10.50 shown as ₹10.50' : '₹10.50 shown as ₹11',
+              _decimalDigits == 2
+                  ? '₹10.50 shown as ₹10.50'
+                  : '₹10.50 shown as ₹11',
             ),
             value: _decimalDigits == 2,
             onChanged: (v) => setState(() => _decimalDigits = v ? 2 : 0),
           ),
 
+          if (!_isThermal) ...[
+            const SizedBox(height: AppSpacing.base),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(bottom: AppSpacing.base),
+              title: const Text('Advanced layout'),
+              subtitle: const Text('Typography, spacing and table sizing'),
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: _fontFamilyName,
+                  decoration: const InputDecoration(
+                    labelText: 'Font family',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'helvetica',
+                      child: Text('Helvetica'),
+                    ),
+                    DropdownMenuItem(value: 'times', child: Text('Times')),
+                    DropdownMenuItem(value: 'courier', child: Text('Courier')),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _fontFamilyName = v);
+                  },
+                ),
+                const SizedBox(height: AppSpacing.base),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'left',
+                      label: Text('Business left'),
+                      icon: Icon(Icons.format_align_left, size: 16),
+                    ),
+                    ButtonSegment(
+                      value: 'right',
+                      label: Text('Business right'),
+                      icon: Icon(Icons.format_align_right, size: 16),
+                    ),
+                  ],
+                  selected: {_headerAlignmentName},
+                  onSelectionChanged: (v) =>
+                      setState(() => _headerAlignmentName = v.first),
+                ),
+                const SizedBox(height: AppSpacing.base),
+                _ValueSlider(
+                  label: 'Body text size',
+                  value: _bodyFontSize,
+                  min: 7,
+                  max: 12,
+                  divisions: 10,
+                  suffix: ' pt',
+                  onChanged: (v) => setState(() => _bodyFontSize = v),
+                ),
+                _ValueSlider(
+                  label: 'Document title size',
+                  value: _titleFontSize,
+                  min: 16,
+                  max: 30,
+                  divisions: 14,
+                  suffix: ' pt',
+                  onChanged: (v) => setState(() => _titleFontSize = v),
+                ),
+                _ValueSlider(
+                  label: 'Page margin',
+                  value: _pageMargin,
+                  min: 16,
+                  max: 56,
+                  divisions: 10,
+                  suffix: ' pt',
+                  onChanged: (v) => setState(() => _pageMargin = v),
+                ),
+                _ValueSlider(
+                  label: 'Section spacing',
+                  value: _sectionSpacing,
+                  min: 8,
+                  max: 32,
+                  divisions: 12,
+                  suffix: ' pt',
+                  onChanged: (v) => setState(() => _sectionSpacing = v),
+                ),
+                _ValueSlider(
+                  label: 'Item description column',
+                  value: _itemColumnWidthPct,
+                  min: 30,
+                  max: 65,
+                  divisions: 7,
+                  suffix: '%',
+                  onChanged: (v) => setState(() => _itemColumnWidthPct = v),
+                ),
+              ],
+            ),
+          ],
+
           const SizedBox(height: AppSpacing.xxxl),
         ],
       ),
+    );
+  }
+}
+
+class _ValueSlider extends StatelessWidget {
+  const _ValueSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.suffix,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final String suffix;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value == value.roundToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(1);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('$label: $displayValue$suffix'),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: divisions,
+          label: '$displayValue$suffix',
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
@@ -308,10 +474,9 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: Theme.of(context)
-          .textTheme
-          .bodySmall
-          ?.copyWith(color: Theme.of(context).colorScheme.outline),
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.outline,
+      ),
     );
   }
 }
@@ -344,17 +509,9 @@ class _ColorSwatch extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                     width: 2.5,
                   )
-                : Border.all(
-                    color: Colors.transparent,
-                    width: 2.5,
-                  ),
+                : Border.all(color: Colors.transparent, width: 2.5),
             boxShadow: selected
-                ? [
-                    BoxShadow(
-                      color: option.color.withAlpha(100),
-                      blurRadius: 6,
-                    ),
-                  ]
+                ? [BoxShadow(color: option.color.withAlpha(100), blurRadius: 6)]
                 : null,
           ),
           child: selected

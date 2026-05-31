@@ -37,5 +37,5 @@ db-inventory:
 	@echo "Generated docs/codebase/DATABASE_INVENTORY_AUTO.md"
 
 db-inventory-check:
-	python3 scripts/generate_db_inventory.py --output /tmp/kashcube_db_inventory_check.md --expect-table-count 56
-	@echo "Table count check passed (56)"
+	python3 scripts/generate_db_inventory.py --output /tmp/kashcube_db_inventory_check.md --expect-table-count 61
+	@echo "Table count check passed (61)"

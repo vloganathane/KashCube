@@ -31,7 +31,7 @@ lib/
 
 **State management is Riverpod only** (`flutter_riverpod ^2.6`). Never use Provider, BLoC, GetX, or `ChangeNotifier` for shared state. `setState` is reserved for local widget state (animations, form fields).
 
-**Repository pattern is strict:** abstract interface lives in `domain/repositories/`, implementation in `data/repositories/`. Providers depend on the interface, not the impl. There are 25 repositories and 56 SQLite tables; see `docs/codebase/DATABASE_AS_BUILT.md` for the full schema and `docs/codebase/ARCHITECTURE_AS_BUILT.md` for runtime flow.
+**Repository pattern is strict:** abstract interface lives in `domain/repositories/`, implementation in `data/repositories/`. Providers depend on the interface, not the impl. There are 25 repositories and 61 SQLite tables; see `docs/codebase/DATABASE_AS_BUILT.md` for the full schema and `docs/codebase/ARCHITECTURE_AS_BUILT.md` for runtime flow.
 
 **Database**: SQLite via `sqflite`. Always use parameterized queries. Schema changes require migrations and an update to `DATABASE_SCHEMA.md`. The auto-generated inventory at `docs/codebase/DATABASE_INVENTORY_AUTO.md` is regenerated via `make db-inventory`.
 
@@ -69,7 +69,7 @@ make apk-aab        # Play Store App Bundle
 
 # Tooling
 make db-inventory       # regenerate docs/codebase/DATABASE_INVENTORY_AUTO.md
-make db-inventory-check # asserts table count is 56
+make db-inventory-check # asserts table count is 61
 ```
 
 Test layout mirrors `lib/` (e.g. `test/data/repositories/` for `lib/data/repositories/`).

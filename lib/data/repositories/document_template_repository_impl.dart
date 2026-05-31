@@ -35,18 +35,46 @@ class DocumentTemplateRepositoryImpl implements DocumentTemplateRepository {
   @override
   Future<void> update(DocumentTemplateRecord record) async {
     final db = await _db.database;
-    await db.update(
-      _table,
-      record.toMap(),
-      where: 'id = ?',
-      whereArgs: [record.id],
-    );
+    await db.transaction((txn) async {
+      if (record.isActive) {
+        await txn.update(
+          _table,
+          {'is_active': 0},
+          where: 'id != ?',
+          whereArgs: [record.id],
+        );
+      }
+      await txn.update(
+        _table,
+        record.toMap(),
+        where: 'id = ?',
+        whereArgs: [record.id],
+      );
+    });
   }
 
   @override
   Future<void> delete(int id) async {
     final db = await _db.database;
-    await db.delete(_table, where: 'id = ? AND is_preset = 0', whereArgs: [id]);
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        _table,
+        columns: const ['is_active', 'is_preset'],
+        where: 'id = ?',
+        whereArgs: [id],
+        limit: 1,
+      );
+      if (rows.isEmpty || rows.first['is_preset'] == 1) return;
+
+      final wasActive = rows.first['is_active'] == 1;
+      await txn.delete(_table, where: 'id = ?', whereArgs: [id]);
+      if (wasActive) {
+        await txn.update(_table, {'is_active': 0});
+        await txn.update(_table, {
+          'is_active': 1,
+        }, where: "is_preset = 1 AND based_on = 'modern'");
+      }
+    });
   }
 
   @override

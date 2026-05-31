@@ -1,9 +1,9 @@
 # Auto-Generated Database Table Inventory
 
-Generated at: `2026-03-27T06:15:49+00:00`
+Generated at: `2026-05-31T08:59:20+00:00`
 Source: `lib/data/services/database_helper_tables.dart`
 
-Total tables: **56**
+Total tables: **61**
 
 ## Domain Summary
 
@@ -14,12 +14,13 @@ Total tables: **56**
 - **Staff and Payroll**: 3 tables
 - **Settings, Auth, Permissions, Plans**: 6 tables
 - **Device Identity and Sync Infrastructure**: 11 tables
+- **Ungrouped**: 5 tables
 
 ## Core Finance Ledger
 
 ### `transactions`
 
-- Columns: **44** | Table constraints: **4** | Indexes: **14**
+- Columns: **44** | Table constraints: **4** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -74,25 +75,9 @@ Total tables: **56**
 - `FOREIGN KEY (linked_transaction_id) REFERENCES transactions(id)`
 - `FOREIGN KEY (parent_transaction_id) REFERENCES transactions(id)`
 
-**Indexes**
-- `CREATE INDEX idx_transactions_date ON transactions(date DESC)`
-- `CREATE INDEX idx_transactions_party ON transactions(party_name)`
-- `CREATE INDEX idx_transactions_mode_type ON transactions(mode, type, date DESC)`
-- `CREATE INDEX idx_transactions_category ON transactions(category, date DESC)`
-- `CREATE INDEX idx_transactions_account ON transactions(account_id)`
-- `CREATE INDEX idx_transactions_to_account ON transactions(to_account_id)`
-- `CREATE INDEX idx_transactions_auto_detected ON transactions(auto_detected, verified)`
-- `CREATE INDEX idx_transactions_deleted ON transactions(deleted_at)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_reminder ON transactions(reminder_sent_at)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_linked ON transactions(linked_transaction_id)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_invoice ON transactions(linked_invoice_id)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_booking ON transactions(linked_booking_id)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_business ON transactions(business_id)`
-- `CREATE INDEX IF NOT EXISTS idx_transactions_context ON transactions(context_id)`
-
 ### `credits`
 
-- Columns: **26** | Table constraints: **2** | Indexes: **6**
+- Columns: **26** | Table constraints: **2** | Indexes: **1**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -128,16 +113,11 @@ Total tables: **56**
 - `FOREIGN KEY (business_id) REFERENCES businesses(id)`
 
 **Indexes**
-- `CREATE INDEX idx_credits_customer ON credits(customer_name)`
-- `CREATE INDEX idx_credits_status ON credits(is_cleared, is_overdue)`
 - `CREATE INDEX idx_credits_due_date ON credits(due_date)`
-- `CREATE INDEX idx_credits_pending ON credits(pending_amount DESC)`
-- `CREATE INDEX idx_credits_direction ON credits(direction)`
-- `CREATE INDEX IF NOT EXISTS idx_credits_context ON credits(context_id)`
 
 ### `credit_payments`
 
-- Columns: **15** | Table constraints: **2** | Indexes: **3**
+- Columns: **15** | Table constraints: **2** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -161,14 +141,9 @@ Total tables: **56**
 - `FOREIGN KEY (credit_id) REFERENCES credits(id) ON DELETE CASCADE`
 - `FOREIGN KEY (transaction_id) REFERENCES transactions(id)`
 
-**Indexes**
-- `CREATE INDEX idx_credit_payments_credit ON credit_payments(credit_id)`
-- `CREATE INDEX idx_credit_payments_date ON credit_payments(payment_date DESC)`
-- `CREATE INDEX IF NOT EXISTS idx_credit_payments_context ON credit_payments(context_id)`
-
 ### `loans`
 
-- Columns: **33** | Table constraints: **2** | Indexes: **5**
+- Columns: **33** | Table constraints: **2** | Indexes: **3**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -212,14 +187,12 @@ Total tables: **56**
 
 **Indexes**
 - `CREATE INDEX idx_loans_lender ON loans(lender_name)`
-- `CREATE INDEX idx_loans_status ON loans(is_cleared, is_overdue)`
 - `CREATE INDEX idx_loans_next_emi ON loans(next_emi_date)`
 - `CREATE INDEX idx_loans_direction ON loans(direction)`
-- `CREATE INDEX IF NOT EXISTS idx_loans_context ON loans(context_id)`
 
 ### `loan_payments`
 
-- Columns: **16** | Table constraints: **1** | Indexes: **3**
+- Columns: **16** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -243,14 +216,9 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE`
 
-**Indexes**
-- `CREATE INDEX idx_loan_payments_loan ON loan_payments(loan_id)`
-- `CREATE INDEX idx_loan_payments_due ON loan_payments(due_date)`
-- `CREATE INDEX idx_loan_payments_status ON loan_payments(is_paid, due_date)`
-
 ### `accounts`
 
-- Columns: **23** | Table constraints: **0** | Indexes: **3**
+- Columns: **23** | Table constraints: **0** | Indexes: **1**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -279,13 +247,11 @@ Total tables: **56**
 | `context_id` | `INTEGER` | REFERENCES linked_business_sessions(id) ON DELETE CASCADE | Linked business session scope |
 
 **Indexes**
-- `CREATE INDEX idx_accounts_type ON accounts(account_type)`
 - `CREATE INDEX idx_accounts_active ON accounts(is_active)`
-- `CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)`
 
 ### `categories`
 
-- Columns: **19** | Table constraints: **0** | Indexes: **1**
+- Columns: **19** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -309,12 +275,9 @@ Total tables: **56**
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 | `context_id` | `INTEGER` | REFERENCES linked_business_sessions(id) ON DELETE CASCADE | Linked business session scope |
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_categories_context ON categories(context_id)`
-
 ### `budgets`
 
-- Columns: **13** | Table constraints: **1** | Indexes: **1**
+- Columns: **13** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -334,9 +297,6 @@ Total tables: **56**
 
 **Table-level constraints**
 - `UNIQUE(year, month, category)`
-
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_budgets_context ON budgets(context_id)`
 
 ### `recurring_transactions`
 
@@ -365,7 +325,7 @@ Total tables: **56**
 
 ### `scheduled_payments`
 
-- Columns: **27** | Table constraints: **0** | Indexes: **5**
+- Columns: **27** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -397,16 +357,9 @@ Total tables: **56**
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 | `context_id` | `INTEGER` | REFERENCES linked_business_sessions(id) ON DELETE CASCADE | Linked business session scope |
 
-**Indexes**
-- `CREATE INDEX idx_sp_active ON scheduled_payments(is_active, deleted_at)`
-- `CREATE INDEX idx_sp_next ON scheduled_payments(next_date)`
-- `CREATE INDEX idx_sp_auto ON scheduled_payments(auto_create, next_date)`
-- `CREATE INDEX IF NOT EXISTS idx_sp_party ON scheduled_payments(party_id)`
-- `CREATE INDEX IF NOT EXISTS idx_sp_context ON scheduled_payments(context_id)`
-
 ### `bills`
 
-- Columns: **18** | Table constraints: **0** | Indexes: **2**
+- Columns: **18** | Table constraints: **0** | Indexes: **1**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -430,12 +383,11 @@ Total tables: **56**
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 
 **Indexes**
-- `CREATE INDEX idx_bills_active ON bills(is_active, deleted_at)`
 - `CREATE INDEX idx_bills_due ON bills(due_day)`
 
 ### `bill_attachments`
 
-- Columns: **13** | Table constraints: **1** | Indexes: **1**
+- Columns: **13** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -456,15 +408,12 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE`
 
-**Indexes**
-- `CREATE INDEX idx_bill_attachments_txn ON bill_attachments(transaction_id)`
-
 
 ## Parties and Communication
 
 ### `parties`
 
-- Columns: **36** | Table constraints: **0** | Indexes: **4**
+- Columns: **37** | Table constraints: **0** | Indexes: **3**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -486,6 +435,7 @@ Total tables: **56**
 | `state` | `TEXT` | — | Domain-specific field |
 | `pincode` | `TEXT` | — | Domain-specific field |
 | `business_card_image_path` | `TEXT` | — | Domain-specific field |
+| `business_card_media_id` | `TEXT` | — | Reference to related entity |
 | `website` | `TEXT` | — | Domain-specific field |
 | `whatsapp` | `TEXT` | — | Domain-specific field |
 | `linkedin` | `TEXT` | — | Domain-specific field |
@@ -509,7 +459,6 @@ Total tables: **56**
 - `CREATE INDEX idx_parties_name ON parties(name)`
 - `CREATE INDEX idx_parties_phone ON parties(phone_number)`
 - `CREATE INDEX idx_parties_type ON parties(party_type)`
-- `CREATE INDEX IF NOT EXISTS idx_parties_context ON parties(context_id)`
 
 ### `party_addresses`
 
@@ -566,7 +515,7 @@ Total tables: **56**
 
 ### `businesses`
 
-- Columns: **27** | Table constraints: **0** | Indexes: **2**
+- Columns: **29** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -577,9 +526,11 @@ Total tables: **56**
 | `state` | `TEXT` | — | Domain-specific field |
 | `pincode` | `TEXT` | — | Domain-specific field |
 | `phone` | `TEXT` | — | Phone/contact value |
+| `phones_json` | `TEXT` | — | Phone/contact value |
 | `email` | `TEXT` | — | Email/contact value |
 | `gst_no` | `TEXT` | — | Human-readable document/reference number |
 | `logo_path` | `TEXT` | — | Domain-specific field |
+| `logo_media_id` | `TEXT` | — | Reference to related entity |
 | `is_active` | `INTEGER` | NOT NULL DEFAULT 0 | Boolean-like flag (0/1) |
 | `owner_name` | `TEXT` | — | Domain-specific field |
 | `website` | `TEXT` | — | Domain-specific field |
@@ -597,10 +548,6 @@ Total tables: **56**
 | `created_by_device_id` | `TEXT` | — | Device that created the row |
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 | `context_id` | `INTEGER` | REFERENCES linked_business_sessions(id) ON DELETE CASCADE | Linked business session scope |
-
-**Indexes**
-- `CREATE INDEX idx_businesses_active ON businesses(is_active)`
-- `CREATE INDEX IF NOT EXISTS idx_businesses_context ON businesses(context_id)`
 
 ### `quotes`
 
@@ -667,7 +614,7 @@ Total tables: **56**
 
 ### `invoices`
 
-- Columns: **55** | Table constraints: **1** | Indexes: **6**
+- Columns: **55** | Table constraints: **1** | Indexes: **3**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -733,10 +680,7 @@ Total tables: **56**
 **Indexes**
 - `CREATE INDEX idx_invoices_status ON invoices(status)`
 - `CREATE INDEX idx_invoices_due ON invoices(due_date)`
-- `CREATE INDEX idx_invoices_business ON invoices(business_id)`
-- `CREATE INDEX idx_invoices_reminder ON invoices(reminder_sent_at, due_date)`
 - `CREATE INDEX idx_invoices_ewb ON invoices(ewb_no)`
-- `CREATE INDEX IF NOT EXISTS idx_invoices_context ON invoices(context_id)`
 
 ### `invoice_items`
 
@@ -766,7 +710,7 @@ Total tables: **56**
 
 ### `bookings`
 
-- Columns: **27** | Table constraints: **4** | Indexes: **6**
+- Columns: **27** | Table constraints: **4** | Indexes: **1**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -806,15 +750,10 @@ Total tables: **56**
 
 **Indexes**
 - `CREATE INDEX idx_bookings_status ON bookings(status)`
-- `CREATE INDEX idx_bookings_start_datetime ON bookings(start_datetime)`
-- `CREATE INDEX idx_bookings_customer ON bookings(customer_party_id)`
-- `CREATE INDEX idx_bookings_business ON bookings(business_id)`
-- `CREATE INDEX idx_bookings_type ON bookings(booking_type)`
-- `CREATE INDEX idx_bookings_reminder ON bookings(reminder_sent_at, start_datetime)`
 
 ### `booking_items`
 
-- Columns: **15** | Table constraints: **2** | Indexes: **1**
+- Columns: **15** | Table constraints: **2** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -838,12 +777,9 @@ Total tables: **56**
 - `FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE`
 - `FOREIGN KEY (service_item_id) REFERENCES item_catalog(id)`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_booking_items_booking ON booking_items(booking_id)`
-
 ### `delivery_challans`
 
-- Columns: **33** | Table constraints: **2** | Indexes: **4**
+- Columns: **33** | Table constraints: **2** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -885,15 +821,9 @@ Total tables: **56**
 - `FOREIGN KEY (customer_party_id) REFERENCES parties(id)`
 - `FOREIGN KEY (converted_invoice_id) REFERENCES invoices(id) ON DELETE SET NULL`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_dc_status ON delivery_challans(status)`
-- `CREATE INDEX IF NOT EXISTS idx_dc_date ON delivery_challans(challan_date DESC)`
-- `CREATE INDEX IF NOT EXISTS idx_dc_customer ON delivery_challans(customer_party_id)`
-- `CREATE INDEX IF NOT EXISTS idx_dc_ewb ON delivery_challans(ewb_no)`
-
 ### `delivery_challan_items`
 
-- Columns: **13** | Table constraints: **1** | Indexes: **1**
+- Columns: **13** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -914,12 +844,9 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (challan_id) REFERENCES delivery_challans(id) ON DELETE CASCADE`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_dci_challan ON delivery_challan_items(challan_id)`
-
 ### `purchase_bills`
 
-- Columns: **33** | Table constraints: **1** | Indexes: **5**
+- Columns: **33** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -959,13 +886,6 @@ Total tables: **56**
 
 **Table-level constraints**
 - `FOREIGN KEY (vendor_party_id) REFERENCES parties(id) ON DELETE SET NULL`
-
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_pb_business ON purchase_bills(business_id)`
-- `CREATE INDEX IF NOT EXISTS idx_pb_bill_date ON purchase_bills(bill_date)`
-- `CREATE INDEX IF NOT EXISTS idx_pb_status ON purchase_bills(status)`
-- `CREATE INDEX IF NOT EXISTS idx_pb_rc ON purchase_bills(reverse_charge)`
-- `CREATE INDEX IF NOT EXISTS idx_pb_context ON purchase_bills(context_id)`
 
 ### `purchase_bill_items`
 
@@ -1011,7 +931,7 @@ Total tables: **56**
 
 ### `document_templates`
 
-- Columns: **17** | Table constraints: **0** | Indexes: **0**
+- Columns: **24** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1023,6 +943,13 @@ Total tables: **56**
 | `show_logo` | `INTEGER` | NOT NULL DEFAULT 1 | Domain-specific field |
 | `amount_decimal_digits` | `INTEGER` | NOT NULL DEFAULT 0 | Monetary value |
 | `page_size` | `TEXT` | NOT NULL DEFAULT 'a4' | Domain-specific field |
+| `font_family` | `TEXT` | NOT NULL DEFAULT 'helvetica' | Domain-specific field |
+| `body_font_size` | `REAL` | NOT NULL DEFAULT 9 | Domain-specific field |
+| `title_font_size` | `REAL` | NOT NULL DEFAULT 22 | Domain-specific field |
+| `page_margin` | `REAL` | NOT NULL DEFAULT 32 | Domain-specific field |
+| `section_spacing` | `REAL` | NOT NULL DEFAULT 20 | Domain-specific field |
+| `item_column_width_pct` | `REAL` | NOT NULL DEFAULT 45 | Rate/percentage value |
+| `header_alignment` | `TEXT` | NOT NULL DEFAULT 'left' | Domain-specific field |
 | `is_active` | `INTEGER` | NOT NULL DEFAULT 0 | Boolean-like flag (0/1) |
 | `is_preset` | `INTEGER` | NOT NULL DEFAULT 0 | Boolean-like flag (0/1) |
 | `sync_id` | `TEXT` | UNIQUE DEFAULT (lower(hex(randomblob(16)))) | Cross-device immutable row identity |
@@ -1038,7 +965,7 @@ Total tables: **56**
 
 ### `item_catalog`
 
-- Columns: **30** | Table constraints: **0** | Indexes: **5**
+- Columns: **58** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1050,6 +977,10 @@ Total tables: **56**
 | `tax_pct` | `REAL` | NOT NULL DEFAULT 0 | Rate/percentage value |
 | `hsn_code` | `TEXT` | — | Tax/compliance identifier |
 | `hsn_or_sac` | `TEXT` | DEFAULT 'HSN' | Tax/compliance identifier |
+| `brand_name` | `TEXT` | — | Domain-specific field |
+| `primary_image_path` | `TEXT` | — | Domain-specific field |
+| `barcode` | `TEXT` | — | Domain-specific field |
+| `additional_properties_json` | `TEXT` | — | Domain-specific field |
 | `is_active` | `INTEGER` | NOT NULL DEFAULT 1 | Boolean-like flag (0/1) |
 | `business_id` | `INTEGER` | — | Reference to related entity |
 | `sku` | `TEXT` | — | Domain-specific field |
@@ -1064,6 +995,30 @@ Total tables: **56**
 | `low_stock_threshold` | `REAL` | NOT NULL DEFAULT 5 | Domain-specific field |
 | `mrp` | `REAL` | — | Domain-specific field |
 | `dealer_price` | `REAL` | — | Domain-specific field |
+| `mpn` | `TEXT` | — | Domain-specific field |
+| `availability` | `TEXT` | DEFAULT 'InStock' | Domain-specific field |
+| `price_currency` | `TEXT` | DEFAULT 'INR' | Domain-specific field |
+| `price_valid_until` | `TEXT` | — | Domain-specific field |
+| `manufacturer_name` | `TEXT` | — | Domain-specific field |
+| `color` | `TEXT` | — | Domain-specific field |
+| `size` | `TEXT` | — | Domain-specific field |
+| `weight_value` | `REAL` | — | Domain-specific field |
+| `weight_unit` | `TEXT` | DEFAULT 'g' | Domain-specific field |
+| `width_cm` | `REAL` | — | Domain-specific field |
+| `height_cm` | `REAL` | — | Domain-specific field |
+| `depth_cm` | `REAL` | — | Domain-specific field |
+| `material` | `TEXT` | — | Domain-specific field |
+| `keywords` | `TEXT` | — | Domain-specific field |
+| `country_of_origin` | `TEXT` | — | Domain-specific field |
+| `release_date` | `TEXT` | — | Business date field |
+| `product_id` | `TEXT` | — | Reference to related entity |
+| `asin` | `TEXT` | — | Domain-specific field |
+| `logo_path` | `TEXT` | — | Domain-specific field |
+| `pattern` | `TEXT` | — | Domain-specific field |
+| `slogan` | `TEXT` | — | Domain-specific field |
+| `item_condition` | `TEXT` | DEFAULT 'NewCondition' | Domain-specific field |
+| `model_number` | `TEXT` | — | Human-readable document/reference number |
+| `product_group_id` | `INTEGER` | — | Reference to related entity |
 | `created_at` | `TEXT` | NOT NULL | Row creation timestamp |
 | `updated_at` | `TEXT` | NOT NULL | Last update timestamp |
 | `deleted_at` | `TEXT` | — | Soft-delete timestamp |
@@ -1072,13 +1027,6 @@ Total tables: **56**
 | `created_by_device_id` | `TEXT` | — | Device that created the row |
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 | `context_id` | `INTEGER` | REFERENCES linked_business_sessions(id) ON DELETE CASCADE | Linked business session scope |
-
-**Indexes**
-- `CREATE INDEX idx_item_catalog_business ON item_catalog(business_id)`
-- `CREATE INDEX idx_item_catalog_category ON item_catalog(category)`
-- `CREATE INDEX idx_item_catalog_favorite ON item_catalog(is_favorite)`
-- `CREATE INDEX idx_item_catalog_last_used ON item_catalog(last_used_at)`
-- `CREATE INDEX IF NOT EXISTS idx_item_catalog_context ON item_catalog(context_id)`
 
 ### `unit_types`
 
@@ -1094,7 +1042,7 @@ Total tables: **56**
 
 ### `stock_movements`
 
-- Columns: **16** | Table constraints: **1** | Indexes: **3**
+- Columns: **16** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1118,11 +1066,6 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (item_id) REFERENCES item_catalog(id) ON DELETE CASCADE`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_sm_item ON stock_movements(item_id)`
-- `CREATE INDEX IF NOT EXISTS idx_sm_date ON stock_movements(created_at DESC)`
-- `CREATE INDEX IF NOT EXISTS idx_sm_business ON stock_movements(business_id)`
-
 ### `item_stock`
 
 - Columns: **9** | Table constraints: **1** | Indexes: **0**
@@ -1144,7 +1087,7 @@ Total tables: **56**
 
 ### `stock_lots`
 
-- Columns: **19** | Table constraints: **0** | Indexes: **4**
+- Columns: **19** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1168,15 +1111,9 @@ Total tables: **56**
 | `created_by_device_id` | `TEXT` | — | Device that created the row |
 | `updated_by_device_id` | `TEXT` | — | Device that last updated the row |
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_stock_lots_item_biz ON stock_lots(business_id, item_id)`
-- `CREATE INDEX IF NOT EXISTS idx_stock_lots_fefo ON stock_lots(business_id, item_id, expiry_date, created_at, id)`
-- `CREATE INDEX IF NOT EXISTS idx_stock_lots_bill ON stock_lots(purchase_bill_id)`
-- `CREATE INDEX IF NOT EXISTS idx_stock_lots_remaining ON stock_lots(business_id, item_id, qty_remaining)`
-
 ### `lot_movements`
 
-- Columns: **12** | Table constraints: **0** | Indexes: **3**
+- Columns: **12** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1193,14 +1130,9 @@ Total tables: **56**
 | `notes` | `TEXT` | — | Free-form user notes |
 | `created_at` | `TEXT` | NOT NULL DEFAULT (datetime('now')) | Row creation timestamp |
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_lot_mov_lot ON lot_movements(lot_id, created_at DESC)`
-- `CREATE INDEX IF NOT EXISTS idx_lot_mov_ref ON lot_movements(reference_type, reference_id)`
-- `CREATE INDEX IF NOT EXISTS idx_lot_mov_item_biz ON lot_movements(business_id, item_id, created_at DESC)`
-
 ### `transporters`
 
-- Columns: **4** | Table constraints: **0** | Indexes: **1**
+- Columns: **4** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1209,12 +1141,9 @@ Total tables: **56**
 | `gstin` | `TEXT` | — | Tax/compliance identifier |
 | `last_used_at` | `TEXT` | NOT NULL DEFAULT (datetime('now')) | Timestamp field |
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_transporters_name ON transporters(name)`
-
 ### `hsn_master`
 
-- Columns: **4** | Table constraints: **0** | Indexes: **2**
+- Columns: **4** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1223,16 +1152,12 @@ Total tables: **56**
 | `description` | `TEXT` | NOT NULL | Domain-specific field |
 | `type` | `TEXT` | NOT NULL DEFAULT 'HSN' | Domain-specific field |
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_hsn_master_code ON hsn_master(code)`
-- `CREATE INDEX IF NOT EXISTS idx_hsn_master_type ON hsn_master(type)`
-
 
 ## Staff and Payroll
 
 ### `staff`
 
-- Columns: **26** | Table constraints: **1** | Indexes: **3**
+- Columns: **26** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1266,14 +1191,9 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (business_id) REFERENCES businesses(id)`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_staff_active ON staff(is_active)`
-- `CREATE INDEX IF NOT EXISTS idx_staff_business ON staff(business_id)`
-- `CREATE INDEX IF NOT EXISTS idx_staff_party ON staff(party_id)`
-
 ### `salary_payments`
 
-- Columns: **20** | Table constraints: **1** | Indexes: **1**
+- Columns: **20** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1300,9 +1220,6 @@ Total tables: **56**
 
 **Table-level constraints**
 - `FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE`
-
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_salp_staff ON salary_payments(staff_id)`
 
 ### `payroll_notifications`
 
@@ -1339,7 +1256,7 @@ Total tables: **56**
 
 ### `app_users`
 
-- Columns: **11** | Table constraints: **1** | Indexes: **2**
+- Columns: **11** | Table constraints: **1** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1358,13 +1275,9 @@ Total tables: **56**
 **Table-level constraints**
 - `FOREIGN KEY (linked_party_id) REFERENCES parties(id) ON DELETE SET NULL`
 
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_app_users_active ON app_users(is_active)`
-- `CREATE INDEX IF NOT EXISTS idx_app_users_party ON app_users(linked_party_id)`
-
 ### `user_permissions`
 
-- Columns: **8** | Table constraints: **2** | Indexes: **1**
+- Columns: **8** | Table constraints: **2** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1380,9 +1293,6 @@ Total tables: **56**
 **Table-level constraints**
 - `UNIQUE (user_id, business_id, module)`
 - `FOREIGN KEY (user_id) REFERENCES app_users(id) ON DELETE CASCADE`
-
-**Indexes**
-- `CREATE INDEX IF NOT EXISTS idx_user_perms_user ON user_permissions(user_id)`
 
 ### `subscription`
 
@@ -1537,7 +1447,7 @@ Total tables: **56**
 
 ### `trusted_peers`
 
-- Columns: **9** | Table constraints: **0** | Indexes: **0**
+- Columns: **11** | Table constraints: **0** | Indexes: **0**
 
 | Column | Type | Constraints | Purpose |
 |---|---|---|---|
@@ -1550,6 +1460,8 @@ Total tables: **56**
 | `last_seen_at` | `TEXT` | — | Timestamp field |
 | `last_synced_at` | `TEXT` | — | Timestamp field |
 | `is_active` | `INTEGER` | NOT NULL DEFAULT 1 | Boolean-like flag (0/1) |
+| `key_version` | `INTEGER` | NOT NULL DEFAULT 1 | Domain-specific field |
+| `key_rotated_at` | `TEXT` | — | Timestamp field |
 
 ### `sync_outbox`
 
@@ -1610,3 +1522,11 @@ Total tables: **56**
 | `occurred_at` | `TEXT` | NOT NULL | Timestamp field |
 | `device_id` | `TEXT` | NOT NULL | Reference to related entity |
 | `sync_id` | `TEXT` | NOT NULL UNIQUE | Cross-device immutable row identity |
+
+## Ungrouped
+
+- `media_assets`
+- `product_groups`
+- `product_relationships`
+- `product_reviews`
+- `app_logs`

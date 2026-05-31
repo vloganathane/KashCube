@@ -51,9 +51,10 @@ class PdfLayoutEngine {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: template.pageFormat,
+        theme: _themeFor(template),
         margin: template.isThermal
             ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
-            : const pw.EdgeInsets.all(32),
+            : pw.EdgeInsets.all(template.pageMargin),
         build: (ctx) => template.isThermal
             ? _buildThermalContent(data, fmt)
             : _buildContent(data, template, fmt),
@@ -79,9 +80,10 @@ class PdfLayoutEngine {
     pdf.addPage(
       pw.MultiPage(
         pageFormat: template.pageFormat,
+        theme: _themeFor(template),
         margin: template.isThermal
             ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
-            : const pw.EdgeInsets.all(32),
+            : pw.EdgeInsets.all(template.pageMargin),
         build: (ctx) => template.isThermal
             ? _buildThermalContent(data, fmt)
             : _buildContent(data, template, fmt),
@@ -115,6 +117,32 @@ class PdfLayoutEngine {
 
   // ── Document assembly ─────────────────────────────────────────────────────
 
+  pw.ThemeData _themeFor(DocumentTemplate template) {
+    switch (template.fontFamily) {
+      case PdfFontFamily.times:
+        return pw.ThemeData.withFont(
+          base: pw.Font.times(),
+          bold: pw.Font.timesBold(),
+          italic: pw.Font.timesItalic(),
+          boldItalic: pw.Font.timesBoldItalic(),
+        );
+      case PdfFontFamily.courier:
+        return pw.ThemeData.withFont(
+          base: pw.Font.courier(),
+          bold: pw.Font.courierBold(),
+          italic: pw.Font.courierOblique(),
+          boldItalic: pw.Font.courierBoldOblique(),
+        );
+      case PdfFontFamily.helvetica:
+        return pw.ThemeData.withFont(
+          base: pw.Font.helvetica(),
+          bold: pw.Font.helveticaBold(),
+          italic: pw.Font.helveticaOblique(),
+          boldItalic: pw.Font.helveticaBoldOblique(),
+        );
+    }
+  }
+
   List<pw.Widget> _buildContent(
     PdfDocumentData data,
     DocumentTemplate template,
@@ -124,11 +152,11 @@ class PdfLayoutEngine {
     // Minimal style keeps them separate.
     return [
       _buildHeaderAndTitle(data, template),
-      pw.SizedBox(height: 20),
+      pw.SizedBox(height: template.sectionSpacing),
       _buildParties(data, template),
-      pw.SizedBox(height: 20),
+      pw.SizedBox(height: template.sectionSpacing),
       _buildLineItemsTable(data, template, fmt),
-      pw.SizedBox(height: 16),
+      pw.SizedBox(height: template.sectionSpacing * 0.8),
       if (data.totals.hasGst) ...[
         _buildGstSummaryTable(data, fmt),
         pw.SizedBox(height: 8),
@@ -138,7 +166,7 @@ class PdfLayoutEngine {
         pw.SizedBox(height: 16),
         _buildTransport(data.transport!),
       ],
-      pw.SizedBox(height: 24),
+      pw.SizedBox(height: template.sectionSpacing * 1.2),
       _buildFooter(data),
     ];
   }
@@ -154,10 +182,7 @@ class PdfLayoutEngine {
   /// • Compact 8–10 pt type; no logo.
   /// • Dashed text dividers (fits any roll width).
   /// • Items split into name row + amount row for readability on narrow paper.
-  List<pw.Widget> _buildThermalContent(
-    PdfDocumentData data,
-    NumberFormat fmt,
-  ) {
+  List<pw.Widget> _buildThermalContent(PdfDocumentData data, NumberFormat fmt) {
     const ts8 = pw.TextStyle(fontSize: 8);
     final ts8b = pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold);
     final ts9b = pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold);
@@ -168,31 +193,25 @@ class PdfLayoutEngine {
 
     // helpers
     pw.Widget divider() => pw.Center(
-          child: pw.Text(dash, style: ts8.copyWith(color: _muted)),
-        );
+      child: pw.Text(dash, style: ts8.copyWith(color: _muted)),
+    );
 
     pw.Widget kv(
       String label,
       String value, {
       bool bold = false,
       double fontSize = 8,
-    }) =>
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(label,
-                style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
-            pw.Text(value,
-                style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
-          ],
-        );
+    }) => pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(label, style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
+        pw.Text(value, style: bold ? ts8b.copyWith(fontSize: fontSize) : ts8),
+      ],
+    );
 
-    final totalCgst =
-        totals.gstRows.fold<double>(0.0, (s, r) => s + r.cgst);
-    final totalSgst =
-        totals.gstRows.fold<double>(0.0, (s, r) => s + r.sgst);
-    final totalIgst =
-        totals.gstRows.fold<double>(0.0, (s, r) => s + r.igst);
+    final totalCgst = totals.gstRows.fold<double>(0.0, (s, r) => s + r.cgst);
+    final totalSgst = totals.gstRows.fold<double>(0.0, (s, r) => s + r.sgst);
+    final totalIgst = totals.gstRows.fold<double>(0.0, (s, r) => s + r.igst);
 
     final dateFmt = DateFormat('dd MMM yyyy');
 
@@ -223,7 +242,11 @@ class PdfLayoutEngine {
 
       // document meta
       pw.Center(
-        child: pw.Text(data.typeLabel, style: ts9b, textAlign: pw.TextAlign.center),
+        child: pw.Text(
+          data.typeLabel,
+          style: ts9b,
+          textAlign: pw.TextAlign.center,
+        ),
       ),
       kv('#:', data.docNumber),
       kv('Date:', dateFmt.format(data.issueDate)),
@@ -319,7 +342,7 @@ class PdfLayoutEngine {
                 pw.Text(
                   seller.name.isNotEmpty ? seller.name : 'Your Business',
                   style: pw.TextStyle(
-                    fontSize: 16,
+                    fontSize: t.bodyFontSize + 7,
                     fontWeight: pw.FontWeight.bold,
                     color: fg,
                   ),
@@ -328,21 +351,30 @@ class PdfLayoutEngine {
                   pw.SizedBox(height: 2),
                   pw.Text(
                     'GSTIN: ${seller.gstin}',
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
                 if (_addressLine(seller) != null) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
                     _addressLine(seller)!,
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
                 if (_contactLine(seller) != null) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
                     _contactLine(seller)!,
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
               ],
@@ -355,7 +387,11 @@ class PdfLayoutEngine {
         crossAxisAlignment: pw.CrossAxisAlignment.center,
         children: [
           if (logo != null) ...[
-            pw.Container(width: 48, height: 48, child: pw.Image(logo, fit: pw.BoxFit.contain)),
+            pw.Container(
+              width: 48,
+              height: 48,
+              child: pw.Image(logo, fit: pw.BoxFit.contain),
+            ),
             pw.SizedBox(width: 12),
           ],
           pw.Expanded(
@@ -365,7 +401,7 @@ class PdfLayoutEngine {
                 pw.Text(
                   seller.name.isNotEmpty ? seller.name : 'Your Business',
                   style: pw.TextStyle(
-                    fontSize: 16,
+                    fontSize: t.bodyFontSize + 7,
                     fontWeight: pw.FontWeight.bold,
                     color: fg,
                   ),
@@ -374,21 +410,30 @@ class PdfLayoutEngine {
                   pw.SizedBox(height: 2),
                   pw.Text(
                     'GSTIN: ${seller.gstin}',
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
                 if (_addressLine(seller) != null) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
                     _addressLine(seller)!,
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
                 if (_contactLine(seller) != null) ...[
                   pw.SizedBox(height: 2),
                   pw.Text(
                     _contactLine(seller)!,
-                    style: pw.TextStyle(fontSize: 9, color: fgMuted),
+                    style: pw.TextStyle(
+                      fontSize: t.bodyFontSize,
+                      color: fgMuted,
+                    ),
                   ),
                 ],
               ],
@@ -446,13 +491,17 @@ class PdfLayoutEngine {
           ),
         ],
         pw.SizedBox(height: 4),
-        _statusBadge(data.statusLabel, data.statusColor,
-            onDark: isBanner),
+        _statusBadge(data.statusLabel, data.statusColor, onDark: isBanner),
       ],
     );
 
     if (isBanner) {
       // Banner: single coloured container with business on left, doc meta right
+      final headerChildren = <pw.Widget>[
+        pw.Expanded(child: businessCol),
+        pw.SizedBox(width: 16),
+        docMetaCol,
+      ];
       return pw.Container(
         padding: const pw.EdgeInsets.all(12),
         decoration: pw.BoxDecoration(
@@ -461,11 +510,9 @@ class PdfLayoutEngine {
         ),
         child: pw.Row(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Expanded(child: businessCol),
-            pw.SizedBox(width: 16),
-            docMetaCol,
-          ],
+          children: t.headerAlignment == PdfHeaderAlignment.left
+              ? headerChildren
+              : headerChildren.reversed.toList(),
         ),
       );
     } else {
@@ -480,14 +527,14 @@ class PdfLayoutEngine {
           pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
+            children: _alignedHeaderChildren(t, [
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
                     data.typeLabel,
                     style: pw.TextStyle(
-                      fontSize: 22,
+                      fontSize: t.titleFontSize,
                       fontWeight: pw.FontWeight.bold,
                       color: _dark,
                     ),
@@ -524,19 +571,30 @@ class PdfLayoutEngine {
                       style: const pw.TextStyle(fontSize: 12),
                     ),
                   pw.SizedBox(height: 4),
-                  _statusBadge(data.statusLabel, data.statusColor,
-                      onDark: false),
+                  _statusBadge(
+                    data.statusLabel,
+                    data.statusColor,
+                    onDark: false,
+                  ),
                 ],
               ),
-            ],
+            ]),
           ),
         ],
       );
     }
   }
 
-  pw.Widget _statusBadge(String label, PdfColor color,
-      {bool onDark = false}) {
+  List<pw.Widget> _alignedHeaderChildren(
+    DocumentTemplate template,
+    List<pw.Widget> children,
+  ) {
+    return template.headerAlignment == PdfHeaderAlignment.left
+        ? children
+        : children.reversed.toList();
+  }
+
+  pw.Widget _statusBadge(String label, PdfColor color, {bool onDark = false}) {
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: pw.BoxDecoration(
@@ -563,10 +621,12 @@ class PdfLayoutEngine {
 
   String? _contactLine(PdfPartyInfo p) {
     final phonePart = (p.phones != null && p.phones!.isNotEmpty)
-      ? p.phones!.join(', ')
-      : p.phone;
-    final parts = [if (phonePart != null && phonePart.isNotEmpty) 'Ph: $phonePart', p.email]
-      .where((e) => e != null && e.isNotEmpty);
+        ? p.phones!.join(', ')
+        : p.phone;
+    final parts = [
+      if (phonePart != null && phonePart.isNotEmpty) 'Ph: $phonePart',
+      p.email,
+    ].where((e) => e != null && e.isNotEmpty);
     return parts.isEmpty ? null : parts.join(' | ');
   }
 
@@ -581,19 +641,26 @@ class PdfLayoutEngine {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(
-              child:
-                  _partyBox('From', _partyLines(data.seller, includeEmail: false))),
+            child: _partyBox(
+              'From',
+              _partyLines(data.seller, includeEmail: false),
+            ),
+          ),
           pw.SizedBox(width: 12),
           pw.Expanded(
-              child:
-                  _partyBox('To', _partyLines(data.buyer, includeEmail: false))),
+            child: _partyBox(
+              'To',
+              _partyLines(data.buyer, includeEmail: false),
+            ),
+          ),
         ],
       );
     }
 
     // Invoice / Quote: left = buyer block, right = GST metadata
-    final billToLabel =
-        data.type == PdfDocumentType.invoice ? 'BILL TO' : 'QUOTE FOR';
+    final billToLabel = data.type == PdfDocumentType.invoice
+        ? 'BILL TO'
+        : 'QUOTE FOR';
 
     // Build the buyer/billTo column (plain text style)
     pw.Widget buyerBlock = pw.Column(
@@ -608,19 +675,18 @@ class PdfLayoutEngine {
           ),
         ),
         pw.SizedBox(height: 8),
-        ..._partyLines(data.buyer, includeEmail: true)
-            .asMap()
-            .entries
-            .map((e) => pw.Text(
-                  e.value,
-                  style: pw.TextStyle(
-                    fontSize: e.key == 0 ? 14 : 10,
-                    fontWeight: e.key == 0
-                        ? pw.FontWeight.bold
-                        : pw.FontWeight.normal,
-                    color: e.key == 0 ? _dark : _muted,
-                  ),
-                )),
+        ..._partyLines(data.buyer, includeEmail: true).asMap().entries.map(
+          (e) => pw.Text(
+            e.value,
+            style: pw.TextStyle(
+              fontSize: e.key == 0 ? 14 : 10,
+              fontWeight: e.key == 0
+                  ? pw.FontWeight.bold
+                  : pw.FontWeight.normal,
+              color: e.key == 0 ? _dark : _muted,
+            ),
+          ),
+        ),
       ],
     );
 
@@ -631,9 +697,19 @@ class PdfLayoutEngine {
       leftSection = pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Expanded(child: _partyBox(billToLabel, _partyLines(data.buyer, includeEmail: false))),
+          pw.Expanded(
+            child: _partyBox(
+              billToLabel,
+              _partyLines(data.buyer, includeEmail: false),
+            ),
+          ),
           pw.SizedBox(width: 10),
-          pw.Expanded(child: _partyBox('SHIP TO', _partyLines(data.shipTo!, includeEmail: false))),
+          pw.Expanded(
+            child: _partyBox(
+              'SHIP TO',
+              _partyLines(data.shipTo!, includeEmail: false),
+            ),
+          ),
         ],
       );
     } else {
@@ -651,13 +727,13 @@ class PdfLayoutEngine {
     );
   }
 
-  List<String> _partyLines(PdfPartyInfo p,
-      {required bool includeEmail}) {
+  List<String> _partyLines(PdfPartyInfo p, {required bool includeEmail}) {
     return [
       p.name,
       if (p.gstin != null && p.gstin!.isNotEmpty) 'GSTIN: ${p.gstin}',
       if (p.address != null && p.address!.isNotEmpty) p.address!,
-      if ((p.phones != null && p.phones!.isNotEmpty) || (p.phone != null && p.phone!.isNotEmpty))
+      if ((p.phones != null && p.phones!.isNotEmpty) ||
+          (p.phone != null && p.phone!.isNotEmpty))
         'Ph: ${(p.phones != null && p.phones!.isNotEmpty) ? p.phones!.join(', ') : p.phone}',
       if (includeEmail && p.email != null && p.email!.isNotEmpty) p.email!,
     ];
@@ -676,13 +752,18 @@ class PdfLayoutEngine {
           pw.Text(
             title,
             style: pw.TextStyle(
-                fontSize: 9,
-                color: _muted,
-                fontWeight: pw.FontWeight.bold),
+              fontSize: 9,
+              color: _muted,
+              fontWeight: pw.FontWeight.bold,
+            ),
           ),
           pw.SizedBox(height: 4),
-          ...lines.map((l) =>
-              pw.Text(l, style: const pw.TextStyle(fontSize: 9, color: _dark))),
+          ...lines.map(
+            (l) => pw.Text(
+              l,
+              style: const pw.TextStyle(fontSize: 9, color: _dark),
+            ),
+          ),
         ],
       ),
     );
@@ -699,8 +780,7 @@ class PdfLayoutEngine {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          if (data.placeOfSupply != null &&
-              data.placeOfSupply!.isNotEmpty) ...[
+          if (data.placeOfSupply != null && data.placeOfSupply!.isNotEmpty) ...[
             _metaRow('Place of Supply', data.placeOfSupply!),
             pw.SizedBox(height: 4),
           ],
@@ -739,12 +819,12 @@ class PdfLayoutEngine {
           pw.TextSpan(
             text: '$label: ',
             style: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: _muted),
+              fontSize: 9,
+              fontWeight: pw.FontWeight.bold,
+              color: _muted,
+            ),
           ),
-          pw.TextSpan(
-              text: value, style: const pw.TextStyle(fontSize: 9)),
+          pw.TextSpan(text: value, style: const pw.TextStyle(fontSize: 9)),
         ],
       ),
     );
@@ -777,6 +857,7 @@ class PdfLayoutEngine {
       isDC: isDC,
       bg: headerBg,
       fg: headerFg,
+      template: t,
     );
 
     // Build data rows
@@ -785,7 +866,8 @@ class PdfLayoutEngine {
       final item = entry.value;
       return pw.TableRow(
         decoration: pw.BoxDecoration(
-            color: idx.isEven ? PdfColors.white : _rowAlt),
+          color: idx.isEven ? PdfColors.white : _rowAlt,
+        ),
         children: _buildItemCells(
           item,
           idx: idx,
@@ -795,6 +877,7 @@ class PdfLayoutEngine {
           hasUnit: hasUnit,
           isDC: isDC,
           fmt: fmt,
+          template: t,
         ),
       );
     }).toList();
@@ -810,9 +893,11 @@ class PdfLayoutEngine {
     // Gather text content per column (headers + each row)
     final colsText = List.generate(colCount, (_) => <String>[]);
     for (var c = 0; c < colCount; c++) {
-      colsText[c].add((headers.children[c] as pw.Padding)
-          .child // pw.Text
-          .toString());
+      colsText[c].add(
+        (headers.children[c] as pw.Padding)
+            .child // pw.Text
+            .toString(),
+      );
     }
 
     // Extract raw strings from items
@@ -820,13 +905,27 @@ class PdfLayoutEngine {
       final row = <String>[];
       // Build same sequence as _buildItemCells: idx, name+desc, maybe hsn, qty,...
       row.add(''); // idx placeholder (number width is small)
-      row.add(item.name + (item.description != null ? '\n${item.description}' : ''));
+      row.add(
+        item.name + (item.description != null ? '\n${item.description}' : ''),
+      );
       if (hasHsn) row.add(item.hsnCode ?? '');
-      row.add(item.qty == item.qty.truncateToDouble() ? item.qty.toStringAsFixed(0) : item.qty.toStringAsFixed(2));
+      row.add(
+        item.qty == item.qty.truncateToDouble()
+            ? item.qty.toStringAsFixed(0)
+            : item.qty.toStringAsFixed(2),
+      );
       if (hasUnit) row.add(item.unit ?? '');
       row.add(fmt.format(item.unitPrice.abs()));
-      if (hasTax) row.add(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—');
-      if (hasDiscount) row.add(item.discountPct > 0 ? '${item.discountPct.toStringAsFixed(1)}%' : '—');
+      if (hasTax) {
+        row.add(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—');
+      }
+      if (hasDiscount) {
+        row.add(
+          item.discountPct > 0
+              ? '${item.discountPct.toStringAsFixed(1)}%'
+              : '—',
+        );
+      }
       row.add(fmt.format(item.lineTotal.abs()));
 
       for (var c = 0; c < colCount; c++) {
@@ -835,7 +934,7 @@ class PdfLayoutEngine {
     }
 
     // Char width factor (approx points per character at the chosen font size)
-    const double charWidth = 4.5; // conservative estimate for font-size ~9
+    final charWidth = t.bodyFontSize * 0.5;
     // Min/max widths per column (points)
     const double minIndexW = 14;
     const double minNumericW = 26;
@@ -845,20 +944,27 @@ class PdfLayoutEngine {
     // Compute desired widths
     final desired = <double>[];
     for (var c = 0; c < colCount; c++) {
-      final maxLen = colsText[c].fold<int>(0, (p, s) => s.length > p ? s.length : p);
+      final maxLen = colsText[c].fold<int>(
+        0,
+        (p, s) => s.length > p ? s.length : p,
+      );
       desired.add(maxLen * charWidth + 12); // padding
     }
 
     // Determine page inner width (page width minus margins used in MultiPage)
     final pageWidth = t.pageFormat.width;
-    final horizontalMargin = t.isThermal ? (4 * PdfPageFormat.mm) : 32.0;
+    final horizontalMargin = t.isThermal
+        ? (4 * PdfPageFormat.mm)
+        : t.pageMargin;
     final innerWidth = pageWidth - horizontalMargin * 2;
 
     // Allocate widths with sensible clamps
     final columnWidths = <int, pw.TableColumnWidth>{};
     if (colCount >= 2) {
       // Index column
-      columnWidths[0] = pw.FixedColumnWidth(desired[0].clamp(minIndexW, minNumericW));
+      columnWidths[0] = pw.FixedColumnWidth(
+        desired[0].clamp(minIndexW, minNumericW),
+      );
 
       // Amount (last) tentative
       final lastIdx = colCount - 1;
@@ -867,7 +973,9 @@ class PdfLayoutEngine {
 
       // Other numeric columns fixed within range, build list
       for (var i = 2; i < lastIdx; i++) {
-        columnWidths[i] = pw.FixedColumnWidth(desired[i].clamp(minNumericW, maxNumericW));
+        columnWidths[i] = pw.FixedColumnWidth(
+          desired[i].clamp(minNumericW, maxNumericW),
+        );
       }
 
       // Remaining width goes to item/description column (index 1)
@@ -877,7 +985,11 @@ class PdfLayoutEngine {
         used += (entry.value as pw.FixedColumnWidth).width;
       }
       final remaining = innerWidth - used;
-      final itemW = remaining > 80 ? remaining : desired[1].clamp(80.0, innerWidth * 0.7);
+      final preferredItemW = innerWidth * t.itemColumnWidthPct / 100;
+      final itemW = preferredItemW.clamp(
+        80.0,
+        remaining > 80 ? remaining : innerWidth * 0.7,
+      );
       columnWidths[1] = pw.FixedColumnWidth(itemW);
     }
 
@@ -896,6 +1008,7 @@ class PdfLayoutEngine {
     required bool isDC,
     required PdfColor bg,
     required PdfColor fg,
+    required DocumentTemplate template,
   }) {
     final labels = <String>['#', 'Item / Description'];
     if (hasHsn) labels.add('HSN');
@@ -909,18 +1022,22 @@ class PdfLayoutEngine {
     return pw.TableRow(
       decoration: pw.BoxDecoration(color: bg),
       children: labels
-          .map((h) => pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(
-                    horizontal: 4, vertical: 4),
-                child: pw.Text(
-                  h,
-                  style: pw.TextStyle(
-                    fontSize: 9,
-                    fontWeight: pw.FontWeight.bold,
-                    color: fg,
-                  ),
+          .map(
+            (h) => pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 4,
+                vertical: 4,
+              ),
+              child: pw.Text(
+                h,
+                style: pw.TextStyle(
+                  fontSize: template.bodyFontSize,
+                  fontWeight: pw.FontWeight.bold,
+                  color: fg,
                 ),
-              ))
+              ),
+            ),
+          )
           .toList(),
     );
   }
@@ -934,37 +1051,47 @@ class PdfLayoutEngine {
     required bool hasUnit,
     required bool isDC,
     required NumberFormat fmt,
+    required DocumentTemplate template,
   }) {
     String fmtQty(double q) =>
         q == q.truncateToDouble() ? q.toStringAsFixed(0) : q.toStringAsFixed(2);
     String fmtRate(double r) => fmt.format(r.abs());
 
     final cells = <pw.Widget>[
-      _cell('${idx + 1}'),
-      _cellWidget(_itemNameWidget(item.name, item.description)),
-      if (hasHsn) _cell(item.hsnCode ?? ''),
-      _cell(fmtQty(item.qty)),
-      if (hasUnit) _cell(item.unit ?? ''),
-      _cell(fmtRate(item.unitPrice)),
+      _cell('${idx + 1}', fontSize: template.bodyFontSize),
+      _cellWidget(_itemNameWidget(item.name, item.description, template)),
+      if (hasHsn) _cell(item.hsnCode ?? '', fontSize: template.bodyFontSize),
+      _cell(fmtQty(item.qty), fontSize: template.bodyFontSize),
+      if (hasUnit) _cell(item.unit ?? '', fontSize: template.bodyFontSize),
+      _cell(fmtRate(item.unitPrice), fontSize: template.bodyFontSize),
       if (hasTax)
-        _cell(item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—'),
+        _cell(
+          item.taxPct > 0 ? '${item.taxPct.toStringAsFixed(1)}%' : '—',
+          fontSize: template.bodyFontSize,
+        ),
       if (hasDiscount)
         _cell(
-            item.discountPct > 0
-                ? '${item.discountPct.toStringAsFixed(1)}%'
-                : '—'),
-      _cell(fmt.format(item.lineTotal.abs()), bold: true),
+          item.discountPct > 0
+              ? '${item.discountPct.toStringAsFixed(1)}%'
+              : '—',
+          fontSize: template.bodyFontSize,
+        ),
+      _cell(
+        fmt.format(item.lineTotal.abs()),
+        bold: true,
+        fontSize: template.bodyFontSize,
+      ),
     ];
     return cells;
   }
 
-  pw.Widget _cell(String text, {bool bold = false}) {
+  pw.Widget _cell(String text, {bool bold = false, double fontSize = 9}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: 9,
+          fontSize: fontSize,
           color: _dark,
           fontWeight: bold ? pw.FontWeight.bold : null,
         ),
@@ -979,14 +1106,26 @@ class PdfLayoutEngine {
     );
   }
 
-  pw.Widget _itemNameWidget(String name, String? description) {
+  pw.Widget _itemNameWidget(
+    String name,
+    String? description,
+    DocumentTemplate template,
+  ) {
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(name, style: const pw.TextStyle(fontSize: 8.5, color: _dark)),
+        pw.Text(
+          name,
+          style: pw.TextStyle(fontSize: template.bodyFontSize, color: _dark),
+        ),
         if (description != null && description.isNotEmpty)
-          pw.Text(description,
-              style: const pw.TextStyle(fontSize: 7.5, color: _muted)),
+          pw.Text(
+            description,
+            style: pw.TextStyle(
+              fontSize: template.bodyFontSize - 1,
+              color: _muted,
+            ),
+          ),
       ],
     );
   }
@@ -1004,10 +1143,9 @@ class PdfLayoutEngine {
     final totIgst = rows.fold<double>(0, (s, r) => s + r.igst);
     final totGst = rows.fold<double>(0, (s, r) => s + r.total);
 
-    String fmtRate(double rate) =>
-        rate == rate.truncateToDouble()
-            ? rate.toStringAsFixed(0)
-            : rate.toStringAsFixed(1);
+    String fmtRate(double rate) => rate == rate.truncateToDouble()
+        ? rate.toStringAsFixed(0)
+        : rate.toStringAsFixed(1);
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.stretch,
@@ -1015,9 +1153,10 @@ class PdfLayoutEngine {
         pw.Text(
           'GST Summary',
           style: pw.TextStyle(
-              fontSize: 10,
-              fontWeight: pw.FontWeight.bold,
-              color: _muted),
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: _muted,
+          ),
         ),
         pw.SizedBox(height: 4),
         pw.Table(
@@ -1037,17 +1176,19 @@ class PdfLayoutEngine {
               ],
             ),
             // Detail rows
-            ...rows.map((r) => pw.TableRow(
-                  children: [
-                    _cell(r.codeLabel),
-                    _cell(fmt.format(r.taxableAmount.abs())),
-                    _cell('${fmtRate(r.gstPct)}%'),
-                    if (!isInterState) _cell(fmt.format(r.cgst.abs())),
-                    if (!isInterState) _cell(fmt.format(r.sgst.abs())),
-                    if (isInterState) _cell(fmt.format(r.igst.abs())),
-                    _cell(fmt.format(r.total.abs()), bold: true),
-                  ],
-                )),
+            ...rows.map(
+              (r) => pw.TableRow(
+                children: [
+                  _cell(r.codeLabel),
+                  _cell(fmt.format(r.taxableAmount.abs())),
+                  _cell('${fmtRate(r.gstPct)}%'),
+                  if (!isInterState) _cell(fmt.format(r.cgst.abs())),
+                  if (!isInterState) _cell(fmt.format(r.sgst.abs())),
+                  if (isInterState) _cell(fmt.format(r.igst.abs())),
+                  _cell(fmt.format(r.total.abs()), bold: true),
+                ],
+              ),
+            ),
             // Totals row
             pw.TableRow(
               decoration: const pw.BoxDecoration(color: PdfColors.grey200),
@@ -1073,10 +1214,9 @@ class PdfLayoutEngine {
     final totals = data.totals;
     final isDC = data.type == PdfDocumentType.deliveryChallan;
 
-    String fmtRate(double rate) =>
-        rate == rate.truncateToDouble()
-            ? rate.toStringAsFixed(0)
-            : rate.toStringAsFixed(1);
+    String fmtRate(double rate) => rate == rate.truncateToDouble()
+        ? rate.toStringAsFixed(0)
+        : rate.toStringAsFixed(1);
 
     // Delivery Challan: compact single-row total (ex-tax, no GST section).
     if (isDC) {
@@ -1093,12 +1233,17 @@ class PdfLayoutEngine {
           child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Text('Total Value (Ex-tax)',
-                  style: const pw.TextStyle(fontSize: 10, color: _dark)),
+              pw.Text(
+                'Total Value (Ex-tax)',
+                style: const pw.TextStyle(fontSize: 10, color: _dark),
+              ),
               pw.Text(
                 fmt.format(totals.grandTotal.abs()),
-                style:
-                    pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: _dark),
+                style: pw.TextStyle(
+                  fontSize: 10,
+                  fontWeight: pw.FontWeight.bold,
+                  color: _dark,
+                ),
               ),
             ],
           ),
@@ -1117,21 +1262,33 @@ class PdfLayoutEngine {
             pw.Divider(color: _divider),
             if (totals.gstRows.isEmpty)
               _totalsRow(
-                  totals.isInterState ? 'IGST' : 'CGST + SGST', 0, fmt,
-                  isSmall: true)
+                totals.isInterState ? 'IGST' : 'CGST + SGST',
+                0,
+                fmt,
+                isSmall: true,
+              )
             else
               for (final r in totals.gstRows) ...[
                 if (totals.isInterState)
                   _totalsRow(
-                      'IGST @${fmtRate(r.gstPct)}%', r.igst, fmt,
-                      isSmall: true)
+                    'IGST @${fmtRate(r.gstPct)}%',
+                    r.igst,
+                    fmt,
+                    isSmall: true,
+                  )
                 else ...[
                   _totalsRow(
-                      'CGST @${fmtRate(r.gstPct / 2)}%', r.cgst, fmt,
-                      isSmall: true),
+                    'CGST @${fmtRate(r.gstPct / 2)}%',
+                    r.cgst,
+                    fmt,
+                    isSmall: true,
+                  ),
                   _totalsRow(
-                      'SGST @${fmtRate(r.gstPct / 2)}%', r.sgst, fmt,
-                      isSmall: true),
+                    'SGST @${fmtRate(r.gstPct / 2)}%',
+                    r.sgst,
+                    fmt,
+                    isSmall: true,
+                  ),
                 ],
               ],
             pw.Divider(color: _muted),
@@ -1140,16 +1297,34 @@ class PdfLayoutEngine {
             if (totals.insurance > 0)
               _totalsRow('Insurance', totals.insurance, fmt, isSmall: true),
             if (totals.packing > 0)
-              _totalsRow('Packing & Forwarding', totals.packing, fmt,
-                  isSmall: true),
-            _totalsRow('Total', totals.grandTotal, fmt,
-                isBold: true, isLarge: true),
+              _totalsRow(
+                'Packing & Forwarding',
+                totals.packing,
+                fmt,
+                isSmall: true,
+              ),
+            _totalsRow(
+              'Total',
+              totals.grandTotal,
+              fmt,
+              isBold: true,
+              isLarge: true,
+            ),
             if (totals.hasPayment) ...[
               pw.SizedBox(height: 8),
-              _totalsRow('Paid', totals.paidAmount, fmt,
-                  color: PdfColors.green700),
-              _totalsRow('Balance Due', totals.balanceDue, fmt,
-                  isBold: true, color: PdfColors.red700),
+              _totalsRow(
+                'Paid',
+                totals.paidAmount,
+                fmt,
+                color: PdfColors.green700,
+              ),
+              _totalsRow(
+                'Balance Due',
+                totals.balanceDue,
+                fmt,
+                isBold: true,
+                color: PdfColors.red700,
+              ),
             ],
           ],
         ),
@@ -1175,8 +1350,7 @@ class PdfLayoutEngine {
             label,
             style: pw.TextStyle(
               fontSize: isLarge ? 14 : 12,
-              fontWeight:
-                  isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
               color: color ?? (isSmall ? _muted : _dark),
             ),
           ),
@@ -1184,8 +1358,7 @@ class PdfLayoutEngine {
             fmt.format(amount.abs()),
             style: pw.TextStyle(
               fontSize: isLarge ? 16 : 12,
-              fontWeight:
-                  isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
               color: color ?? _dark,
             ),
           ),
@@ -1226,31 +1399,40 @@ class PdfLayoutEngine {
           pw.Text(
             'Transport Details',
             style: pw.TextStyle(
-                fontSize: 9,
-                fontWeight: pw.FontWeight.bold,
-                color: _muted),
+              fontSize: 9,
+              fontWeight: pw.FontWeight.bold,
+              color: _muted,
+            ),
           ),
           pw.SizedBox(height: 6),
           pw.Wrap(
             children: entries.entries
-                .map((e) => pw.Container(
-                      width: 140,
-                      margin: const pw.EdgeInsets.only(bottom: 4, right: 8),
-                      child: pw.RichText(
-                        text: pw.TextSpan(children: [
+                .map(
+                  (e) => pw.Container(
+                    width: 140,
+                    margin: const pw.EdgeInsets.only(bottom: 4, right: 8),
+                    child: pw.RichText(
+                      text: pw.TextSpan(
+                        children: [
                           pw.TextSpan(
                             text: '${e.key}: ',
                             style: const pw.TextStyle(
-                                fontSize: 9, color: _muted),
+                              fontSize: 9,
+                              color: _muted,
+                            ),
                           ),
                           pw.TextSpan(
                             text: e.value,
                             style: const pw.TextStyle(
-                                fontSize: 9, color: _dark),
+                              fontSize: 9,
+                              color: _dark,
+                            ),
                           ),
-                        ]),
+                        ],
                       ),
-                    ))
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -1299,24 +1481,24 @@ class PdfLayoutEngine {
                       pw.Text(
                         'Declaration',
                         style: pw.TextStyle(
-                            fontSize: 9,
-                            fontWeight: pw.FontWeight.bold,
-                            color: _muted),
+                          fontSize: 9,
+                          fontWeight: pw.FontWeight.bold,
+                          color: _muted,
+                        ),
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
                         'We declare that this invoice is true and correct and '
                         'the goods are being dispatched as per the details '
                         'mentioned above.',
-                        style: const pw.TextStyle(
-                            fontSize: 8, color: _muted),
+                        style: const pw.TextStyle(fontSize: 8, color: _muted),
                       ),
-                      if (data.notes != null &&
-                          data.notes!.isNotEmpty) ...[
+                      if (data.notes != null && data.notes!.isNotEmpty) ...[
                         pw.SizedBox(height: 6),
-                        pw.Text('Notes: ${data.notes}',
-                            style: const pw.TextStyle(
-                                fontSize: 8, color: _dark)),
+                        pw.Text(
+                          'Notes: ${data.notes}',
+                          style: const pw.TextStyle(fontSize: 8, color: _dark),
+                        ),
                       ],
                     ],
                   ),
@@ -1336,16 +1518,18 @@ class PdfLayoutEngine {
                     pw.Text(
                       'For ${data.seller.name}',
                       style: pw.TextStyle(
-                          fontSize: 8,
-                          fontWeight: pw.FontWeight.bold,
-                          color: _dark),
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: _dark,
+                      ),
                     ),
                     pw.SizedBox(height: 32),
                     pw.Container(height: 1, color: _dark),
                     pw.SizedBox(height: 4),
-                    pw.Text('Authorised Signatory',
-                        style: const pw.TextStyle(
-                            fontSize: 7, color: _muted)),
+                    pw.Text(
+                      'Authorised Signatory',
+                      style: const pw.TextStyle(fontSize: 7, color: _muted),
+                    ),
                   ],
                 ),
               ),
@@ -1356,10 +1540,7 @@ class PdfLayoutEngine {
 
         // Footer note (thank you / validity sentence)
         if (data.footerNote.isNotEmpty)
-          pw.Text(
-            data.footerNote,
-            style: const pw.TextStyle(fontSize: 12),
-          ),
+          pw.Text(data.footerNote, style: const pw.TextStyle(fontSize: 12)),
 
         // Terms & conditions
         if (data.termsAndConditions != null &&
@@ -1401,7 +1582,8 @@ class PdfLayoutEngine {
                       decoration: pw.BoxDecoration(
                         border: pw.Border.all(color: _divider, width: 0.5),
                         borderRadius: const pw.BorderRadius.all(
-                            pw.Radius.circular(4)),
+                          pw.Radius.circular(4),
+                        ),
                       ),
                       child: pw.Image(
                         pw.MemoryImage(data.upiQrBytes!),
@@ -1449,7 +1631,10 @@ class PdfLayoutEngine {
           ),
         ],
 
-        if (data.showFreeWatermark) ...[pw.SizedBox(height: 10), _buildFreeWatermarkBanner()],
+        if (data.showFreeWatermark) ...[
+          pw.SizedBox(height: 10),
+          _buildFreeWatermarkBanner(),
+        ],
         pw.SizedBox(height: 8),
         pw.Row(
           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -1480,10 +1665,7 @@ class PdfLayoutEngine {
       padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       decoration: pw.BoxDecoration(
         color: PdfColor.fromHex('#FFF8E1'),
-        border: pw.Border.all(
-          color: PdfColor.fromHex('#FFC107'),
-          width: 0.5,
-        ),
+        border: pw.Border.all(color: PdfColor.fromHex('#FFC107'), width: 0.5),
         borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
       ),
       child: pw.Row(

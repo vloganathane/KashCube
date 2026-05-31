@@ -446,8 +446,11 @@ class _AppShellState extends ConsumerState<AppShell> {
         if (didPop) return;
         final tabNav = _tabNavKeys[currentIndex].currentState;
         if (tabNav != null && tabNav.canPop()) {
-          tabNav.pop();
-        } else {
+          tabNav.maybePop();
+        } else if (!kIsWeb && Platform.isAndroid) {
+          // Android back at the root minimizes the app. Other platforms
+          // handle window/app lifecycle themselves; requesting a system pop
+          // there can empty a nested tab navigator during a desktop rebuild.
           SystemNavigator.pop();
         }
       },

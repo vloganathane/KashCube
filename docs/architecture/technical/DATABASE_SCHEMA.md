@@ -847,6 +847,10 @@ INSERT INTO schema_version (version, description) VALUES
 (1, 'Initial schema with transactions, credits, loans');
 ```
 
+Current runtime schema version: `94`. Version `94` adds advanced PDF template
+layout fields to `document_templates`: font family, body/title sizes, page
+margin, section spacing, item-column width percentage, and header alignment.
+
 ---
 
 **Next Document:** [SMS Parsing Specification](./SMS_PARSING_SPEC.md)

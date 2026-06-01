@@ -1,3 +1,24 @@
+# Makefile: helper targets for building the Windows installer
+
+SHELL := powershell.exe
+
+# Variables (override on command line: `make installer-windows VERSION=1.2.3 SIGN=1 PFX=path PFXPASS=secret`)
+VERSION ?=
+SIGN ?=0
+PFX ?=
+PFXPASS ?=
+TIMESTAMP ?=http://timestamp.digicert.com
+
+.PHONY: installer-windows
+installer-windows:
+	@echo Building Windows installer...
+	@if ($$env:OS -ne "Windows_NT") { Write-Host "This target is intended to run on Windows."; exit 1 }
+	@powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build_windows_installer.ps1 \
+		$(if $(VERSION),-Version $(VERSION)) \
+		$(if $(filter 1,$(SIGN)),-Sign) \
+		$(if $(PFX),-PfxPath "$(PFX)") \
+		$(if $(PFXPASS),-PfxPassword "$(PFXPASS)") \
+		-TimestampUrl "$(TIMESTAMP)"
 .PHONY: apk apk-universal apk-install apk-aab db-inventory db-inventory-check
 
 # ── Android release builds ───────────────────────────────────────────────────

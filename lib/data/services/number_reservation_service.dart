@@ -45,6 +45,7 @@ class NumberReservationService {
     required String prefix,
     int count = 1,
     int padWidth = 4,
+    int configuredStartSeq = 1,
   }) async {
     assert(count >= 1);
 
@@ -58,30 +59,27 @@ class NumberReservationService {
         limit: 1,
       );
 
-      int startSeq;
+      final minStartSeq = configuredStartSeq > 0 ? configuredStartSeq : 1;
+      late final int startSeq;
 
       if (rows.isEmpty || rows.first['prefix'] as String != prefix) {
-        // First use in this FY or FY rollover → start fresh at 1.
-        startSeq = 1;
+        // First use in this FY or FY rollover → start at the configured base.
+        startSeq = minStartSeq;
         final now = DateTime.now().toIso8601String();
-        await txn.insert(
-          'invoice_number_cursors',
-          {
-            'doc_type': docType,
-            'prefix': prefix,
-            'last_seq': startSeq + count - 1,
-            'updated_at': now,
-          },
-          conflictAlgorithm: ConflictAlgorithm.replace,
-        );
+        await txn.insert('invoice_number_cursors', {
+          'doc_type': docType,
+          'prefix': prefix,
+          'last_seq': startSeq + count - 1,
+          'updated_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       } else {
         final lastSeq = rows.first['last_seq'] as int;
-        startSeq = lastSeq + 1;
+        startSeq = lastSeq + 1 < minStartSeq ? minStartSeq : lastSeq + 1;
         await txn.update(
           'invoice_number_cursors',
           {
             'prefix': prefix,
-            'last_seq': lastSeq + count,
+            'last_seq': startSeq + count - 1,
             'updated_at': DateTime.now().toIso8601String(),
           },
           where: 'doc_type = ?',
@@ -90,11 +88,58 @@ class NumberReservationService {
       }
 
       for (int i = 0; i < count; i++) {
-        assigned.add('$prefix${(startSeq + i).toString().padLeft(padWidth, '0')}');
+        assigned.add(
+          '$prefix${(startSeq + i).toString().padLeft(padWidth, '0')}',
+        );
       }
     });
 
     return assigned;
+  }
+
+  /// Ensures the stored cursor is at least [startSeq] for the current prefix.
+  ///
+  /// This is used when a business updates the starting number in settings.
+  /// It never moves the cursor backward.
+  Future<void> syncCursor(
+    Database db, {
+    required String docType,
+    required String prefix,
+    required int startSeq,
+  }) async {
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'invoice_number_cursors',
+        where: 'doc_type = ?',
+        whereArgs: [docType],
+        limit: 1,
+      );
+
+      final desiredLastSeq = startSeq - 1;
+      if (rows.isEmpty || rows.first['prefix'] as String != prefix) {
+        await txn.insert('invoice_number_cursors', {
+          'doc_type': docType,
+          'prefix': prefix,
+          'last_seq': desiredLastSeq,
+          'updated_at': DateTime.now().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+        return;
+      }
+
+      final currentLastSeq = rows.first['last_seq'] as int;
+      if (currentLastSeq >= desiredLastSeq) return;
+
+      await txn.update(
+        'invoice_number_cursors',
+        {
+          'prefix': prefix,
+          'last_seq': desiredLastSeq,
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'doc_type = ?',
+        whereArgs: [docType],
+      );
+    });
   }
 
   // ── Deferred path ─────────────────────────────────────────────────────────
@@ -148,7 +193,8 @@ class NumberReservationService {
     required String docTypeForFormat,
     String? invoiceTypeFilter,
   }) async {
-    String whereClause = '$numberColumn IS NULL AND pending_number_since IS NOT NULL';
+    String whereClause =
+        '$numberColumn IS NULL AND pending_number_since IS NOT NULL';
     List<dynamic> whereArgs = [];
     if (invoiceTypeFilter != null) {
       whereClause += ' AND invoice_type = ?';
@@ -175,11 +221,16 @@ class NumberReservationService {
       final fy = await fyService.getFiscalYearFor(date);
       final format = await _formatForDocType(fyService, docTypeForFormat);
       final prefix = fyService.computePrefix(format, fy);
+      final startSeq = await _startSequenceForDocType(
+        fyService,
+        docTypeForFormat,
+      );
 
       final numbers = await reserveNext(
         db,
         docType: docTypeForFormat,
         prefix: prefix,
+        configuredStartSeq: startSeq,
       );
       final number = numbers.first;
 
@@ -213,6 +264,22 @@ class NumberReservationService {
         return await fyService.challanNoFormat;
       default:
         return 'DOC-{YY}-{YY+1}-{SEQ}';
+    }
+  }
+
+  Future<int> _startSequenceForDocType(
+    FiscalYearService fyService,
+    String docType,
+  ) async {
+    switch (docType) {
+      case 'invoice':
+        return fyService.invoiceNoStartSeq;
+      case 'quote':
+        return fyService.quoteNoStartSeq;
+      case 'dc':
+        return fyService.challanNoStartSeq;
+      default:
+        return 1;
     }
   }
 }

@@ -20,6 +20,7 @@ import 'profile_screen.dart';
 import 'businesses_screen.dart';
 import 'unit_types_screen.dart';
 import 'document_terms_screen.dart';
+import 'document_numbering_screen.dart';
 import 'manage_users_screen.dart';
 import 'my_personal_card_screen.dart';
 import 'encrypted_backup_screen.dart';
@@ -376,6 +377,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const DocumentTermsScreen()),
+        ),
+      ),
+      SettingItem(
+        title: 'Document Numbering',
+        subtitle: 'Invoice, quote & challan patterns',
+        icon: Icons.tag_outlined,
+        sectionLabel: 'Business Mode',
+        keywords: ['number', 'numbering', 'invoice', 'quote', 'challan'],
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DocumentNumberingScreen()),
         ),
       ),
       SettingItem(
@@ -1006,6 +1018,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                       ),
                                     ),
                                   ),
+                                  ListTile(
+                                    leading: const Icon(Icons.tag_outlined),
+                                    title: const Text('Document Numbering'),
+                                    subtitle: const Text(
+                                      'Invoice, quote & challan patterns',
+                                    ),
+                                    trailing: const Icon(Icons.chevron_right),
+                                    onTap: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const DocumentNumberingScreen(),
+                                      ),
+                                    ),
+                                  ),
                                   Consumer(
                                     builder: (context, ref, _) {
                                       final template = ref.watch(
@@ -1456,6 +1483,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ctx,
                     MaterialPageRoute(
                       builder: (_) => const DocumentTermsScreen(),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.tag_outlined),
+                  title: const Text('Document Numbering'),
+                  subtitle: const Text('Invoice, quote & challan patterns'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.push(
+                    ctx,
+                    MaterialPageRoute(
+                      builder: (_) => const DocumentNumberingScreen(),
                     ),
                   ),
                 ),

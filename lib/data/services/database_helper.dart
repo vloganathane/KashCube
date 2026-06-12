@@ -4266,6 +4266,10 @@ class DatabaseHelper {
       'fiscal_year_start_day': '1',
       'invoice_no_format': 'INV-{YY}-{YY+1}-{SEQ}',
       'quote_no_format': 'QT-{YY}-{YY+1}-{SEQ}',
+      'challan_no_format': 'DC-{YY}-{YY+1}-{SEQ}',
+      'invoice_no_start_seq': '1',
+      'quote_no_start_seq': '1',
+      'challan_no_start_seq': '1',
       'auto_reset_invoice_no': '1',
       'last_fy_close_date': '',
       'current_fy_start': fyStart,
@@ -4310,7 +4314,7 @@ class DatabaseHelper {
     return DateTime(fyStartYear, 4, 1).toIso8601String().substring(0, 10);
   }
 
-  /// Seeds the nine built-in [document_templates] presets (4 layout + 5 industry).
+  /// Seeds the ten built-in [document_templates] presets (5 layout + 5 industry).
   /// Safe to call multiple times — uses INSERT OR IGNORE on the preset names.
   Future<void> _seedDocumentTemplatePresets(Database db) async {
     const now = '2026-01-01T00:00:00.000';
@@ -4320,6 +4324,18 @@ class DatabaseHelper {
         'based_on': 'classic',
         'accent_color_hex': '#1B5E20',
         'header_style': 'banner',
+        'show_logo': 1,
+        'amount_decimal_digits': 2,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Corporate Ledger',
+        'based_on': 'ledger',
+        'accent_color_hex': '#000000',
+        'header_style': 'minimal',
         'show_logo': 1,
         'amount_decimal_digits': 2,
         'page_size': 'a4',

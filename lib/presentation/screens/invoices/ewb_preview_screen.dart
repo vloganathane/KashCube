@@ -24,9 +24,11 @@ class EwbPreviewScreen extends StatefulWidget {
   });
 
   final EwbExportResult result;
+
   /// Document number shown in the title bar and share subject
   /// (e.g. invoice number or challan number).
   final String docNo;
+
   /// Transport details used to populate the transport card.
   final EwbTransportDetails transport;
 
@@ -50,8 +52,18 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
 
   String _fmt(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
@@ -73,9 +85,9 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
     final uri = Uri.parse(_portalUrl);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open browser')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open browser')));
       }
     }
   }
@@ -109,7 +121,9 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
           // ── Validity banner ───────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
             decoration: BoxDecoration(
               color: isExpired
                   ? theme.colorScheme.errorContainer
@@ -153,8 +167,7 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Transport Details',
-                      style: theme.textTheme.titleSmall),
+                  Text('Transport Details', style: theme.textTheme.titleSmall),
                   const SizedBox(height: AppSpacing.sm),
                   _DetailRow(
                     icon: Icons.local_shipping_outlined,
@@ -257,39 +270,49 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
               leading: const Icon(Icons.help_outline),
               title: const Text('How to upload JSON to GSTN portal'),
               childrenPadding: const EdgeInsets.fromLTRB(
-                  AppSpacing.base, 0, AppSpacing.base, AppSpacing.base),
+                AppSpacing.base,
+                0,
+                AppSpacing.base,
+                AppSpacing.base,
+              ),
               children: const [
                 _UploadStep(
                   step: 1,
-                  text: 'Tap "Share JSON" above to save the file to your '
+                  text:
+                      'Tap "Share JSON" above to save the file to your '
                       'device or WhatsApp / email it to yourself.',
                 ),
                 _UploadStep(
                   step: 2,
-                  text: 'Open the e-Way Bill portal '
+                  text:
+                      'Open the e-Way Bill portal '
                       '(ewaybillgst.gov.in) and log in with your '
                       'GSTIN and 2FA OTP.',
                 ),
                 _UploadStep(
                   step: 3,
-                  text: 'In the left menu go to:\n'
+                  text:
+                      'In the left menu go to:\n'
                       'e-Way Bill → Generate Bulk.',
                 ),
                 _UploadStep(
                   step: 4,
-                  text: 'Click "Choose File", select the JSON file '
+                  text:
+                      'Click "Choose File", select the JSON file '
                       '(e.g. EWB_INV-25-26-0001.json), then click '
                       '"Generate".',
                 ),
                 _UploadStep(
                   step: 5,
-                  text: 'Download the response sheet — it contains '
+                  text:
+                      'Download the response sheet — it contains '
                       'the EWB number(s). Note the number on your '
                       'invoice / challan.',
                 ),
                 _UploadStep(
                   step: 6,
-                  text: 'The EWB must accompany the goods during '
+                  text:
+                      'The EWB must accompany the goods during '
                       'transit. Print or share the EWB PDF from the '
                       'portal if needed.',
                 ),
@@ -302,12 +325,12 @@ class _EwbPreviewScreenState extends State<EwbPreviewScreen> {
   }
 
   static String _modeName(String code) => switch (code) {
-        '1' => 'Road',
-        '2' => 'Rail',
-        '3' => 'Air',
-        '4' => 'Ship / Water',
-        _ => code,
-      };
+    '1' => 'Road',
+    '2' => 'Rail',
+    '3' => 'Air',
+    '4' => 'Ship / Water',
+    _ => code,
+  };
 }
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -332,14 +355,18 @@ class _DetailRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.sm),
-          Text('$label  ',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+          Text(
+            '$label  ',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
           Expanded(
             child: Text(
               value,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w500),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
               textAlign: TextAlign.end,
             ),
           ),
@@ -382,9 +409,7 @@ class _UploadStep extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(text, style: theme.textTheme.bodySmall),
-          ),
+          Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
       ),
     );

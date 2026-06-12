@@ -4,9 +4,7 @@ import 'package:kash_cube/data/services/sync/security/sync_key_rotation_policy.d
 
 /// A fixed-clock policy wrapper for deterministic age tests in the checker.
 class _FixedPolicy extends DefaultSyncKeyRotationPolicy {
-  const _FixedPolicy({
-    super.minAcceptableVersion = 1,
-  });
+  const _FixedPolicy({super.minAcceptableVersion = 1});
 }
 
 Map<String, dynamic> _peerRow({
@@ -78,58 +76,69 @@ void main() {
     });
   });
 
-  group('SyncKeyRotationChecker — key_rotated_at takes precedence over paired_at', () {
-    test('uses key_rotated_at when present, ignoring paired_at age', () {
-      final now = DateTime(2026, 4, 3).toUtc();
-      // paired_at is 200 days ago — would be Required if used as reference
-      final pairedAt = now.subtract(const Duration(days: 200));
-      // key_rotated_at is 5 days ago — should return Ok
-      final rotatedAt = now.subtract(const Duration(days: 5));
+  group(
+    'SyncKeyRotationChecker — key_rotated_at takes precedence over paired_at',
+    () {
+      test('uses key_rotated_at when present, ignoring paired_at age', () {
+        final now = DateTime(2026, 4, 3).toUtc();
+        // paired_at is 200 days ago — would be Required if used as reference
+        final pairedAt = now.subtract(const Duration(days: 200));
+        // key_rotated_at is 5 days ago — should return Ok
+        final rotatedAt = now.subtract(const Duration(days: 5));
 
-      final checker = SyncKeyRotationChecker(
-        policy: const _FixedPolicy(),
-        clock: () => now,
-      );
+        final checker = SyncKeyRotationChecker(
+          policy: const _FixedPolicy(),
+          clock: () => now,
+        );
 
-      final result = checker.evaluatePeerRow(_peerRow(
-        pairedAt: pairedAt.toIso8601String(),
-        keyRotatedAt: rotatedAt.toIso8601String(),
-      ));
+        final result = checker.evaluatePeerRow(
+          _peerRow(
+            pairedAt: pairedAt.toIso8601String(),
+            keyRotatedAt: rotatedAt.toIso8601String(),
+          ),
+        );
 
-      expect(result.status, isA<SyncKeyRotationOk>());
-      expect(result.keyAgeDays, 5);
-    });
-  });
+        expect(result.status, isA<SyncKeyRotationOk>());
+        expect(result.keyAgeDays, 5);
+      });
+    },
+  );
 
   group('SyncKeyRotationChecker — key_version default for legacy rows', () {
-    test('row without key_version column uses version 1 (v85 migration default)', () {
-      final now = DateTime(2026, 4, 3).toUtc();
-      final checker = SyncKeyRotationChecker(
-        policy: const _FixedPolicy(minAcceptableVersion: 1),
-        clock: () => now,
-      );
+    test(
+      'row without key_version column uses version 1 (v85 migration default)',
+      () {
+        final now = DateTime(2026, 4, 3).toUtc();
+        final checker = SyncKeyRotationChecker(
+          policy: const _FixedPolicy(minAcceptableVersion: 1),
+          clock: () => now,
+        );
 
-      // No key_version key in the map (simulates pre-v85 row).
-      final row = <String, dynamic>{
-        'peer_identity_id': 'legacy-peer',
-        'paired_at': now.subtract(const Duration(days: 1)).toIso8601String(),
-      };
+        // No key_version key in the map (simulates pre-v85 row).
+        final row = <String, dynamic>{
+          'peer_identity_id': 'legacy-peer',
+          'paired_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+        };
 
-      final result = checker.evaluatePeerRow(row);
-      expect(result.keyVersion, 1);
-      expect(result.status, isA<SyncKeyRotationOk>());
-    });
+        final result = checker.evaluatePeerRow(row);
+        expect(result.keyVersion, 1);
+        expect(result.status, isA<SyncKeyRotationOk>());
+      },
+    );
 
-    test('version below minAcceptableVersion returns SyncKeyRotationRequired', () {
-      final now = DateTime(2026, 4, 3).toUtc();
-      final checker = SyncKeyRotationChecker(
-        policy: const _FixedPolicy(minAcceptableVersion: 2),
-        clock: () => now,
-      );
+    test(
+      'version below minAcceptableVersion returns SyncKeyRotationRequired',
+      () {
+        final now = DateTime(2026, 4, 3).toUtc();
+        final checker = SyncKeyRotationChecker(
+          policy: const _FixedPolicy(minAcceptableVersion: 2),
+          clock: () => now,
+        );
 
-      final result = checker.evaluatePeerRow(_peerRow(keyVersion: 1));
-      expect(result.status, isA<SyncKeyRotationRequired>());
-    });
+        final result = checker.evaluatePeerRow(_peerRow(keyVersion: 1));
+        expect(result.status, isA<SyncKeyRotationRequired>());
+      },
+    );
 
     test('version meeting minAcceptableVersion returns SyncKeyRotationOk', () {
       final now = DateTime(2026, 4, 3).toUtc();
@@ -167,9 +176,7 @@ void main() {
         clock: () => now,
       );
 
-      final result = checker.evaluatePeerRow(
-        _peerRow(pairedAt: 'not-a-date'),
-      );
+      final result = checker.evaluatePeerRow(_peerRow(pairedAt: 'not-a-date'));
       expect(result.keyAgeDays, 0);
       expect(result.status, isA<SyncKeyRotationOk>());
     });
@@ -181,9 +188,7 @@ void main() {
         clock: () => now,
       );
 
-      final row = <String, dynamic>{
-        'paired_at': now.toIso8601String(),
-      };
+      final row = <String, dynamic>{'paired_at': now.toIso8601String()};
       final result = checker.evaluatePeerRow(row);
       expect(result.peerIdentityId, '');
     });
@@ -198,9 +203,18 @@ void main() {
       );
 
       final rows = [
-        _peerRow(id: 'peer-1', pairedAt: now.subtract(const Duration(days: 5)).toIso8601String()),
-        _peerRow(id: 'peer-2', pairedAt: now.subtract(const Duration(days: 45)).toIso8601String()),
-        _peerRow(id: 'peer-3', pairedAt: now.subtract(const Duration(days: 100)).toIso8601String()),
+        _peerRow(
+          id: 'peer-1',
+          pairedAt: now.subtract(const Duration(days: 5)).toIso8601String(),
+        ),
+        _peerRow(
+          id: 'peer-2',
+          pairedAt: now.subtract(const Duration(days: 45)).toIso8601String(),
+        ),
+        _peerRow(
+          id: 'peer-3',
+          pairedAt: now.subtract(const Duration(days: 100)).toIso8601String(),
+        ),
       ];
 
       final results = checker.evaluateAll(rows);
@@ -223,19 +237,22 @@ void main() {
   });
 
   group('SyncKeyRotationResult fields', () {
-    test('keyAgeDays is computed from keyAgeSeconds truncated to whole days', () {
-      final now = DateTime(2026, 4, 3, 12, 0, 0).toUtc();
-      // 31 days and 8 hours → keyAgeDays should be 31 (truncated, not rounded)
-      final pairedAt = now.subtract(const Duration(days: 31, hours: 8));
-      final checker = SyncKeyRotationChecker(
-        policy: const _FixedPolicy(),
-        clock: () => now,
-      );
+    test(
+      'keyAgeDays is computed from keyAgeSeconds truncated to whole days',
+      () {
+        final now = DateTime(2026, 4, 3, 12, 0, 0).toUtc();
+        // 31 days and 8 hours → keyAgeDays should be 31 (truncated, not rounded)
+        final pairedAt = now.subtract(const Duration(days: 31, hours: 8));
+        final checker = SyncKeyRotationChecker(
+          policy: const _FixedPolicy(),
+          clock: () => now,
+        );
 
-      final result = checker.evaluatePeerRow(
-        _peerRow(pairedAt: pairedAt.toIso8601String()),
-      );
-      expect(result.keyAgeDays, 31);
-    });
+        final result = checker.evaluatePeerRow(
+          _peerRow(pairedAt: pairedAt.toIso8601String()),
+        );
+        expect(result.keyAgeDays, 31);
+      },
+    );
   });
 }

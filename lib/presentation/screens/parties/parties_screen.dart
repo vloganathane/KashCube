@@ -26,7 +26,6 @@ class PartiesScreen extends ConsumerStatefulWidget {
 class _PartiesScreenState extends ConsumerState<PartiesScreen> {
   PartyType? _typeFilter;
 
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
@@ -40,7 +39,10 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.parties),
+              ),
             ),
           ),
         ],
@@ -52,40 +54,45 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.xs,
+            ),
             child: Row(
-              children: [
-                _FilterChip(
-                  label: 'All',
-                  selected: _typeFilter == null,
-                  onTap: () => setState(() => _typeFilter = null),
-                ),
-                for (final type in PartyType.values)
-                  _FilterChip(
-                    label: type.label,
-                    selected: _typeFilter == type,
-                    color: _typeColor(type, colors),
-                    onTap: () =>
-                        setState(() => _typeFilter = type),
-                  ),
-              ].map((w) => Padding(
-                    padding:
-                        const EdgeInsets.only(right: AppSpacing.sm),
-                    child: w,
-                  )).toList(),
+              children:
+                  [
+                        _FilterChip(
+                          label: 'All',
+                          selected: _typeFilter == null,
+                          onTap: () => setState(() => _typeFilter = null),
+                        ),
+                        for (final type in PartyType.values)
+                          _FilterChip(
+                            label: type.label,
+                            selected: _typeFilter == type,
+                            color: _typeColor(type, colors),
+                            onTap: () => setState(() => _typeFilter = type),
+                          ),
+                      ]
+                      .map(
+                        (w) => Padding(
+                          padding: const EdgeInsets.only(right: AppSpacing.sm),
+                          child: w,
+                        ),
+                      )
+                      .toList(),
             ),
           ),
 
           // ── Party list ───────────────────────────────────────────────────
           Expanded(
             child: partiesAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (all) {
                 final filtered = all
-                    .where((p) =>
-                        _typeFilter == null || p.partyType == _typeFilter)
+                    .where(
+                      (p) => _typeFilter == null || p.partyType == _typeFilter,
+                    )
                     .toList();
 
                 if (filtered.isEmpty) {
@@ -108,7 +115,8 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
 
                 return ListView.builder(
                   padding: const EdgeInsets.only(
-                      bottom: AppSpacing.xxxl + AppSpacing.xl),
+                    bottom: AppSpacing.xxxl + AppSpacing.xl,
+                  ),
                   itemCount: filtered.length,
                   itemBuilder: (_, i) => _PartyTile(
                     party: filtered[i],
@@ -116,19 +124,19 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            Party360Screen(party: filtered[i]),
+                        builder: (_) => Party360Screen(party: filtered[i]),
                       ),
                     ).then((_) => ref.read(partiesProvider.notifier).load()),
-                    onEdit: () => _showAddEditSheet(context,
-                        existing: filtered[i]),
-                    onDelete: () =>
-                        _confirmDelete(context, filtered[i]),                    onShareQr: () => showVCardQrDialog(
+                    onEdit: () =>
+                        _showAddEditSheet(context, existing: filtered[i]),
+                    onDelete: () => _confirmDelete(context, filtered[i]),
+                    onShareQr: () => showVCardQrDialog(
                       context,
                       vcard: vCardFromParty(filtered[i]),
                       displayName: filtered[i].name,
                       subtitle: filtered[i].phoneNumber ?? filtered[i].email,
-                    ),                  ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -186,14 +194,17 @@ class _PartiesScreenState extends ConsumerState<PartiesScreen> {
       builder: (_) => AlertDialog(
         title: const Text('Remove party?'),
         content: Text(
-            '"${party.name}" will be removed. Existing transactions are not affected.'),
+          '"${party.name}" will be removed. Existing transactions are not affected.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () {
               Navigator.pop(context);
               if (party.id != null) {
@@ -235,8 +246,10 @@ class _PartyTile extends StatelessWidget {
     return ListTile(
       onTap: onTap,
       leading: CircleAvatar(
-        backgroundColor:
-            _typeColor(party.partyType, colors).withValues(alpha: 0.15),
+        backgroundColor: _typeColor(
+          party.partyType,
+          colors,
+        ).withValues(alpha: 0.15),
         child: Text(
           party.name.isNotEmpty ? party.name[0].toUpperCase() : '?',
           style: TextStyle(
@@ -245,19 +258,22 @@ class _PartyTile extends StatelessWidget {
           ),
         ),
       ),
-      title: Text(party.name,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        party.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               _TypeBadge(
-                  label: party.partyType.label,
-                  color: _typeColor(party.partyType, colors)),
+                label: party.partyType.label,
+                color: _typeColor(party.partyType, colors),
+              ),
               // Show Personal / Business context badge for lender & borrower
               if (party.partyType == PartyType.lender ||
-                  party.partyType == PartyType.borrower) ...[                
+                  party.partyType == PartyType.borrower) ...[
                 const SizedBox(width: AppSpacing.xs),
                 _TypeBadge(
                   label: party.partyContext == 'business'
@@ -270,12 +286,16 @@ class _PartyTile extends StatelessWidget {
               ],
               if (party.phoneNumber != null) ...[
                 const SizedBox(width: AppSpacing.xs),
-                Icon(Icons.phone_outlined,
-                    size: 12,
-                    color: Theme.of(context).colorScheme.outline),
+                Icon(
+                  Icons.phone_outlined,
+                  size: 12,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 const SizedBox(width: 2),
-                Text('+91 ${party.phoneNumber!}',
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '+91 ${party.phoneNumber!}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
               ],
             ],
           ),
@@ -309,13 +329,12 @@ class _PartyTile extends StatelessWidget {
                 color: netBalance > 0 ? colors.income : colors.expense,
               ),
             ),
-            Text('net',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.outline)),
+            Text(
+              'net',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
           ],
         ],
       ),
@@ -359,11 +378,14 @@ class _PartyTile extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete_outline,
-                  color: Theme.of(context).colorScheme.error),
-              title: Text('Remove',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.error)),
+              leading: Icon(
+                Icons.delete_outline,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(
+                'Remove',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 onDelete();
@@ -438,7 +460,9 @@ class _TypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.xs, vertical: 2),
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
@@ -472,16 +496,18 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.people_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.outlineVariant),
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
           const SizedBox(height: AppSpacing.md),
           Text(
             hasQuery
                 ? 'No contacts match'
                 : linkedBusinessName != null
-                    ? 'No contacts from $linkedBusinessName yet'
-                    : 'No contacts yet',
+                ? 'No contacts from $linkedBusinessName yet'
+                : 'No contacts yet',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: AppSpacing.sm),

@@ -11,10 +11,7 @@ class ContactsHubScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Contacts'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Contacts'), centerTitle: false),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
@@ -27,8 +24,7 @@ class ContactsHubScreen extends StatelessWidget {
                 subtitle: 'Customers & vendors',
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const PartiesScreen()),
+                  MaterialPageRoute(builder: (_) => const PartiesScreen()),
                 ),
               ),
             ],
@@ -53,7 +49,9 @@ class _HubSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(
-              left: AppSpacing.xs, bottom: AppSpacing.sm),
+            left: AppSpacing.xs,
+            bottom: AppSpacing.sm,
+          ),
           child: Text(
             title.toUpperCase(),
             style: context.textTheme.labelSmall?.copyWith(
@@ -109,16 +107,26 @@ class _HubTile extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: AppSpacing.iconMd),
       ),
-      title: Text(label,
-          style: context.textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle,
-          style: context.textTheme.bodySmall
-              ?.copyWith(color: context.colorScheme.outline)),
-      trailing: Icon(Icons.chevron_right,
-          color: context.colorScheme.outlineVariant),
+      title: Text(
+        label,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.colorScheme.outline,
+        ),
+      ),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: context.colorScheme.outlineVariant,
+      ),
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
     );
   }
 }

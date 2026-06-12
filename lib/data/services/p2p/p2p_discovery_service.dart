@@ -15,10 +15,10 @@ import '../../models/peer_device.dart';
 const _kServiceType = '_kashcube._tcp';
 
 /// TXT record key names embedded in the mDNS advertisement.
-const _kKeyIdentityId   = 'identity_id';
-const _kKeyDisplayName  = 'display_name';
+const _kKeyIdentityId = 'identity_id';
+const _kKeyDisplayName = 'display_name';
 const _kKeyBusinessName = 'business_name';
-const _kKeyVersion      = 'kc_version'; // for future protocol negotiation
+const _kKeyVersion = 'kc_version'; // for future protocol negotiation
 
 /// Manages mDNS broadcast (server role) and discovery (client role) for
 /// KashCube P2P LAN sync.
@@ -43,8 +43,8 @@ class P2pDiscoveryService {
   // entries that linger after the remote app is killed without sending a
   // mDNS goodbye packet.
   Timer? _stalenessTimer;
-  static const _kProbeInterval  = Duration(seconds: 30);
-  static const _kProbeTimeout   = Duration(seconds: 4);
+  static const _kProbeInterval = Duration(seconds: 30);
+  static const _kProbeTimeout = Duration(seconds: 4);
   static const _kProbeFailureThreshold = 3;
   static const _kLegacyScanDelay = Duration(seconds: 2);
   static const _kLegacyProbeTimeout = Duration(milliseconds: 900);
@@ -95,25 +95,25 @@ class P2pDiscoveryService {
     if (_startingBroadcast) return;
     _startingBroadcast = true;
     try {
-    await stopBroadcast();
+      await stopBroadcast();
 
-    final service = BonsoirService(
-      name: 'KashCube-$identityId',
-      type: _kServiceType,
-      port: port,
-      attributes: {
-        _kKeyIdentityId:   identityId,
-        _kKeyDisplayName:  displayName,
-        // ignore: use_null_aware_elements
-        if (businessName != null) _kKeyBusinessName: businessName,
-        _kKeyVersion: '1',
-      },
-    );
+      final service = BonsoirService(
+        name: 'KashCube-$identityId',
+        type: _kServiceType,
+        port: port,
+        attributes: {
+          _kKeyIdentityId: identityId,
+          _kKeyDisplayName: displayName,
+          // ignore: use_null_aware_elements
+          if (businessName != null) _kKeyBusinessName: businessName,
+          _kKeyVersion: '1',
+        },
+      );
 
-    _broadcast = BonsoirBroadcast(service: service);
-    await _broadcast!.ready;
-    await _broadcast!.start();
-    _logEvent('BROADCAST started  name="$displayName"  port=$port');
+      _broadcast = BonsoirBroadcast(service: service);
+      await _broadcast!.ready;
+      await _broadcast!.start();
+      _logEvent('BROADCAST started  name="$displayName"  port=$port');
     } finally {
       _startingBroadcast = false;
     }
@@ -141,37 +141,40 @@ class P2pDiscoveryService {
     if (_startingDiscovery) return;
     _startingDiscovery = true;
     try {
-    await stopDiscovery();
+      await stopDiscovery();
 
-    _discovery = BonsoirDiscovery(type: _kServiceType);
-    await _discovery!.ready;
+      _discovery = BonsoirDiscovery(type: _kServiceType);
+      await _discovery!.ready;
 
-    _discovery!.eventStream!.listen(
-      (event) => _handleEvent(event, localIdentityId, onTrusted),
-      onError: (e) => debugPrint('[P2P] Discovery error: $e'),
-    );
+      _discovery!.eventStream!.listen(
+        (event) => _handleEvent(event, localIdentityId, onTrusted),
+        onError: (e) => debugPrint('[P2P] Discovery error: $e'),
+      );
 
-    await _discovery!.start();
-    // Immediately emit the current (empty) peer list so StreamProvider
-    // subscribers exit the loading state even when no peers are nearby yet.
-    _emit();
-    _logEvent('DISCOVERY started  type=$_kServiceType');
+      await _discovery!.start();
+      // Immediately emit the current (empty) peer list so StreamProvider
+      // subscribers exit the loading state even when no peers are nearby yet.
+      _emit();
+      _logEvent('DISCOVERY started  type=$_kServiceType');
 
-    // Start the staleness prober.  Android NSD does not send a mDNS goodbye
-    // packet when the remote app is force-killed, so `discoveryServiceLost`
-    // never fires.  We compensate by probing each known peer's /hello every
-    // 30 seconds and evicting any that fail to respond.
-    _stalenessTimer?.cancel();
-    _stalenessTimer = Timer.periodic(_kProbeInterval, (_) => _probeAllPeers());
+      // Start the staleness prober.  Android NSD does not send a mDNS goodbye
+      // packet when the remote app is force-killed, so `discoveryServiceLost`
+      // never fires.  We compensate by probing each known peer's /hello every
+      // 30 seconds and evicting any that fail to respond.
+      _stalenessTimer?.cancel();
+      _stalenessTimer = Timer.periodic(
+        _kProbeInterval,
+        (_) => _probeAllPeers(),
+      );
 
-    // LocalSend-style fallback: if multicast yields no peers shortly after
-    // start, run a lightweight /24 HTTP probe on the default port.
-    _legacyScanTimer?.cancel();
-    _legacyScanTimer = Timer(_kLegacyScanDelay, () {
-      if (_peers.isEmpty) {
-        unawaited(_runLegacyHttpScan(localIdentityId, onTrusted));
-      }
-    });
+      // LocalSend-style fallback: if multicast yields no peers shortly after
+      // start, run a lightweight /24 HTTP probe on the default port.
+      _legacyScanTimer?.cancel();
+      _legacyScanTimer = Timer(_kLegacyScanDelay, () {
+        if (_peers.isEmpty) {
+          unawaited(_runLegacyHttpScan(localIdentityId, onTrusted));
+        }
+      });
     } finally {
       _startingDiscovery = false;
     }
@@ -236,12 +239,14 @@ class P2pDiscoveryService {
         final batch = targets.sublist(i, end);
 
         final results = await Future.wait(
-          batch.map((ip) => _probeLegacyTarget(
-                ip: ip,
-                localIdentityId: localIdentityId,
-                port: AppConstants.p2pPort,
-                onTrusted: onTrusted,
-              )),
+          batch.map(
+            (ip) => _probeLegacyTarget(
+              ip: ip,
+              localIdentityId: localIdentityId,
+              port: AppConstants.p2pPort,
+              onTrusted: onTrusted,
+            ),
+          ),
         );
 
         for (final peer in results.whereType<PeerDevice>()) {
@@ -273,8 +278,7 @@ class P2pDiscoveryService {
     required int port,
     required bool Function(String identityId)? onTrusted,
   }) async {
-    final client = HttpClient()
-      ..connectionTimeout = _kLegacyProbeTimeout;
+    final client = HttpClient()..connectionTimeout = _kLegacyProbeTimeout;
 
     try {
       final uri = Uri.parse('http://$ip:$port/discover');
@@ -365,21 +369,22 @@ class P2pDiscoveryService {
   }
 
   Future<void> _probePeer(String identityId, PeerDevice peer) async {
-    final client = HttpClient()
-      ..connectionTimeout = _kProbeTimeout;
+    final client = HttpClient()..connectionTimeout = _kProbeTimeout;
     try {
-      final uri     = Uri.parse('http://${peer.host}:${peer.port}/hello');
-      final request = await client.getUrl(uri)
-          .timeout(_kProbeTimeout);
-      final response = await request.close()
-          .timeout(_kProbeTimeout);
+      final uri = Uri.parse('http://${peer.host}:${peer.port}/hello');
+      final request = await client.getUrl(uri).timeout(_kProbeTimeout);
+      final response = await request.close().timeout(_kProbeTimeout);
       final body = await response
           .transform(const Utf8Decoder())
           .join()
           .timeout(_kProbeTimeout);
 
       if (response.statusCode >= 400) {
-        _evictStalePeer(identityId, peer, 'hello status ${response.statusCode}');
+        _evictStalePeer(
+          identityId,
+          peer,
+          'hello status ${response.statusCode}',
+        );
         return;
       }
 
@@ -421,7 +426,9 @@ class P2pDiscoveryService {
     if (_peers.remove(identityId) != null) {
       _probeFailureCounts.remove(identityId);
       _emit();
-      _logEvent('EVICTED stale peer  id=$identityId  name="${peer.displayName}"  reason=$reason');
+      _logEvent(
+        'EVICTED stale peer  id=$identityId  name="${peer.displayName}"  reason=$reason',
+      );
     }
   }
 
@@ -465,9 +472,9 @@ class P2pDiscoveryService {
     String localIdentityId,
     bool Function(String)? onTrusted,
   ) {
-    final attrs      = service.attributes;
+    final attrs = service.attributes;
     final identityId = attrs[_kKeyIdentityId];
-    if (identityId == null) return;        // malformed record
+    if (identityId == null) return; // malformed record
     if (identityId == localIdentityId) {
       _logEvent('SKIPPED self  id=$identityId');
       return;
@@ -482,25 +489,25 @@ class P2pDiscoveryService {
     if (InternetAddress.tryParse(rawHost) != null) {
       // Already an IP — store immediately.
       _storePeer(
-        service:      service,
-        identityId:   identityId,
-        host:         rawHost,
-        onTrusted:    onTrusted,
+        service: service,
+        identityId: identityId,
+        host: rawHost,
+        onTrusted: onTrusted,
       );
     } else {
       // Hostname — resolve to IP via mDNS/DNS, then store.
       // Store with the hostname first so the peer is visible while resolving.
       _storePeer(
-        service:    service,
+        service: service,
         identityId: identityId,
-        host:       rawHost,
-        onTrusted:  onTrusted,
+        host: rawHost,
+        onTrusted: onTrusted,
       );
       _resolveHostname(
-        service:    service,
+        service: service,
         identityId: identityId,
-        hostname:   rawHost,
-        onTrusted:  onTrusted,
+        hostname: rawHost,
+        onTrusted: onTrusted,
       );
     }
   }
@@ -512,18 +519,20 @@ class P2pDiscoveryService {
     required bool Function(String)? onTrusted,
   }) {
     final attrs = service.attributes;
-    final peer  = PeerDevice(
-      identityId:   identityId,
-      displayName:  attrs[_kKeyDisplayName] ?? service.name,
-      host:         host,
-      port:         service.port,
+    final peer = PeerDevice(
+      identityId: identityId,
+      displayName: attrs[_kKeyDisplayName] ?? service.name,
+      host: host,
+      port: service.port,
       businessName: attrs[_kKeyBusinessName],
-      isTrusted:    onTrusted?.call(identityId) ?? false,
-      lastSeenAt:   DateTime.now(),
+      isTrusted: onTrusted?.call(identityId) ?? false,
+      lastSeenAt: DateTime.now(),
     );
     _peers[identityId] = peer;
     _emit();
-    _logEvent('RESOLVED  id=$identityId  name="${peer.displayName}"  addr=$host:${service.port}  trusted=${peer.isTrusted}');
+    _logEvent(
+      'RESOLVED  id=$identityId  name="${peer.displayName}"  addr=$host:${service.port}  trusted=${peer.isTrusted}',
+    );
   }
 
   /// Performs an async DNS/mDNS lookup for [hostname] and, if successful,
@@ -536,8 +545,13 @@ class P2pDiscoveryService {
   }) async {
     try {
       // Strip trailing dot from mDNS FQDN ("foo.local." → "foo.local")
-      final lookup = hostname.endsWith('.') ? hostname.substring(0, hostname.length - 1) : hostname;
-      final addresses = await InternetAddress.lookup(lookup, type: InternetAddressType.IPv4);
+      final lookup = hostname.endsWith('.')
+          ? hostname.substring(0, hostname.length - 1)
+          : hostname;
+      final addresses = await InternetAddress.lookup(
+        lookup,
+        type: InternetAddressType.IPv4,
+      );
       if (addresses.isEmpty) return;
 
       final ip = addresses.first.address;
@@ -545,10 +559,10 @@ class P2pDiscoveryService {
       if (!_peers.containsKey(identityId)) return;
 
       _storePeer(
-        service:    service,
+        service: service,
         identityId: identityId,
-        host:       ip,
-        onTrusted:  onTrusted,
+        host: ip,
+        onTrusted: onTrusted,
       );
       _logEvent('RESOLVED-IP  id=$identityId  hostname=$hostname  ip=$ip');
     } catch (e) {
@@ -567,8 +581,9 @@ class P2pDiscoveryService {
   /// Records a diagnostic log entry, forwards it to [logStream], and
   /// calls [debugPrint] so it also appears in the IDE / adb logcat.
   void _logEvent(String message) {
-    final n  = DateTime.now();
-    final ts = '${n.hour.toString().padLeft(2, '0')}:'
+    final n = DateTime.now();
+    final ts =
+        '${n.hour.toString().padLeft(2, '0')}:'
         '${n.minute.toString().padLeft(2, '0')}:'
         '${n.second.toString().padLeft(2, '0')}';
     final entry = '$ts  $message';

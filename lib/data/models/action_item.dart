@@ -13,25 +13,17 @@ import 'lifecycle_info.dart';
 /// Source type of the action item.
 enum ActionItemType {
   invoice,
-  dues,        // credit (udhar)
-  bill,        // scheduled payment
+  dues, // credit (udhar)
+  bill, // scheduled payment
   loanEmi,
   leakingChain, // accepted quote / dispatched challan / completed booking with no invoice (E5)
 }
 
 /// Whether this is money the user should collect or pay.
-enum ActionItemDirection {
-  toCollect,
-  toPay,
-}
+enum ActionItemDirection { toCollect, toPay }
 
 /// Urgency bucket used for grouping.
-enum ActionUrgency {
-  overdue,
-  dueToday,
-  dueThisWeek,
-  dueThisMonth,
-}
+enum ActionUrgency { overdue, dueToday, dueThisWeek, dueThisMonth }
 
 // ── ActionItem ────────────────────────────────────────────────────────────────
 
@@ -85,8 +77,9 @@ class ActionItem {
   int get sortScore {
     double base;
     if (urgency == ActionUrgency.overdue) {
-      base = daysOverdue > 7 ? 100 + daysOverdue.toDouble()
-                             :  50 + daysOverdue.toDouble();
+      base = daysOverdue > 7
+          ? 100 + daysOverdue.toDouble()
+          : 50 + daysOverdue.toDouble();
     } else if (urgency == ActionUrgency.dueToday) {
       base = 40;
     } else if (urgency == ActionUrgency.dueThisWeek) {
@@ -95,9 +88,7 @@ class ActionItem {
     } else {
       base = 10;
     }
-    final amountBonus = amount > 0
-        ? math.log(amount) / math.ln10 * 3.0
-        : 0.0;
+    final amountBonus = amount > 0 ? math.log(amount) / math.ln10 * 3.0 : 0.0;
     return (base + amountBonus).round();
   }
 

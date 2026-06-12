@@ -9,8 +9,9 @@ import '../../domain/repositories/delivery_challan_repository.dart';
 
 // ── Repository ──────────────────────────────────────────────────────────────
 
-final deliveryChallanRepositoryProvider =
-    Provider<DeliveryChallanRepository>((ref) {
+final deliveryChallanRepositoryProvider = Provider<DeliveryChallanRepository>((
+  ref,
+) {
   return DeliveryChallanRepositoryImpl();
 });
 
@@ -66,10 +67,14 @@ class ChallansNotifier
   Future<DeliveryChallan> edit(DeliveryChallan challan) async {
     // Reverse previous lot + aggregate stock movements, then re-apply new items.
     if (challan.id != null) {
-      await LotAllocationService.instance
-          .reverseLotMovements('challan', challan.id!);
-      await InventoryService.instance
-          .reverseMovementsFor('challan', challan.id!);
+      await LotAllocationService.instance.reverseLotMovements(
+        'challan',
+        challan.id!,
+      );
+      await InventoryService.instance.reverseMovementsFor(
+        'challan',
+        challan.id!,
+      );
     }
     await _repo.update(challan, challan.items);
     for (final item in challan.items) {
@@ -117,21 +122,25 @@ class ChallansNotifier
 
 final challansProvider =
     StateNotifierProvider<ChallansNotifier, AsyncValue<List<DeliveryChallan>>>(
-  (ref) => ChallansNotifier(ref.read(deliveryChallanRepositoryProvider)),
-);
+      (ref) => ChallansNotifier(ref.read(deliveryChallanRepositoryProvider)),
+    );
 
 // ── Single challan ────────────────────────────────────────────────────────────
 
-final challanByIdProvider =
-    FutureProvider.family<DeliveryChallan?, int>((ref, id) async {
+final challanByIdProvider = FutureProvider.family<DeliveryChallan?, int>((
+  ref,
+  id,
+) async {
   ref.watch(challansProvider); // keep up to date when list changes
   return ref.read(deliveryChallanRepositoryProvider).getById(id);
 });
 
 /// Finds the Delivery Challan that was converted into a given invoice.
 /// Uses the in-memory list so no extra DB round-trip is needed.
-final challanByInvoiceIdProvider =
-    Provider.family<DeliveryChallan?, int>((ref, invoiceId) {
+final challanByInvoiceIdProvider = Provider.family<DeliveryChallan?, int>((
+  ref,
+  invoiceId,
+) {
   final all =
       ref.watch(challansProvider).whenOrNull(data: (list) => list) ?? [];
   try {
@@ -148,10 +157,13 @@ final challanByInvoiceIdProvider =
 
 // ── Filter ───────────────────────────────────────────────────────────────────
 
-final challanStatusFilterProvider = StateProvider<ChallanStatus?>((ref) => null);
+final challanStatusFilterProvider = StateProvider<ChallanStatus?>(
+  (ref) => null,
+);
 
-final filteredChallansProvider =
-    Provider<AsyncValue<List<DeliveryChallan>>>((ref) {
+final filteredChallansProvider = Provider<AsyncValue<List<DeliveryChallan>>>((
+  ref,
+) {
   final allAsync = ref.watch(challansProvider);
   final filter = ref.watch(challanStatusFilterProvider);
   return allAsync.whenData((list) {
@@ -179,14 +191,18 @@ final challanSummaryProvider = Provider<ChallanSummary>((ref) {
       ref.watch(challansProvider).whenOrNull(data: (list) => list) ?? [];
   return ChallanSummary(
     total: all.length,
-    dispatched:
-        all.where((c) => c.status == ChallanStatus.dispatched).length,
+    dispatched: all.where((c) => c.status == ChallanStatus.dispatched).length,
     draft: all.where((c) => c.status == ChallanStatus.draft).length,
   );
 });
 
 /// All delivery challans for a given party name (used by Party Document Ledger).
 final challansByCustomerProvider =
-    FutureProvider.family<List<DeliveryChallan>, String>((ref, customerName) async {
-  return ref.read(deliveryChallanRepositoryProvider).getByCustomer(customerName);
-});
+    FutureProvider.family<List<DeliveryChallan>, String>((
+      ref,
+      customerName,
+    ) async {
+      return ref
+          .read(deliveryChallanRepositoryProvider)
+          .getByCustomer(customerName);
+    });

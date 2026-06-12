@@ -1,9 +1,6 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_file/open_file.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_spacing.dart';
@@ -16,12 +13,17 @@ import '../../../data/models/booking.dart';
 import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/party.dart';
+import '../../../data/services/pdf_copy_info.dart';
 import '../../widgets/lifecycle_tag.dart';
 import '../../../data/models/quote.dart';
 import '../../../data/models/transaction.dart';
 import '../../../data/services/database_helper.dart';
 import '../../../data/services/eway_bill_service.dart';
 import '../../../data/services/invoice_pdf_service.dart';
+import '../../../data/services/pdf_print_service.dart';
+import '../../../data/services/pdf_download_request.dart';
+import '../../../data/services/web/pdf_download_stub.dart'
+    if (dart.library.html) '../../../data/services/web/pdf_download_web.dart';
 import '../../../data/services/payment_preferences_service.dart';
 import '../../providers/business_provider.dart';
 import '../../providers/booking_provider.dart';
@@ -33,6 +35,7 @@ import '../../../data/models/reminder_item.dart';
 import '../../widgets/payment_method_picker_bottom_sheet.dart';
 import '../../widgets/reminder_bottom_sheet.dart';
 import '../../widgets/upgrade_prompt_sheet.dart';
+import '../../widgets/pdf_preview_screen.dart';
 import '../../widgets/template_selector.dart';
 import '../bookings/booking_detail_screen.dart';
 import '../../../data/models/delivery_challan.dart';
@@ -55,12 +58,15 @@ class InvoiceDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
-          appBar: AppBar(), body: Center(child: Text('Error: $e'))),
+        appBar: AppBar(),
+        body: Center(child: Text('Error: $e')),
+      ),
       data: (invoice) {
         if (invoice == null) {
           return Scaffold(
-              appBar: AppBar(),
-              body: const Center(child: Text('Invoice not found')));
+            appBar: AppBar(),
+            body: const Center(child: Text('Invoice not found')),
+          );
         }
         return _InvoiceDetailView(invoice: invoice);
       },
@@ -96,6 +102,16 @@ class _InvoiceDetailView extends ConsumerWidget {
             onPressed: () => _previewInvoice(context, ref),
           ),
           IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Download PDF',
+            onPressed: () => _downloadInvoice(context, ref),
+          ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Print PDF',
+            onPressed: () => _printInvoice(context, ref),
+          ),
+          IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share',
             onPressed: () => _shareInvoice(context, businessName, ref),
@@ -104,6 +120,8 @@ class _InvoiceDetailView extends ConsumerWidget {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               switch (value) {
+                case 'download':
+                  _downloadInvoice(context, ref);
                 case 'edit':
                   _editInvoice(context);
                 case 'void':
@@ -119,6 +137,16 @@ class _InvoiceDetailView extends ConsumerWidget {
               }
             },
             itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'download',
+                child: Row(
+                  children: [
+                    Icon(Icons.download_outlined),
+                    SizedBox(width: 12),
+                    Text('Download PDF'),
+                  ],
+                ),
+              ),
               if (invoice.status == InvoiceStatus.draft)
                 const PopupMenuItem(
                   value: 'edit',
@@ -270,23 +298,25 @@ class _InvoiceDetailView extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xxxl),
         ],
       ),
-      bottomNavigationBar:
-          invoice.status != InvoiceStatus.paid
-              ? Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.base,
-                      AppSpacing.sm,
-                      AppSpacing.base,
-                      AppSpacing.xl),
-                  child: FilledButton.icon(
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: Text(invoice.status == InvoiceStatus.partiallyPaid
-                        ? 'Record Payment (${CurrencyFormatter.format(invoice.balanceDue)} remaining)'
-                        : 'Mark as Paid'),
-                    onPressed: () => _markAsPaid(context, ref),
-                  ),
-                )
-              : null,
+      bottomNavigationBar: invoice.status != InvoiceStatus.paid
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.base,
+                AppSpacing.sm,
+                AppSpacing.base,
+                AppSpacing.xl,
+              ),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.check_circle_outline),
+                label: Text(
+                  invoice.status == InvoiceStatus.partiallyPaid
+                      ? 'Record Payment (${CurrencyFormatter.format(invoice.balanceDue)} remaining)'
+                      : 'Mark as Paid',
+                ),
+                onPressed: () => _markAsPaid(context, ref),
+              ),
+            )
+          : null,
     );
   }
 
@@ -323,7 +353,9 @@ class _InvoiceDetailView extends ConsumerWidget {
 
     try {
       // Call markAsPaid - this auto-creates transaction
-      final transactionId = await ref.read(invoicesProvider.notifier).markAsPaid(
+      final transactionId = await ref
+          .read(invoicesProvider.notifier)
+          .markAsPaid(
             invoice: invoice,
             paymentMethod: paymentMethod,
             paidDate: paidDate,
@@ -362,7 +394,8 @@ class _InvoiceDetailView extends ConsumerWidget {
               if (nav.canPop() || true) {
                 nav.push(
                   MaterialPageRoute(
-                    builder: (_) => TransactionDetailScreen(transactionId: transactionId),
+                    builder: (_) =>
+                        TransactionDetailScreen(transactionId: transactionId),
                   ),
                 );
               }
@@ -370,7 +403,6 @@ class _InvoiceDetailView extends ConsumerWidget {
           ),
         ),
       );
-
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading
@@ -384,7 +416,48 @@ class _InvoiceDetailView extends ConsumerWidget {
   }
 
   Future<void> _previewInvoice(BuildContext context, WidgetRef ref) async {
-    // Show loading indicator
+    if (!context.mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PdfPreviewScreen(
+          title: 'Invoice ${invoice.invoiceNo}',
+          fileName: 'Invoice_${invoice.invoiceNo}.pdf',
+          shareSubject: 'Invoice ${invoice.invoiceNo}',
+          downloadCopiesBuilder: () => _buildInvoiceDownloadCopies(
+            ref,
+            showUpiQr: ref.read(subscriptionTierProvider).isStarter,
+          ),
+          previewBuilder: (_) => _generateInvoicePdfBytes(
+            ref,
+            showUpiQr: ref.read(subscriptionTierProvider).isStarter,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _printInvoice(BuildContext context, WidgetRef ref) async {
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'invoice',
+      );
+      if (!context.mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
     if (!context.mounted) return;
     showDialog(
       context: context,
@@ -394,57 +467,99 @@ class _InvoiceDetailView extends ConsumerWidget {
     );
 
     try {
-      // Fetch business if businessId is set
-      Business? business;
-      if (invoice.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
-      }
-      
-      // Fetch customer party if customerPartyId is set
-      Party? customerParty;
-      if (invoice.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
-      }
-
-      // Read default invoice terms from settings
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
-      
-      // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
-        invoice,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
+      final pdfBytes = await _generateInvoicePdfBytes(
+        ref,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
       );
-      
       if (!context.mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      // Open PDF in system viewer (not supported on web)
-      if (!kIsWeb) {
-        final result = await OpenFile.open(pdfFile.path);
-        if (result.type != ResultType.done && context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Could not open PDF: ${result.message}')),
-          );
-        }
+      Navigator.pop(context);
+      final outcome = await PdfPrintService.instance.printPdfBytes(
+        pdfBytes,
+        jobName: 'Invoice ${invoice.invoiceNo}',
+      );
+      if (outcome == PdfPrintOutcome.unavailable) {
+        await PdfPrintService.instance.sharePdfBytes(
+          pdfBytes,
+          filename: 'Invoice_${invoice.invoiceNo}.pdf',
+          subject: 'Invoice ${invoice.invoiceNo}',
+        );
       }
     } catch (e) {
       if (!context.mounted) return;
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Print failed: $e')));
     }
   }
 
-  Future<void> _shareInvoice(BuildContext context, String businessName, WidgetRef ref) async {
+  Future<void> _downloadInvoice(BuildContext context, WidgetRef ref) async {
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'invoice',
+      );
+      if (!context.mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      useRootNavigator: false,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final files = await _buildInvoiceDownloadCopies(
+        ref,
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
+      );
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      await downloadPdfFiles(files);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved ${files.length} PDF copies')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+    }
+  }
+
+  Future<void> _shareInvoice(
+    BuildContext context,
+    String businessName,
+    WidgetRef ref,
+  ) async {
     // Gate: free-tier users see the upgrade prompt before PDF generation.
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
       if (!context.mounted) return;
-      final action = await showUpgradePromptSheet(context, featureName: 'invoice');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'invoice',
+      );
       if (!context.mounted) return;
       if (action == UpgradePromptAction.upgrade) {
         Navigator.push(
@@ -470,51 +585,93 @@ class _InvoiceDetailView extends ConsumerWidget {
     );
 
     try {
-      // Fetch business if businessId is set
-      Business? business;
-      if (invoice.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(invoice.businessId!);
-      }
-      
-      // Fetch customer party if customerPartyId is set
-      Party? customerParty;
-      if (invoice.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(invoice.customerPartyId!);
-      }
-
-      // Read default invoice terms from settings
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
-      
-      // Generate PDF
-      final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
-        invoice,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
+      final pdfBytes = await _generateInvoicePdfBytes(
+        ref,
         showFreeWatermark: showWatermark,
         showUpiQr: tier.isStarter,
       );
-      
+
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
 
       // Show share options bottom sheet
       await showModalBottomSheet(
-         context: context,
+        context: context,
         builder: (ctx) => _ShareOptionsSheet(
           invoice: invoice,
           businessName: businessName,
-          pdfFile: pdfFile,
-          onSent: () => ref.read(invoicesProvider.notifier).markSent(invoice.id!),
+          pdfBytes: pdfBytes,
+          onSent: () =>
+              ref.read(invoicesProvider.notifier).markSent(invoice.id!),
         ),
       );
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
+    }
+  }
+
+  Future<Uint8List> _generateInvoicePdfBytes(
+    WidgetRef ref, {
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+    String? copyLabel,
+  }) async {
+    Business? business;
+    if (invoice.businessId != null) {
+      business = await ref
+          .read(businessRepositoryProvider)
+          .getById(invoice.businessId!);
+    }
+
+    Party? customerParty;
+    if (invoice.customerPartyId != null) {
+      customerParty = await ref
+          .read(partyRepositoryProvider)
+          .getById(invoice.customerPartyId!);
+    }
+
+    final terms = await ref
+        .read(settingsRepositoryProvider)
+        .get(SettingsKeys.invoiceTerms);
+    return InvoicePdfService.instance.generateInvoicePdfBytes(
+      invoice,
+      business: business,
+      customerParty: customerParty,
+      termsAndConditions: terms ?? SettingsKeys.defaultInvoiceTerms,
+      showFreeWatermark: showFreeWatermark,
+      showUpiQr: showUpiQr,
+      copyLabel: copyLabel,
+    );
+  }
+
+  Future<List<PdfDownloadRequest>> _buildInvoiceDownloadCopies(
+    WidgetRef ref, {
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+  }) async {
+    final copyInfo = buildInvoiceCopyInfo(invoice.items);
+    final files = <PdfDownloadRequest>[];
+    for (var i = 0; i < copyInfo.copyCount; i++) {
+      final copyLabel = copyInfo.labelForCopy(i);
+      final suffix = copyInfo.filenameSuffixForCopy(i);
+      final bytes = await _generateInvoicePdfBytes(
+        ref,
+        showFreeWatermark: showFreeWatermark,
+        showUpiQr: showUpiQr,
+        copyLabel: copyLabel,
+      );
+      files.add(
+        PdfDownloadRequest(
+          bytes: bytes,
+          fileName: 'Invoice_${invoice.invoiceNo}_$suffix.pdf',
+        ),
       );
     }
+    return files;
   }
 
   void _editInvoice(BuildContext context) {
@@ -534,7 +691,10 @@ class _InvoiceDetailView extends ConsumerWidget {
   }
 
   void _showReminderSheet(
-      BuildContext context, WidgetRef ref, String businessName) {
+    BuildContext context,
+    WidgetRef ref,
+    String businessName,
+  ) {
     // Try to look up party contact details for pre-filling the reminder
     final parties = ref.read(partyRepositoryProvider);
     Future<void> open() async {
@@ -560,9 +720,7 @@ class _InvoiceDetailView extends ConsumerWidget {
         builder: (_) => ReminderBottomSheet(
           item: item,
           onReminderSent: () {
-            ref
-                .read(invoicesProvider.notifier)
-                .markReminderSent(invoice.id!);
+            ref.read(invoicesProvider.notifier).markReminderSent(invoice.id!);
           },
         ),
       );
@@ -609,7 +767,7 @@ class _InvoiceDetailView extends ConsumerWidget {
 
   Future<void> _duplicateInvoice(BuildContext context, WidgetRef ref) async {
     if (!context.mounted) return;
-    
+
     final now = DateTime.now();
     final newInvoice = invoice.copyWith(
       id: null,
@@ -622,8 +780,10 @@ class _InvoiceDetailView extends ConsumerWidget {
       updatedAt: now,
     );
 
-    final newId = await ref.read(invoicesProvider.notifier).add(newInvoice, invoice.items);
-    
+    final newId = await ref
+        .read(invoicesProvider.notifier)
+        .add(newInvoice, invoice.items);
+
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invoice duplicated as draft')),
@@ -690,14 +850,11 @@ class _InvoiceDetailView extends ConsumerWidget {
 // ── e-Way Bill Sheet ──────────────────────────────────────────────────────────
 
 class _EwayBillSheet extends StatefulWidget {
-  const _EwayBillSheet({
-    required this.invoice,
-    this.business,
-    this.onExported,
-  });
+  const _EwayBillSheet({required this.invoice, this.business, this.onExported});
 
   final Invoice invoice;
   final Business? business;
+
   /// Called with the updated [Invoice] (EWB fields filled) after a successful
   /// export. The caller should use this to refresh the provider.
   final void Function(Invoice updatedInvoice)? onExported;
@@ -727,8 +884,7 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
     ('4', 'Ship'),
   ];
 
-  static const _vehicleRegex =
-      r'^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$';
+  static const _vehicleRegex = r'^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$';
 
   @override
   void initState() {
@@ -781,7 +937,9 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
 
     final transport = EwbTransportDetails(
       mode: _mode,
-      vehicleNo: _vehicleCtrl.text.trim().isEmpty ? null : _vehicleCtrl.text.trim(),
+      vehicleNo: _vehicleCtrl.text.trim().isEmpty
+          ? null
+          : _vehicleCtrl.text.trim(),
       transporterName: _transporterNameCtrl.text.trim().isEmpty
           ? null
           : _transporterNameCtrl.text.trim(),
@@ -789,9 +947,12 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
           ? null
           : _transporterGstinCtrl.text.trim(),
       distanceKm: int.tryParse(_distanceCtrl.text.trim()),
-      transDocNo: _docNoCtrl.text.trim().isEmpty ? null : _docNoCtrl.text.trim(),
-      transDocDate:
-          _docDateCtrl.text.trim().isEmpty ? null : _docDateCtrl.text.trim(),
+      transDocNo: _docNoCtrl.text.trim().isEmpty
+          ? null
+          : _docNoCtrl.text.trim(),
+      transDocDate: _docDateCtrl.text.trim().isEmpty
+          ? null
+          : _docDateCtrl.text.trim(),
     );
 
     try {
@@ -848,9 +1009,9 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -860,8 +1021,9 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isBelowThreshold =
-        EwayBillService.instance.isBelowThreshold(widget.invoice);
+    final isBelowThreshold = EwayBillService.instance.isBelowThreshold(
+      widget.invoice,
+    );
 
     return Padding(
       padding: EdgeInsets.only(
@@ -877,212 +1039,222 @@ class _EwayBillSheetState extends State<_EwayBillSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-            // ── handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outlineVariant,
-                  borderRadius: BorderRadius.circular(2),
+              // ── handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outlineVariant,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            Text(
-              'e-Way Bill',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Invoice ${widget.invoice.invoiceNo}',
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── threshold warning
-            if (isBelowThreshold) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline,
-                        size: 18, color: theme.colorScheme.secondary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'Invoice total is below ₹50,000. EWB is optional for this consignment.',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSecondaryContainer),
-                      ),
-                    ),
-                  ],
+              Text('e-Way Bill', style: theme.textTheme.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Invoice ${widget.invoice.invoiceNo}',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-            ],
 
-            // ── existing EWB badge
-            if (widget.invoice.hasEwb) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 18, color: theme.colorScheme.primary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        'EWB already generated: ${widget.invoice.ewbNo ?? ''}'
-                        '${widget.invoice.ewbValidUntil != null ? '\nValid until ${DateFormatter.format(widget.invoice.ewbValidUntil!)}' : ''}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer),
+              // ── threshold warning
+              if (isBelowThreshold) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: theme.colorScheme.secondary,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'Invoice total is below ₹50,000. EWB is optional for this consignment.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-
-            // ── transport mode selector
-            Text('Transport Mode', style: theme.textTheme.labelMedium),
-            const SizedBox(height: AppSpacing.xs),
-            SegmentedButton<String>(
-              segments: [
-                for (final (code, label) in _modes)
-                  ButtonSegment(value: code, label: Text(label)),
+                const SizedBox(height: AppSpacing.md),
               ],
-              selected: {_mode},
-              onSelectionChanged: (s) => setState(() => _mode = s.first),
-            ),
-            const SizedBox(height: AppSpacing.md),
 
-            // ── vehicle number
-            if (_mode == '1' || _mode == '4') ...[
-              TextFormField(
-                controller: _vehicleCtrl,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Vehicle Number',
-                  hintText: 'MH12AB1234',
-                  border: OutlineInputBorder(),
+              // ── existing EWB badge
+              if (widget.invoice.hasEwb) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          'EWB already generated: ${widget.invoice.ewbNo ?? ''}'
+                          '${widget.invoice.ewbValidUntil != null ? '\nValid until ${DateFormatter.format(widget.invoice.ewbValidUntil!)}' : ''}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                validator: (v) {
-                  final val = v?.trim() ?? '';
-                  if (val.isEmpty) return null; // optional
-                  if (!RegExp(_vehicleRegex).hasMatch(val)) {
-                    return 'Format: MH12AB1234 (state + RTO + alpha + serial)';
-                  }
-                  return null;
-                },
+                const SizedBox(height: AppSpacing.md),
+              ],
+
+              // ── transport mode selector
+              Text('Transport Mode', style: theme.textTheme.labelMedium),
+              const SizedBox(height: AppSpacing.xs),
+              SegmentedButton<String>(
+                segments: [
+                  for (final (code, label) in _modes)
+                    ButtonSegment(value: code, label: Text(label)),
+                ],
+                selected: {_mode},
+                onSelectionChanged: (s) => setState(() => _mode = s.first),
               ),
               const SizedBox(height: AppSpacing.md),
-            ],
 
-            // ── transporter name (with autocomplete)
-            Autocomplete<String>(
-              optionsBuilder: (v) {
-                if (v.text.isEmpty) return const [];
-                return _frequentTransporters
-                    .map((r) => r['name'] as String)
-                    .where((n) =>
-                        n.toLowerCase().contains(v.text.toLowerCase()));
-              },
-              onSelected: (name) {
-                _transporterNameCtrl.text = name;
-                final match = _frequentTransporters
-                    .firstWhere((r) => r['name'] == name,
-                        orElse: () => {});
-                if (match['gstin'] != null) {
-                  _transporterGstinCtrl.text = match['gstin'] as String;
-                }
-              },
-              fieldViewBuilder:
-                  (context, ctrl, focusNode, onEditingComplete) {
-                // Keep our controller in sync.
-                ctrl.text = _transporterNameCtrl.text;
-                ctrl.addListener(() => _transporterNameCtrl.text = ctrl.text);
-                return TextFormField(
-                  controller: ctrl,
-                  focusNode: focusNode,
+              // ── vehicle number
+              if (_mode == '1' || _mode == '4') ...[
+                TextFormField(
+                  controller: _vehicleCtrl,
+                  textCapitalization: TextCapitalization.characters,
                   decoration: const InputDecoration(
-                    labelText: 'Transporter Name (optional)',
+                    labelText: 'Vehicle Number',
+                    hintText: 'MH12AB1234',
                     border: OutlineInputBorder(),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── transporter GSTIN
-            TextFormField(
-              controller: _transporterGstinCtrl,
-              textCapitalization: TextCapitalization.characters,
-              decoration: const InputDecoration(
-                labelText: 'Transporter GSTIN (optional)',
-                hintText: '22AAAAA0000A1Z5',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // ── distance + live validity preview
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _distanceCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Distance (km)',
-                      border: OutlineInputBorder(),
-                    ),
-                    onChanged: (_) => setState(() {}),
-                    validator: (v) {
-                      final val = v?.trim() ?? '';
-                      if (val.isEmpty) return null;
-                      if (int.tryParse(val) == null) return 'Enter a number';
-                      if (int.parse(val) <= 0) return 'Must be > 0';
-                      return null;
-                    },
-                  ),
+                  validator: (v) {
+                    final val = v?.trim() ?? '';
+                    if (val.isEmpty) return null; // optional
+                    if (!RegExp(_vehicleRegex).hasMatch(val)) {
+                      return 'Format: MH12AB1234 (state + RTO + alpha + serial)';
+                    }
+                    return null;
+                  },
                 ),
-                if (_validityDays != null) ...[
-                  const SizedBox(width: AppSpacing.md),
-                  Chip(
-                    avatar: const Icon(Icons.timer_outlined, size: 16),
-                    label: Text(
-                      'Valid $_validityDays day${_validityDays == 1 ? '' : 's'}',
+                const SizedBox(height: AppSpacing.md),
+              ],
+
+              // ── transporter name (with autocomplete)
+              Autocomplete<String>(
+                optionsBuilder: (v) {
+                  if (v.text.isEmpty) return const [];
+                  return _frequentTransporters
+                      .map((r) => r['name'] as String)
+                      .where(
+                        (n) => n.toLowerCase().contains(v.text.toLowerCase()),
+                      );
+                },
+                onSelected: (name) {
+                  _transporterNameCtrl.text = name;
+                  final match = _frequentTransporters.firstWhere(
+                    (r) => r['name'] == name,
+                    orElse: () => {},
+                  );
+                  if (match['gstin'] != null) {
+                    _transporterGstinCtrl.text = match['gstin'] as String;
+                  }
+                },
+                fieldViewBuilder:
+                    (context, ctrl, focusNode, onEditingComplete) {
+                      // Keep our controller in sync.
+                      ctrl.text = _transporterNameCtrl.text;
+                      ctrl.addListener(
+                        () => _transporterNameCtrl.text = ctrl.text,
+                      );
+                      return TextFormField(
+                        controller: ctrl,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Transporter Name (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      );
+                    },
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // ── transporter GSTIN
+              TextFormField(
+                controller: _transporterGstinCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Transporter GSTIN (optional)',
+                  hintText: '22AAAAA0000A1Z5',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // ── distance + live validity preview
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _distanceCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Distance (km)',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                      validator: (v) {
+                        final val = v?.trim() ?? '';
+                        if (val.isEmpty) return null;
+                        if (int.tryParse(val) == null) return 'Enter a number';
+                        if (int.parse(val) <= 0) return 'Must be > 0';
+                        return null;
+                      },
                     ),
                   ),
+                  if (_validityDays != null) ...[
+                    const SizedBox(width: AppSpacing.md),
+                    Chip(
+                      avatar: const Icon(Icons.timer_outlined, size: 16),
+                      label: Text(
+                        'Valid $_validityDays day${_validityDays == 1 ? '' : 's'}',
+                      ),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
+              ),
+              const SizedBox(height: AppSpacing.xl),
 
-            // ── export button
-            FilledButton.icon(
-              onPressed: _exporting ? null : _export,
-              icon: _exporting
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.download_outlined),
-              label: const Text('Export JSON'),
-            ),
-          ],
-        ),
+              // ── export button
+              FilledButton.icon(
+                onPressed: _exporting ? null : _export,
+                icon: _exporting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined),
+                label: const Text('Export JSON'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1098,8 +1270,20 @@ class _EwbStatusBadge extends StatelessWidget {
   static const _portalUrl = 'https://ewaybillgst.gov.in';
 
   String _fmt(DateTime dt) {
-    const months = ['Jan','Feb','Mar','Apr','May','Jun',
-                    'Jul','Aug','Sep','Oct','Nov','Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
@@ -1107,9 +1291,9 @@ class _EwbStatusBadge extends StatelessWidget {
     final uri = Uri.parse(_portalUrl);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open browser')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Could not open browser')));
       }
     }
   }
@@ -1125,7 +1309,9 @@ class _EwbStatusBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: isValid
               ? theme.colorScheme.primaryContainer
@@ -1135,7 +1321,9 @@ class _EwbStatusBadge extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              isValid ? Icons.local_shipping_outlined : Icons.warning_amber_rounded,
+              isValid
+                  ? Icons.local_shipping_outlined
+                  : Icons.warning_amber_rounded,
               size: 18,
               color: isValid
                   ? theme.colorScheme.primary
@@ -1211,15 +1399,16 @@ class _HeaderCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     invoice.customerName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -1227,7 +1416,9 @@ class _HeaderCard extends StatelessWidget {
                   child: Text(
                     invoice.status.label,
                     style: TextStyle(
-                        color: statusColor, fontWeight: FontWeight.w700),
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -1235,12 +1426,14 @@ class _HeaderCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             _InfoRow(label: 'Invoice #', value: invoice.invoiceNo),
             _InfoRow(
-                label: 'Issued',
-                value: DateFormatter.format(invoice.issueDate)),
+              label: 'Issued',
+              value: DateFormatter.format(invoice.issueDate),
+            ),
             if (invoice.dueDate != null)
               _InfoRow(
-                  label: 'Due',
-                  value: DateFormatter.format(invoice.dueDate!)),
+                label: 'Due',
+                value: DateFormatter.format(invoice.dueDate!),
+              ),
             const SizedBox(height: AppSpacing.xs),
             // Lifecycle stage tag — LC4
             LifecycleTag(
@@ -1267,14 +1460,18 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: AppSpacing.xs),
       child: Row(
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontSize: 13)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.outline,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w500, fontSize: 13)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -1295,8 +1492,7 @@ class _LineItemsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Items',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Items', style: Theme.of(context).textTheme.titleMedium),
             const Divider(height: AppSpacing.base),
             if (invoice.items.isEmpty) ...[
               if (invoice.total > 0)
@@ -1306,9 +1502,11 @@ class _LineItemsCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.warning_amber_outlined,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.error),
+                      Icon(
+                        Icons.warning_amber_outlined,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: Text(
@@ -1348,24 +1546,36 @@ class _ItemHeader extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              flex: 4,
-              child: Text('Item',
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontSize: 12))),
+            flex: 4,
+            child: Text(
+              'Item',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
+            ),
+          ),
           Expanded(
-              child: Text('Qty',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontSize: 12))),
+            child: Text(
+              'Qty',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
+            ),
+          ),
           Expanded(
-              flex: 2,
-              child: Text('Total',
-                  textAlign: TextAlign.end,
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontSize: 12))),
+            flex: 2,
+            child: Text(
+              'Total',
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -1383,30 +1593,35 @@ class _ItemRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-              flex: 4,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.itemName,
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w500)),
-                  if (item.description != null)
-                    Text(item.description!,
-                        style: const TextStyle(fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                ],
-              )),
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.itemName,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                if (item.description != null)
+                  Text(
+                    item.description!,
+                    style: const TextStyle(fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
           Expanded(
-              child: Text(item.qty.toString(),
-                  textAlign: TextAlign.center)),
+            child: Text(item.qty.toString(), textAlign: TextAlign.center),
+          ),
           Expanded(
-              flex: 2,
-              child: Text(
-                CurrencyFormatter.format(item.lineTotal),
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              )),
+            flex: 2,
+            child: Text(
+              CurrencyFormatter.format(item.lineTotal),
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
@@ -1427,16 +1642,19 @@ class _TotalsCard extends StatelessWidget {
         child: Column(
           children: [
             _TotalsRow(
-                label: 'Subtotal',
-                value: CurrencyFormatter.format(invoice.subtotal)),
+              label: 'Subtotal',
+              value: CurrencyFormatter.format(invoice.subtotal),
+            ),
             if (invoice.taxTotal > 0)
               _TotalsRow(
-                  label: 'Tax',
-                  value: CurrencyFormatter.format(invoice.taxTotal)),
+                label: 'Tax',
+                value: CurrencyFormatter.format(invoice.taxTotal),
+              ),
             if (invoice.discountPct > 0)
               _TotalsRow(
-                  label: 'Discount',
-                  value: '-${invoice.discountPct.toStringAsFixed(1)}%'),
+                label: 'Discount',
+                value: '-${invoice.discountPct.toStringAsFixed(1)}%',
+              ),
             const Divider(height: AppSpacing.base),
             _TotalsRow(
               label: 'Total',
@@ -1445,9 +1663,10 @@ class _TotalsCard extends StatelessWidget {
             ),
             if (invoice.paidAmount > 0)
               _TotalsRow(
-                  label: 'Paid',
-                  value: CurrencyFormatter.format(invoice.paidAmount),
-                  valueColor: const Color(0xFF2E7D32)),
+                label: 'Paid',
+                value: CurrencyFormatter.format(invoice.paidAmount),
+                valueColor: const Color(0xFF2E7D32),
+              ),
             if (invoice.balanceDue > 0)
               _TotalsRow(
                 label: 'Balance Due',
@@ -1463,11 +1682,12 @@ class _TotalsCard extends StatelessWidget {
 }
 
 class _TotalsRow extends StatelessWidget {
-  const _TotalsRow(
-      {required this.label,
-      required this.value,
-      this.bold = false,
-      this.valueColor});
+  const _TotalsRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.valueColor,
+  });
   final String label;
   final String value;
   final bool bold;
@@ -1476,15 +1696,14 @@ class _TotalsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding:
-          const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: bold
-                  ? const TextStyle(fontWeight: FontWeight.bold)
-                  : null),
+          Text(
+            label,
+            style: bold ? const TextStyle(fontWeight: FontWeight.bold) : null,
+          ),
           Text(
             value,
             style: TextStyle(
@@ -1566,15 +1785,15 @@ class _LinkedBookingCard extends ConsumerWidget {
                     Text(
                       'Linked Booking',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${booking.bookingRef ?? 'Booking'} · ${booking.serviceName}',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1586,15 +1805,14 @@ class _LinkedBookingCard extends ConsumerWidget {
                 ),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusSm),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: Text(
                   booking.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1655,15 +1873,15 @@ class _LinkedQuoteCard extends ConsumerWidget {
                     Text(
                       'Source Quote',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       quote.quoteNo,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1680,9 +1898,9 @@ class _LinkedQuoteCard extends ConsumerWidget {
                 child: Text(
                   quote.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1743,15 +1961,15 @@ class _LinkedChallanCard extends ConsumerWidget {
                     Text(
                       'Source Delivery Challan',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       challan.challanNo,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -1768,9 +1986,9 @@ class _LinkedChallanCard extends ConsumerWidget {
                 child: Text(
                   challan.status.label,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: statusColor,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
@@ -1797,10 +2015,12 @@ class _LinkedCreditNotesCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final allInvoices = ref.watch(invoicesProvider).value ?? [];
     final notes = allInvoices
-        .where((inv) =>
-            inv.originalInvoiceId == invoiceId &&
-            (inv.invoiceType == InvoiceType.creditNote ||
-                inv.invoiceType == InvoiceType.debitNote))
+        .where(
+          (inv) =>
+              inv.originalInvoiceId == invoiceId &&
+              (inv.invoiceType == InvoiceType.creditNote ||
+                  inv.invoiceType == InvoiceType.debitNote),
+        )
         .toList();
     if (notes.isEmpty) return const SizedBox.shrink();
 
@@ -1813,8 +2033,8 @@ class _LinkedCreditNotesCard extends ConsumerWidget {
             Text(
               'Credit / Debit Notes',
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             ...notes.map((note) {
@@ -1826,13 +2046,11 @@ class _LinkedCreditNotesCard extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        InvoiceDetailScreen(invoiceId: note.id!),
+                    builder: (_) => InvoiceDetailScreen(invoiceId: note.id!),
                   ),
                 ),
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Row(
                     children: [
                       Icon(
@@ -1846,18 +2064,15 @@ class _LinkedCreditNotesCard extends ConsumerWidget {
                       Expanded(
                         child: Text(
                           '${note.invoiceType.label} · ${note.invoiceNo}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ),
                       Text(
                         CurrencyFormatter.format(note.total),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: color),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: color),
                       ),
                       const SizedBox(width: AppSpacing.xs),
                       Icon(
@@ -1883,13 +2098,14 @@ class _ShareOptionsSheet extends StatelessWidget {
   const _ShareOptionsSheet({
     required this.invoice,
     required this.businessName,
-    required this.pdfFile,
+    required this.pdfBytes,
     required this.onSent,
   });
 
   final Invoice invoice;
   final String businessName;
-  final XFile pdfFile;
+  final Uint8List pdfBytes;
+
   /// Called after the share sheet is opened to mark the invoice as sent.
   final Future<void> Function() onSent;
 
@@ -1925,9 +2141,9 @@ class _ShareOptionsSheet extends StatelessWidget {
             // ── Message preview ─────────────────────────────────────────────
             Text(
               'Message preview',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.outline,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(color: colorScheme.outline),
             ),
             const SizedBox(height: AppSpacing.xs),
             Container(
@@ -1969,19 +2185,15 @@ class _ShareOptionsSheet extends StatelessWidget {
             // ── Helper text ─────────────────────────────────────────────────
             Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: colorScheme.outline,
-                ),
+                Icon(Icons.info_outline, size: 16, color: colorScheme.outline),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     'The PDF and message will be shared together. '
                     'Pick WhatsApp, Email, SMS and more from the share sheet.',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.outline,
-                        ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: colorScheme.outline),
                   ),
                 ),
               ],
@@ -1995,10 +2207,11 @@ class _ShareOptionsSheet extends StatelessWidget {
               label: const Text('Send PDF + Message'),
               onPressed: () async {
                 Navigator.pop(context);
-                await Share.shareXFiles(
-                  [pdfFile],
+                await PdfPrintService.instance.sharePdfBytes(
+                  pdfBytes,
+                  filename: 'Invoice_${invoice.invoiceNo}.pdf',
                   subject: 'Invoice ${invoice.invoiceNo}',
-                  text: message,
+                  body: message,
                 );
                 // Mark as sent after the share sheet is opened successfully.
                 await onSent();
@@ -2019,8 +2232,8 @@ class _ShareOptionsSheet extends StatelessWidget {
   }
 
   String _generateMessage() {
-    final due = invoice.dueDate != null 
-        ? DateFormatter.format(invoice.dueDate!) 
+    final due = invoice.dueDate != null
+        ? DateFormatter.format(invoice.dueDate!)
         : '';
     final dueStr = due.isNotEmpty ? ' due $due' : '';
     return 'Hi ${invoice.customerName},\n\n'
@@ -2075,8 +2288,8 @@ class _PaymentHistoryCard extends ConsumerWidget {
                     Text(
                       'Payment History',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const Spacer(),
                     Chip(
@@ -2086,35 +2299,36 @@ class _PaymentHistoryCard extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: AppSpacing.md),
-                ...linkedTransactions.map((txn) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        Icons.account_balance_wallet_outlined,
-                        color: Theme.of(context).colorScheme.tertiary,
+                ...linkedTransactions.map(
+                  (txn) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                    title: Text(
+                      CurrencyFormatter.format(txn.amount),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'RobotoMono',
                       ),
-                      title: Text(
-                        CurrencyFormatter.format(txn.amount),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontFamily: 'RobotoMono',
+                    ),
+                    subtitle: Text(
+                      '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TransactionDetailScreen(transactionId: txn.id!),
                         ),
-                      ),
-                      subtitle: Text(
-                        '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => TransactionDetailScreen(
-                              transactionId: txn.id!,
-                            ),
-                          ),
-                        );
-                      },
-                    )),
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),

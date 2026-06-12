@@ -35,7 +35,5 @@ class FirebaseAnalyticsService implements AnalyticsService {
   Future<void> trackEvent(
     String event, {
     Map<String, String> properties = const {},
-  }) =>
-      _fa.logEvent(name: event, parameters: properties);
+  }) => _fa.logEvent(name: event, parameters: properties);
 }
-

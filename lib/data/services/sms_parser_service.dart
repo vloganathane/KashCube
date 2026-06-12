@@ -13,15 +13,13 @@ class SmsParserService {
   const SmsParserService();
 
   /// Returns true if [sender] matches the known financial-SMS sender registry.
-  bool isFinancialSender(String sender) =>
-      SmsParser.isFinancialSender(sender);
+  bool isFinancialSender(String sender) => SmsParser.isFinancialSender(sender);
 
   /// Parses a financial SMS [body] from [sender].
   ///
   /// Returns [ParsedSms] on success, or `null` if the message cannot be
   /// identified as a financial transaction.
-  ParsedSms? parse(String body, String sender) =>
-      SmsParser.parse(body, sender);
+  ParsedSms? parse(String body, String sender) => SmsParser.parse(body, sender);
 
   /// Generates a deduplication hash for a [ParsedSms] result.
   ///

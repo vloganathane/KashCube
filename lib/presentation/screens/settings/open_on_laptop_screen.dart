@@ -23,15 +23,14 @@ class OpenOnLaptopScreen extends ConsumerStatefulWidget {
   const OpenOnLaptopScreen({super.key});
 
   @override
-  ConsumerState<OpenOnLaptopScreen> createState() =>
-      _OpenOnLaptopScreenState();
+  ConsumerState<OpenOnLaptopScreen> createState() => _OpenOnLaptopScreenState();
 }
 
 class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
   String? _url;
   String? _error;
   String _loadingMessage = 'Starting local server…';
-  bool    _loading = true;
+  bool _loading = true;
 
   DateTime? _traceStartedAt;
   DateTime? _traceServerReadyAt;
@@ -75,29 +74,35 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
     switch (level) {
       case AppLogLevel.warning:
-        unawaited(AppLogger.instance.warning(
-          'Web companion timing trace',
-          category: 'web_companion_timing',
-          eventName: 'web_companion_timing',
-          context: context,
-        ));
+        unawaited(
+          AppLogger.instance.warning(
+            'Web companion timing trace',
+            category: 'web_companion_timing',
+            eventName: 'web_companion_timing',
+            context: context,
+          ),
+        );
         return;
       case AppLogLevel.error:
       case AppLogLevel.fatal:
-        unawaited(AppLogger.instance.error(
-          'Web companion timing trace',
-          category: 'web_companion_timing',
-          eventName: 'web_companion_timing',
-          context: context,
-        ));
+        unawaited(
+          AppLogger.instance.error(
+            'Web companion timing trace',
+            category: 'web_companion_timing',
+            eventName: 'web_companion_timing',
+            context: context,
+          ),
+        );
         return;
       default:
-        unawaited(AppLogger.instance.info(
-          'Web companion timing trace',
-          category: 'web_companion_timing',
-          eventName: 'web_companion_timing',
-          context: context,
-        ));
+        unawaited(
+          AppLogger.instance.info(
+            'Web companion timing trace',
+            category: 'web_companion_timing',
+            eventName: 'web_companion_timing',
+            context: context,
+          ),
+        );
         return;
     }
   }
@@ -137,10 +142,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       healthy = await P2pCoordinator.instance.isServerHealthy();
     }
     if (!healthy) {
-      _logTiming(
-        'server_warmup_timeout',
-        level: AppLogLevel.warning,
-      );
+      _logTiming('server_warmup_timeout', level: AppLogLevel.warning);
       setState(() {
         _error = 'Server is still warming up. Please retry in a moment.';
         _loading = false;
@@ -154,13 +156,11 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     // AppConstants.p2pPort when startup falls back to a random free port.
     final port = P2pCoordinator.instance.serverPort;
     if (port == null) {
-      _logTiming(
-        'server_port_missing',
-        level: AppLogLevel.warning,
-      );
+      _logTiming('server_port_missing', level: AppLogLevel.warning);
       await _refreshDiagnostics();
       setState(() {
-        _error   = 'Could not start the local server. Restart the app and try again.';
+        _error =
+            'Could not start the local server. Restart the app and try again.';
         _loading = false;
       });
       return;
@@ -175,7 +175,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
       );
       await _refreshDiagnostics(portOverride: port);
       setState(() {
-        _error   = 'Could not detect a local network address.\nConnect your phone to Wi-Fi or enable the hotspot, then try again.';
+        _error =
+            'Could not detect a local network address.\nConnect your phone to Wi-Fi or enable the hotspot, then try again.';
         _loading = false;
       });
       return;
@@ -187,7 +188,7 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
 
     if (mounted) {
       setState(() {
-        _url     = url;
+        _url = url;
         _loading = false;
       });
       _traceUrlReadyAt = DateTime.now();
@@ -206,22 +207,22 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     _traceScanStartedAt = DateTime.now();
     _logTiming('scanner_opened');
 
-    final parsed = await Navigator.of(context).push<({String sessionId, String challenge})>(
-      MaterialPageRoute(
-        builder: (_) => const _BrowserApprovalScannerScreen(),
-      ),
-    );
+    final parsed = await Navigator.of(context)
+        .push<({String sessionId, String challenge})>(
+          MaterialPageRoute(
+            builder: (_) => const _BrowserApprovalScannerScreen(),
+          ),
+        );
     if (!mounted || parsed == null) return;
 
     _traceScanDetectedAt = DateTime.now();
     _logTiming(
       'qr_scanned',
-      extra: {
-        'scan_ms': _msBetween(_traceScanStartedAt, _traceScanDetectedAt),
-      },
+      extra: {'scan_ms': _msBetween(_traceScanStartedAt, _traceScanDetectedAt)},
     );
 
-    final approved = await showDialog<bool>(
+    final approved =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Approve Browser'),
@@ -272,7 +273,10 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     );
   }
 
-  Future<void> _refreshDiagnostics({String? ipOverride, int? portOverride}) async {
+  Future<void> _refreshDiagnostics({
+    String? ipOverride,
+    int? portOverride,
+  }) async {
     if (!mounted) return;
     setState(() {
       _diagnosticsLoading = true;
@@ -343,24 +347,39 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
     final hints = <String>[];
 
     if (!healthy || port == null) {
-      hints.add('Server is not fully ready yet. Tap "Refresh diagnostics" after a few seconds.');
+      hints.add(
+        'Server is not fully ready yet. Tap "Refresh diagnostics" after a few seconds.',
+      );
       return hints;
     }
 
     if (ip == null || ip == '0.0.0.0') {
-      hints.add('No reachable LAN IP detected on phone. Enable Wi-Fi or phone hotspot and retry.');
+      hints.add(
+        'No reachable LAN IP detected on phone. Enable Wi-Fi or phone hotspot and retry.',
+      );
       return hints;
     }
 
-    hints.add('Same-device check: open http://127.0.0.1:$port on this phone. If this works, shelf is healthy.');
-    hints.add('Laptop check: open http://$ip:$port on laptop browser while both devices are on same Wi-Fi/hotspot.');
-    hints.add('If phone works but laptop fails, this is usually network isolation (guest Wi-Fi/AP isolation/VPN/firewall), not shelf.');
+    hints.add(
+      'Same-device check: open http://127.0.0.1:$port on this phone. If this works, shelf is healthy.',
+    );
+    hints.add(
+      'Laptop check: open http://$ip:$port on laptop browser while both devices are on same Wi-Fi/hotspot.',
+    );
+    hints.add(
+      'If phone works but laptop fails, this is usually network isolation (guest Wi-Fi/AP isolation/VPN/firewall), not shelf.',
+    );
 
     final hasLikelyLanIface = interfaces.any(
-      (line) => line.startsWith('wlan') || line.startsWith('en') || line.startsWith('ap'),
+      (line) =>
+          line.startsWith('wlan') ||
+          line.startsWith('en') ||
+          line.startsWith('ap'),
     );
     if (!hasLikelyLanIface) {
-      hints.add('No typical LAN interface found (wlan/en/ap). You may be on cellular/VPN-only path.');
+      hints.add(
+        'No typical LAN interface found (wlan/en/ap). You may be on cellular/VPN-only path.',
+      );
     }
 
     return hints;
@@ -465,7 +484,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             else ...[
               _UrlChip(
                 url: _url!,
-                onCopied: () => trackEvent(ref, AnalyticsEvents.webCompanionUrlCopied),
+                onCopied: () =>
+                    trackEvent(ref, AnalyticsEvents.webCompanionUrlCopied),
               ),
               const SizedBox(height: AppSpacing.md),
               FilledButton.icon(
@@ -490,7 +510,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             const SizedBox(height: AppSpacing.xl),
             _InfoRow(
               icon: Icons.phone_android_outlined,
-              label: 'Keep KashCube open on your phone while using the browser view',
+              label:
+                  'Keep KashCube open on your phone while using the browser view',
             ),
             _InfoRow(
               icon: Icons.language_outlined,
@@ -498,7 +519,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             ),
             _InfoRow(
               icon: Icons.wifi_outlined,
-              label: 'Browser must be on the same network — same Wi-Fi or connected to this phone\'s hotspot',
+              label:
+                  'Browser must be on the same network — same Wi-Fi or connected to this phone\'s hotspot',
             ),
             _InfoRow(
               icon: Icons.privacy_tip_outlined,
@@ -506,7 +528,8 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
             ),
             _InfoRow(
               icon: Icons.lock_outline,
-              label: 'Browser access is granted only after you scan and approve its QR',
+              label:
+                  'Browser access is granted only after you scan and approve its QR',
             ),
 
             const SizedBox(height: AppSpacing.xxl),
@@ -515,7 +538,10 @@ class _OpenOnLaptopScreenState extends ConsumerState<OpenOnLaptopScreen> {
                 icon: const Icon(Icons.link_off, size: 18),
                 label: const Text('Disconnect browser'),
                 onPressed: () {
-                  trackEvent(ref, AnalyticsEvents.webCompanionDisconnectedManually);
+                  trackEvent(
+                    ref,
+                    AnalyticsEvents.webCompanionDisconnectedManually,
+                  );
                   P2pCoordinator.instance.disconnectBrowser();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -571,10 +597,7 @@ class _BrowserApprovalScannerScreenState
       appBar: AppBar(title: const Text('Scan Browser QR')),
       body: Stack(
         children: [
-          MobileScanner(
-            controller: _controller,
-            onDetect: _onDetect,
-          ),
+          MobileScanner(controller: _controller, onDetect: _onDetect),
           Center(
             child: Container(
               width: 240,
@@ -642,11 +665,12 @@ class _UrlChipState extends State<_UrlChip> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color:        context.colorScheme.surfaceContainerHighest,
+        color: context.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSpacing.sm),
       ),
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm, vertical: AppSpacing.xs,
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
       ),
       child: Row(
         children: [
@@ -655,7 +679,7 @@ class _UrlChipState extends State<_UrlChip> {
               widget.url,
               style: context.textTheme.labelSmall?.copyWith(
                 fontFamily: 'monospace',
-                color:      context.colorScheme.onSurfaceVariant,
+                color: context.colorScheme.onSurfaceVariant,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -669,11 +693,11 @@ class _UrlChipState extends State<_UrlChip> {
                   ? context.colorScheme.primary
                   : context.colorScheme.onSurfaceVariant,
             ),
-            tooltip:       'Copy URL',
-            onPressed:     _copy,
+            tooltip: 'Copy URL',
+            onPressed: _copy,
             visualDensity: VisualDensity.compact,
-            padding:       EdgeInsets.zero,
-            constraints:   const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         ],
       ),
@@ -691,7 +715,7 @@ class _ErrorCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.base),
       decoration: BoxDecoration(
-        color:        context.colorScheme.errorContainer,
+        color: context.colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(AppSpacing.sm),
       ),
       child: Column(
@@ -757,9 +781,7 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(AppSpacing.sm),
-        border: Border.all(
-          color: context.colorScheme.outlineVariant,
-        ),
+        border: Border.all(color: context.colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -772,10 +794,7 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
                 color: context.colorScheme.primary,
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(
-                'Network diagnostics',
-                style: context.textTheme.titleSmall,
-              ),
+              Text('Network diagnostics', style: context.textTheme.titleSmall),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -784,20 +803,14 @@ class _NetworkDiagnosticsCard extends StatelessWidget {
             label: 'Bound port',
             value: port?.toString() ?? 'unknown',
           ),
-          _DiagnosticLine(
-            label: 'Local IP',
-            value: ip ?? 'unknown',
-          ),
+          _DiagnosticLine(label: 'Local IP', value: ip ?? 'unknown'),
           if (port != null)
             _DiagnosticLine(
               label: 'Same-device URL',
               value: 'http://127.0.0.1:$port',
             ),
           if (ip != null && port != null)
-            _DiagnosticLine(
-              label: 'Laptop URL',
-              value: 'http://$ip:$port',
-            ),
+            _DiagnosticLine(label: 'Laptop URL', value: 'http://$ip:$port'),
           const SizedBox(height: AppSpacing.sm),
           if (interfaces.isNotEmpty)
             Text(
@@ -925,12 +938,7 @@ class _DiagnosticLine extends StatelessWidget {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              value,
-              style: context.textTheme.bodySmall,
-            ),
-          ),
+          Expanded(child: Text(value, style: context.textTheme.bodySmall)),
         ],
       ),
     );
@@ -1100,10 +1108,7 @@ class _WebLogCardState extends State<_WebLogCard> {
                     color: context.colorScheme.primary,
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Web request log',
-                    style: context.textTheme.titleSmall,
-                  ),
+                  Text('Web request log', style: context.textTheme.titleSmall),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -1246,7 +1251,7 @@ class _WebLogCardState extends State<_WebLogCard> {
 class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.icon, required this.label});
   final IconData icon;
-  final String   label;
+  final String label;
 
   @override
   Widget build(BuildContext context) {

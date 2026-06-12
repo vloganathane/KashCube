@@ -12,8 +12,8 @@ final loanRepositoryProvider = Provider<LoanRepository>(
 /// Active (not cleared) loans.
 final activeLoansProvider =
     StateNotifierProvider<LoansNotifier, AsyncValue<List<Loan>>>(
-  (ref) => LoansNotifier(ref.read(loanRepositoryProvider)),
-);
+      (ref) => LoansNotifier(ref.read(loanRepositoryProvider)),
+    );
 
 class LoansNotifier extends StateNotifier<AsyncValue<List<Loan>>> {
   final LoanRepository _repo;
@@ -65,8 +65,7 @@ class LoansNotifier extends StateNotifier<AsyncValue<List<Loan>>> {
 }
 
 /// Loan by ID (family provider).
-final loanByIdProvider =
-    FutureProvider.family<Loan?, int>((ref, id) async {
+final loanByIdProvider = FutureProvider.family<Loan?, int>((ref, id) async {
   final repo = ref.read(loanRepositoryProvider);
   return repo.getById(id);
 });
@@ -104,20 +103,23 @@ final overdueLoansProvider = FutureProvider<List<Loan>>((ref) async {
 /// Loans filtered by direction.
 final loansByDirectionProvider =
     FutureProvider.family<List<Loan>, LoanDirection>((ref, direction) async {
-  final repo = ref.read(loanRepositoryProvider);
-  return repo.getActiveByDirection(direction);
-});
+      final repo = ref.read(loanRepositoryProvider);
+      return repo.getActiveByDirection(direction);
+    });
 
 /// Party-wise ledger summaries.
-final partySummariesProvider =
-    FutureProvider<List<PartyLedgerSummary>>((ref) async {
+final partySummariesProvider = FutureProvider<List<PartyLedgerSummary>>((
+  ref,
+) async {
   final repo = ref.read(loanRepositoryProvider);
   return repo.getPartySummaries();
 });
 
 /// Loans for a specific party name.
-final loansByPartyProvider =
-    FutureProvider.family<List<Loan>, String>((ref, partyName) async {
+final loansByPartyProvider = FutureProvider.family<List<Loan>, String>((
+  ref,
+  partyName,
+) async {
   final repo = ref.read(loanRepositoryProvider);
   return repo.getByPartyName(partyName);
 });

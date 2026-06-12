@@ -6,9 +6,8 @@ import '../repositories/credit_repository.dart';
 /// outstanding balance before delegating to [CreditRepository.recordPayment].
 /// Centralises these checks so they are not repeated across screens.
 class RecordCreditPaymentUseCase {
-  const RecordCreditPaymentUseCase({
-    required CreditRepository creditRepository,
-  }) : _repo = creditRepository;
+  const RecordCreditPaymentUseCase({required CreditRepository creditRepository})
+    : _repo = creditRepository;
 
   final CreditRepository _repo;
 
@@ -25,10 +24,18 @@ class RecordCreditPaymentUseCase {
     required double outstandingBalance,
   }) async {
     if (creditId <= 0) {
-      throw ArgumentError.value(creditId, 'creditId', 'Must reference a saved credit.');
+      throw ArgumentError.value(
+        creditId,
+        'creditId',
+        'Must reference a saved credit.',
+      );
     }
     if (amount <= 0) {
-      throw ArgumentError.value(amount, 'amount', 'Payment amount must be positive.');
+      throw ArgumentError.value(
+        amount,
+        'amount',
+        'Payment amount must be positive.',
+      );
     }
     if (amount > outstandingBalance) {
       throw ArgumentError(

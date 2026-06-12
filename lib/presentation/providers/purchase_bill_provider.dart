@@ -10,29 +10,29 @@ import 'context_provider.dart';
 
 // ── Repository ────────────────────────────────────────────────────────────────
 
-final purchaseBillRepositoryProvider = Provider<PurchaseBillRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return PurchaseBillRepositoryImpl(contextId: contextId);
-  },
-);
+final purchaseBillRepositoryProvider = Provider<PurchaseBillRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return PurchaseBillRepositoryImpl(contextId: contextId);
+});
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
 /// null = show all statuses
-final purchaseBillStatusFilterProvider =
-    StateProvider<PurchaseBillStatus?>((_) => null);
+final purchaseBillStatusFilterProvider = StateProvider<PurchaseBillStatus?>(
+  (_) => null,
+);
 
 /// Filter by ITC eligibility (null = show all)
-final purchaseBillItcFilterProvider =
-    StateProvider<ItcEligibility?>((_) => null);
+final purchaseBillItcFilterProvider = StateProvider<ItcEligibility?>(
+  (_) => null,
+);
 
 // ── Bills list for active business ────────────────────────────────────────────
 
 class PurchaseBillsNotifier
     extends StateNotifier<AsyncValue<List<PurchaseBill>>> {
   PurchaseBillsNotifier(this._repo, this._businessId)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -47,13 +47,13 @@ class PurchaseBillsNotifier
     }
     state = const AsyncValue.loading();
     final next = await AsyncValue.guard(
-        () => _repo.fetchForBusiness(_businessId));
+      () => _repo.fetchForBusiness(_businessId),
+    );
     if (!mounted) return;
     state = next;
   }
 
-  Future<void> add(
-      PurchaseBill bill, List<PurchaseBillItem> items) async {
+  Future<void> add(PurchaseBill bill, List<PurchaseBillItem> items) async {
     final id = await _repo.insert(bill, items);
     // Add aggregate stock + create lots for tracked catalog items.
     for (final item in items) {
@@ -81,14 +81,17 @@ class PurchaseBillsNotifier
     await load();
   }
 
-  Future<void> edit(
-      PurchaseBill bill, List<PurchaseBillItem> items) async {
+  Future<void> edit(PurchaseBill bill, List<PurchaseBillItem> items) async {
     // Reverse previous stock movements + lot movements, then re-apply.
     if (bill.id != null) {
-      await LotAllocationService.instance
-          .reverseLotMovements('purchase_bill', bill.id!);
-      await InventoryService.instance
-          .reverseMovementsFor('purchase_bill', bill.id!);
+      await LotAllocationService.instance.reverseLotMovements(
+        'purchase_bill',
+        bill.id!,
+      );
+      await InventoryService.instance.reverseMovementsFor(
+        'purchase_bill',
+        bill.id!,
+      );
     }
     await _repo.update(bill, items);
     for (final item in items) {
@@ -118,8 +121,10 @@ class PurchaseBillsNotifier
 
   Future<void> remove(int id) async {
     // Reverse lot movements + aggregate stock before deleting.
-    await LotAllocationService.instance
-        .reverseLotMovements('purchase_bill', id);
+    await LotAllocationService.instance.reverseLotMovements(
+      'purchase_bill',
+      id,
+    );
     await InventoryService.instance.reverseMovementsFor('purchase_bill', id);
     await _repo.delete(id);
     await load();
@@ -130,8 +135,7 @@ class PurchaseBillsNotifier
     required double amount,
     required DateTime paidAt,
   }) async {
-    await _repo.recordPayment(
-        billId: billId, amount: amount, paidAt: paidAt);
+    await _repo.recordPayment(billId: billId, amount: amount, paidAt: paidAt);
     await load();
   }
 
@@ -142,18 +146,20 @@ class PurchaseBillsNotifier
 }
 
 final purchaseBillsProvider =
-    StateNotifierProvider<PurchaseBillsNotifier, AsyncValue<List<PurchaseBill>>>(
-  (ref) {
-    final repo = ref.read(purchaseBillRepositoryProvider);
-    final business = ref.watch(activeBusinessProvider);
-    return PurchaseBillsNotifier(repo, business?.id);
-  },
-);
+    StateNotifierProvider<
+      PurchaseBillsNotifier,
+      AsyncValue<List<PurchaseBill>>
+    >((ref) {
+      final repo = ref.read(purchaseBillRepositoryProvider);
+      final business = ref.watch(activeBusinessProvider);
+      return PurchaseBillsNotifier(repo, business?.id);
+    });
 
 // ── Derived: filtered list ────────────────────────────────────────────────────
 
-final filteredPurchaseBillsProvider =
-    Provider<AsyncValue<List<PurchaseBill>>>((ref) {
+final filteredPurchaseBillsProvider = Provider<AsyncValue<List<PurchaseBill>>>((
+  ref,
+) {
   final all = ref.watch(purchaseBillsProvider);
   final statusFilter = ref.watch(purchaseBillStatusFilterProvider);
   final itcFilter = ref.watch(purchaseBillItcFilterProvider);
@@ -164,8 +170,7 @@ final filteredPurchaseBillsProvider =
       result = result.where((b) => b.status == statusFilter).toList();
     }
     if (itcFilter != null) {
-      result =
-          result.where((b) => b.itcEligibility == itcFilter).toList();
+      result = result.where((b) => b.itcEligibility == itcFilter).toList();
     }
     return result;
   });

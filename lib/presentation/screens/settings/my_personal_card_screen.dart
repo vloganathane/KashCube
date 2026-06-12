@@ -57,16 +57,16 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   @override
   void initState() {
     super.initState();
-    _name      = TextEditingController();
-    _phone     = TextEditingController();
-    _email     = TextEditingController();
-    _address   = TextEditingController();
-    _city      = TextEditingController();
-    _state     = TextEditingController();
-    _pincode   = TextEditingController();
-    _website   = TextEditingController();
-    _whatsapp  = TextEditingController();
-    _linkedin  = TextEditingController();
+    _name = TextEditingController();
+    _phone = TextEditingController();
+    _email = TextEditingController();
+    _address = TextEditingController();
+    _city = TextEditingController();
+    _state = TextEditingController();
+    _pincode = TextEditingController();
+    _website = TextEditingController();
+    _whatsapp = TextEditingController();
+    _linkedin = TextEditingController();
     _instagram = TextEditingController();
     PincodeLookupService.ensureLoaded();
     _pincode.addListener(_onPincodeChanged);
@@ -77,9 +77,17 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
   void dispose() {
     _pincode.removeListener(_onPincodeChanged);
     for (final c in [
-      _name, _phone, _email,
-      _address, _city, _state, _pincode,
-      _website, _whatsapp, _linkedin, _instagram,
+      _name,
+      _phone,
+      _email,
+      _address,
+      _city,
+      _state,
+      _pincode,
+      _website,
+      _whatsapp,
+      _linkedin,
+      _instagram,
     ]) {
       c.dispose();
     }
@@ -88,7 +96,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
 
   void _onPincodeChanged() {
     final pin = _pincode.text.trim();
-    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    final isIndia =
+        _selectedCountry == null || _selectedCountry!.name.common == 'India';
     if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
       if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
       return;
@@ -124,18 +133,18 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
       repo.get(SettingsKeys.personalDialCode),
     ]);
     if (!mounted) return;
-    _name.text      = vals[0] ?? '';
-    _phone.text     = vals[1] ?? '';
-    _email.text     = vals[2] ?? '';
-    _address.text   = vals[3] ?? '';
-    _city.text      = vals[4] ?? '';
-    _state.text     = vals[5] ?? '';
-    _pincode.text   = vals[6] ?? '';
-    _website.text   = vals[7] ?? '';
-    _whatsapp.text  = vals[8] ?? '';
-    _linkedin.text  = vals[9] ?? '';
+    _name.text = vals[0] ?? '';
+    _phone.text = vals[1] ?? '';
+    _email.text = vals[2] ?? '';
+    _address.text = vals[3] ?? '';
+    _city.text = vals[4] ?? '';
+    _state.text = vals[5] ?? '';
+    _pincode.text = vals[6] ?? '';
+    _website.text = vals[7] ?? '';
+    _whatsapp.text = vals[8] ?? '';
+    _linkedin.text = vals[9] ?? '';
     _instagram.text = vals[10] ?? '';
-    _photoPath      = vals[11];
+    _photoPath = vals[11];
     if (vals[12] != null) _selectedCountry = countryByName(vals[12]);
     _dialCode = vals[13] ?? '91';
     setState(() => _loading = false);
@@ -161,20 +170,44 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
     try {
       final repo = ref.read(settingsRepositoryProvider);
       await Future.wait([
-        _saveOrRemove(repo, SettingsKeys.ownerName,          _name.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalPhone,      PhoneUtils.normalize(_phone.text) ?? ''),
-        _saveOrRemove(repo, SettingsKeys.personalEmail,      _email.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalAddress,    _address.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalCity,       _city.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalState,      _state.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalPincode,    _pincode.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalCountry,    _selectedCountry?.name.common ?? ''),
-        _saveOrRemove(repo, SettingsKeys.personalDialCode,   _selectedCountry != null ? _dialCode : ''),
-        _saveOrRemove(repo, SettingsKeys.personalWebsite,    _website.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalWhatsapp,   _whatsapp.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalLinkedin,   _linkedin.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalInstagram,  _instagram.text.trim()),
-        _saveOrRemove(repo, SettingsKeys.personalPhotoPath,  _photoPath ?? ''),
+        _saveOrRemove(repo, SettingsKeys.ownerName, _name.text.trim()),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalPhone,
+          PhoneUtils.normalize(_phone.text) ?? '',
+        ),
+        _saveOrRemove(repo, SettingsKeys.personalEmail, _email.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalAddress, _address.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalCity, _city.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalState, _state.text.trim()),
+        _saveOrRemove(repo, SettingsKeys.personalPincode, _pincode.text.trim()),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalCountry,
+          _selectedCountry?.name.common ?? '',
+        ),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalDialCode,
+          _selectedCountry != null ? _dialCode : '',
+        ),
+        _saveOrRemove(repo, SettingsKeys.personalWebsite, _website.text.trim()),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalWhatsapp,
+          _whatsapp.text.trim(),
+        ),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalLinkedin,
+          _linkedin.text.trim(),
+        ),
+        _saveOrRemove(
+          repo,
+          SettingsKeys.personalInstagram,
+          _instagram.text.trim(),
+        ),
+        _saveOrRemove(repo, SettingsKeys.personalPhotoPath, _photoPath ?? ''),
       ]);
       // Keep identity display name in sync with personal card name
       final newName = _name.text.trim();
@@ -183,9 +216,9 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
         ref.invalidate(myIdentityProvider);
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Personal card saved')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Personal card saved')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -198,23 +231,25 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
 
   void _showQr() {
     final vcard = vCardFromPersonalSettings(
-      name:      _name.text.trim().isEmpty ? null : _name.text.trim(),
-      phone:     _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-      email:     _email.text.trim().isEmpty ? null : _email.text.trim(),
-      address:   _address.text.trim().isEmpty ? null : _address.text.trim(),
-      city:      _city.text.trim().isEmpty ? null : _city.text.trim(),
-      state:     _state.text.trim().isEmpty ? null : _state.text.trim(),
-      pincode:   _pincode.text.trim().isEmpty ? null : _pincode.text.trim(),
-      website:   _website.text.trim().isEmpty ? null : _website.text.trim(),
-      whatsapp:  _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
-      linkedin:  _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
+      name: _name.text.trim().isEmpty ? null : _name.text.trim(),
+      phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+      email: _email.text.trim().isEmpty ? null : _email.text.trim(),
+      address: _address.text.trim().isEmpty ? null : _address.text.trim(),
+      city: _city.text.trim().isEmpty ? null : _city.text.trim(),
+      state: _state.text.trim().isEmpty ? null : _state.text.trim(),
+      pincode: _pincode.text.trim().isEmpty ? null : _pincode.text.trim(),
+      website: _website.text.trim().isEmpty ? null : _website.text.trim(),
+      whatsapp: _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
+      linkedin: _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
       instagram: _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
     );
     showVCardQrDialog(
       context,
       vcard: vcard,
       displayName: _name.text.trim().isEmpty ? 'My Card' : _name.text.trim(),
-      subtitle: PhoneUtils.formatDisplay(_phone.text.trim(), dialCode: _dialCode) ?? _email.text.trim(),
+      subtitle:
+          PhoneUtils.formatDisplay(_phone.text.trim(), dialCode: _dialCode) ??
+          _email.text.trim(),
     );
   }
 
@@ -238,8 +273,11 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
               key: _formKey,
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base, AppSpacing.sm,
-                    AppSpacing.base, AppSpacing.xxxl),
+                  AppSpacing.base,
+                  AppSpacing.sm,
+                  AppSpacing.base,
+                  AppSpacing.xxxl,
+                ),
                 children: [
                   // ── Info banner ────────────────────────────────────────────
                   _InfoBanner(),
@@ -263,8 +301,9 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                       prefixIcon: Icon(Icons.person_outline),
                     ),
                     textCapitalization: TextCapitalization.words,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Name is required' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Name is required'
+                        : null,
                   ),
                   const SizedBox(height: AppSpacing.sm),
 
@@ -275,7 +314,7 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                         child: TextFormField(
                           controller: _phone,
                           inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly
+                            FilteringTextInputFormatter.digitsOnly,
                           ],
                           decoration: InputDecoration(
                             labelText: 'Phone',
@@ -333,7 +372,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                     children: [
                       Expanded(
                         flex: 3,
-                        child: (_selectedCountry == null ||
+                        child:
+                            (_selectedCountry == null ||
                                 _selectedCountry!.name.common == 'India')
                             ? IndianStateDropdown(controller: _state)
                             : TextFormField(
@@ -354,8 +394,11 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                             labelText: 'Postcode',
                             border: const OutlineInputBorder(),
                             suffixIcon: _pincodeAutoFilled
-                                ? const Icon(Icons.check_circle_outline,
-                                    color: Colors.green, size: 18)
+                                ? const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                    size: 18,
+                                  )
                                 : null,
                           ),
                           keyboardType: TextInputType.number,
@@ -380,10 +423,12 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
 
                   // ── Online Presence (collapsible) ─────────────────────────
                   Theme(
-                    data: Theme.of(context)
-                        .copyWith(dividerColor: Colors.transparent),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(dividerColor: Colors.transparent),
                     child: ExpansionTile(
-                      initiallyExpanded: _website.text.isNotEmpty ||
+                      initiallyExpanded:
+                          _website.text.isNotEmpty ||
                           _whatsapp.text.isNotEmpty ||
                           _linkedin.text.isNotEmpty ||
                           _instagram.text.isNotEmpty,
@@ -465,7 +510,8 @@ class _MyPersonalCardScreenState extends ConsumerState<MyPersonalCardScreen> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
-                                  ))
+                                  ),
+                                )
                               : const Icon(Icons.save_outlined),
                           label: const Text('Save Card'),
                           onPressed: _saving ? null : _save,
@@ -517,8 +563,11 @@ class _PhotoPicker extends StatelessWidget {
             ),
             child: hasPhoto
                 ? null
-                : Icon(Icons.add_photo_alternate_outlined,
-                    size: 32, color: cs.outline),
+                : Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 32,
+                    color: cs.outline,
+                  ),
           ),
         ),
         const SizedBox(width: AppSpacing.base),
@@ -526,8 +575,10 @@ class _PhotoPicker extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Profile Photo',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Profile Photo',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Shown in your QR card.',
@@ -539,27 +590,33 @@ class _PhotoPicker extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     icon: const Icon(Icons.image_outlined, size: 14),
-                    label:
-                        const Text('Choose', style: TextStyle(fontSize: 12)),
+                    label: const Text('Choose', style: TextStyle(fontSize: 12)),
                     onPressed: onPick,
                   ),
                   if (hasPhoto)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.error),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
                       icon: const Icon(Icons.delete_outline, size: 14),
-                      label: const Text('Remove',
-                          style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Remove',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onPressed: onRemove,
                     ),
                 ],

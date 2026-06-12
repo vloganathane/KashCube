@@ -99,7 +99,9 @@ class LocalPeerConnectionAdapter {
         // (inactive/dummy in answer until actual engine produces real candidates)
         final parts = line.split(' ');
         if (parts.length >= 3) {
-          answerLines.add('${parts[0]} ${parts[1]} 9 ${parts.sublist(3).join(' ')}');
+          answerLines.add(
+            '${parts[0]} ${parts[1]} 9 ${parts.sublist(3).join(' ')}',
+          );
         }
       } else if (line.startsWith('a=')) {
         // Copy only non-candidate attributes (candidates come via ICE separately)
@@ -153,7 +155,8 @@ class LocalPeerConnectionAdapter {
   static int _now() => DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
   @override
-  String toString() => 'LocalPeerConnectionAdapter('
+  String toString() =>
+      'LocalPeerConnectionAdapter('
       'sessionId=$sessionId, '
       'hasOffer=$hasOffer, '
       'hasAnswer=$hasAnswer, '

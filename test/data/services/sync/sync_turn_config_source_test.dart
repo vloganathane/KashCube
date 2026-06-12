@@ -24,14 +24,19 @@ void main() {
     test('resolve returns the injected config unchanged', () {
       const config = SyncTurnConfig(
         relayMode: SyncTurnRelayMode.preferred,
-        relayServerHints: <String>['turn:a.example:3478', 'turns:b.example:5349'],
+        relayServerHints: <String>[
+          'turn:a.example:3478',
+          'turns:b.example:5349',
+        ],
       );
       const source = StaticSyncTurnConfigSource(config);
 
       final resolved = source.resolve();
       expect(resolved.relayMode, SyncTurnRelayMode.preferred);
-      expect(resolved.relayServerHints,
-          <String>['turn:a.example:3478', 'turns:b.example:5349']);
+      expect(resolved.relayServerHints, <String>[
+        'turn:a.example:3478',
+        'turns:b.example:5349',
+      ]);
     });
 
     test('resolve returns same instance on repeated calls', () {

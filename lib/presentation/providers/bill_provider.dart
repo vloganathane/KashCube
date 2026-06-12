@@ -18,8 +18,10 @@ final billStorageProvider = Provider<BillStorageService>(
 /// Provider that fetches a bill attachment for a given transaction ID.
 ///
 /// Usage: `ref.watch(billForTransactionProvider(txnId))`
-final billForTransactionProvider =
-    FutureProvider.family<BillAttachment?, int>((ref, transactionId) {
+final billForTransactionProvider = FutureProvider.family<BillAttachment?, int>((
+  ref,
+  transactionId,
+) {
   final repo = ref.read(billRepositoryProvider);
   return repo.getByTransactionId(transactionId);
 });
@@ -34,9 +36,9 @@ class BillNotifier extends StateNotifier<AsyncValue<BillAttachment?>> {
     required BillRepository repository,
     required BillStorageService storage,
     required this.transactionId,
-  })  : _repository = repository,
-        _storage = storage,
-        super(const AsyncValue.loading()) {
+  }) : _repository = repository,
+       _storage = storage,
+       super(const AsyncValue.loading()) {
     _load();
   }
 
@@ -97,11 +99,15 @@ class BillNotifier extends StateNotifier<AsyncValue<BillAttachment?>> {
 /// Provider for a bill notifier scoped to a specific transaction ID.
 ///
 /// Usage: `ref.watch(billNotifierProvider(txnId))`
-final billNotifierProvider = StateNotifierProvider.family<BillNotifier,
-    AsyncValue<BillAttachment?>, int>(
-  (ref, transactionId) => BillNotifier(
-    repository: ref.read(billRepositoryProvider),
-    storage: ref.read(billStorageProvider),
-    transactionId: transactionId,
-  ),
-);
+final billNotifierProvider =
+    StateNotifierProvider.family<
+      BillNotifier,
+      AsyncValue<BillAttachment?>,
+      int
+    >(
+      (ref, transactionId) => BillNotifier(
+        repository: ref.read(billRepositoryProvider),
+        storage: ref.read(billStorageProvider),
+        transactionId: transactionId,
+      ),
+    );

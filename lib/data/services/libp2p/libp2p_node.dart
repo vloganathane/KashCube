@@ -152,7 +152,9 @@ class LibP2pNode {
       await _host!.start();
 
       _started = true;
-      debugPrint('[LibP2pNode] Started listening on: ${listeningAddrs.join(", ")}');
+      debugPrint(
+        '[LibP2pNode] Started listening on: ${listeningAddrs.join(", ")}',
+      );
     } catch (e, stack) {
       debugPrint('[LibP2pNode] Start failed: $e');
       debugPrint(stack.toString());
@@ -221,10 +223,13 @@ class LibP2pNode {
 
     // Register with dart_libp2p host
     // Note: ProtocolID is a String typedef
-    _host!.setStreamHandler(protocolId, (P2PStream stream, PeerId remotePeer) async {
+    _host!.setStreamHandler(protocolId, (
+      P2PStream stream,
+      PeerId remotePeer,
+    ) async {
       final peerIdStr = remotePeer.toString();
       _trackStream(peerIdStr, stream);
-      
+
       try {
         await handler(stream, remotePeer);
       } catch (e) {
@@ -257,17 +262,22 @@ class LibP2pNode {
   ///
   /// Returns the opened stream. Caller is responsible for reading/writing to the stream.
   /// The stream is automatically tracked and removed when closed.
-  Future<P2PStream> dial(String peerMultiaddr, {required String protocolId}) async {
+  Future<P2PStream> dial(
+    String peerMultiaddr, {
+    required String protocolId,
+  }) async {
     if (!_started) {
       throw StateError('Must call start() before dialing');
     }
 
     try {
-      debugPrint('[LibP2pNode] Dialing $peerMultiaddr with protocol $protocolId');
+      debugPrint(
+        '[LibP2pNode] Dialing $peerMultiaddr with protocol $protocolId',
+      );
 
       // Parse multiaddr
       final addr = MultiAddr(peerMultiaddr);
-      
+
       // Extract peer ID from multiaddr (/p2p/QmXXX component)
       final peerId = _extractPeerIdFromMultiaddr(addr);
 
@@ -283,15 +293,19 @@ class LibP2pNode {
       // Track stream
       final peerIdStr = peerId.toString();
       _trackStream(peerIdStr, stream);
-      
-      // Emit connection event
-      _connectionEvents.add(PeerConnectionEvent(
-        peerId: peerIdStr,
-        type: PeerConnectionEventType.connected,
-        timestamp: DateTime.now(),
-      ));
 
-      debugPrint('[LibP2pNode] Successfully dialed $peerIdStr on protocol $protocolId');
+      // Emit connection event
+      _connectionEvents.add(
+        PeerConnectionEvent(
+          peerId: peerIdStr,
+          type: PeerConnectionEventType.connected,
+          timestamp: DateTime.now(),
+        ),
+      );
+
+      debugPrint(
+        '[LibP2pNode] Successfully dialed $peerIdStr on protocol $protocolId',
+      );
       return stream;
     } catch (e, stack) {
       debugPrint('[LibP2pNode] Dial failed: $e');
@@ -334,7 +348,9 @@ class LibP2pNode {
   /// Track an active stream.
   void _trackStream(String peerId, P2PStream stream) {
     _activeStreams.putIfAbsent(peerId, () => []).add(stream);
-    debugPrint('[LibP2pNode] Tracking stream to $peerId (${_activeStreams[peerId]!.length} total)');
+    debugPrint(
+      '[LibP2pNode] Tracking stream to $peerId (${_activeStreams[peerId]!.length} total)',
+    );
   }
 
   /// Untrack a closed stream.
@@ -344,11 +360,13 @@ class LibP2pNode {
       streams.remove(stream);
       if (streams.isEmpty) {
         _activeStreams.remove(peerId);
-        _connectionEvents.add(PeerConnectionEvent(
-          peerId: peerId,
-          type: PeerConnectionEventType.disconnected,
-          timestamp: DateTime.now(),
-        ));
+        _connectionEvents.add(
+          PeerConnectionEvent(
+            peerId: peerId,
+            type: PeerConnectionEventType.disconnected,
+            timestamp: DateTime.now(),
+          ),
+        );
       }
     }
     debugPrint('[LibP2pNode] Untracked stream to $peerId');
@@ -360,10 +378,7 @@ class LibP2pNode {
 // ──────────────────────────────────────────────────────────────────────────────
 
 /// Type of peer connection event.
-enum PeerConnectionEventType {
-  connected,
-  disconnected,
-}
+enum PeerConnectionEventType { connected, disconnected }
 
 /// Event emitted when peer connection state changes.
 class PeerConnectionEvent {
@@ -378,5 +393,6 @@ class PeerConnectionEvent {
   final DateTime timestamp;
 
   @override
-  String toString() => 'PeerConnectionEvent($type, peer=$peerId, at=$timestamp)';
+  String toString() =>
+      'PeerConnectionEvent($type, peer=$peerId, at=$timestamp)';
 }

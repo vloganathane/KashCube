@@ -27,8 +27,8 @@ final switchUserProvider = StateProvider<int>((ref) => 0);
 
 final appUsersProvider =
     StateNotifierProvider<AppUsersNotifier, AsyncValue<List<AppUser>>>(
-  (ref) => AppUsersNotifier(ref.read(appUserRepositoryProvider)),
-);
+      (ref) => AppUsersNotifier(ref.read(appUserRepositoryProvider)),
+    );
 
 class AppUsersNotifier extends StateNotifier<AsyncValue<List<AppUser>>> {
   final AppUserRepository _repository;
@@ -88,21 +88,26 @@ final hasAnyAppUserProvider = FutureProvider<bool>(
 
 /// Returns the resolved [Permission] for the given module + businessId.
 /// Owner (activeAppUserProvider == null) always gets [Permission.full].
-final permissionProvider = Provider.family<
-    Future<Permission>, ({String module, int businessId})>(
-  (ref, arg) async {
-    final user = ref.watch(activeAppUserProvider);
-    if (user == null) return Permission.full;
-    return ref
-        .read(appUserRepositoryProvider)
-        .getPermission(userId: user.id!, module: arg.module, businessId: arg.businessId);
-  },
-);
+final permissionProvider =
+    Provider.family<Future<Permission>, ({String module, int businessId})>((
+      ref,
+      arg,
+    ) async {
+      final user = ref.watch(activeAppUserProvider);
+      if (user == null) return Permission.full;
+      return ref
+          .read(appUserRepositoryProvider)
+          .getPermission(
+            userId: user.id!,
+            module: arg.module,
+            businessId: arg.businessId,
+          );
+    });
 
 // ── Permissions for a specific user (used by ManageUsersScreen / UserPermissionsScreen) ─
 
 final userPermissionsProvider =
     FutureProvider.family<List<UserPermission>, int>(
-  (ref, userId) =>
-      ref.read(appUserRepositoryProvider).getPermissionsForUser(userId),
-);
+      (ref, userId) =>
+          ref.read(appUserRepositoryProvider).getPermissionsForUser(userId),
+    );

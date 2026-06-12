@@ -37,15 +37,15 @@ String _buildQrPayload({
   required String publicKeyBase64,
   required String displayName,
   String? ip,
-  int?    port,
+  int? port,
 }) {
   final uri = Uri(
     scheme: 'kashcube',
-    host:   ip   ?? '0.0.0.0',
-    port:   port ?? 0,
+    host: ip ?? '0.0.0.0',
+    port: port ?? 0,
     queryParameters: {
-      'id':   identityId,
-      'pk':   publicKeyBase64,
+      'id': identityId,
+      'pk': publicKeyBase64,
       'name': displayName,
     },
   );
@@ -58,15 +58,17 @@ String _buildQrPayload({
 /// Returns null for any unrecognised QR code.
 /// [ip] and [port] are null when the host is `0.0.0.0` / port is `0`
 /// (LAN Sync was off when the QR was generated — mDNS fallback applies).
-({String id, String pk, String name, String? ip, int? port})? _parseQrPayload(String raw) {
+({String id, String pk, String name, String? ip, int? port})? _parseQrPayload(
+  String raw,
+) {
   try {
     final uri = Uri.parse(raw.trim());
     if (uri.scheme != 'kashcube') return null;
-    final id   = uri.queryParameters['id'];
-    final pk   = uri.queryParameters['pk'];
+    final id = uri.queryParameters['id'];
+    final pk = uri.queryParameters['pk'];
     final name = uri.queryParameters['name'] ?? 'Unknown Device';
     if (id == null || pk == null) return null;
-    final ip   = (uri.host.isNotEmpty && uri.host != '0.0.0.0') ? uri.host : null;
+    final ip = (uri.host.isNotEmpty && uri.host != '0.0.0.0') ? uri.host : null;
     final port = (uri.port > 0) ? uri.port : null;
     return (id: id, pk: pk, name: name, ip: ip, port: port);
   } catch (e) {
@@ -133,8 +135,13 @@ class _PairScreenState extends ConsumerState<PairScreen>
     if (parsed == null) return; // ignore non-KashCube QR
     _scanHandled = true;
     _scannerController.stop();
-    _performPairing(parsed.id, parsed.pk, parsed.name,
-        peerIp: parsed.ip, peerPort: parsed.port);
+    _performPairing(
+      parsed.id,
+      parsed.pk,
+      parsed.name,
+      peerIp: parsed.ip,
+      peerPort: parsed.port,
+    );
   }
 
   // ── Pairing flow ──────────────────────────────────────────────────────
@@ -144,31 +151,32 @@ class _PairScreenState extends ConsumerState<PairScreen>
     String peerPublicKeyBase64,
     String peerDisplayName, {
     String? peerIp,
-    int?    peerPort,
+    int? peerPort,
   }) async {
     // Step 1 — Validate
     _setPhase(const PairingState(phase: PairingPhase.validating));
 
     try {
       await ref.read(identityInitProvider.future);
-      final localPubKeyBytes  = base64.decode(IdentityService.instance.identityPublicKeyBase64);
+      final localPubKeyBytes = base64.decode(
+        IdentityService.instance.identityPublicKeyBase64,
+      );
       final remotePubKeyBytes = base64.decode(peerPublicKeyBase64);
 
       final sharedSecret = await P2pAuthService.instance.deriveSharedSecret(
-        localPubKey:  Uint8List.fromList(localPubKeyBytes),
+        localPubKey: Uint8List.fromList(localPubKeyBytes),
         remotePubKey: Uint8List.fromList(remotePubKeyBytes),
       );
 
       // Step 2 — Save
-      _setPhase(PairingState(
-        phase:    PairingPhase.saving,
-        peerName: peerDisplayName,
-      ));
+      _setPhase(
+        PairingState(phase: PairingPhase.saving, peerName: peerDisplayName),
+      );
 
       await P2pCoordinator.instance.pairWithPeer(
-        peerIdentityId:  peerIdentityId,
+        peerIdentityId: peerIdentityId,
         peerDisplayName: peerDisplayName,
-        sharedSecret:    sharedSecret,
+        sharedSecret: sharedSecret,
       );
 
       // Step 3 — If the QR contained a direct address, immediately notify
@@ -176,16 +184,17 @@ class _PairScreenState extends ConsumerState<PairScreen>
       // This works even when mDNS discovery hasn't resolved the peer yet.
       if (peerIp != null && peerPort != null) {
         final client = P2pClient(
-          baseUrl:      'http://$peerIp:$peerPort',
-          identityId:   IdentityService.instance.identityId,
+          baseUrl: 'http://$peerIp:$peerPort',
+          identityId: IdentityService.instance.identityId,
           sharedSecret: sharedSecret,
         );
         try {
           // Read our own display name so the peer shows it correctly.
-          final myName = await ref.read(settingsRepositoryProvider)
+          final myName = await ref
+              .read(settingsRepositoryProvider)
               .get(SettingsKeys.ownerName);
           await client.pair(
-            myIdentityId:      IdentityService.instance.identityId,
+            myIdentityId: IdentityService.instance.identityId,
             myPublicKeyBase64: IdentityService.instance.identityPublicKeyBase64,
             myDisplayName: (myName == null || myName.trim().isEmpty)
                 ? 'KashCube'
@@ -204,10 +213,9 @@ class _PairScreenState extends ConsumerState<PairScreen>
       }
 
       // Step 4 — Success
-      _setPhase(PairingState(
-        phase:    PairingPhase.success,
-        peerName: peerDisplayName,
-      ));
+      _setPhase(
+        PairingState(phase: PairingPhase.success, peerName: peerDisplayName),
+      );
 
       // Auto-pop after a short celebration pause.
       await Future<void>.delayed(const Duration(seconds: 2));
@@ -217,10 +225,12 @@ class _PairScreenState extends ConsumerState<PairScreen>
         Navigator.pop(context);
       }
     } catch (e) {
-      _setPhase(PairingState(
-        phase:        PairingPhase.error,
-        errorMessage: 'Pairing failed. Please try again.',
-      ));
+      _setPhase(
+        PairingState(
+          phase: PairingPhase.error,
+          errorMessage: 'Pairing failed. Please try again.',
+        ),
+      );
     }
   }
 
@@ -232,7 +242,9 @@ class _PairScreenState extends ConsumerState<PairScreen>
   void _retryPairing() {
     _scanHandled = false;
     _scannerController.start();
-    setState(() => _pairingState = const PairingState(phase: PairingPhase.idle));
+    setState(
+      () => _pairingState = const PairingState(phase: PairingPhase.idle),
+    );
   }
 
   // ── Build ─────────────────────────────────────────────────────────────
@@ -240,7 +252,7 @@ class _PairScreenState extends ConsumerState<PairScreen>
   @override
   Widget build(BuildContext context) {
     final identityAsync = ref.watch(identityInitProvider);
-    final settingsRepo  = ref.read(settingsRepositoryProvider);
+    final settingsRepo = ref.read(settingsRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -261,25 +273,22 @@ class _PairScreenState extends ConsumerState<PairScreen>
               // ── Tab 0: Show own QR ─────────────────────────────────────
               identityAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error:   (e, _) => Center(child: Text('$e')),
-                data:    (_) => _YourQrTab(
-                  identity:    IdentityService.instance,
+                error: (e, _) => Center(child: Text('$e')),
+                data: (_) => _YourQrTab(
+                  identity: IdentityService.instance,
                   settingsRepo: settingsRepo,
                 ),
               ),
 
               // ── Tab 1: Scan peer QR ────────────────────────────────────
-              _ScanTab(
-                controller: _scannerController,
-                onBarcode:  _onBarcode,
-              ),
+              _ScanTab(controller: _scannerController, onBarcode: _onBarcode),
             ],
           ),
 
           // ── Pairing progress overlay ───────────────────────────────────
           if (_pairingState.phase != PairingPhase.idle)
             _PairingProgressOverlay(
-              state:   _pairingState,
+              state: _pairingState,
               onRetry: _retryPairing,
             ),
         ],
@@ -291,13 +300,10 @@ class _PairScreenState extends ConsumerState<PairScreen>
 // ── YourQrTab ──────────────────────────────────────────────────────────────
 
 class _YourQrTab extends StatefulWidget {
-  const _YourQrTab({
-    required this.identity,
-    required this.settingsRepo,
-  });
+  const _YourQrTab({required this.identity, required this.settingsRepo});
 
-  final dynamic identity;          // IdentityService
-  final dynamic settingsRepo;      // SettingsRepository
+  final dynamic identity; // IdentityService
+  final dynamic settingsRepo; // SettingsRepository
 
   @override
   State<_YourQrTab> createState() => _YourQrTabState();
@@ -313,18 +319,20 @@ class _YourQrTabState extends State<_YourQrTab> {
   }
 
   Future<void> _buildPayload() async {
-    final name = await (widget.settingsRepo.get(SettingsKeys.ownerName) as Future<String?>);
-    final ip   = await P2pDiscoveryService.getLocalIp();
+    final name =
+        await (widget.settingsRepo.get(SettingsKeys.ownerName)
+            as Future<String?>);
+    final ip = await P2pDiscoveryService.getLocalIp();
     final port = P2pCoordinator.instance.serverPort;
     if (!mounted) return;
     setState(() {
       _qrPayload = _buildQrPayload(
-        identityId:      widget.identity.identityId as String,
+        identityId: widget.identity.identityId as String,
         publicKeyBase64: widget.identity.identityPublicKeyBase64 as String,
-        displayName:     (name == null || name.trim().isEmpty)
+        displayName: (name == null || name.trim().isEmpty)
             ? 'KashCube'
             : name.trim(),
-        ip:   ip,
+        ip: ip,
         port: port,
       );
     });
@@ -358,33 +366,35 @@ class _YourQrTabState extends State<_YourQrTab> {
           const SizedBox(height: AppSpacing.xl),
           LayoutBuilder(
             builder: (context, constraints) {
-              final qrSize = (constraints.maxWidth - AppSpacing.base * 2)
-                  .clamp(200.0, 320.0);
+              final qrSize = (constraints.maxWidth - AppSpacing.base * 2).clamp(
+                200.0,
+                320.0,
+              );
               return Container(
                 decoration: BoxDecoration(
-                  color:        Colors.white,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(AppSpacing.base),
                   boxShadow: [
                     BoxShadow(
-                      color:      Colors.black.withValues(alpha: 0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 12,
                     ),
                   ],
                 ),
                 padding: const EdgeInsets.all(AppSpacing.base),
                 child: QrImageView(
-                  data:                 payload,
-                  version:              QrVersions.auto,
-                  size:                 qrSize,
+                  data: payload,
+                  version: QrVersions.auto,
+                  size: qrSize,
                   errorCorrectionLevel: QrErrorCorrectLevel.L,
-                  backgroundColor:      Colors.white,
+                  backgroundColor: Colors.white,
                   eyeStyle: QrEyeStyle(
                     eyeShape: QrEyeShape.square,
-                    color:    context.colorScheme.primary,
+                    color: context.colorScheme.primary,
                   ),
                   dataModuleStyle: QrDataModuleStyle(
                     dataModuleShape: QrDataModuleShape.square,
-                    color:           Colors.black87,
+                    color: Colors.black87,
                   ),
                 ),
               );
@@ -394,11 +404,11 @@ class _YourQrTabState extends State<_YourQrTab> {
           _QrUrlRow(url: payload),
           const SizedBox(height: AppSpacing.base),
           _InfoRow(
-            icon:  Icons.privacy_tip_outlined,
+            icon: Icons.privacy_tip_outlined,
             label: 'Data never leaves your local network',
           ),
           _InfoRow(
-            icon:  Icons.lock_outline,
+            icon: Icons.lock_outline,
             label: 'Encrypted with Ed25519 + AES-256-GCM',
           ),
         ],
@@ -419,36 +429,30 @@ class _ScanTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        MobileScanner(
-          controller: controller,
-          onDetect:   onBarcode,
-        ),
+        MobileScanner(controller: controller, onDetect: onBarcode),
         // Scan-guide overlay
         Center(
           child: Container(
-            width:       240,
-            height:      240,
+            width: 240,
+            height: 240,
             decoration: BoxDecoration(
-              border: Border.all(
-                color: context.colorScheme.primary,
-                width: 3,
-              ),
+              border: Border.all(color: context.colorScheme.primary, width: 3),
               borderRadius: BorderRadius.circular(AppSpacing.base),
             ),
           ),
         ),
         Positioned(
           bottom: AppSpacing.xxl,
-          left:   0,
-          right:  0,
+          left: 0,
+          right: 0,
           child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.base,
-                vertical:   AppSpacing.sm,
+                vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color:        Colors.black54,
+                color: Colors.black54,
                 borderRadius: BorderRadius.circular(AppSpacing.xl),
               ),
               child: Text(
@@ -475,10 +479,7 @@ class _ScanTab extends StatelessWidget {
 ///  - [PairingPhase.success]  — green check + peer name
 ///  - [PairingPhase.error]    — red icon + error message + Retry button
 class _PairingProgressOverlay extends StatelessWidget {
-  const _PairingProgressOverlay({
-    required this.state,
-    required this.onRetry,
-  });
+  const _PairingProgressOverlay({required this.state, required this.onRetry});
 
   final PairingState state;
   final VoidCallback onRetry;
@@ -512,19 +513,17 @@ class _OverlayContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (state.phase) {
-      PairingPhase.validating => _SpinnerStep(
-          label: 'Verifying peer…',
-        ),
+      PairingPhase.validating => _SpinnerStep(label: 'Verifying peer…'),
       PairingPhase.saving => _SpinnerStep(
-          label: 'Saving ${state.peerName ?? 'device'}…',
-        ),
+        label: 'Saving ${state.peerName ?? 'device'}…',
+      ),
       PairingPhase.success => _SuccessStep(
-          peerName: state.peerName ?? 'Device',
-        ),
+        peerName: state.peerName ?? 'Device',
+      ),
       PairingPhase.error => _ErrorStep(
-          message: state.errorMessage ?? 'Unknown error',
-          onRetry: onRetry,
-        ),
+        message: state.errorMessage ?? 'Unknown error',
+        onRetry: onRetry,
+      ),
       _ => const SizedBox.shrink(),
     };
   }
@@ -562,11 +561,7 @@ class _SuccessStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.check_circle,
-          size:  64,
-          color: context.kashColors.income,
-        ),
+        Icon(Icons.check_circle, size: 64, color: context.kashColors.income),
         const SizedBox(height: AppSpacing.base),
         Text(
           'Paired!',
@@ -598,11 +593,7 @@ class _ErrorStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.error_outline,
-          size:  64,
-          color: context.colorScheme.error,
-        ),
+        Icon(Icons.error_outline, size: 64, color: context.colorScheme.error),
         const SizedBox(height: AppSpacing.base),
         Text(
           'Pairing Failed',
@@ -619,10 +610,7 @@ class _ErrorStep extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.lg),
-        FilledButton.tonal(
-          onPressed: onRetry,
-          child: const Text('Try Again'),
-        ),
+        FilledButton.tonal(onPressed: onRetry, child: const Text('Try Again')),
       ],
     );
   }
@@ -654,12 +642,12 @@ class _QrUrlRowState extends State<_QrUrlRow> {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color:        context.colorScheme.surfaceContainerHighest,
+        color: context.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(AppSpacing.sm),
       ),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.sm,
-        vertical:   AppSpacing.xs,
+        vertical: AppSpacing.xs,
       ),
       child: Row(
         children: [
@@ -668,7 +656,7 @@ class _QrUrlRowState extends State<_QrUrlRow> {
               widget.url,
               style: context.textTheme.labelSmall?.copyWith(
                 fontFamily: 'monospace',
-                color:      context.colorScheme.onSurfaceVariant,
+                color: context.colorScheme.onSurfaceVariant,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -683,11 +671,11 @@ class _QrUrlRowState extends State<_QrUrlRow> {
                   ? context.colorScheme.primary
                   : context.colorScheme.onSurfaceVariant,
             ),
-            tooltip:  'Copy QR URL',
+            tooltip: 'Copy QR URL',
             onPressed: _copy,
             visualDensity: VisualDensity.compact,
-            padding:       EdgeInsets.zero,
-            constraints:   const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
           ),
         ],
       ),
@@ -701,7 +689,7 @@ class _InfoRow extends StatelessWidget {
   const _InfoRow({required this.icon, required this.label});
 
   final IconData icon;
-  final String   label;
+  final String label;
 
   @override
   Widget build(BuildContext context) {

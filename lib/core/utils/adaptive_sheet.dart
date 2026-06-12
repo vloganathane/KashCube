@@ -28,6 +28,7 @@ Future<T?> showAdaptiveSheet<T>(
   bool isScrollControlled = true,
   bool useSafeArea = true,
   bool isDismissible = true,
+
   /// Max width of the centred dialog on expanded windows. Defaults to 560 dp.
   double maxDialogWidth = 560,
 }) {
@@ -43,9 +44,7 @@ Future<T?> showAdaptiveSheet<T>(
           vertical: AppSpacing.xxl,
         ),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(
-            Radius.circular(AppSpacing.radiusLg),
-          ),
+          borderRadius: BorderRadius.all(Radius.circular(AppSpacing.radiusLg)),
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(

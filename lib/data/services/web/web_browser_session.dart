@@ -14,9 +14,8 @@ import '../sync/transport/sync_signaling_messages.dart';
 import '../sync/sync_table_registry.dart';
 import 'web_session_service.dart';
 
-typedef WebSignalFrameHandler = Future<List<Map<String, dynamic>>> Function(
-  Map<String, dynamic> frame,
-);
+typedef WebSignalFrameHandler =
+    Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> frame);
 
 /// Manages a single browser's WebSocket session.
 ///
@@ -95,18 +94,18 @@ class WebBrowserSession {
 
   void attach() {
     _attachedAt = DateTime.now();
-    unawaited(AppLogger.instance.info(
-      'Web companion timing trace',
-      category: 'web_companion_timing',
-      eventName: 'web_companion_timing',
-      context: {
-        'stage': 'ws_attached',
-      },
-    ));
+    unawaited(
+      AppLogger.instance.info(
+        'Web companion timing trace',
+        category: 'web_companion_timing',
+        eventName: 'web_companion_timing',
+        context: {'stage': 'ws_attached'},
+      ),
+    );
 
     _sub = channel.stream.listen(
       _onMessage,
-      onDone:  dispose,
+      onDone: dispose,
       onError: (_) => dispose(),
     );
     // Give the browser 10 seconds to authenticate.
@@ -121,12 +120,15 @@ class WebBrowserSession {
   void _onMessage(dynamic raw) {
     if (_disposed) return;
     try {
-      final msg  = jsonDecode(raw as String) as Map<String, dynamic>;
+      final msg = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
         case SyncSignalingMessages.auth:
         case SyncSignalingMessages.sessionAuth:
-          _handleAuth(msg, isSession: type == SyncSignalingMessages.sessionAuth);
+          _handleAuth(
+            msg,
+            isSession: type == SyncSignalingMessages.sessionAuth,
+          );
           break;
         case SyncSignalingMessages.authBegin:
           _handleAuthBegin();
@@ -158,7 +160,8 @@ class WebBrowserSession {
 
   void _handleAuth(Map<String, dynamic> msg, {bool isSession = false}) {
     final token = msg['token'] as String?;
-    final valid = token != null &&
+    final valid =
+        token != null &&
         (isSession ? validateSession(token) : validateToken(token));
     if (!valid) {
       _sendRaw({'type': 'AUTH_FAIL', 'reason': 'invalid_token'});
@@ -169,10 +172,7 @@ class WebBrowserSession {
     _pendingChallenge = null;
     _pendingExpiresAt = null;
     _authTimer?.cancel();
-    _completeAuthentication(
-      sessionId: getSessionToken(),
-      isSession: isSession,
-    );
+    _completeAuthentication(sessionId: getSessionToken(), isSession: isSession);
   }
 
   void _handleAuthBegin() {
@@ -206,16 +206,20 @@ class WebBrowserSession {
     final wsToChallengeMs = _attachedAt == null
         ? null
         : _challengeIssuedAt!.difference(_attachedAt!).inMilliseconds;
-    unawaited(AppLogger.instance.info(
-      'Web companion timing trace',
-      category: 'web_companion_timing',
-      eventName: 'web_companion_timing',
-      context: {
-        'stage': 'auth_challenge_issued',
-        'ws_to_challenge_ms': wsToChallengeMs,
-      },
-    ));
-    debugPrint('[WebSession] Browser auth challenge issued, expires at $expiresAt');
+    unawaited(
+      AppLogger.instance.info(
+        'Web companion timing trace',
+        category: 'web_companion_timing',
+        eventName: 'web_companion_timing',
+        context: {
+          'stage': 'auth_challenge_issued',
+          'ws_to_challenge_ms': wsToChallengeMs,
+        },
+      ),
+    );
+    debugPrint(
+      '[WebSession] Browser auth challenge issued, expires at $expiresAt',
+    );
   }
 
   bool approvePendingAuth(String sessionId, String challenge) {
@@ -242,21 +246,20 @@ class WebBrowserSession {
     final challengeToApproveMs = _challengeIssuedAt == null
         ? null
         : approvedAt.difference(_challengeIssuedAt!).inMilliseconds;
-    unawaited(AppLogger.instance.info(
-      'Web companion timing trace',
-      category: 'web_companion_timing',
-      eventName: 'web_companion_timing',
-      context: {
-        'stage': 'phone_approval_received',
-        'challenge_to_approve_ms': challengeToApproveMs,
-      },
-    ));
+    unawaited(
+      AppLogger.instance.info(
+        'Web companion timing trace',
+        category: 'web_companion_timing',
+        eventName: 'web_companion_timing',
+        context: {
+          'stage': 'phone_approval_received',
+          'challenge_to_approve_ms': challengeToApproveMs,
+        },
+      ),
+    );
 
     final issuedSessionId = WebSessionService.instance.issueSessionToken();
-    _completeAuthentication(
-      sessionId: issuedSessionId,
-      isSession: false,
-    );
+    _completeAuthentication(sessionId: issuedSessionId, isSession: false);
     return true;
   }
 
@@ -275,26 +278,30 @@ class WebBrowserSession {
     _authenticated = true;
     _authenticatedSessionId = sessionId;
     _sendRaw({
-      'type':           SyncSignalingMessages.authOk,
-      'device_name':    deviceName,
+      'type': SyncSignalingMessages.authOk,
+      'device_name': deviceName,
       'schema_version': schemaVersion,
       'session_id': ?sessionId,
     });
-    unawaited(AppLogger.instance.info(
-      'Web companion timing trace',
-      category: 'web_companion_timing',
-      eventName: 'web_companion_timing',
-      context: {
-        'stage': 'auth_ok_sent',
-        'auth_mode': isSession ? 'session' : 'qr',
-        'ws_to_auth_ok_ms': wsToAuthOkMs,
-        'challenge_to_auth_ok_ms': challengeToAuthOkMs,
-      },
-    ));
+    unawaited(
+      AppLogger.instance.info(
+        'Web companion timing trace',
+        category: 'web_companion_timing',
+        eventName: 'web_companion_timing',
+        context: {
+          'stage': 'auth_ok_sent',
+          'auth_mode': isSession ? 'session' : 'qr',
+          'ws_to_auth_ok_ms': wsToAuthOkMs,
+          'challenge_to_auth_ok_ms': challengeToAuthOkMs,
+        },
+      ),
+    );
     onAuthenticated?.call(isSession);
     _startPing();
     unawaited(_sendSyncPlan());
-    debugPrint('[WebSession] Browser authenticated (${isSession ? 'session' : 'QR'})');
+    debugPrint(
+      '[WebSession] Browser authenticated (${isSession ? 'session' : 'QR'})',
+    );
   }
 
   Future<void> _sendSyncPlan() async {
@@ -303,13 +310,15 @@ class WebBrowserSession {
       await _ensureSyncPlans(db);
       final tables = _syncPlans.values
           .where((p) => p.isWebEligible)
-          .map((p) => {
-                'name': p.tableName,
-                'mode': p.mode.name,
-                'key':  p.keyColumn,
-              })
+          .map(
+            (p) => {
+              'name': p.tableName,
+              'mode': p.mode.name,
+              'key': p.keyColumn,
+            },
+          )
           .toList();
-        _sendRaw({'type': SyncSignalingMessages.syncPlan, 'tables': tables});
+      _sendRaw({'type': SyncSignalingMessages.syncPlan, 'tables': tables});
     } catch (e) {
       debugPrint('[WebSession] Failed to send sync plan: $e');
     }
@@ -322,21 +331,20 @@ class WebBrowserSession {
     if (table == null) return;
 
     try {
-      final db  = await DatabaseHelper.instance.database;
+      final db = await DatabaseHelper.instance.database;
       final rows = await _queryRows(db, table, since);
 
       // Send in batches of 200 to avoid huge single frames.
       const batchSize = 200;
       for (var i = 0; i < rows.length || rows.isEmpty; i += batchSize) {
-        final batch    = rows.isEmpty ? <Map<String, dynamic>>[] : rows.sublist(
-          i,
-          (i + batchSize).clamp(0, rows.length),
-        );
+        final batch = rows.isEmpty
+            ? <Map<String, dynamic>>[]
+            : rows.sublist(i, (i + batchSize).clamp(0, rows.length));
         final isFinal = rows.isEmpty || (i + batchSize >= rows.length);
         _sendRaw({
-          'type':     SyncSignalingMessages.rows,
-          'table':    table,
-          'rows':     batch,
+          'type': SyncSignalingMessages.rows,
+          'table': table,
+          'rows': batch,
           'is_final': isFinal,
         });
         if (isFinal) break;
@@ -348,8 +356,8 @@ class WebBrowserSession {
 
   Future<void> _handleWrite(Map<String, dynamic> msg) async {
     if (!_authenticated) return;
-    final table  = msg['table'] as String?;
-    final row    = msg['row']   as Map<String, dynamic>?;
+    final table = msg['table'] as String?;
+    final row = msg['row'] as Map<String, dynamic>?;
     final syncId = msg['sync_id'] as String?;
     if (table == null || row == null) return;
 
@@ -364,16 +372,17 @@ class WebBrowserSession {
       await onWrite(table, row);
       _sendRaw({'type': SyncSignalingMessages.writeOk, 'sync_id': syncId});
       // Echo back as PUSH so browser has the canonical row.
-      _sendRaw({'type': SyncSignalingMessages.push, 'table': table, 'rows': [row]});
+      _sendRaw({
+        'type': SyncSignalingMessages.push,
+        'table': table,
+        'rows': [row],
+      });
     } catch (e) {
       debugPrint('[WebSession] Write error for $table: $e');
     }
   }
 
-  Future<void> _handleSignalFrame(
-    String type,
-    Map<String, dynamic> msg,
-  ) async {
+  Future<void> _handleSignalFrame(String type, Map<String, dynamic> msg) async {
     if (!_authenticated) return;
 
     final handler = onSignalFrame;
@@ -386,8 +395,7 @@ class WebBrowserSession {
       return;
     }
 
-    final frame = Map<String, dynamic>.from(msg)
-      ..['type'] = type;
+    final frame = Map<String, dynamic>.from(msg)..['type'] = type;
 
     // Ensure signaling frames carry a stable session id for coordinator
     // state-machine routing, even if older browser clients omit it.
@@ -412,7 +420,11 @@ class WebBrowserSession {
   /// Pushes a live update to the browser (called when phone writes a row).
   void pushRows(String table, List<Map<String, dynamic>> rows) {
     if (!_authenticated || _disposed) return;
-    _sendRaw({'type': SyncSignalingMessages.push, 'table': table, 'rows': rows});
+    _sendRaw({
+      'type': SyncSignalingMessages.push,
+      'table': table,
+      'rows': rows,
+    });
   }
 
   void _sendRaw(Map<String, dynamic> payload) {
@@ -475,7 +487,9 @@ class WebBrowserSession {
     await _ensureSyncPlans(db);
     final plan = _syncPlans[table];
     if (plan == null || !plan.isWebEligible) {
-      debugPrint('[WebSession] Pull rejected for table: $table (scope=${plan?.scope.name ?? "unknown"})');
+      debugPrint(
+        '[WebSession] Pull rejected for table: $table (scope=${plan?.scope.name ?? "unknown"})',
+      );
       return [];
     }
 
@@ -506,6 +520,4 @@ class WebBrowserSession {
       debugPrint('[WebSession] Failed to discover sync plans: $e');
     }
   }
-
 }
-

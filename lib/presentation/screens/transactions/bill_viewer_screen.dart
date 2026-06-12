@@ -37,7 +37,9 @@ class BillViewerScreen extends StatelessWidget {
         ),
         systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
-      body: isPdf ? _PdfPlaceholder(fileName: fileName) : _ImageViewer(filePath: filePath),
+      body: isPdf
+          ? _PdfPlaceholder(fileName: fileName)
+          : _ImageViewer(filePath: filePath),
     );
   }
 }
@@ -92,17 +94,11 @@ class _PdfPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.picture_as_pdf,
-            size: 80,
-            color: Colors.red.shade300,
-          ),
+          Icon(Icons.picture_as_pdf, size: 80, color: Colors.red.shade300),
           const SizedBox(height: AppSpacing.xl),
           Text(
             fileName,
-            style: context.textTheme.titleMedium?.copyWith(
-              color: Colors.white,
-            ),
+            style: context.textTheme.titleMedium?.copyWith(color: Colors.white),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -115,9 +111,7 @@ class _PdfPlaceholder extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Text(
             'The PDF is saved locally on your device.',
-            style: context.textTheme.bodySmall?.copyWith(
-              color: Colors.white38,
-            ),
+            style: context.textTheme.bodySmall?.copyWith(color: Colors.white38),
           ),
         ],
       ),

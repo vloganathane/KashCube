@@ -26,9 +26,9 @@ class InvoicesScreen extends ConsumerStatefulWidget {
 class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     with SingleTickerProviderStateMixin, TutorialMixin<InvoicesScreen> {
   // Keys for tutorial spotlights
-  final _fabKey        = GlobalKey();
-  final _searchKey     = GlobalKey();
-  final _filterKey     = GlobalKey();
+  final _fabKey = GlobalKey();
+  final _searchKey = GlobalKey();
+  final _filterKey = GlobalKey();
   final _newestCardKey = GlobalKey();
 
   late final TabController _tabController;
@@ -47,74 +47,76 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
   @override
   @override
   List<TargetFocus> buildTargets() => [
-        TargetFocus(
-          identify: 'invoice_fab',
-          keyTarget: _fabKey,
-          shape: ShapeLightFocus.Circle,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Create invoices & quotes',
-                message:
-                    'Tap + to create a new invoice or quote\n'
-                    '\u2014 add customers, items, and track payments.',
-              ),
-            ),
-          ],
+    TargetFocus(
+      identify: 'invoice_fab',
+      keyTarget: _fabKey,
+      shape: ShapeLightFocus.Circle,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.top,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Create invoices & quotes',
+            message:
+                'Tap + to create a new invoice or quote\n'
+                '\u2014 add customers, items, and track payments.',
+          ),
         ),
-        TargetFocus(
-          identify: 'invoice_search',
-          keyTarget: _searchKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Search invoices',
-                message: 'Quickly find invoices by number, customer, or amount.',
-              ),
-            ),
-          ],
+      ],
+    ),
+    TargetFocus(
+      identify: 'invoice_search',
+      keyTarget: _searchKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Search invoices',
+            message: 'Quickly find invoices by number, customer, or amount.',
+          ),
         ),
-        TargetFocus(
-          identify: 'invoice_filter',
-          keyTarget: _filterKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Filter by date',
-                message: 'View invoices from a specific period.',
-              ),
-            ),
-          ],
+      ],
+    ),
+    TargetFocus(
+      identify: 'invoice_filter',
+      keyTarget: _filterKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Filter by date',
+            message: 'View invoices from a specific period.',
+          ),
         ),
-      ];
+      ],
+    ),
+  ];
 
   @override
   List<TutorialMenuItem> get tutorialMenuItems => [
-        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
-        TutorialMenuItem(
-          label: 'How to create an invoice',
-          onTap: _replayInvoiceFlow,
-        ),
-      ];
+    TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+    TutorialMenuItem(
+      label: 'How to create an invoice',
+      onTap: _replayInvoiceFlow,
+    ),
+  ];
 
   void _replayInvoiceFlow() {
-    ref.read(settingsRepositoryProvider)
+    ref
+        .read(settingsRepositoryProvider)
         .set(SettingsKeys.tutorialInvoiceFlowDone, 'false');
     ref.read(tutorialFlowProvider.notifier).abandon();
-    ref.read(tutorialFlowProvider.notifier)
+    ref
+        .read(tutorialFlowProvider.notifier)
         .advance(TutorialFlowStep.newInvoiceFab);
   }
 
@@ -129,7 +131,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     // Capture refs before showing tutorial to avoid "ref after dispose" errors
     final flowNotifier = ref.read(tutorialFlowProvider.notifier);
     final settingsRepo = ref.read(settingsRepositoryProvider);
-    
+
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -161,7 +163,8 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
       alignSkip: Alignment.topRight,
       paddingFocus: 2,
       pulseEnable: true,
-      onFinish: () {},  // user taps FAB overlay — FAB onPressed handles the advance
+      onFinish:
+          () {}, // user taps FAB overlay — FAB onPressed handles the advance
       onSkip: () {
         Future(() {
           flowNotifier.abandon();
@@ -176,7 +179,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
     // Capture refs before showing tutorial to avoid "ref after dispose" errors
     final flowNotifier = ref.read(tutorialFlowProvider.notifier);
     final settingsRepo = ref.read(settingsRepositoryProvider);
-    
+
     TutorialCoachMark(
       targets: [
         TargetFocus(
@@ -263,7 +266,8 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
       return Scaffold(
         appBar: AppBar(title: const Text('Invoices')),
         body: _DisabledView(
-          onEnable: () => ref.read(businessModeProvider.notifier).setEnabled(true),
+          onEnable: () =>
+              ref.read(businessModeProvider.notifier).setEnabled(true),
         ),
       );
     }
@@ -278,7 +282,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.invoices)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.invoices),
+              ),
             ),
           ),
           IconButton(
@@ -296,7 +303,10 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen>
           ],
         ),
       ),
-      floatingActionButton: SpeedDialFab(fabButtonKey: _fabKey, showAllOptions: false),
+      floatingActionButton: SpeedDialFab(
+        fabButtonKey: _fabKey,
+        showAllOptions: false,
+      ),
       body: TabBarView(
         controller: _tabController,
         children: [
@@ -339,8 +349,7 @@ class _InvoicesTab extends ConsumerWidget {
           ),
           Expanded(
             child: invoicesAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (list) => list.isEmpty
                   ? _EmptyState(
@@ -354,7 +363,7 @@ class _InvoicesTab extends ConsumerWidget {
                         right: AppSpacing.base,
                         top: AppSpacing.base,
                         bottom: 80,
-                     ),
+                      ),
                       itemCount: list.length,
                       itemBuilder: (ctx, i) => _InvoiceTile(
                         key: i == 0 ? newestCardKey : null,
@@ -387,7 +396,7 @@ class _StatusFilterBar extends StatelessWidget {
     // CN / DN as separate chips after the status row
     const typeChips = [
       (label: 'Credit Notes', type: InvoiceType.creditNote),
-      (label: 'Debit Notes',  type: InvoiceType.debitNote),
+      (label: 'Debit Notes', type: InvoiceType.debitNote),
     ];
     return SizedBox(
       height: 52,
@@ -425,19 +434,19 @@ class _StatusFilterBar extends StatelessWidget {
             ),
           ),
           // Type chips: Credit Notes, Debit Notes
-          ...typeChips.map((tc) => Padding(
-            padding: const EdgeInsets.only(right: AppSpacing.sm),
-            child: FilterChip(
-              label: Text(tc.label),
-              selected: selectedType == tc.type,
-              onSelected: (_) {
-                onTypeSelected(
-                  selectedType == tc.type ? null : tc.type,
-                );
-                onSelected(null); // clear status filter
-              },
+          ...typeChips.map(
+            (tc) => Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: FilterChip(
+                label: Text(tc.label),
+                selected: selectedType == tc.type,
+                onSelected: (_) {
+                  onTypeSelected(selectedType == tc.type ? null : tc.type);
+                  onSelected(null); // clear status filter
+                },
+              ),
             ),
-          )),
+          ),
         ],
       ),
     );
@@ -456,12 +465,15 @@ class _InvoiceTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
-          ),
-        ).then((_) { if (context.mounted) ref.invalidate(invoicesProvider); }),
+        onTap: () =>
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+              ),
+            ).then((_) {
+              if (context.mounted) ref.invalidate(invoicesProvider);
+            }),
         onLongPress: () => _confirmDelete(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -479,8 +491,11 @@ class _InvoiceTile extends ConsumerWidget {
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.receipt_outlined,
-                        color: statusColor, size: 20),
+                    child: Icon(
+                      Icons.receipt_outlined,
+                      color: statusColor,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   // Invoice no + customer
@@ -501,17 +516,23 @@ class _InvoiceTile extends ConsumerWidget {
                               ),
                             ),
                             if (invoice.invoiceType == InvoiceType.creditNote ||
-                                invoice.invoiceType == InvoiceType.debitNote) ...[
+                                invoice.invoiceType ==
+                                    InvoiceType.debitNote) ...[
                               const SizedBox(width: AppSpacing.xs),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 4, vertical: 1),
+                                  horizontal: 4,
+                                  vertical: 1,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: (invoice.invoiceType ==
-                                              InvoiceType.creditNote
-                                          ? Theme.of(context).colorScheme.error
-                                          : Colors.orange)
-                                      .withValues(alpha: 0.13),
+                                  color:
+                                      (invoice.invoiceType ==
+                                                  InvoiceType.creditNote
+                                              ? Theme.of(
+                                                  context,
+                                                ).colorScheme.error
+                                              : Colors.orange)
+                                          .withValues(alpha: 0.13),
                                   borderRadius: BorderRadius.circular(3),
                                 ),
                                 child: Text(
@@ -521,7 +542,8 @@ class _InvoiceTile extends ConsumerWidget {
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
-                                    color: invoice.invoiceType ==
+                                    color:
+                                        invoice.invoiceType ==
                                             InvoiceType.creditNote
                                         ? Theme.of(context).colorScheme.error
                                         : Colors.orange,
@@ -558,9 +580,11 @@ class _InvoiceTile extends ConsumerWidget {
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  Icon(Icons.calendar_today_outlined,
-                      size: 13,
-                      color: cs.onSurface.withValues(alpha: 0.45)),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 13,
+                    color: cs.onSurface.withValues(alpha: 0.45),
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     DateFormatter.format(invoice.issueDate),
@@ -613,11 +637,13 @@ class _InvoiceTile extends ConsumerWidget {
         content: Text('Delete ${invoice.invoiceNo}? This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -643,15 +669,18 @@ class _StatusChip extends StatelessWidget {
       InvoiceStatus.pendingNumber => Theme.of(context).colorScheme.outline,
     };
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         status.label,
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -711,12 +740,15 @@ class _QuoteTile extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
-          ),
-        ).then((_) { if (context.mounted) ref.invalidate(quotesProvider); }),
+        onTap: () =>
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
+              ),
+            ).then((_) {
+              if (context.mounted) ref.invalidate(quotesProvider);
+            }),
         onLongPress: () => _confirmDelete(context, ref),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -733,8 +765,11 @@ class _QuoteTile extends ConsumerWidget {
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.description_outlined,
-                        color: statusColor, size: 20),
+                    child: Icon(
+                      Icons.description_outlined,
+                      color: statusColor,
+                      size: 20,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
@@ -775,9 +810,11 @@ class _QuoteTile extends ConsumerWidget {
               Row(
                 children: [
                   if (quote.validUntil != null) ...[
-                    Icon(Icons.calendar_today_outlined,
-                        size: 13,
-                        color: cs.onSurface.withValues(alpha: 0.45)),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 13,
+                      color: cs.onSurface.withValues(alpha: 0.45),
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Valid till ${DateFormatter.format(quote.validUntil!)}',
@@ -790,7 +827,9 @@ class _QuoteTile extends ConsumerWidget {
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -798,9 +837,10 @@ class _QuoteTile extends ConsumerWidget {
                     child: Text(
                       quote.status.label,
                       style: TextStyle(
-                          color: statusColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600),
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -821,11 +861,13 @@ class _QuoteTile extends ConsumerWidget {
         content: Text('Delete ${quote.quoteNo}? This cannot be undone.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -838,8 +880,11 @@ class _QuoteTile extends ConsumerWidget {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState(
-      {required this.icon, required this.label, required this.sub});
+  const _EmptyState({
+    required this.icon,
+    required this.label,
+    required this.sub,
+  });
   final IconData icon;
   final String label;
   final String sub;
@@ -852,20 +897,25 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 64,
-                color: Theme.of(context).colorScheme.outlineVariant),
+            Icon(
+              icon,
+              size: 64,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
-            Text(label,
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: AppSpacing.sm),
-            Text(sub,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(
-                        color: Theme.of(context).colorScheme.outline),
-                textAlign: TextAlign.center),
+            Text(
+              sub,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -885,12 +935,16 @@ class _DisabledView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.business_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.outlineVariant),
+            Icon(
+              Icons.business_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
-            Text('Business Mode is off',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Business Mode is off',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Enable Business Mode in Settings to create invoices and quotes.',
@@ -944,9 +998,9 @@ class _FilterBottomSheet extends ConsumerWidget {
             children: [
               Text(
                 'Filter by Date',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               if (dateRange != null)
@@ -967,10 +1021,12 @@ class _FilterBottomSheet extends ConsumerWidget {
             title: const Text('Today'),
             onTap: () {
               final today = DateTime.now();
-              setRange(DateTimeRange(
-                start: DateTime(today.year, today.month, today.day),
-                end: DateTime(today.year, today.month, today.day, 23, 59, 59),
-              ));
+              setRange(
+                DateTimeRange(
+                  start: DateTime(today.year, today.month, today.day),
+                  end: DateTime(today.year, today.month, today.day, 23, 59, 59),
+                ),
+              );
               Navigator.pop(context);
             },
           ),
@@ -981,10 +1037,23 @@ class _FilterBottomSheet extends ConsumerWidget {
               final now = DateTime.now();
               final weekStart = now.subtract(Duration(days: now.weekday - 1));
               final weekEnd = weekStart.add(const Duration(days: 6));
-              setRange(DateTimeRange(
-                start: DateTime(weekStart.year, weekStart.month, weekStart.day),
-                end: DateTime(weekEnd.year, weekEnd.month, weekEnd.day, 23, 59, 59),
-              ));
+              setRange(
+                DateTimeRange(
+                  start: DateTime(
+                    weekStart.year,
+                    weekStart.month,
+                    weekStart.day,
+                  ),
+                  end: DateTime(
+                    weekEnd.year,
+                    weekEnd.month,
+                    weekEnd.day,
+                    23,
+                    59,
+                    59,
+                  ),
+                ),
+              );
               Navigator.pop(context);
             },
           ),
@@ -995,10 +1064,7 @@ class _FilterBottomSheet extends ConsumerWidget {
               final now = DateTime.now();
               final monthStart = DateTime(now.year, now.month, 1);
               final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-              setRange(DateTimeRange(
-                start: monthStart,
-                end: monthEnd,
-              ));
+              setRange(DateTimeRange(start: monthStart, end: monthEnd));
               Navigator.pop(context);
             },
           ),

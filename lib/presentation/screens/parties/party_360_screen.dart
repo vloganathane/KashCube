@@ -70,16 +70,26 @@ import '../transactions/add_edit_transaction_screen.dart';
 
 String _monthAbbr(int m) {
   const abbr = [
-    '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return abbr[m];
 }
 
 String _shortDate(DateTime dt) => '${dt.day} ${_monthAbbr(dt.month)}';
 
-String _fullDate(DateTime dt) =>
-    '${dt.day} ${_monthAbbr(dt.month)} ${dt.year}';
+String _fullDate(DateTime dt) => '${dt.day} ${_monthAbbr(dt.month)} ${dt.year}';
 
 String _fmtRelative(DateTime d) {
   final now = DateTime.now();
@@ -176,30 +186,41 @@ class CreditHistoryItem extends PartyHistoryItem {
 // ---------------------------------------------------------------------------
 
 enum _ActivityFilter {
-  all, transactions, invoices, quotes, dc, bookings, reminders, credits;
+  all,
+  transactions,
+  invoices,
+  quotes,
+  dc,
+  bookings,
+  reminders,
+  credits;
 
   String get label => switch (this) {
-        all => 'All',
-        transactions => 'Transactions',
-        invoices => 'Invoices',
-        quotes => 'Quotes',
-        dc => 'DC',
-        bookings => 'Bookings',
-        reminders => 'Reminders',
-        credits => 'Credits',
-      };
+    all => 'All',
+    transactions => 'Transactions',
+    invoices => 'Invoices',
+    quotes => 'Quotes',
+    dc => 'DC',
+    bookings => 'Bookings',
+    reminders => 'Reminders',
+    credits => 'Credits',
+  };
 }
 
 enum _DocsFilter {
-  all, invoices, quotes, dc, bookings;
+  all,
+  invoices,
+  quotes,
+  dc,
+  bookings;
 
   String get label => switch (this) {
-        all => 'All',
-        invoices => 'Invoices',
-        quotes => 'Quotes',
-        dc => 'DC',
-        bookings => 'Bookings',
-      };
+    all => 'All',
+    invoices => 'Invoices',
+    quotes => 'Quotes',
+    dc => 'DC',
+    bookings => 'Bookings',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -207,60 +228,63 @@ enum _DocsFilter {
 // ---------------------------------------------------------------------------
 
 final partyHistoryProvider =
-    FutureProvider.family<List<PartyHistoryItem>, String>((ref, partyName) async {
-  final txnRepo = ref.read(transactionRepositoryProvider);
-  final invoiceRepo = ref.read(invoiceRepositoryProvider);
-  final quoteRepo = ref.read(quoteRepositoryProvider);
-  final challanRepo = ref.read(deliveryChallanRepositoryProvider);
-  final scheduledRepo = ref.read(scheduledPaymentRepositoryProvider);
-  final bookingRepo = ref.read(bookingRepositoryProvider);
-  final reminderRepo = ref.read(partyReminderRepositoryProvider);
-  final creditRepo = ref.read(creditRepositoryProvider);
+    FutureProvider.family<List<PartyHistoryItem>, String>((
+      ref,
+      partyName,
+    ) async {
+      final txnRepo = ref.read(transactionRepositoryProvider);
+      final invoiceRepo = ref.read(invoiceRepositoryProvider);
+      final quoteRepo = ref.read(quoteRepositoryProvider);
+      final challanRepo = ref.read(deliveryChallanRepositoryProvider);
+      final scheduledRepo = ref.read(scheduledPaymentRepositoryProvider);
+      final bookingRepo = ref.read(bookingRepositoryProvider);
+      final reminderRepo = ref.read(partyReminderRepositoryProvider);
+      final creditRepo = ref.read(creditRepositoryProvider);
 
-  final partiesAsync = ref.read(partiesProvider);
-  final parties = partiesAsync.valueOrNull ?? [];
-  final party = parties.cast<Party?>().firstWhere(
-    (p) => p?.name == partyName,
-    orElse: () => null,
-  );
+      final partiesAsync = ref.read(partiesProvider);
+      final parties = partiesAsync.valueOrNull ?? [];
+      final party = parties.cast<Party?>().firstWhere(
+        (p) => p?.name == partyName,
+        orElse: () => null,
+      );
 
-  final results = await Future.wait([
-    txnRepo.getTransactionsByParty(partyName),
-    invoiceRepo.getByCustomer(partyName),
-    quoteRepo.getByCustomer(partyName),
-    challanRepo.getByCustomer(partyName),
-    scheduledRepo.getByParty(partyName),
-    party?.id != null
-        ? bookingRepo.getByCustomer(party!.id!)
-        : Future.value(<Booking>[]),
-    reminderRepo.getByParty(partyName),
-    creditRepo.getByPartyName(partyName),
-  ]);
+      final results = await Future.wait([
+        txnRepo.getTransactionsByParty(partyName),
+        invoiceRepo.getByCustomer(partyName),
+        quoteRepo.getByCustomer(partyName),
+        challanRepo.getByCustomer(partyName),
+        scheduledRepo.getByParty(partyName),
+        party?.id != null
+            ? bookingRepo.getByCustomer(party!.id!)
+            : Future.value(<Booking>[]),
+        reminderRepo.getByParty(partyName),
+        creditRepo.getByPartyName(partyName),
+      ]);
 
-  final items = <PartyHistoryItem>[
-    ...(results[0] as List<Transaction>).map(TransactionHistoryItem.new),
-    ...(results[1] as List<Invoice>).map(InvoiceHistoryItem.new),
-    ...(results[2] as List<Quote>).map(QuoteHistoryItem.new),
-    ...(results[3] as List<DeliveryChallan>).map(DeliveryChallanHistoryItem.new),
-    ...(results[4] as List<ScheduledPayment>).map(ScheduledPaymentHistoryItem.new),
-    ...(results[5] as List<Booking>).map(BookingHistoryItem.new),
-    ...(results[6] as List<PartyReminder>).map(ReminderHistoryItem.new),
-    ...(results[7] as List<Credit>).map(CreditHistoryItem.new),
-  ];
-  items.sort((a, b) => b.date.compareTo(a.date));
-  return items;
-});
+      final items = <PartyHistoryItem>[
+        ...(results[0] as List<Transaction>).map(TransactionHistoryItem.new),
+        ...(results[1] as List<Invoice>).map(InvoiceHistoryItem.new),
+        ...(results[2] as List<Quote>).map(QuoteHistoryItem.new),
+        ...(results[3] as List<DeliveryChallan>).map(
+          DeliveryChallanHistoryItem.new,
+        ),
+        ...(results[4] as List<ScheduledPayment>).map(
+          ScheduledPaymentHistoryItem.new,
+        ),
+        ...(results[5] as List<Booking>).map(BookingHistoryItem.new),
+        ...(results[6] as List<PartyReminder>).map(ReminderHistoryItem.new),
+        ...(results[7] as List<Credit>).map(CreditHistoryItem.new),
+      ];
+      items.sort((a, b) => b.date.compareTo(a.date));
+      return items;
+    });
 
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
 class Party360Screen extends ConsumerStatefulWidget {
-  const Party360Screen({
-    super.key,
-    required this.party,
-    this.initialTab = 0,
-  });
+  const Party360Screen({super.key, required this.party, this.initialTab = 0});
 
   final Party party;
 
@@ -278,8 +302,11 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
   @override
   void initState() {
     super.initState();
-    _tabController =
-        TabController(length: 4, vsync: this, initialIndex: widget.initialTab);
+    _tabController = TabController(
+      length: 4,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
   }
 
   @override
@@ -294,7 +321,9 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-          content: Text('Generating statement…'), duration: Duration(seconds: 10)),
+        content: Text('Generating statement…'),
+        duration: Duration(seconds: 10),
+      ),
     );
     try {
       final results = await Future.wait([
@@ -310,10 +339,9 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        subject: 'Statement — ${widget.party.name}',
-      );
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'application/pdf'),
+      ], subject: 'Statement — ${widget.party.name}');
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -336,7 +364,8 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
 
   void _showReminderSheet() {
     final historyValue = ref.read(partyHistoryProvider(widget.party.name));
-    final unpaid = historyValue.valueOrNull
+    final unpaid =
+        historyValue.valueOrNull
             ?.whereType<InvoiceHistoryItem>()
             .map((h) => h.invoice)
             .where((i) => i.status != InvoiceStatus.paid)
@@ -378,8 +407,11 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
               context,
               vcard: vCardFromParty(widget.party),
               displayName: widget.party.name,
-              subtitle: PhoneUtils.formatDisplay(widget.party.phoneNumber,
-                      dialCode: widget.party.dialCode ?? '91') ??
+              subtitle:
+                  PhoneUtils.formatDisplay(
+                    widget.party.phoneNumber,
+                    dialCode: widget.party.dialCode ?? '91',
+                  ) ??
                   widget.party.email,
             ),
           ),
@@ -415,7 +447,9 @@ class _Party360ScreenState extends ConsumerState<Party360Screen>
           ),
           partyId != null
               ? _DealsTab(partyId: partyId)
-              : const Center(child: Text('Save the party first to track deals.')),
+              : const Center(
+                  child: Text('Save the party first to track deals.'),
+                ),
         ],
       ),
     );
@@ -453,8 +487,7 @@ class _OverviewTab extends ConsumerWidget {
           const SizedBox(height: AppSpacing.base),
           _ContactCard(party: party),
           const SizedBox(height: AppSpacing.sm),
-          if (party.partyType == PartyType.staff)
-            _PayrollCard(party: party),
+          if (party.partyType == PartyType.staff) _PayrollCard(party: party),
           if (party.partyType == PartyType.staff)
             const SizedBox(height: AppSpacing.sm),
           if (summary.hasOverdueItem)
@@ -464,8 +497,9 @@ class _OverviewTab extends ConsumerWidget {
             ),
           if (summary.earliestDueDate != null &&
               !summary.hasOverdueItem &&
-              summary.earliestDueDate!
-                  .isBefore(DateTime.now().add(const Duration(days: 7))))
+              summary.earliestDueDate!.isBefore(
+                DateTime.now().add(const Duration(days: 7)),
+              ))
             _UrgencyBanner(
               label: 'Payment due ${_shortDate(summary.earliestDueDate!)}',
               color: colors.credit,
@@ -509,7 +543,9 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: _ActivityFilter.values.map((f) {
                   return Padding(
@@ -538,31 +574,34 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
                 ),
               )
             else
-              ...filtered.map((item) => _ActivityItemTile(item: item, colors: colors, partyName: widget.partyName)),
+              ...filtered.map(
+                (item) => _ActivityItemTile(
+                  item: item,
+                  colors: colors,
+                  partyName: widget.partyName,
+                ),
+              ),
           ],
         );
       },
     );
   }
 
-  List<PartyHistoryItem> _applyFilter(List<PartyHistoryItem> items) =>
-      switch (_filter) {
-        _ActivityFilter.all => items,
-        _ActivityFilter.transactions =>
-          items.whereType<TransactionHistoryItem>().toList(),
-        _ActivityFilter.invoices =>
-          items.whereType<InvoiceHistoryItem>().toList(),
-        _ActivityFilter.quotes =>
-          items.whereType<QuoteHistoryItem>().toList(),
-        _ActivityFilter.dc =>
-          items.whereType<DeliveryChallanHistoryItem>().toList(),
-        _ActivityFilter.bookings =>
-          items.whereType<BookingHistoryItem>().toList(),
-        _ActivityFilter.reminders =>
-          items.whereType<ReminderHistoryItem>().toList(),
-        _ActivityFilter.credits =>
-          items.whereType<CreditHistoryItem>().toList(),
-      };
+  List<PartyHistoryItem> _applyFilter(
+    List<PartyHistoryItem> items,
+  ) => switch (_filter) {
+    _ActivityFilter.all => items,
+    _ActivityFilter.transactions =>
+      items.whereType<TransactionHistoryItem>().toList(),
+    _ActivityFilter.invoices => items.whereType<InvoiceHistoryItem>().toList(),
+    _ActivityFilter.quotes => items.whereType<QuoteHistoryItem>().toList(),
+    _ActivityFilter.dc =>
+      items.whereType<DeliveryChallanHistoryItem>().toList(),
+    _ActivityFilter.bookings => items.whereType<BookingHistoryItem>().toList(),
+    _ActivityFilter.reminders =>
+      items.whereType<ReminderHistoryItem>().toList(),
+    _ActivityFilter.credits => items.whereType<CreditHistoryItem>().toList(),
+  };
 }
 
 class _ActivityItemTile extends StatelessWidget {
@@ -577,12 +616,12 @@ class _ActivityItemTile extends StatelessWidget {
   final String partyName;
 
   static LifecycleInfo? _lifecycle(PartyHistoryItem item) => switch (item) {
-        InvoiceHistoryItem i => LifecycleClassifier.forInvoice(i.invoice),
-        CreditHistoryItem c => LifecycleClassifier.forCredit(c.credit),
-        ScheduledPaymentHistoryItem s => LifecycleClassifier.forBill(s.payment),
-        BookingHistoryItem b => LifecycleClassifier.forBooking(b.booking),
-        _ => null,
-      };
+    InvoiceHistoryItem i => LifecycleClassifier.forInvoice(i.invoice),
+    CreditHistoryItem c => LifecycleClassifier.forCredit(c.credit),
+    ScheduledPaymentHistoryItem s => LifecycleClassifier.forBill(s.payment),
+    BookingHistoryItem b => LifecycleClassifier.forBooking(b.booking),
+    _ => null,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -590,50 +629,70 @@ class _ActivityItemTile extends StatelessWidget {
     final isStale = info?.isStale() ?? false;
 
     Widget tile = switch (item) {
-      TransactionHistoryItem h => _TransactionTile(txn: h.transaction, colors: colors),
+      TransactionHistoryItem h => _TransactionTile(
+        txn: h.transaction,
+        colors: colors,
+      ),
       InvoiceHistoryItem h => _InvoiceTile(
-          invoice: h.invoice,
-          colors: colors,
-          lifecycleInfo: info,
-          onTap: h.invoice.id != null
-              ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => InvoiceDetailScreen(invoiceId: h.invoice.id!),
-                  ))
-              : null,
-        ),
+        invoice: h.invoice,
+        colors: colors,
+        lifecycleInfo: info,
+        onTap: h.invoice.id != null
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => InvoiceDetailScreen(invoiceId: h.invoice.id!),
+                ),
+              )
+            : null,
+      ),
       QuoteHistoryItem h => _QuoteTile(
-          quote: h.quote,
-          colors: colors,
-          onTap: h.quote.id != null
-              ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
-                  ))
-              : null,
-        ),
+        quote: h.quote,
+        colors: colors,
+        onTap: h.quote.id != null
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
+                ),
+              )
+            : null,
+      ),
       DeliveryChallanHistoryItem h => _ChallanTile(
-          challan: h.challan,
-          colors: colors,
-          onTap: h.challan.id != null
-              ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => DeliveryChallanDetailScreen(
-                        challanId: h.challan.id!),
-                  ))
-              : null,
-        ),
-      ScheduledPaymentHistoryItem h =>
-        _ScheduledPaymentTile(payment: h.payment, colors: colors),
+        challan: h.challan,
+        colors: colors,
+        onTap: h.challan.id != null
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      DeliveryChallanDetailScreen(challanId: h.challan.id!),
+                ),
+              )
+            : null,
+      ),
+      ScheduledPaymentHistoryItem h => _ScheduledPaymentTile(
+        payment: h.payment,
+        colors: colors,
+      ),
       BookingHistoryItem h => _BookingTile(
-          booking: h.booking,
-          colors: colors,
-          lifecycleInfo: info,
-          onTap: h.booking.id != null
-              ? () => Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => BookingDetailScreen(bookingId: h.booking.id!),
-                  ))
-              : null,
-        ),
+        booking: h.booking,
+        colors: colors,
+        lifecycleInfo: info,
+        onTap: h.booking.id != null
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BookingDetailScreen(bookingId: h.booking.id!),
+                ),
+              )
+            : null,
+      ),
       ReminderHistoryItem h => _ReminderHistoryTile(reminder: h.reminder),
-      CreditHistoryItem h => _CreditHistoryTile(credit: h.credit, colors: colors),
+      CreditHistoryItem h => _CreditHistoryTile(
+        credit: h.credit,
+        colors: colors,
+      ),
     };
 
     if (isStale) {
@@ -679,42 +738,60 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('Error: $e')),
       data: (items) {
-        final invoices =
-            items.whereType<InvoiceHistoryItem>().map((h) => h.invoice).toList();
-        final quotes =
-            items.whereType<QuoteHistoryItem>().map((h) => h.quote).toList();
+        final invoices = items
+            .whereType<InvoiceHistoryItem>()
+            .map((h) => h.invoice)
+            .toList();
+        final quotes = items
+            .whereType<QuoteHistoryItem>()
+            .map((h) => h.quote)
+            .toList();
         final challans = items
             .whereType<DeliveryChallanHistoryItem>()
             .map((h) => h.challan)
             .toList();
-        final bookings =
-            items.whereType<BookingHistoryItem>().map((h) => h.booking).toList();
+        final bookings = items
+            .whereType<BookingHistoryItem>()
+            .map((h) => h.booking)
+            .toList();
         final reminders = items
             .whereType<ReminderHistoryItem>()
             .map((h) => h.reminder)
             .toList();
-        final credits =
-            items.whereType<CreditHistoryItem>().map((h) => h.credit).toList();
+        final credits = items
+            .whereType<CreditHistoryItem>()
+            .map((h) => h.credit)
+            .toList();
 
         final unpaidInvoices = invoices
-            .where((i) =>
-                i.status != InvoiceStatus.draft &&
-                i.status != InvoiceStatus.paid)
+            .where(
+              (i) =>
+                  i.status != InvoiceStatus.draft &&
+                  i.status != InvoiceStatus.paid,
+            )
             .toList();
         final outstandingCredits = credits
             .where((c) => c.direction == CreditDirection.given && !c.isCleared)
             .toList();
-        final creditsPendingTotal =
-            outstandingCredits.fold(0.0, (s, c) => s + c.pendingAmount);
+        final creditsPendingTotal = outstandingCredits.fold(
+          0.0,
+          (s, c) => s + c.pendingAmount,
+        );
         final lastReminder = reminders.isEmpty ? null : reminders.first;
         final daysSinceLast = lastReminder == null
             ? null
             : DateTime.now().difference(lastReminder.sentAt).inDays;
-        final showNudge = (unpaidInvoices.isNotEmpty || creditsPendingTotal > 0) &&
+        final showNudge =
+            (unpaidInvoices.isNotEmpty || creditsPendingTotal > 0) &&
             (lastReminder == null || daysSinceLast! >= 7);
 
         final filteredDocs = _applyDocFilter(
-            _filter, invoices, quotes, challans, bookings);
+          _filter,
+          invoices,
+          quotes,
+          challans,
+          bookings,
+        );
 
         return ListView(
           padding: const EdgeInsets.only(bottom: AppSpacing.xxxl * 2),
@@ -729,7 +806,7 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
                 creditsPendingTotal: creditsPendingTotal,
                 totalOutstanding:
                     unpaidInvoices.fold(0.0, (s, i) => s + i.balanceDue) +
-                        creditsPendingTotal,
+                    creditsPendingTotal,
                 daysSinceLast: daysSinceLast,
                 onSendTap: widget.onSendReminder,
               ),
@@ -737,12 +814,17 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.sm,
+              ),
               child: Row(
                 children: _DocsFilter.values.map((f) {
                   final count = switch (f) {
                     _DocsFilter.all =>
-                      invoices.length + quotes.length + challans.length + bookings.length,
+                      invoices.length +
+                          quotes.length +
+                          challans.length +
+                          bookings.length,
                     _DocsFilter.invoices => invoices.length,
                     _DocsFilter.quotes => quotes.length,
                     _DocsFilter.dc => challans.length,
@@ -773,7 +855,9 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
                 ),
               )
             else
-              ...filteredDocs.map((item) => _buildDocTile(context, item, colors)),
+              ...filteredDocs.map(
+                (item) => _buildDocTile(context, item, colors),
+              ),
             // Reminder history
             const Divider(
               height: AppSpacing.xl,
@@ -782,21 +866,26 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xs),
+                AppSpacing.base,
+                AppSpacing.sm,
+                AppSpacing.base,
+                AppSpacing.xs,
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.notifications_outlined,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  Icon(
+                    Icons.notifications_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     reminders.isEmpty
                         ? 'Reminders Sent'
                         : 'Reminders Sent (${reminders.length})',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -804,13 +893,16 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
             if (reminders.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base, AppSpacing.xs, AppSpacing.base, AppSpacing.md),
+                  AppSpacing.base,
+                  AppSpacing.xs,
+                  AppSpacing.base,
+                  AppSpacing.md,
+                ),
                 child: Text(
                   'No reminders sent yet.',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               )
             else
@@ -827,68 +919,79 @@ class _DocumentsTabState extends ConsumerState<_DocumentsTab> {
     List<Quote> quotes,
     List<DeliveryChallan> challans,
     List<Booking> bookings,
-  ) =>
-      switch (filter) {
-        _DocsFilter.all => [
-            ...invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new),
-            ...quotes.map<PartyHistoryItem>(QuoteHistoryItem.new),
-            ...challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new),
-            ...bookings.map<PartyHistoryItem>(BookingHistoryItem.new),
-          ]..sort((a, b) => b.date.compareTo(a.date)),
-        _DocsFilter.invoices =>
-          invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new).toList(),
-        _DocsFilter.quotes =>
-          quotes.map<PartyHistoryItem>(QuoteHistoryItem.new).toList(),
-        _DocsFilter.dc =>
-          challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new).toList(),
-        _DocsFilter.bookings =>
-          bookings.map<PartyHistoryItem>(BookingHistoryItem.new).toList(),
-      };
+  ) => switch (filter) {
+    _DocsFilter.all => [
+      ...invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new),
+      ...quotes.map<PartyHistoryItem>(QuoteHistoryItem.new),
+      ...challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new),
+      ...bookings.map<PartyHistoryItem>(BookingHistoryItem.new),
+    ]..sort((a, b) => b.date.compareTo(a.date)),
+    _DocsFilter.invoices =>
+      invoices.map<PartyHistoryItem>(InvoiceHistoryItem.new).toList(),
+    _DocsFilter.quotes =>
+      quotes.map<PartyHistoryItem>(QuoteHistoryItem.new).toList(),
+    _DocsFilter.dc =>
+      challans.map<PartyHistoryItem>(DeliveryChallanHistoryItem.new).toList(),
+    _DocsFilter.bookings =>
+      bookings.map<PartyHistoryItem>(BookingHistoryItem.new).toList(),
+  };
 
   Widget _buildDocTile(
-      BuildContext context, PartyHistoryItem item, KashCubeColors colors) =>
-      switch (item) {
-        InvoiceHistoryItem h => _InvoiceTile(
-            invoice: h.invoice,
-            colors: colors,
-            onTap: h.invoice.id != null
-                ? () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) =>
-                          InvoiceDetailScreen(invoiceId: h.invoice.id!),
-                    ))
-                : null,
-          ),
-        QuoteHistoryItem h => _QuoteTile(
-            quote: h.quote,
-            colors: colors,
-            onTap: h.quote.id != null
-                ? () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
-                    ))
-                : null,
-          ),
-        DeliveryChallanHistoryItem h => _ChallanTile(
-            challan: h.challan,
-            colors: colors,
-            onTap: h.challan.id != null
-                ? () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) => DeliveryChallanDetailScreen(
-                          challanId: h.challan.id!),
-                    ))
-                : null,
-          ),
-        BookingHistoryItem h => _BookingTile(
-            booking: h.booking,
-            colors: colors,
-            onTap: h.booking.id != null
-                ? () => Navigator.push(context, MaterialPageRoute(
-                      builder: (_) =>
-                          BookingDetailScreen(bookingId: h.booking.id!),
-                    ))
-                : null,
-          ),
-        _ => const SizedBox.shrink(),
-      };
+    BuildContext context,
+    PartyHistoryItem item,
+    KashCubeColors colors,
+  ) => switch (item) {
+    InvoiceHistoryItem h => _InvoiceTile(
+      invoice: h.invoice,
+      colors: colors,
+      onTap: h.invoice.id != null
+          ? () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => InvoiceDetailScreen(invoiceId: h.invoice.id!),
+              ),
+            )
+          : null,
+    ),
+    QuoteHistoryItem h => _QuoteTile(
+      quote: h.quote,
+      colors: colors,
+      onTap: h.quote.id != null
+          ? () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => QuoteDetailScreen(quoteId: h.quote.id!),
+              ),
+            )
+          : null,
+    ),
+    DeliveryChallanHistoryItem h => _ChallanTile(
+      challan: h.challan,
+      colors: colors,
+      onTap: h.challan.id != null
+          ? () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    DeliveryChallanDetailScreen(challanId: h.challan.id!),
+              ),
+            )
+          : null,
+    ),
+    BookingHistoryItem h => _BookingTile(
+      booking: h.booking,
+      colors: colors,
+      onTap: h.booking.id != null
+          ? () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BookingDetailScreen(bookingId: h.booking.id!),
+              ),
+            )
+          : null,
+    ),
+    _ => const SizedBox.shrink(),
+  };
 }
 
 // ===========================================================================
@@ -913,18 +1016,25 @@ class _DealsTab extends ConsumerWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.account_tree_outlined,
-                    size: 56, color: context.colorScheme.outline),
+                Icon(
+                  Icons.account_tree_outlined,
+                  size: 56,
+                  color: context.colorScheme.outline,
+                ),
                 const SizedBox(height: AppSpacing.base),
-                Text('No deal chains yet',
-                    style: context.textTheme.titleMedium
-                        ?.copyWith(color: context.colorScheme.outline)),
+                Text(
+                  'No deal chains yet',
+                  style: context.textTheme.titleMedium?.copyWith(
+                    color: context.colorScheme.outline,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Create a quote, challan, or invoice to track deal flow.',
                   textAlign: TextAlign.center,
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.colorScheme.outline),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.outline,
+                  ),
                 ),
               ],
             ),
@@ -936,10 +1046,14 @@ class _DealsTab extends ConsumerWidget {
           itemBuilder: (_, i) => FlowChainTile(
             chain: chains[i],
             onTap: chains[i].invoice != null
-                ? () => Navigator.push(context, MaterialPageRoute(
+                ? () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
                       builder: (_) => InvoiceDetailScreen(
-                          invoiceId: chains[i].invoice!.id!),
-                    ))
+                        invoiceId: chains[i].invoice!.id!,
+                      ),
+                    ),
+                  )
                 : null,
           ),
         );
@@ -968,7 +1082,9 @@ class _BottomBarState extends ConsumerState<_BottomBar> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.sm,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -987,7 +1103,8 @@ class _BottomBarState extends ConsumerState<_BottomBar> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => AddEditTransactionScreen(
-                        initialPartyName: widget.party.name),
+                      initialPartyName: widget.party.name,
+                    ),
                   ),
                 ),
               ),
@@ -1090,9 +1207,12 @@ class _NetOutstandingCard extends StatelessWidget {
               children: [
                 Icon(Icons.warning_amber, size: 14, color: colors.expense),
                 const SizedBox(width: 4),
-                Text('Has overdue items',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: colors.expense)),
+                Text(
+                  'Has overdue items',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: colors.expense,
+                  ),
+                ),
               ],
             ),
           ],
@@ -1183,7 +1303,9 @@ class _SummaryChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
       child: Container(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: context.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -1196,9 +1318,12 @@ class _SummaryChip extends StatelessWidget {
               children: [
                 Icon(icon, size: 14, color: context.colorScheme.primary),
                 const SizedBox(width: 4),
-                Text(label,
-                    style: context.textTheme.labelSmall
-                        ?.copyWith(color: context.colorScheme.onSurface)),
+                Text(
+                  label,
+                  style: context.textTheme.labelSmall?.copyWith(
+                    color: context.colorScheme.onSurface,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -1212,9 +1337,12 @@ class _SummaryChip extends StatelessWidget {
               ),
             ),
             if (count > 0)
-              Text('$count item${count > 1 ? 's' : ''}',
-                  style: context.textTheme.labelSmall
-                      ?.copyWith(color: context.colorScheme.outline)),
+              Text(
+                '$count item${count > 1 ? 's' : ''}',
+                style: context.textTheme.labelSmall?.copyWith(
+                  color: context.colorScheme.outline,
+                ),
+              ),
           ],
         ),
       ),
@@ -1236,17 +1364,18 @@ class _PayrollCard extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (err, st) => const SizedBox.shrink(),
       data: (staffList) {
-        final staff = staffList
-            .where((s) => s.partyId == party.id)
-            .firstOrNull;
+        final staff = staffList.where((s) => s.partyId == party.id).firstOrNull;
         if (staff == null) return const SizedBox.shrink();
 
         return Card(
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: context.colorScheme.primaryContainer,
-              child: Icon(Icons.payments_outlined,
-                  color: context.colorScheme.primary, size: 20),
+              child: Icon(
+                Icons.payments_outlined,
+                color: context.colorScheme.primary,
+                size: 20,
+              ),
             ),
             title: Text(
               '${CurrencyFormatter.format(staff.baseSalary)} / ${staff.salaryType.name}',
@@ -1261,9 +1390,7 @@ class _PayrollCard extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.push<void>(
               context,
-              MaterialPageRoute<void>(
-                builder: (_) => const StaffScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const StaffScreen()),
             ),
           ),
         );
@@ -1284,14 +1411,18 @@ class _ContactCard extends StatelessWidget {
     final hasContact = party.phoneNumber != null || party.email != null;
     final details = <MapEntry<IconData, String>>[
       if (party.phoneNumber != null)
-        MapEntry(Icons.phone_outlined,
-            '+${party.dialCode ?? '91'} ${party.phoneNumber!}'),
+        MapEntry(
+          Icons.phone_outlined,
+          '+${party.dialCode ?? '91'} ${party.phoneNumber!}',
+        ),
       if (party.email != null) MapEntry(Icons.email_outlined, party.email!),
       if (party.gstin != null)
         MapEntry(Icons.badge_outlined, 'GSTIN: ${party.gstin!}'),
       if (party.city != null)
-        MapEntry(Icons.location_on_outlined,
-            [party.city, party.state].whereType<String>().join(', ')),
+        MapEntry(
+          Icons.location_on_outlined,
+          [party.city, party.state].whereType<String>().join(', '),
+        ),
     ];
 
     if (details.isEmpty) return const SizedBox.shrink();
@@ -1302,21 +1433,24 @@ class _ContactCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ...details.map((e) => Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                  child: Row(
-                    children: [
-                      Icon(e.key,
-                          size: 16,
-                          color: context.colorScheme.onSurfaceVariant),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                          child: Text(e.value,
-                              style: context.textTheme.bodySmall)),
-                    ],
-                  ),
-                )),
+            ...details.map(
+              (e) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    Icon(
+                      e.key,
+                      size: 16,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(e.value, style: context.textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             if (hasContact) ...[
               const SizedBox(height: AppSpacing.sm),
               Wrap(
@@ -1327,8 +1461,10 @@ class _ContactCard extends StatelessWidget {
                       icon: Icons.phone_outlined,
                       label: 'Call',
                       onTap: () {
-                        final uri = PhoneUtils.telUri(party.phoneNumber!,
-                            dialCode: party.dialCode ?? '91');
+                        final uri = PhoneUtils.telUri(
+                          party.phoneNumber!,
+                          dialCode: party.dialCode ?? '91',
+                        );
                         if (uri != null) {
                           launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
@@ -1338,8 +1474,11 @@ class _ContactCard extends StatelessWidget {
                       icon: Icons.chat_outlined,
                       label: 'WhatsApp',
                       onTap: () {
-                        final uri = PhoneUtils.waUri(party.phoneNumber!,
-                            dialCode: party.dialCode ?? '91', message: 'Hi,');
+                        final uri = PhoneUtils.waUri(
+                          party.phoneNumber!,
+                          dialCode: party.dialCode ?? '91',
+                          message: 'Hi,',
+                        );
                         if (uri != null) {
                           launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
@@ -1349,8 +1488,11 @@ class _ContactCard extends StatelessWidget {
                       icon: Icons.message_outlined,
                       label: 'SMS',
                       onTap: () {
-                        final uri = PhoneUtils.smsUri(party.phoneNumber!,
-                            dialCode: party.dialCode ?? '91', body: 'Hi,');
+                        final uri = PhoneUtils.smsUri(
+                          party.phoneNumber!,
+                          dialCode: party.dialCode ?? '91',
+                          body: 'Hi,',
+                        );
                         if (uri != null) {
                           launchUrl(uri, mode: LaunchMode.externalApplication);
                         }
@@ -1395,7 +1537,7 @@ class _ContactCard extends StatelessWidget {
         }
         return;
       }
-      
+
       final contact = Contact()
         ..name = Name(last: party.name)
         ..phones = [if (party.phoneNumber != null) Phone(party.phoneNumber!)]
@@ -1418,8 +1560,11 @@ class _ContactCard extends StatelessWidget {
 }
 
 class _ContactChip extends StatelessWidget {
-  const _ContactChip(
-      {required this.icon, required this.label, required this.onTap});
+  const _ContactChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -1427,11 +1572,11 @@ class _ContactChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ActionChip(
-        avatar: Icon(icon, size: 16),
-        label: Text(label),
-        onPressed: onTap,
-        visualDensity: VisualDensity.compact,
-      );
+    avatar: Icon(icon, size: 16),
+    label: Text(label),
+    onPressed: onTap,
+    visualDensity: VisualDensity.compact,
+  );
 }
 
 class _UrgencyBanner extends StatelessWidget {
@@ -1445,7 +1590,9 @@ class _UrgencyBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
         color: color.withAlpha(20),
@@ -1456,8 +1603,10 @@ class _UrgencyBanner extends StatelessWidget {
         children: [
           Icon(Icons.info_outline, size: 16, color: color),
           const SizedBox(width: AppSpacing.xs),
-          Text(label,
-              style: context.textTheme.bodySmall?.copyWith(color: color)),
+          Text(
+            label,
+            style: context.textTheme.bodySmall?.copyWith(color: color),
+          ),
         ],
       ),
     );
@@ -1469,8 +1618,7 @@ class _UrgencyBanner extends StatelessWidget {
 // ===========================================================================
 
 class _OutstandingBalanceCard extends StatelessWidget {
-  const _OutstandingBalanceCard(
-      {required this.invoices, required this.colors});
+  const _OutstandingBalanceCard({required this.invoices, required this.colors});
 
   final List<Invoice> invoices;
   final KashCubeColors colors;
@@ -1485,10 +1633,12 @@ class _OutstandingBalanceCard extends StatelessWidget {
         .where((i) => i.status != InvoiceStatus.paid)
         .fold(0.0, (s, i) => s + i.balanceDue);
     final overdue = invoices
-        .where((i) =>
-            i.status != InvoiceStatus.paid &&
-            i.dueDate != null &&
-            i.dueDate!.isBefore(now))
+        .where(
+          (i) =>
+              i.status != InvoiceStatus.paid &&
+              i.dueDate != null &&
+              i.dueDate!.isBefore(now),
+        )
         .fold(0.0, (s, i) => s + i.balanceDue);
 
     return Container(
@@ -1501,8 +1651,10 @@ class _OutstandingBalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Outstanding Balance',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Outstanding Balance',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -1512,9 +1664,10 @@ class _OutstandingBalanceCard extends StatelessWidget {
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               _BalanceStat(
-                  label: 'Paid',
-                  value: _compactAmt(totalPaid),
-                  color: colors.income),
+                label: 'Paid',
+                value: _compactAmt(totalPaid),
+                color: colors.income,
+              ),
               _BalanceStat(
                 label: 'Balance',
                 value: _compactAmt(outstanding),
@@ -1522,9 +1675,10 @@ class _OutstandingBalanceCard extends StatelessWidget {
               ),
               if (overdue > 0)
                 _BalanceStat(
-                    label: 'Overdue',
-                    value: _compactAmt(overdue),
-                    color: colors.overdue),
+                  label: 'Overdue',
+                  value: _compactAmt(overdue),
+                  color: colors.overdue,
+                ),
             ],
           ),
         ],
@@ -1543,8 +1697,9 @@ class _CreditBalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (credits.isEmpty) return const SizedBox.shrink();
     final given = credits.where((c) => c.direction == CreditDirection.given);
-    final received =
-        credits.where((c) => c.direction == CreditDirection.received);
+    final received = credits.where(
+      (c) => c.direction == CreditDirection.received,
+    );
     final totalGiven = given.fold(0.0, (s, c) => s + c.pendingAmount);
     final totalReceived = received.fold(0.0, (s, c) => s + c.pendingAmount);
     final net = totalGiven - totalReceived;
@@ -1559,29 +1714,30 @@ class _CreditBalanceCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Credit Balance',
-              style: Theme.of(context).textTheme.titleSmall),
+          Text('Credit Balance', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               if (totalGiven > 0)
                 _BalanceStat(
-                    label: 'You Lent',
-                    value: _compactAmt(totalGiven),
-                    color: colors.credit),
+                  label: 'You Lent',
+                  value: _compactAmt(totalGiven),
+                  color: colors.credit,
+                ),
               if (totalReceived > 0)
                 _BalanceStat(
-                    label: 'You Owe',
-                    value: _compactAmt(totalReceived),
-                    color: colors.expense),
+                  label: 'You Owe',
+                  value: _compactAmt(totalReceived),
+                  color: colors.expense,
+                ),
               _BalanceStat(
                 label: 'Net',
                 value: (net >= 0 ? '+' : '') + _compactAmt(net.abs()),
                 color: net > 0
                     ? colors.credit
                     : net < 0
-                        ? colors.expense
-                        : colors.income,
+                    ? colors.expense
+                    : colors.income,
               ),
             ],
           ),
@@ -1592,8 +1748,11 @@ class _CreditBalanceCard extends StatelessWidget {
 }
 
 class _BalanceStat extends StatelessWidget {
-  const _BalanceStat(
-      {required this.label, required this.value, required this.color});
+  const _BalanceStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
@@ -1605,14 +1764,20 @@ class _BalanceStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 14, color: color)),
-          Text(label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
         ],
       ),
     );
@@ -1653,14 +1818,20 @@ class _ReminderNudgeCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xs),
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: cs.errorContainer.withValues(alpha: 0.30),
         border: Border.all(color: cs.error.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: [
           Icon(Icons.notifications_active_outlined, color: cs.error, size: 20),
@@ -1669,15 +1840,21 @@ class _ReminderNudgeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_buildTitle(),
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: cs.onErrorContainer)),
-                Text(lastLine,
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: cs.onErrorContainer.withValues(alpha: 0.7))),
+                Text(
+                  _buildTitle(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: cs.onErrorContainer,
+                  ),
+                ),
+                Text(
+                  lastLine,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: cs.onErrorContainer.withValues(alpha: 0.7),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1688,7 +1865,9 @@ class _ReminderNudgeCard extends StatelessWidget {
               backgroundColor: cs.error,
               foregroundColor: cs.onError,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
               visualDensity: VisualDensity.compact,
             ),
             icon: const Icon(Icons.send_outlined, size: 14),
@@ -1722,27 +1901,36 @@ class _TransactionTile extends StatelessWidget {
         backgroundColor: amountColor.withValues(alpha: 0.12),
         child: Icon(_typeIcon(txn.type), size: 16, color: amountColor),
       ),
-      title: Text(txn.category,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text(_fullDate(txn.date),
-          style: Theme.of(context).textTheme.labelSmall),
-      trailing: Text('$prefix${_compactAmt(txn.amount)}',
-          style: TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 13, color: amountColor)),
+      title: Text(
+        txn.category,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        _fullDate(txn.date),
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+      trailing: Text(
+        '$prefix${_compactAmt(txn.amount)}',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: amountColor,
+        ),
+      ),
     );
   }
 
   IconData _typeIcon(TransactionType type) => switch (type) {
-        TransactionType.income => Icons.arrow_downward,
-        TransactionType.expense => Icons.arrow_upward,
-        TransactionType.lent => Icons.call_made,
-        TransactionType.borrowed => Icons.call_received,
-        TransactionType.receivedBack => Icons.undo,
-        TransactionType.paidBack => Icons.redo,
-        TransactionType.transfer => Icons.swap_horiz,
-        TransactionType.invested => Icons.trending_up,
-        TransactionType.redeemed => Icons.trending_down,
-      };
+    TransactionType.income => Icons.arrow_downward,
+    TransactionType.expense => Icons.arrow_upward,
+    TransactionType.lent => Icons.call_made,
+    TransactionType.borrowed => Icons.call_received,
+    TransactionType.receivedBack => Icons.undo,
+    TransactionType.paidBack => Icons.redo,
+    TransactionType.transfer => Icons.swap_horiz,
+    TransactionType.invested => Icons.trending_up,
+    TransactionType.redeemed => Icons.trending_down,
+  };
 }
 
 class _InvoiceTile extends StatelessWidget {
@@ -1775,14 +1963,18 @@ class _InvoiceTile extends StatelessWidget {
         backgroundColor: statusColor.withValues(alpha: 0.12),
         child: Icon(Icons.receipt_long_outlined, size: 16, color: statusColor),
       ),
-      title: Text(invoice.invoiceNo,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(
+        invoice.invoiceNo,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${_fullDate(invoice.issueDate)} • ${invoice.status.label}',
-              style: Theme.of(context).textTheme.labelSmall),
+          Text(
+            '${_fullDate(invoice.issueDate)} • ${invoice.status.label}',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
           if (lifecycleInfo != null) ...[
             const SizedBox(height: 2),
             LifecycleTag(info: lifecycleInfo!),
@@ -1793,14 +1985,19 @@ class _InvoiceTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('₹${_raw(invoice.total)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: statusColor)),
+          Text(
+            '₹${_raw(invoice.total)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: statusColor,
+            ),
+          ),
           if (invoice.status == InvoiceStatus.partiallyPaid)
-            Text('₹${_raw(invoice.paidAmount)} paid',
-                style: Theme.of(context).textTheme.labelSmall),
+            Text(
+              '₹${_raw(invoice.paidAmount)} paid',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
         ],
       ),
     );
@@ -1808,8 +2005,7 @@ class _InvoiceTile extends StatelessWidget {
 }
 
 class _QuoteTile extends StatelessWidget {
-  const _QuoteTile(
-      {required this.quote, required this.colors, this.onTap});
+  const _QuoteTile({required this.quote, required this.colors, this.onTap});
 
   final Quote quote;
   final KashCubeColors colors;
@@ -1831,22 +2027,28 @@ class _QuoteTile extends StatelessWidget {
         backgroundColor: statusColor.withValues(alpha: 0.12),
         child: Icon(Icons.request_quote_outlined, size: 16, color: statusColor),
       ),
-      title: Text(quote.quoteNo,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text('${_fullDate(quote.createdAt)} • ${quote.status.label}',
-          style: Theme.of(context).textTheme.labelSmall),
-      trailing: Text('₹${_raw(quote.total)}',
-          style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: statusColor)),
+      title: Text(
+        quote.quoteNo,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        '${_fullDate(quote.createdAt)} • ${quote.status.label}',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
+      trailing: Text(
+        '₹${_raw(quote.total)}',
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+          color: statusColor,
+        ),
+      ),
     );
   }
 }
 
 class _ChallanTile extends StatelessWidget {
-  const _ChallanTile(
-      {required this.challan, required this.colors, this.onTap});
+  const _ChallanTile({required this.challan, required this.colors, this.onTap});
 
   final DeliveryChallan challan;
   final KashCubeColors colors;
@@ -1868,25 +2070,32 @@ class _ChallanTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: statusColor.withValues(alpha: 0.12),
-        child:
-            Icon(Icons.local_shipping_outlined, size: 16, color: statusColor),
+        child: Icon(
+          Icons.local_shipping_outlined,
+          size: 16,
+          color: statusColor,
+        ),
       ),
-      title: Text(challan.challanNo,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text('${_fullDate(challan.challanDate)} • ${challan.status.label}',
-          style: Theme.of(context).textTheme.labelSmall),
+      title: Text(
+        challan.challanNo,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        '${_fullDate(challan.challanDate)} • ${challan.status.label}',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
       trailing: Text(
         '${challan.items.length} item${challan.items.length == 1 ? '' : 's'}',
-        style:
-            Theme.of(context).textTheme.labelSmall?.copyWith(color: statusColor),
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: statusColor),
       ),
     );
   }
 }
 
 class _ScheduledPaymentTile extends StatelessWidget {
-  const _ScheduledPaymentTile(
-      {required this.payment, required this.colors});
+  const _ScheduledPaymentTile({required this.payment, required this.colors});
 
   final ScheduledPayment payment;
   final KashCubeColors colors;
@@ -1902,23 +2111,28 @@ class _ScheduledPaymentTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: amountColor.withValues(alpha: 0.12),
-        child:
-            Icon(Icons.event_repeat_outlined, size: 16, color: amountColor),
+        child: Icon(Icons.event_repeat_outlined, size: 16, color: amountColor),
       ),
-      title: Text(payment.name,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(
+        payment.name,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
       subtitle: Text(
-          '${_fullDate(payment.nextDate)} • $frequencyLabel',
-          style: Theme.of(context).textTheme.labelSmall),
+        '${_fullDate(payment.nextDate)} • $frequencyLabel',
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('₹${_raw(payment.amount)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: amountColor)),
+          Text(
+            '₹${_raw(payment.amount)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: amountColor,
+            ),
+          ),
           if (payment.isOverdue)
             Icon(Icons.warning_outlined, size: 12, color: colors.overdue),
         ],
@@ -1963,25 +2177,34 @@ class _BookingTile extends StatelessWidget {
       leading: CircleAvatar(
         radius: 18,
         backgroundColor: statusColor.withValues(alpha: 0.12),
-        child:
-            Icon(Icons.calendar_month_outlined, size: 16, color: statusColor),
+        child: Icon(
+          Icons.calendar_month_outlined,
+          size: 16,
+          color: statusColor,
+        ),
       ),
-      title: Text(booking.serviceName,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(
+        booking.serviceName,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('${_fullDate(booking.startDatetime)} • $statusLabel',
-              style: Theme.of(context).textTheme.labelSmall),
+          Text(
+            '${_fullDate(booking.startDatetime)} • $statusLabel',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
           if (lifecycleInfo != null) ...[
             const SizedBox(height: 2),
             LifecycleTag(info: lifecycleInfo!),
           ],
         ],
       ),
-      trailing: Text('₹${_raw(booking.totalAmount)}',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+      trailing: Text(
+        '₹${_raw(booking.totalAmount)}',
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      ),
     );
   }
 }
@@ -1996,18 +2219,19 @@ class _CreditHistoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isGiven = credit.direction == CreditDirection.given;
     final directionColor = isGiven ? colors.credit : colors.expense;
-    final displayAmount =
-        credit.pendingAmount > 0 ? credit.pendingAmount : credit.totalAmount;
+    final displayAmount = credit.pendingAmount > 0
+        ? credit.pendingAmount
+        : credit.totalAmount;
     final statusLabel = credit.isCleared
         ? 'Cleared'
         : credit.isOverdue
-            ? 'Overdue'
-            : 'Pending';
+        ? 'Overdue'
+        : 'Pending';
     final statusColor = credit.isCleared
         ? colors.income
         : credit.isOverdue
-            ? colors.overdue
-            : colors.credit;
+        ? colors.overdue
+        : colors.credit;
 
     return ListTile(
       dense: true,
@@ -2015,35 +2239,45 @@ class _CreditHistoryTile extends StatelessWidget {
         radius: 18,
         backgroundColor: directionColor.withValues(alpha: 0.12),
         child: Icon(
-            isGiven ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-            size: 16,
-            color: directionColor),
+          isGiven ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+          size: 16,
+          color: directionColor,
+        ),
       ),
-      title: Text(isGiven ? 'Lent to party' : 'Borrowed from party',
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      subtitle: Text(_fmtRelative(credit.creditDate),
-          style: Theme.of(context).textTheme.labelSmall),
+      title: Text(
+        isGiven ? 'Lent to party' : 'Borrowed from party',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        _fmtRelative(credit.creditDate),
+        style: Theme.of(context).textTheme.labelSmall,
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('${isGiven ? '' : '-'}${_compactAmt(displayAmount)}',
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: directionColor)),
+          Text(
+            '${isGiven ? '' : '-'}${_compactAmt(displayAmount)}',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: directionColor,
+            ),
+          ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: Text(statusLabel,
-                style: TextStyle(
-                    fontSize: 10,
-                    color: statusColor,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontSize: 10,
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -2075,8 +2309,10 @@ class _ReminderHistoryTile extends StatelessWidget {
         backgroundColor: channelColor.withValues(alpha: 0.12),
         child: Icon(channelIcon, size: 16, color: channelColor),
       ),
-      title: Text('${reminder.channel.label} Reminder',
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+      title: Text(
+        '${reminder.channel.label} Reminder',
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2090,8 +2326,10 @@ class _ReminderHistoryTile extends StatelessWidget {
             reminder.message.split('\n').first,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style:
-                TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline),
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -2099,12 +2337,17 @@ class _ReminderHistoryTile extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(_fmtRelative(reminder.sentAt),
-              style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.outline)),
-          Text(reminder.channel.label,
-              style: TextStyle(fontSize: 10, color: channelColor)),
+          Text(
+            _fmtRelative(reminder.sentAt),
+            style: TextStyle(
+              fontSize: 11,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
+          Text(
+            reminder.channel.label,
+            style: TextStyle(fontSize: 10, color: channelColor),
+          ),
         ],
       ),
       visualDensity: VisualDensity.compact,
@@ -2169,7 +2412,8 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
     buf.writeln('Hi $name, here is a summary of your outstanding invoices:');
     buf.writeln();
     for (final inv in invoices) {
-      final isOverdue = inv.dueDate != null &&
+      final isOverdue =
+          inv.dueDate != null &&
           inv.dueDate!.isBefore(now) &&
           inv.status != InvoiceStatus.paid;
       buf.write('• ${inv.invoiceNo} — ${_compactAmt(inv.balanceDue)}');
@@ -2179,7 +2423,8 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
       if (isOverdue) buf.write(' ⚠️ OVERDUE');
       if (inv.status == InvoiceStatus.partiallyPaid) {
         buf.write(
-            ' [${_compactAmt(inv.paidAmount)} paid, ${_compactAmt(inv.balanceDue)} due]');
+          ' [${_compactAmt(inv.paidAmount)} paid, ${_compactAmt(inv.balanceDue)} due]',
+        );
       }
       buf.writeln();
     }
@@ -2206,30 +2451,36 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
       minChildSize: 0.4,
       maxChildSize: 0.95,
       builder: (_, scrollController) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: ListView(
           controller: scrollController,
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.base, AppSpacing.base, AppSpacing.xl),
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.base,
+            AppSpacing.xl,
+          ),
           children: [
             Row(
               children: [
-                Text('Send Reminder',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Send Reminder',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const Spacer(),
                 IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close)),
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
             if (widget.unpaidInvoices.isNotEmpty) ...[
               Container(
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.all(AppSpacing.md),
@@ -2238,35 +2489,33 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.receipt_long_outlined,
-                            size: 16,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant),
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 16,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
                           '${widget.unpaidInvoices.length} unpaid '
                           'invoice${widget.unpaidInvoices.length == 1 ? '' : 's'}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
+                          style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     ...widget.unpaidInvoices.map((inv) {
-                      final isOverdue = inv.dueDate != null &&
+                      final isOverdue =
+                          inv.dueDate != null &&
                           inv.dueDate!.isBefore(now) &&
                           inv.status != InvoiceStatus.paid;
                       final statusColor = isOverdue
                           ? colors.overdue
                           : inv.status == InvoiceStatus.partiallyPaid
-                              ? Colors.orange
-                              : colors.expense;
+                          ? Colors.orange
+                          : colors.expense;
                       return Padding(
-                        padding:
-                            const EdgeInsets.only(bottom: AppSpacing.xs),
+                        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -2274,10 +2523,13 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(inv.invoiceNo,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600)),
+                                  Text(
+                                    inv.invoiceNo,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                   if (inv.dueDate != null)
                                     Text(
                                       'Due: ${_fullDate(inv.dueDate!)}${isOverdue ? '  ⚠️ OVERDUE' : ''}',
@@ -2285,11 +2537,12 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                                           .textTheme
                                           .labelSmall
                                           ?.copyWith(
-                                              color: isOverdue
-                                                  ? colors.overdue
-                                                  : Theme.of(context)
-                                                      .colorScheme
-                                                      .outline),
+                                            color: isOverdue
+                                                ? colors.overdue
+                                                : Theme.of(
+                                                    context,
+                                                  ).colorScheme.outline,
+                                          ),
                                     ),
                                 ],
                               ),
@@ -2297,18 +2550,20 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(_compactAmt(inv.balanceDue),
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: statusColor)),
-                                if (inv.status ==
-                                    InvoiceStatus.partiallyPaid)
+                                Text(
+                                  _compactAmt(inv.balanceDue),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: statusColor,
+                                  ),
+                                ),
+                                if (inv.status == InvoiceStatus.partiallyPaid)
                                   Text(
                                     '${_compactAmt(inv.paidAmount)} paid',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.labelSmall,
                                   ),
                               ],
                             ),
@@ -2320,16 +2575,25 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Total Outstanding',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 13)),
-                        Text(
-                          _compactAmt(widget.unpaidInvoices
-                              .fold(0.0, (s, i) => s + i.balanceDue)),
+                        const Text(
+                          'Total Outstanding',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: colors.expense),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        Text(
+                          _compactAmt(
+                            widget.unpaidInvoices.fold(
+                              0.0,
+                              (s, i) => s + i.balanceDue,
+                            ),
+                          ),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: colors.expense,
+                          ),
                         ),
                       ],
                     ),
@@ -2351,13 +2615,13 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                   icon: const Icon(Icons.refresh_outlined, size: 18),
                   tooltip: 'Reset to default',
                   onPressed: () => setState(
-                      () => _msgController.text = _buildDefaultMessage()),
+                    () => _msgController.text = _buildDefaultMessage(),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text('Send via:',
-                style: Theme.of(context).textTheme.labelMedium),
+            Text('Send via:', style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: AppSpacing.sm),
             Wrap(
               spacing: AppSpacing.sm,
@@ -2370,7 +2634,7 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                     color: const Color(0xFF25D366),
                     onTap: () => _send(
                       'https://wa.me/$dialCode$phone?text='
-                      '${Uri.encodeComponent(_msgController.text)}',
+                          '${Uri.encodeComponent(_msgController.text)}',
                       phone,
                       'whatsapp',
                     ),
@@ -2381,7 +2645,7 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                     color: const Color(0xFF1976D2),
                     onTap: () => _send(
                       'sms:+$dialCode$phone?body='
-                      '${Uri.encodeComponent(_msgController.text)}',
+                          '${Uri.encodeComponent(_msgController.text)}',
                       phone,
                       'sms',
                     ),
@@ -2394,7 +2658,7 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
                     color: const Color(0xFFD32F2F),
                     onTap: () => _send(
                       'mailto:$email?subject=Payment+Reminder&body='
-                      '${Uri.encodeComponent(_msgController.text)}',
+                          '${Uri.encodeComponent(_msgController.text)}',
                       null,
                       'email',
                     ),
@@ -2404,10 +2668,9 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Opening your messaging app. The message is pre-filled.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -2433,8 +2696,10 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
       message: _msgController.text,
       invoiceRefs: widget.unpaidInvoices.map((i) => i.invoiceNo).join(','),
       invoiceCount: widget.unpaidInvoices.length,
-      totalOutstanding:
-          widget.unpaidInvoices.fold<double>(0.0, (s, i) => s + i.balanceDue),
+      totalOutstanding: widget.unpaidInvoices.fold<double>(
+        0.0,
+        (s, i) => s + i.balanceDue,
+      ),
       sentAt: DateTime.now(),
     );
     await ref.read(partyReminderRepositoryProvider).insert(reminder);
@@ -2451,11 +2716,12 @@ class _SendReminderSheetState extends ConsumerState<_SendReminderSheet> {
 }
 
 class _ChannelButton extends StatelessWidget {
-  const _ChannelButton(
-      {required this.icon,
-      required this.label,
-      required this.color,
-      required this.onTap});
+  const _ChannelButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 
   final IconData icon;
   final String label;
@@ -2464,9 +2730,9 @@ class _ChannelButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => FilledButton.icon(
-        style: FilledButton.styleFrom(backgroundColor: color),
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label),
-      );
+    style: FilledButton.styleFrom(backgroundColor: color),
+    onPressed: onTap,
+    icon: Icon(icon, size: 18),
+    label: Text(label),
+  );
 }

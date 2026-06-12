@@ -20,8 +20,7 @@ class CommunicationService {
     final formatted = (cleaned.startsWith('91') && cleaned.length >= 12)
         ? cleaned
         : '91$cleaned';
-    final url =
-        'https://wa.me/$formatted?text=${Uri.encodeComponent(message)}';
+    final url = 'https://wa.me/$formatted?text=${Uri.encodeComponent(message)}';
     return _launch(url);
   }
 
@@ -37,8 +36,7 @@ class CommunicationService {
   // ── Email ────────────────────────────────────────────────────────────────
 
   /// Open the email app with [subject] and [body] pre-filled for [email].
-  Future<bool> sendEmail(
-      String email, String subject, String body) async {
+  Future<bool> sendEmail(String email, String subject, String body) async {
     final url =
         'mailto:$email?subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}';
     return _launch(url);

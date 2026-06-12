@@ -115,10 +115,7 @@ class _DeliveryAddressPickerState
                 Icon(Icons.local_shipping_outlined, color: cs.primary),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Text(
-                    'Delivery Address',
-                    style: tt.titleMedium,
-                  ),
+                  child: Text('Delivery Address', style: tt.titleMedium),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -170,7 +167,8 @@ class _DeliveryAddressPickerState
                   label: 'Enter custom address…',
                   sublabel: 'One-time address, not saved to party',
                   isSelected: _showCustomForm,
-                  onTap: () => setState(() => _showCustomForm = !_showCustomForm),
+                  onTap: () =>
+                      setState(() => _showCustomForm = !_showCustomForm),
                 ),
 
                 // ── Custom address form ───────────────────────────────────
@@ -261,8 +259,8 @@ class _SavedAddressList extends ConsumerWidget {
               child: Text(
                 'Saved addresses',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
+                  color: Theme.of(context).colorScheme.outline,
+                ),
               ),
             ),
             ...addresses.map(
@@ -320,8 +318,10 @@ class _AddressTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        leading: Icon(icon,
-            color: isSelected ? cs.primary : cs.onSurfaceVariant),
+        leading: Icon(
+          icon,
+          color: isSelected ? cs.primary : cs.onSurfaceVariant,
+        ),
         title: Text(
           label,
           style: TextStyle(
@@ -360,6 +360,7 @@ class _CustomAddressForm extends StatefulWidget {
   final TextEditingController stateCtrl;
   final TextEditingController pincodeCtrl;
   final TextEditingController gstinCtrl;
+
   /// Called with the selected country name (e.g. 'India') when the user
   /// confirms. May be `null` if the user cleared the country picker.
   final void Function(String? country) onConfirm;
@@ -434,8 +435,7 @@ class _CustomAddressFormState extends State<_CustomAddressForm> {
           const SizedBox(height: AppSpacing.md),
           TextFormField(
             controller: widget.addressCtrl,
-            decoration:
-                const InputDecoration(labelText: 'Street / Area'),
+            decoration: const InputDecoration(labelText: 'Street / Area'),
             textCapitalization: TextCapitalization.sentences,
             maxLines: 2,
           ),
@@ -472,8 +472,7 @@ class _CustomAddressFormState extends State<_CustomAddressForm> {
           ),
           const SizedBox(height: AppSpacing.md),
           // State: Indian dropdown when India is selected, plain text otherwise
-          (_selectedCountry == null ||
-                  _selectedCountry!.name.common == 'India')
+          (_selectedCountry == null || _selectedCountry!.name.common == 'India')
               ? IndianStateDropdown(controller: widget.stateCtrl)
               : TextFormField(
                   controller: widget.stateCtrl,

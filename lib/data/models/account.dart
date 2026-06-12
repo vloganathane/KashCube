@@ -78,10 +78,7 @@ enum AccountType {
       case AccountType.debitCard:
         return [PaymentMethod.debitCard];
       case AccountType.upiWallet:
-        return [
-          PaymentMethod.upi,
-          PaymentMethod.wallet,
-        ];
+        return [PaymentMethod.upi, PaymentMethod.wallet];
       case AccountType.paymentWallet:
         return [PaymentMethod.wallet];
     }
@@ -115,10 +112,13 @@ class Account extends Equatable {
   final String accountName;
   final String? bankName;
   final String? accountNumberLast4;
+
   /// The seed balance at the time the account was set up.
   final double? openingBalance;
+
   /// For credit card accounts: the total approved credit limit.
   final double? creditLimit;
+
   /// For debit_card / upi_wallet accounts: the parent savings/current account.
   final int? linkedBankAccountId;
   final bool isActive;
@@ -201,19 +201,29 @@ class Account extends Equatable {
       bankName: map['bank_name'] as String?,
       accountNumberLast4: map['account_number_last4'] as String?,
       // Prefer opening_balance (v78+); fall back to current_balance for old rows.
-      openingBalance: (map['opening_balance'] as num?)?.toDouble() ??
+      openingBalance:
+          (map['opening_balance'] as num?)?.toDouble() ??
           (map['current_balance'] as num?)?.toDouble(),
       creditLimit: (map['credit_limit'] as num?)?.toDouble(),
       linkedBankAccountId: map['linked_bank_account_id'] as int?,
       isActive: (map['is_active'] as int? ?? 1) == 1,
       isPrimary: (map['is_primary'] as int? ?? 0) == 1,
-      smsSenders: (map['sms_senders'] as String?)?.split(',').where((s) => s.isNotEmpty).toList(),
+      smsSenders: (map['sms_senders'] as String?)
+          ?.split(',')
+          .where((s) => s.isNotEmpty)
+          .toList(),
       notes: map['notes'] as String?,
       color: map['color'] as String?,
       icon: map['icon'] as String?,
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
-      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
-      deletedAt: map['deleted_at'] != null ? DateTime.parse(map['deleted_at'] as String) : null,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : null,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
+          : null,
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
     );
   }
 

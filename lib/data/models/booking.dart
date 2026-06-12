@@ -109,6 +109,7 @@ class Booking extends Equatable {
   final BookingType bookingType;
   final double totalAmount;
   final double advanceAmount;
+
   /// Running total of all payments received (advance + subsequent payments).
   /// Mirrors [Invoice.paidAmount]. Set to [advanceAmount] at booking creation.
   final double paidAmount;
@@ -120,6 +121,7 @@ class Booking extends Equatable {
   final String? bookingRef;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
   /// Timestamp of the last manual reminder sent (WhatsApp/SMS/Email).
   final DateTime? reminderSentAt;
 
@@ -169,7 +171,8 @@ class Booking extends Equatable {
       paidAmount: paidAmount ?? this.paidAmount,
       invoiceId: invoiceId ?? this.invoiceId,
       notes: notes ?? this.notes,
-      notificationScheduledAt: notificationScheduledAt ?? this.notificationScheduledAt,
+      notificationScheduledAt:
+          notificationScheduledAt ?? this.notificationScheduledAt,
       confirmedAt: confirmedAt ?? this.confirmedAt,
       businessId: businessId ?? this.businessId,
       bookingRef: bookingRef ?? this.bookingRef,
@@ -200,7 +203,8 @@ class Booking extends Equatable {
       'confirmed_at': confirmedAt?.toIso8601String(),
       'business_id': businessId,
       'booking_ref': bookingRef,
-      'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'created_at':
+          createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'reminder_sent_at': reminderSentAt?.toIso8601String(),
     };
@@ -214,8 +218,8 @@ class Booking extends Equatable {
       serviceItemId: map['service_item_id'] as int?,
       serviceName: map['service_name'] as String,
       startDatetime: DateTime.parse(map['start_datetime'] as String),
-      endDatetime: map['end_datetime'] != null 
-          ? DateTime.parse(map['end_datetime'] as String) 
+      endDatetime: map['end_datetime'] != null
+          ? DateTime.parse(map['end_datetime'] as String)
           : null,
       durationMinutes: map['duration_minutes'] as int?,
       status: BookingStatusExt.fromDb(map['status'] as String?),
@@ -253,8 +257,8 @@ class Booking extends Equatable {
 
   /// Checks if booking is overdue (start time passed, still pending)
   bool get isOverdue {
-    return status == BookingStatus.pending && 
-           DateTime.now().isAfter(startDatetime);
+    return status == BookingStatus.pending &&
+        DateTime.now().isAfter(startDatetime);
   }
 
   /// Returns formatted duration string.
@@ -277,26 +281,26 @@ class Booking extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        customerPartyId,
-        customerName,
-        serviceItemId,
-        serviceName,
-        startDatetime,
-        endDatetime,
-        durationMinutes,
-        status,
-        bookingType,
-        totalAmount,
-        advanceAmount,
-        paidAmount,
-        invoiceId,
-        notes,
-        notificationScheduledAt,
-        confirmedAt,
-        businessId,
-        bookingRef,
-        createdAt,
-        updatedAt,
-      ];
+    id,
+    customerPartyId,
+    customerName,
+    serviceItemId,
+    serviceName,
+    startDatetime,
+    endDatetime,
+    durationMinutes,
+    status,
+    bookingType,
+    totalAmount,
+    advanceAmount,
+    paidAmount,
+    invoiceId,
+    notes,
+    notificationScheduledAt,
+    confirmedAt,
+    businessId,
+    bookingRef,
+    createdAt,
+    updatedAt,
+  ];
 }

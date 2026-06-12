@@ -70,8 +70,9 @@ class SyncKeyRotationChecker {
         (peerRow['key_rotated_at'] as String?) ??
         (peerRow['paired_at'] as String?);
 
-    final referenceTime =
-        referenceTimeStr != null ? DateTime.tryParse(referenceTimeStr) : null;
+    final referenceTime = referenceTimeStr != null
+        ? DateTime.tryParse(referenceTimeStr)
+        : null;
 
     final now = _clock();
     final keyAgeSeconds = referenceTime != null
@@ -98,6 +99,5 @@ class SyncKeyRotationChecker {
   /// in one pass.
   List<SyncKeyRotationResult> evaluateAll(
     List<Map<String, dynamic>> peerRows,
-  ) =>
-      peerRows.map(evaluatePeerRow).toList(growable: false);
+  ) => peerRows.map(evaluatePeerRow).toList(growable: false);
 }

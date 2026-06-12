@@ -31,6 +31,7 @@ class StockMovement extends Equatable {
 
   final int? id;
   final int itemId;
+
   /// Which business's stock this movement belongs to. Null for legacy
   /// movements recorded before the per-business stock (v55) migration.
   final int? businessId;
@@ -43,35 +44,45 @@ class StockMovement extends Equatable {
   final DateTime createdAt;
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'item_id': itemId,
-        'business_id': businessId,
-        'movement_type': movementType.name,
-        'qty': qty,
-        'stock_after': stockAfter,
-        'reference_id': referenceId,
-        'reference_type': referenceType,
-        'notes': notes,
-        'created_at': createdAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'item_id': itemId,
+    'business_id': businessId,
+    'movement_type': movementType.name,
+    'qty': qty,
+    'stock_after': stockAfter,
+    'reference_id': referenceId,
+    'reference_type': referenceType,
+    'notes': notes,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory StockMovement.fromMap(Map<String, dynamic> map) => StockMovement(
-        id: map['id'] as int?,
-        itemId: map['item_id'] as int,
-        businessId: map['business_id'] as int?,
-        movementType: StockMovementType.values.firstWhere(
-          (t) => t.name == (map['movement_type'] as String?),
-          orElse: () => StockMovementType.adjustment,
-        ),
-        qty: (map['qty'] as num).toDouble(),
-        stockAfter: (map['stock_after'] as num).toDouble(),
-        referenceId: map['reference_id'] as int?,
-        referenceType: map['reference_type'] as String?,
-        notes: map['notes'] as String?,
-        createdAt: DateTime.parse(map['created_at'] as String),
-      );
+    id: map['id'] as int?,
+    itemId: map['item_id'] as int,
+    businessId: map['business_id'] as int?,
+    movementType: StockMovementType.values.firstWhere(
+      (t) => t.name == (map['movement_type'] as String?),
+      orElse: () => StockMovementType.adjustment,
+    ),
+    qty: (map['qty'] as num).toDouble(),
+    stockAfter: (map['stock_after'] as num).toDouble(),
+    referenceId: map['reference_id'] as int?,
+    referenceType: map['reference_type'] as String?,
+    notes: map['notes'] as String?,
+    createdAt: DateTime.parse(map['created_at'] as String),
+  );
 
   @override
-  List<Object?> get props =>
-      [id, itemId, businessId, movementType, qty, stockAfter, referenceId, referenceType, notes, createdAt];
+  List<Object?> get props => [
+    id,
+    itemId,
+    businessId,
+    movementType,
+    qty,
+    stockAfter,
+    referenceId,
+    referenceType,
+    notes,
+    createdAt,
+  ];
 }

@@ -46,7 +46,8 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
             tooltip: 'Search loans',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const SearchScreen(initialFilter: SearchFilter.loans),
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.loans),
               ),
             ),
           ),
@@ -57,7 +58,11 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
           // Summary row
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, AppSpacing.base, AppSpacing.base, 0),
+              AppSpacing.base,
+              AppSpacing.base,
+              AppSpacing.base,
+              0,
+            ),
             child: _SummaryCard(),
           ),
 
@@ -94,32 +99,28 @@ class _LoansScreenState extends ConsumerState<LoansScreen> {
           Expanded(
             child: switch (_filter) {
               _LoansFilter.cleared => clearedAsync.when(
-                  data: (loans) => _LoanList(loans: loans, filter: _filter),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                ),
+                data: (loans) => _LoanList(loans: loans, filter: _filter),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
               _LoansFilter.overdue => overdueAsync.when(
-                  data: (loans) => _LoanList(loans: loans, filter: _filter),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                ),
+                data: (loans) => _LoanList(loans: loans, filter: _filter),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
               _ => loansAsync.when(
-                  data: (loans) {
-                    final filtered = switch (_filter) {
-                      _LoansFilter.lent =>
-                        loans.where((l) => l.isLent).toList(),
-                      _LoansFilter.borrowed =>
-                        loans.where((l) => l.isBorrowed).toList(),
-                      _ => loans,
-                    };
-                    return _LoanList(loans: filtered, filter: _filter);
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                ),
+                data: (loans) {
+                  final filtered = switch (_filter) {
+                    _LoansFilter.lent => loans.where((l) => l.isLent).toList(),
+                    _LoansFilter.borrowed =>
+                      loans.where((l) => l.isBorrowed).toList(),
+                    _ => loans,
+                  };
+                  return _LoanList(loans: filtered, filter: _filter);
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
             },
           ),
         ],
@@ -159,14 +160,21 @@ class _LoanList extends StatelessWidget {
         _LoansFilter.all => 'No loans yet',
       };
       return Center(
-        child: Text(msg, style: context.textTheme.bodyMedium?.copyWith(
-          color: context.colorScheme.onSurfaceVariant,
-        )),
+        child: Text(
+          msg,
+          style: context.textTheme.bodyMedium?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
       );
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.sm, AppSpacing.base, 100),
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        100,
+      ),
       itemCount: loans.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (_, i) => _LoanTile(loan: loans[i]),
@@ -240,13 +248,18 @@ class _MiniStat extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: context.textTheme.labelSmall
-                    ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
+            Text(
+              label,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
             Text(
               CurrencyFormatter.format(value),
-              style: context.textTheme.titleSmall
-                  ?.copyWith(color: color, fontWeight: FontWeight.w700),
+              style: context.textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -296,7 +309,9 @@ class _LoanTile extends ConsumerWidget {
                           ? loan.lenderName[0].toUpperCase()
                           : '?',
                       style: TextStyle(
-                          color: color, fontWeight: FontWeight.bold),
+                        color: color,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -304,14 +319,17 @@ class _LoanTile extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(loan.lenderName,
-                            style: context.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            )),
+                        Text(
+                          loan.lenderName,
+                          style: context.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Text(
                           isLent ? 'Lent (Diya)' : 'Borrowed (Liya)',
                           style: context.textTheme.bodySmall?.copyWith(
-                              color: context.colorScheme.onSurfaceVariant),
+                            color: context.colorScheme.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -329,20 +347,26 @@ class _LoanTile extends ConsumerWidget {
                       if (loan.isCleared)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: colors.income.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text('Cleared',
-                              style: context.textTheme.labelSmall
-                                  ?.copyWith(color: colors.income)),
+                          child: Text(
+                            'Cleared',
+                            style: context.textTheme.labelSmall?.copyWith(
+                              color: colors.income,
+                            ),
+                          ),
                         ),
                       if (isOverdue)
                         Text(
                           'Overdue!',
-                          style: context.textTheme.labelSmall
-                              ?.copyWith(color: colors.expense),
+                          style: context.textTheme.labelSmall?.copyWith(
+                            color: colors.expense,
+                          ),
                         ),
                     ],
                   ),
@@ -355,8 +379,7 @@ class _LoanTile extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: loan.progress,
-                    backgroundColor:
-                        color.withValues(alpha: 0.1),
+                    backgroundColor: color.withValues(alpha: 0.1),
                     valueColor: AlwaysStoppedAnimation(color),
                     minHeight: 4,
                   ),
@@ -366,9 +389,11 @@ class _LoanTile extends ConsumerWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                        '${CurrencyFormatter.format(loan.paidAmount)} paid',
-                        style: context.textTheme.labelSmall?.copyWith(
-                            color: context.colorScheme.onSurfaceVariant)),
+                      '${CurrencyFormatter.format(loan.paidAmount)} paid',
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     if (loan.dueDate != null)
                       Text(
                         'Due ${DateFormatter.format(loan.dueDate!)}',
@@ -420,7 +445,8 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom),
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
@@ -433,13 +459,17 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(loan.lenderName,
-                          style: context.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        loan.lenderName,
+                        style: context.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       Text(
                         isLent ? 'You lent money' : 'You borrowed money',
                         style: context.textTheme.bodySmall?.copyWith(
-                            color: context.colorScheme.onSurfaceVariant),
+                          color: context.colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
@@ -450,8 +480,8 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
                     Navigator.pop(context);
                     final edited = await Navigator.of(context).push<bool>(
                       MaterialPageRoute(
-                          builder: (_) =>
-                              AddLedgerEntryScreen(loan: loan)),
+                        builder: (_) => AddLedgerEntryScreen(loan: loan),
+                      ),
                     );
                     if (edited == true) _invalidateAll(ref);
                   },
@@ -466,24 +496,27 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
 
             // Key values
             _LabelValue(
-                label: 'Principal',
-                value:
-                    CurrencyFormatter.format(loan.principalAmount)),
+              label: 'Principal',
+              value: CurrencyFormatter.format(loan.principalAmount),
+            ),
             _LabelValue(
-                label: 'Paid',
-                value: CurrencyFormatter.format(loan.paidAmount)),
+              label: 'Paid',
+              value: CurrencyFormatter.format(loan.paidAmount),
+            ),
             _LabelValue(
               label: 'Outstanding',
               value: CurrencyFormatter.format(loan.pendingAmount),
               valueColor: amountColor,
             ),
             _LabelValue(
-                label: 'Date',
-                value: DateFormatter.format(loan.loanDate)),
+              label: 'Date',
+              value: DateFormatter.format(loan.loanDate),
+            ),
             if (loan.dueDate != null)
               _LabelValue(
-                  label: 'Due',
-                  value: DateFormatter.format(loan.dueDate!)),
+                label: 'Due',
+                value: DateFormatter.format(loan.dueDate!),
+              ),
             if (loan.interestRate != null)
               _LabelValue(
                 label: 'Interest',
@@ -498,24 +531,26 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
               ),
             if (loan.repaymentFrequency != null)
               Padding(
-                padding:
-                    const EdgeInsets.only(bottom: AppSpacing.xs),
+                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                 child: TextButton.icon(
                   icon: const Icon(Icons.calendar_view_month),
                   label: Text(
-                      '${loan.paidEmis}/${loan.totalEmis ?? "?"} installments · View schedule'),
+                    '${loan.paidEmis}/${loan.totalEmis ?? "?"} installments · View schedule',
+                  ),
                   onPressed: () {
                     Navigator.pop(context);
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => _ScheduleScreen(loan: loan)));
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => _ScheduleScreen(loan: loan),
+                      ),
+                    );
                   },
                 ),
               ),
 
             if (!loan.isCleared) ...[
               const Divider(height: AppSpacing.xl),
-              Text('Record Payment',
-                  style: context.textTheme.titleSmall),
+              Text('Record Payment', style: context.textTheme.titleSmall),
               const SizedBox(height: AppSpacing.sm),
               Form(
                 key: _formKey,
@@ -527,7 +562,8 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
                         : 'Amount paid back',
                     border: const OutlineInputBorder(),
                     prefixText: '₹ ',
-                    suffixText: 'max ${CurrencyFormatter.format(loan.pendingAmount)}',
+                    suffixText:
+                        'max ${CurrencyFormatter.format(loan.pendingAmount)}',
                   ),
                   keyboardType: TextInputType.number,
                   validator: (v) {
@@ -547,8 +583,7 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
                 child: FilledButton.icon(
                   onPressed: _recordPayment,
                   icon: const Icon(Icons.check_circle_outline),
-                  label: Text(
-                      isLent ? 'Mark Received' : 'Mark Paid'),
+                  label: Text(isLent ? 'Mark Received' : 'Mark Paid'),
                 ),
               ),
             ],
@@ -569,7 +604,8 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
     if (mounted) {
       Navigator.pop(context);
       context.showSnackBar(
-          '${CurrencyFormatter.format(amount)} payment recorded');
+        '${CurrencyFormatter.format(amount)} payment recorded',
+      );
     }
   }
 
@@ -580,14 +616,17 @@ class _DetailSheetState extends ConsumerState<_DetailSheet> {
       builder: (_) => AlertDialog(
         title: const Text('Delete Entry'),
         content: Text(
-            'Delete loan with ${widget.loan.lenderName}? This will also remove associated transactions.'),
+          'Delete loan with ${widget.loan.lenderName}? This will also remove associated transactions.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: ctx.colorScheme.error),
+              backgroundColor: ctx.colorScheme.error,
+            ),
             onPressed: () async {
               Navigator.pop(ctx); // dialog
               Navigator.pop(ctx); // sheet
@@ -617,16 +656,15 @@ class _ScheduleScreen extends ConsumerWidget {
     final paymentsAsync = ref.watch(loanPaymentsProvider(loan.id!));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${loan.lenderName} — Schedule'),
-      ),
+      appBar: AppBar(title: Text('${loan.lenderName} — Schedule')),
       body: paymentsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (payments) {
           if (payments.isEmpty) {
             return const Center(
-                child: Text('No repayment schedule generated.'));
+              child: Text('No repayment schedule generated.'),
+            );
           }
           final paid = payments.where((p) => p.isPaid).length;
           return Column(
@@ -636,28 +674,32 @@ class _ScheduleScreen extends ConsumerWidget {
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Row(children: [
-                      Expanded(
-                        child: _LabelValue(
-                          label: 'Principal',
-                          value: CurrencyFormatter.format(
-                              loan.principalAmount),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _LabelValue(
+                            label: 'Principal',
+                            value: CurrencyFormatter.format(
+                              loan.principalAmount,
+                            ),
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: _LabelValue(
-                          label: 'Installments',
-                          value: '$paid / ${payments.length} paid',
+                        Expanded(
+                          child: _LabelValue(
+                            label: 'Installments',
+                            value: '$paid / ${payments.length} paid',
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                 ),
               ),
               Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.base),
+                    horizontal: AppSpacing.base,
+                  ),
                   itemCount: payments.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.sm),
@@ -682,13 +724,12 @@ class _InstallmentTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.kashColors;
     final now = DateTime.now();
-    final isOverdue =
-        !payment.isPaid && payment.dueDate.isBefore(now);
+    final isOverdue = !payment.isPaid && payment.dueDate.isBefore(now);
     final statusColor = payment.isPaid
         ? colors.income
         : isOverdue
-            ? colors.expense
-            : context.colorScheme.onSurfaceVariant;
+        ? colors.expense
+        : context.colorScheme.onSurfaceVariant;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -699,9 +740,10 @@ class _InstallmentTile extends ConsumerWidget {
           child: Text(
             '#${payment.installmentNumber}',
             style: TextStyle(
-                color: statusColor,
-                fontSize: 11,
-                fontWeight: FontWeight.bold),
+              color: statusColor,
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         title: Text(CurrencyFormatter.format(payment.amount)),
@@ -713,8 +755,11 @@ class _InstallmentTile extends ConsumerWidget {
         ),
         trailing: payment.isPaid
             ? IconButton(
-                icon: const Icon(Icons.check_circle,
-                    color: Colors.green, size: 20),
+                icon: const Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 20,
+                ),
                 tooltip: 'Mark as unpaid',
                 onPressed: () => _confirmMarkUnpaid(context, ref),
               )
@@ -727,10 +772,9 @@ class _InstallmentTile extends ConsumerWidget {
   }
 
   Future<void> _markPaid(BuildContext context, WidgetRef ref) async {
-    await ref.read(loanPaymentRepositoryProvider).markPaid(
-          payment.id!,
-          payment.amount,
-        );
+    await ref
+        .read(loanPaymentRepositoryProvider)
+        .markPaid(payment.id!, payment.amount);
     await ref
         .read(activeLoansProvider.notifier)
         .addPaymentAmount(loan.id!, payment.amount);
@@ -738,7 +782,8 @@ class _InstallmentTile extends ConsumerWidget {
     ref.invalidate(loanPaymentsProvider(loan.id!));
     if (context.mounted) {
       context.showSnackBar(
-          '${CurrencyFormatter.format(payment.amount)} marked paid');
+        '${CurrencyFormatter.format(payment.amount)} marked paid',
+      );
     }
   }
 
@@ -765,9 +810,7 @@ class _InstallmentTile extends ConsumerWidget {
       ),
     );
     if (confirm != true) return;
-    await ref
-        .read(loanPaymentRepositoryProvider)
-        .markUnpaid(payment.id!);
+    await ref.read(loanPaymentRepositoryProvider).markUnpaid(payment.id!);
     await ref
         .read(activeLoansProvider.notifier)
         .reversePaymentAmount(loan.id!, payment.paidAmount);
@@ -775,7 +818,8 @@ class _InstallmentTile extends ConsumerWidget {
     ref.invalidate(loanPaymentsProvider(loan.id!));
     if (context.mounted) {
       context.showSnackBar(
-          'Payment #${payment.installmentNumber} marked as unpaid');
+        'Payment #${payment.installmentNumber} marked as unpaid',
+      );
     }
   }
 }
@@ -797,8 +841,7 @@ class AddLedgerEntryScreen extends ConsumerStatefulWidget {
       _AddLedgerEntryScreenState();
 }
 
-class _AddLedgerEntryScreenState
-    extends ConsumerState<AddLedgerEntryScreen> {
+class _AddLedgerEntryScreenState extends ConsumerState<AddLedgerEntryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
@@ -832,8 +875,7 @@ class _AddLedgerEntryScreenState
       _dueDate = loan.dueDate;
       _interestType = loan.interestType;
       if (loan.interestRate != null) {
-        _interestController.text =
-            loan.interestRate!.toStringAsFixed(1);
+        _interestController.text = loan.interestRate!.toStringAsFixed(1);
       }
       _repaymentFrequency = loan.repaymentFrequency;
       if (loan.emiAmount != null) {
@@ -866,13 +908,15 @@ class _AddLedgerEntryScreenState
     final colors = context.kashColors;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Entry' : 'New Loan Entry'),
-      ),
+      appBar: AppBar(title: Text(_isEditing ? 'Edit Entry' : 'New Loan Entry')),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
           child: FilledButton.icon(
             onPressed: _submit,
             icon: Icon(_isEditing ? Icons.check : Icons.add),
@@ -892,28 +936,32 @@ class _AddLedgerEntryScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Type',
-                        style: context.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      'Type',
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: LoanDirection.values.map((d) {
                         final selected = _direction == d;
                         final isLent = d == LoanDirection.lent;
-                        final color =
-                            isLent ? colors.income : colors.expense;
+                        final color = isLent ? colors.income : colors.expense;
                         return Expanded(
                           child: Padding(
                             padding: EdgeInsets.only(
-                                right: isLent ? AppSpacing.sm : 0),
+                              right: isLent ? AppSpacing.sm : 0,
+                            ),
                             child: InkWell(
-                              onTap: () =>
-                                  setState(() => _direction = d),
+                              onTap: () => setState(() => _direction = d),
                               borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusMd),
+                                AppSpacing.radiusMd,
+                              ),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                    vertical: AppSpacing.md),
+                                  vertical: AppSpacing.md,
+                                ),
                                 decoration: BoxDecoration(
                                   color: selected
                                       ? color.withValues(alpha: 0.1)
@@ -921,12 +969,12 @@ class _AddLedgerEntryScreenState
                                   border: Border.all(
                                     color: selected
                                         ? color
-                                        : context
-                                            .colorScheme.outlineVariant,
+                                        : context.colorScheme.outlineVariant,
                                     width: selected ? 2 : 1,
                                   ),
                                   borderRadius: BorderRadius.circular(
-                                      AppSpacing.radiusMd),
+                                    AppSpacing.radiusMd,
+                                  ),
                                 ),
                                 child: Column(
                                   children: [
@@ -936,8 +984,9 @@ class _AddLedgerEntryScreenState
                                           : Icons.arrow_downward,
                                       color: selected
                                           ? color
-                                          : context.colorScheme
-                                              .onSurfaceVariant,
+                                          : context
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                     ),
                                     const SizedBox(height: AppSpacing.xs),
                                     Text(
@@ -946,14 +995,15 @@ class _AddLedgerEntryScreenState
                                           : 'Borrowed (Liya)',
                                       style: context.textTheme.bodyMedium
                                           ?.copyWith(
-                                        color: selected
-                                            ? color
-                                            : context.colorScheme
-                                                .onSurfaceVariant,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      ),
+                                            color: selected
+                                                ? color
+                                                : context
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                            fontWeight: selected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                          ),
                                     ),
                                     Text(
                                       isLent
@@ -961,9 +1011,10 @@ class _AddLedgerEntryScreenState
                                           : 'You received money',
                                       style: context.textTheme.bodySmall
                                           ?.copyWith(
-                                        color: context.colorScheme
-                                            .onSurfaceVariant,
-                                      ),
+                                            color: context
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -1055,8 +1106,7 @@ class _AddLedgerEntryScreenState
                 suffixIcon: _dueDate != null
                     ? IconButton(
                         icon: const Icon(Icons.clear),
-                        onPressed: () =>
-                            setState(() => _dueDate = null),
+                        onPressed: () => setState(() => _dueDate = null),
                       )
                     : null,
               ),
@@ -1064,12 +1114,11 @@ class _AddLedgerEntryScreenState
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: _dueDate ??
-                        DateTime.now()
-                            .add(const Duration(days: 30)),
+                    initialDate:
+                        _dueDate ??
+                        DateTime.now().add(const Duration(days: 30)),
                     firstDate: DateTime.now(),
-                    lastDate: DateTime.now()
-                        .add(const Duration(days: 3650)),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
                   );
                   if (picked != null) {
                     setState(() => _dueDate = picked);
@@ -1090,10 +1139,7 @@ class _AddLedgerEntryScreenState
             const SizedBox(height: AppSpacing.sm),
             SegmentedButton<InterestType>(
               segments: InterestType.values
-                  .map((t) => ButtonSegment(
-                        value: t,
-                        label: Text(t.label),
-                      ))
+                  .map((t) => ButtonSegment(value: t, label: Text(t.label)))
                   .toList(),
               selected: {_interestType},
               onSelectionChanged: (v) =>
@@ -1115,13 +1161,13 @@ class _AddLedgerEntryScreenState
             const Divider(height: AppSpacing.xl),
 
             // Repayment schedule
-            Text('Repayment Schedule',
-                style: context.textTheme.titleSmall),
+            Text('Repayment Schedule', style: context.textTheme.titleSmall),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'Set up instalment payments (daily, weekly, or monthly)',
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             Wrap(
@@ -1131,16 +1177,14 @@ class _AddLedgerEntryScreenState
                   label: const Text('None'),
                   selected: _repaymentFrequency == null,
                   showCheckmark: false,
-                  onSelected: (_) =>
-                      setState(() => _repaymentFrequency = null),
+                  onSelected: (_) => setState(() => _repaymentFrequency = null),
                 ),
                 ...RepaymentFrequency.values.map(
                   (f) => FilterChip(
                     label: Text(f.label),
                     selected: _repaymentFrequency == f,
                     showCheckmark: false,
-                    onSelected: (_) =>
-                        setState(() => _repaymentFrequency = f),
+                    onSelected: (_) => setState(() => _repaymentFrequency = f),
                   ),
                 ),
               ],
@@ -1196,7 +1240,6 @@ class _AddLedgerEntryScreenState
               maxLength: 200,
             ),
             const SizedBox(height: AppSpacing.xl),
-
           ],
         ),
       ),
@@ -1225,8 +1268,10 @@ class _AddLedgerEntryScreenState
 
     if (_isEditing) {
       final existing = widget.loan!;
-      final newPending =
-          (amount - existing.paidAmount).clamp(0.0, double.infinity);
+      final newPending = (amount - existing.paidAmount).clamp(
+        0.0,
+        double.infinity,
+      );
       final updated = existing.copyWith(
         direction: _direction,
         lenderName: _nameController.text.trim(),
@@ -1271,7 +1316,7 @@ class _AddLedgerEntryScreenState
         _isEditing
             ? 'Entry updated'
             : '${CurrencyFormatter.format(amount)} '
-                '${_direction == LoanDirection.lent ? "lent" : "borrowed"} added',
+                  '${_direction == LoanDirection.lent ? "lent" : "borrowed"} added',
       );
     }
   }
@@ -1298,14 +1343,19 @@ class _LabelValue extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant)),
-          Text(value,
-              style: context.textTheme.bodyMedium?.copyWith(
-                color: valueColor,
-                fontWeight: FontWeight.w500,
-              )),
+          Text(
+            label,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(
+            value,
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: valueColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

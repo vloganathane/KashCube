@@ -19,8 +19,7 @@ class PurchaseBillsScreen extends ConsumerStatefulWidget {
       _PurchaseBillsScreenState();
 }
 
-class _PurchaseBillsScreenState
-    extends ConsumerState<PurchaseBillsScreen> {
+class _PurchaseBillsScreenState extends ConsumerState<PurchaseBillsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -37,10 +36,13 @@ class _PurchaseBillsScreenState
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Search',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const SearchScreen(
-                  initialFilter: SearchFilter.purchaseBills),
-            )),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(
+                  initialFilter: SearchFilter.purchaseBills,
+                ),
+              ),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.filter_list),
@@ -63,8 +65,7 @@ class _PurchaseBillsScreenState
         label: const Text('Add Bill'),
       ),
       body: RefreshIndicator(
-        onRefresh: () async =>
-            ref.read(purchaseBillsProvider.notifier).load(),
+        onRefresh: () async => ref.read(purchaseBillsProvider.notifier).load(),
         child: CustomScrollView(
           slivers: [
             // ── ITC Summary strip ────────────────────────────────────────
@@ -90,9 +91,8 @@ class _PurchaseBillsScreenState
               loading: () => const SliverFillRemaining(
                 child: Center(child: CircularProgressIndicator()),
               ),
-              error: (e, _) => SliverFillRemaining(
-                child: Center(child: Text('Error: $e')),
-              ),
+              error: (e, _) =>
+                  SliverFillRemaining(child: Center(child: Text('Error: $e'))),
               data: (bills) => bills.isEmpty
                   ? SliverFillRemaining(
                       child: _EmptyState(
@@ -101,7 +101,11 @@ class _PurchaseBillsScreenState
                     )
                   : SliverPadding(
                       padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.base, 0, AppSpacing.base, 80),
+                        AppSpacing.base,
+                        0,
+                        AppSpacing.base,
+                        80,
+                      ),
                       sliver: SliverList.separated(
                         itemCount: bills.length,
                         separatorBuilder: (_, _) =>
@@ -129,20 +133,14 @@ class _PurchaseBillsScreenState
   }
 
   void _showFilters(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) => _FilterSheet(),
-    );
+    showModalBottomSheet(context: context, builder: (_) => _FilterSheet());
   }
 }
 
 // ── ITC Summary card ──────────────────────────────────────────────────────────
 
 class _ItcSummaryCard extends StatelessWidget {
-  const _ItcSummaryCard({
-    required this.itcSummary,
-    required this.colors,
-  });
+  const _ItcSummaryCard({required this.itcSummary, required this.colors});
 
   final PurchaseItcSummary itcSummary;
   final KashCubeColors colors;
@@ -150,8 +148,14 @@ class _ItcSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final eligible = itcSummary.cgstEligible + itcSummary.sgstEligible + itcSummary.igstEligible;
-    final blocked = itcSummary.cgstBlocked + itcSummary.sgstBlocked + itcSummary.igstBlocked;
+    final eligible =
+        itcSummary.cgstEligible +
+        itcSummary.sgstEligible +
+        itcSummary.igstEligible;
+    final blocked =
+        itcSummary.cgstBlocked +
+        itcSummary.sgstBlocked +
+        itcSummary.igstBlocked;
 
     return Card(
       margin: const EdgeInsets.all(AppSpacing.base),
@@ -199,19 +203,22 @@ class _ItcSummaryCard extends StatelessWidget {
                 children: [
                   if (itcSummary.cgstEligible > 0)
                     _TaxChip(
-                        label: 'CGST',
-                        amount: itcSummary.cgstEligible,
-                        color: Colors.blue),
+                      label: 'CGST',
+                      amount: itcSummary.cgstEligible,
+                      color: Colors.blue,
+                    ),
                   if (itcSummary.sgstEligible > 0)
                     _TaxChip(
-                        label: 'SGST',
-                        amount: itcSummary.sgstEligible,
-                        color: Colors.teal),
+                      label: 'SGST',
+                      amount: itcSummary.sgstEligible,
+                      color: Colors.teal,
+                    ),
                   if (itcSummary.igstEligible > 0)
                     _TaxChip(
-                        label: 'IGST',
-                        amount: itcSummary.igstEligible,
-                        color: Colors.deepPurple),
+                      label: 'IGST',
+                      amount: itcSummary.igstEligible,
+                      color: Colors.deepPurple,
+                    ),
                 ],
               ),
             ],
@@ -246,21 +253,29 @@ class _ItcCell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: color, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             CurrencyFormatter.format(amount, showDecimals: true),
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'RobotoMono'),
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'RobotoMono',
+            ),
           ),
           if (detail != null)
-            Text(detail!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: color.withValues(alpha: 0.7))),
+            Text(
+              detail!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: color.withValues(alpha: 0.7),
+              ),
+            ),
         ],
       ),
     );
@@ -268,8 +283,11 @@ class _ItcCell extends StatelessWidget {
 }
 
 class _TaxChip extends StatelessWidget {
-  const _TaxChip(
-      {required this.label, required this.amount, required this.color});
+  const _TaxChip({
+    required this.label,
+    required this.amount,
+    required this.color,
+  });
 
   final String label;
   final double amount;
@@ -279,17 +297,18 @@ class _TaxChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
       ),
       child: Text(
         '$label: ${CurrencyFormatter.format(amount, showDecimals: true)}',
-        style: Theme.of(context)
-            .textTheme
-            .bodySmall
-            ?.copyWith(color: color, fontFamily: 'RobotoMono'),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: color, fontFamily: 'RobotoMono'),
       ),
     );
   }
@@ -315,7 +334,9 @@ class _FilterBar extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: [
           // Status chips
@@ -328,16 +349,21 @@ class _FilterBar extends StatelessWidget {
           _FilterChip2(
             label: 'Unpaid',
             selected: statusFilter == PurchaseBillStatus.unpaid,
-            onTap: () => onStatusChanged(statusFilter == PurchaseBillStatus.unpaid
-                ? null
-                : PurchaseBillStatus.unpaid),
+            onTap: () => onStatusChanged(
+              statusFilter == PurchaseBillStatus.unpaid
+                  ? null
+                  : PurchaseBillStatus.unpaid,
+            ),
           ),
           const SizedBox(width: AppSpacing.xs),
           _FilterChip2(
             label: 'Paid',
             selected: statusFilter == PurchaseBillStatus.paid,
             onTap: () => onStatusChanged(
-                statusFilter == PurchaseBillStatus.paid ? null : PurchaseBillStatus.paid),
+              statusFilter == PurchaseBillStatus.paid
+                  ? null
+                  : PurchaseBillStatus.paid,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           const VerticalDivider(width: 1, indent: 4, endIndent: 4),
@@ -347,14 +373,20 @@ class _FilterBar extends StatelessWidget {
             label: 'Eligible ITC',
             selected: itcFilter == ItcEligibility.eligible,
             onTap: () => onItcChanged(
-                itcFilter == ItcEligibility.eligible ? null : ItcEligibility.eligible),
+              itcFilter == ItcEligibility.eligible
+                  ? null
+                  : ItcEligibility.eligible,
+            ),
           ),
           const SizedBox(width: AppSpacing.xs),
           _FilterChip2(
             label: 'Blocked',
             selected: itcFilter == ItcEligibility.blocked,
             onTap: () => onItcChanged(
-                itcFilter == ItcEligibility.blocked ? null : ItcEligibility.blocked),
+              itcFilter == ItcEligibility.blocked
+                  ? null
+                  : ItcEligibility.blocked,
+            ),
           ),
         ],
       ),
@@ -363,8 +395,11 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _FilterChip2 extends StatelessWidget {
-  const _FilterChip2(
-      {required this.label, required this.selected, required this.onTap});
+  const _FilterChip2({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final bool selected;
@@ -378,18 +413,23 @@ class _FilterChip2 extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
         decoration: BoxDecoration(
           color: selected ? cs.primary : cs.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           border: Border.all(
-              color: selected ? cs.primary : cs.outlineVariant, width: 1),
+            color: selected ? cs.primary : cs.outlineVariant,
+            width: 1,
+          ),
         ),
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: selected ? cs.onPrimary : cs.onSurfaceVariant,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400),
+            color: selected ? cs.onPrimary : cs.onSurfaceVariant,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
         ),
       ),
     );
@@ -418,12 +458,17 @@ class _BillTile extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.xs,
+        ),
         leading: Container(
           width: AppSpacing.xl,
           height: AppSpacing.xl,
           decoration: BoxDecoration(
-            color: _itcColor(bill.itcEligibility, colors).withValues(alpha: 0.12),
+            color: _itcColor(
+              bill.itcEligibility,
+              colors,
+            ).withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -437,8 +482,9 @@ class _BillTile extends StatelessWidget {
             Expanded(
               child: Text(
                 bill.vendorName,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -461,16 +507,18 @@ class _BillTile extends StatelessWidget {
               children: [
                 Text(
                   bill.billNo,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Text('·', style: theme.textTheme.bodySmall),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   DateFormatter.formatFull(bill.billDate),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
                 const Spacer(),
                 _StatusBadge(status: bill.status),
@@ -529,7 +577,9 @@ class _StatusBadge extends StatelessWidget {
     };
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: 2),
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
@@ -537,10 +587,10 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: color, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -560,18 +610,23 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined,
-                size: 64,
-                color:
-                    Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
-              hasFilter ? 'No bills match your filters' : 'No purchase bills yet',
+              hasFilter
+                  ? 'No bills match your filters'
+                  : 'No purchase bills yet',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.6)),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -580,10 +635,10 @@ class _EmptyState extends StatelessWidget {
                   ? 'Try clearing filters to see all bills'
                   : 'Tap "Add Bill" to record a purchase invoice',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.4)),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -607,13 +662,19 @@ class _FilterSheet extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Filters',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700)),
+          Text(
+            'Filters',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: AppSpacing.base),
-          Text('Payment Status',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary)),
+          Text(
+            'Payment Status',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
@@ -630,9 +691,12 @@ class _FilterSheet extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.base),
-          Text('ITC Eligibility',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.primary)),
+          Text(
+            'ITC Eligibility',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
             spacing: AppSpacing.sm,
@@ -642,8 +706,9 @@ class _FilterSheet extends ConsumerWidget {
                   label: Text(e.label),
                   selected: itcFilter == e,
                   onSelected: (v) {
-                    ref.read(purchaseBillItcFilterProvider.notifier).state =
-                        v ? e : null;
+                    ref.read(purchaseBillItcFilterProvider.notifier).state = v
+                        ? e
+                        : null;
                   },
                 ),
             ],

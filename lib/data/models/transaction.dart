@@ -272,6 +272,7 @@ class Transaction extends Equatable {
   final String? phoneNumber;
   final PaymentMethod paymentMethod;
   final int? accountId;
+
   /// For transfer type: the destination account.
   final int? toAccountId;
   final String? smsBody;
@@ -325,6 +326,7 @@ class Transaction extends Equatable {
   final String? dedupeHash;
   final String? notes;
   final List<String>? tags;
+
   /// When the last reminder (WhatsApp/SMS/Email) was sent for this transaction.
   /// Only set on [TransactionType.lent] and [TransactionType.borrowed] transactions.
   final DateTime? reminderSentAt;
@@ -351,8 +353,7 @@ class Transaction extends Equatable {
 
   /// Whether this is a settlement (paying back / receiving back).
   bool get isSettlement =>
-      type == TransactionType.receivedBack ||
-      type == TransactionType.paidBack;
+      type == TransactionType.receivedBack || type == TransactionType.paidBack;
 
   /// Whether this is an investment event.
   bool get isInvestment =>
@@ -503,8 +504,9 @@ class Transaction extends Equatable {
       partyName: map['party_name'] as String?,
       partyId: map['party_id'] as int?,
       phoneNumber: map['phone_number'] as String?,
-      paymentMethod:
-          PaymentMethod.fromDb(map['payment_method'] as String? ?? 'cash'),
+      paymentMethod: PaymentMethod.fromDb(
+        map['payment_method'] as String? ?? 'cash',
+      ),
       accountId: map['account_id'] as int?,
       toAccountId: map['to_account_id'] as int?,
       smsBody: map['sms_body'] as String?,
@@ -524,8 +526,9 @@ class Transaction extends Equatable {
           : null,
       interestRate: (map['interest_rate'] as num?)?.toDouble(),
       interestType: InterestType.fromDb(map['interest_type'] as String?),
-      repaymentFrequency:
-          RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
+      repaymentFrequency: RepaymentFrequency.fromDb(
+        map['repayment_frequency'] as String?,
+      ),
       totalInstallments: map['total_installments'] as int?,
       emiAmount: (map['emi_amount'] as num?)?.toDouble(),
       loanId: map['loan_id'] as int?,

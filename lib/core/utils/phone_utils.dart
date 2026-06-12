@@ -35,8 +35,10 @@ class PhoneUtils {
 
   /// Returns `"+<dialCode> <number>"` for display, or `null` when [phone] is
   /// null or empty. Defaults to `+91` (India).
-  static String? formatDisplay(String? phone,
-      {String dialCode = _defaultDialCode}) {
+  static String? formatDisplay(
+    String? phone, {
+    String dialCode = _defaultDialCode,
+  }) {
     if (phone == null || phone.trim().isEmpty) return null;
     final bare = normalize(phone, dialCode: dialCode) ?? phone.trim();
     return '+$dialCode $bare';
@@ -52,8 +54,11 @@ class PhoneUtils {
   }
 
   /// `sms:+<dialCode><number>?body=…` URI.
-  static Uri? smsUri(String? phone,
-      {String dialCode = _defaultDialCode, String body = ''}) {
+  static Uri? smsUri(
+    String? phone, {
+    String dialCode = _defaultDialCode,
+    String body = '',
+  }) {
     if (phone == null || phone.isEmpty) return null;
     final bare = normalize(phone, dialCode: dialCode) ?? phone;
     final encoded = Uri.encodeComponent(body);
@@ -61,8 +66,11 @@ class PhoneUtils {
   }
 
   /// `https://wa.me/<dialCode><number>?text=…` URI.
-  static Uri? waUri(String? phone,
-      {String dialCode = _defaultDialCode, String message = ''}) {
+  static Uri? waUri(
+    String? phone, {
+    String dialCode = _defaultDialCode,
+    String message = '',
+  }) {
     if (phone == null || phone.isEmpty) return null;
     final bare = normalize(phone, dialCode: dialCode) ?? phone;
     final encoded = Uri.encodeComponent(message);

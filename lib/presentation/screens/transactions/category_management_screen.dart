@@ -74,7 +74,9 @@ class _CategoryManagementScreenState
       context: context,
       useRootNavigator: false,
       builder: (ctx) => AlertDialog(
-        title: Text('New ${typeKey == 'expense' ? 'expense' : 'income'} category'),
+        title: Text(
+          'New ${typeKey == 'expense' ? 'expense' : 'income'} category',
+        ),
         content: Form(
           key: formKey,
           child: TextFormField(
@@ -147,8 +149,7 @@ class _CategoryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final custom = ref.watch(customCategoriesProvider);
-    final customList =
-        type == 'income' ? custom.income : custom.expense;
+    final customList = type == 'income' ? custom.income : custom.expense;
 
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -171,13 +172,14 @@ class _CategoryTab extends ConsumerWidget {
         if (customList.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base, vertical: AppSpacing.lg),
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.lg,
+            ),
             child: Text(
               'Tap + Add category to create your own.',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
+              ),
               textAlign: TextAlign.center,
             ),
           )
@@ -196,10 +198,14 @@ class _CategoryTab extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, String name) async {
+    BuildContext context,
+    WidgetRef ref,
+    String name,
+  ) async {
     // Count linked transactions before showing the dialog.
-    final txnCount =
-        await DatabaseHelper.instance.countTransactionsByCategory(name);
+    final txnCount = await DatabaseHelper.instance.countTransactionsByCategory(
+      name,
+    );
     if (!context.mounted) return;
 
     final confirmed = await showDialog<bool>(
@@ -212,20 +218,23 @@ class _CategoryTab extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('"$name" will be removed from the category list.'),
-            if (txnCount > 0) ...[     
+            if (txnCount > 0) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Theme.of(ctx).colorScheme.errorContainer
-                      .withValues(alpha: 0.5),
+                  color: Theme.of(
+                    ctx,
+                  ).colorScheme.errorContainer.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded,
-                        size: 18,
-                        color: Theme.of(ctx).colorScheme.error),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 18,
+                      color: Theme.of(ctx).colorScheme.error,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -242,7 +251,7 @@ class _CategoryTab extends ConsumerWidget {
                   ],
                 ),
               ),
-            ] else ...[             
+            ] else ...[
               const SizedBox(height: 8),
               Text(
                 'No transactions are using this category.',
@@ -286,23 +295,27 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.lg, AppSpacing.base, AppSpacing.xs),
+        AppSpacing.base,
+        AppSpacing.lg,
+        AppSpacing.base,
+        AppSpacing.xs,
+      ),
       child: Row(
         children: [
           Text(
             label.toUpperCase(),
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
             '· $subtitle',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
         ],
       ),
@@ -320,8 +333,7 @@ class _SystemCategoryTile extends StatelessWidget {
     final icon = CategoryHelper.getIcon(name);
     final color = CategoryHelper.getColor(name);
     return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+      contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.15),
         child: Icon(icon, color: color, size: 20),
@@ -329,9 +341,11 @@ class _SystemCategoryTile extends StatelessWidget {
       title: Text(name),
       trailing: Tooltip(
         message: 'Built-in category',
-        child: Icon(Icons.lock_outline,
-            size: 16,
-            color: Theme.of(context).colorScheme.outline),
+        child: Icon(
+          Icons.lock_outline,
+          size: 16,
+          color: Theme.of(context).colorScheme.outline,
+        ),
       ),
     );
   }
@@ -356,24 +370,27 @@ class _CustomCategoryTile extends StatelessWidget {
         color: Theme.of(context).colorScheme.errorContainer,
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppSpacing.xl),
-        child: Icon(Icons.delete_outline,
-            color: Theme.of(context).colorScheme.onErrorContainer),
+        child: Icon(
+          Icons.delete_outline,
+          color: Theme.of(context).colorScheme.onErrorContainer,
+        ),
       ),
       confirmDismiss: (_) async {
         onDelete();
         return false; // provider rebuild handles list removal
       },
       child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
         leading: CircleAvatar(
           backgroundColor: accentColor.withValues(alpha: 0.12),
           child: Icon(Icons.label_outline, color: accentColor, size: 20),
         ),
         title: Text(name),
         trailing: IconButton(
-          icon: Icon(Icons.delete_outline,
-              color: Theme.of(context).colorScheme.error),
+          icon: Icon(
+            Icons.delete_outline,
+            color: Theme.of(context).colorScheme.error,
+          ),
           tooltip: 'Delete',
           onPressed: onDelete,
         ),

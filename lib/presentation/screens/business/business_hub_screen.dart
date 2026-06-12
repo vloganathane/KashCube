@@ -43,9 +43,7 @@ class BusinessHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isBusiness = ref.watch(businessModeProvider);
-    return isBusiness
-        ? const _BusinessHub()
-        : const _PersonalFinanceHub();
+    return isBusiness ? const _BusinessHub() : const _PersonalFinanceHub();
   }
 }
 
@@ -67,9 +65,9 @@ class _PersonalFinanceHub extends ConsumerWidget {
           TextButton.icon(
             icon: const Icon(Icons.storefront_outlined, size: 16),
             label: const Text('Enable Business'),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const BusinessesScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const BusinessesScreen())),
           ),
         ],
       ),
@@ -85,13 +83,17 @@ class _PersonalFinanceHub extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final given =
-                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ?? 0.0;
+                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ??
+                        0.0;
                     final text = given > 0
                         ? '${CurrencyFormatter.formatCompact(given)} to collect'
                         : 'Track who owes whom';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: colors.credit,
@@ -109,24 +111,29 @@ class _PersonalFinanceHub extends ConsumerWidget {
                     final text = lent > 0
                         ? '${CurrencyFormatter.formatCompact(lent)} lent out'
                         : 'Formal loans with EMI';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF1B5E20),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LoansScreen()),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoansScreen())),
               ),
               _HubTile(
                 icon: Icons.people_outline,
                 label: 'Ledger',
-                subtitle: const _StaticSubtitle('Party-wise transaction history'),
-                color: const Color(0xFF37474F),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LedgerScreen()),
+                subtitle: const _StaticSubtitle(
+                  'Party-wise transaction history',
                 ),
+                color: const Color(0xFF37474F),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
               ),
             ],
           ),
@@ -140,19 +147,26 @@ class _PersonalFinanceHub extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final monthly =
-                        r.watch(totalMonthlyScheduledExpenseProvider).valueOrNull ?? 0.0;
+                        r
+                            .watch(totalMonthlyScheduledExpenseProvider)
+                            .valueOrNull ??
+                        0.0;
                     final text = monthly > 0
                         ? '${CurrencyFormatter.formatCompact(monthly)}/month'
                         : 'Rent, EMIs, subscriptions';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFFE65100),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const BillsAndPaymentsScreen()),
+                    builder: (_) => const BillsAndPaymentsScreen(),
+                  ),
                 ),
               ),
             ],
@@ -166,9 +180,9 @@ class _PersonalFinanceHub extends ConsumerWidget {
                 label: 'Budget',
                 subtitle: const _StaticSubtitle('Monthly spending limits'),
                 color: const Color(0xFF6A1B9A),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const BudgetScreen()),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
               ),
               _HubTile(
                 icon: Icons.trending_up_outlined,
@@ -186,15 +200,19 @@ class _PersonalFinanceHub extends ConsumerWidget {
           Card(
             color: context.colorScheme.primaryContainer.withValues(alpha: 0.5),
             child: ListTile(
-              leading: Icon(Icons.storefront_outlined,
-                  color: context.colorScheme.primary),
+              leading: Icon(
+                Icons.storefront_outlined,
+                color: context.colorScheme.primary,
+              ),
               title: const Text('Running a business?'),
               subtitle: const Text(
                 'Enable business mode for invoices, GST, item catalog & more.',
               ),
-              trailing: Icon(Icons.arrow_forward_ios,
-                  size: 14,
-                  color: context.colorScheme.primary),
+              trailing: Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: context.colorScheme.primary,
+              ),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const BusinessesScreen()),
               ),
@@ -218,10 +236,7 @@ class _BusinessHub extends ConsumerWidget {
     final now = DateTime.now();
     final colors = context.kashColors;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Business'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Business'), centerTitle: false),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
@@ -233,20 +248,25 @@ class _BusinessHub extends ConsumerWidget {
                 label: 'Item Catalog',
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
-                    final text = r.watch(catalogProvider).whenOrNull(
+                    final text =
+                        r
+                            .watch(catalogProvider)
+                            .whenOrNull(
                               data: (list) =>
                                   '${list.length} item${list.length == 1 ? '' : 's'}',
                             ) ??
                         'Products & services';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const ItemCatalogScreen()),
+                  MaterialPageRoute(builder: (_) => const ItemCatalogScreen()),
                 ),
               ),
               _HubTile(
@@ -256,7 +276,8 @@ class _BusinessHub extends ConsumerWidget {
                 color: const Color(0xFF388E3C),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const ProductGroupsScreen()),
+                    builder: (_) => const ProductGroupsScreen(),
+                  ),
                 ),
               ),
               _HubTile(
@@ -281,8 +302,7 @@ class _BusinessHub extends ConsumerWidget {
                 ),
                 color: const Color(0xFF2E7D32),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const InventoryScreen()),
+                  MaterialPageRoute(builder: (_) => const InventoryScreen()),
                 ),
               ),
               // Staff & Payroll
@@ -301,13 +321,17 @@ class _BusinessHub extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final given =
-                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ?? 0.0;
+                        r.watch(totalCreditsPendingGivenProvider).valueOrNull ??
+                        0.0;
                     final text = given > 0
                         ? '${CurrencyFormatter.formatCompact(given)} to collect'
                         : 'Track who owes whom';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: colors.credit,
@@ -329,17 +353,19 @@ class _BusinessHub extends ConsumerWidget {
                     final summary = r.watch(overdueInvoicesSummaryProvider);
                     final text = (summary != null && summary.count > 0)
                         ? '${summary.count} unpaid'
-                            ' · ${CurrencyFormatter.formatCompact(summary.totalDue)} due'
+                              ' · ${CurrencyFormatter.formatCompact(summary.totalDue)} due'
                         : 'Raise & track invoices';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF0D47A1),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const InvoicesScreen()),
+                  MaterialPageRoute(builder: (_) => const InvoicesScreen()),
                 ),
               ),
               _HubTile(
@@ -351,17 +377,21 @@ class _BusinessHub extends ConsumerWidget {
                     final text = summary.dispatched > 0
                         ? '${summary.dispatched} dispatched · ${summary.total} total'
                         : summary.total > 0
-                            ? '${summary.total} challan${summary.total == 1 ? '' : 's'}'
-                            : 'Goods dispatch documents';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                        ? '${summary.total} challan${summary.total == 1 ? '' : 's'}'
+                        : 'Goods dispatch documents';
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF00838F),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const DeliveryChallansScreen()),
+                    builder: (_) => const DeliveryChallansScreen(),
+                  ),
                 ),
               ),
               _HubTile(
@@ -371,9 +401,9 @@ class _BusinessHub extends ConsumerWidget {
                 color: const Color(0xFFE65100),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const BillsAndPaymentsScreen(
-                            billContext: 'business',
-                          )),
+                    builder: (_) =>
+                        const BillsAndPaymentsScreen(billContext: 'business'),
+                  ),
                 ),
               ),
               _HubTile(
@@ -383,7 +413,8 @@ class _BusinessHub extends ConsumerWidget {
                 color: const Color(0xFF1565C0),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const PurchaseBillsScreen()),
+                    builder: (_) => const PurchaseBillsScreen(),
+                  ),
                 ),
               ),
               _HubTile(
@@ -394,17 +425,19 @@ class _BusinessHub extends ConsumerWidget {
                     final stats = r.watch(bookingMonthStatsProvider(now));
                     final text = stats.hasData
                         ? '${stats.confirmedCount + stats.pendingCount} upcoming'
-                            ' · ${CurrencyFormatter.formatCompact(stats.completedRevenue)} earned'
+                              ' · ${CurrencyFormatter.formatCompact(stats.completedRevenue)} earned'
                         : 'Appointments & services';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF4A148C),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const BookingsScreen()),
+                  MaterialPageRoute(builder: (_) => const BookingsScreen()),
                 ),
               ),
               _HubTile(
@@ -416,15 +449,19 @@ class _BusinessHub extends ConsumerWidget {
                     final text = (summary != null && summary.totalDue > 0)
                         ? '${CurrencyFormatter.formatCompact(summary.totalDue)} outstanding'
                         : 'Docs grouped by party';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF37474F),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                      builder: (_) => const GlobalDocumentLedgerScreen()),
+                    builder: (_) => const GlobalDocumentLedgerScreen(),
+                  ),
                 ),
               ),
             ],
@@ -438,15 +475,21 @@ class _BusinessHub extends ConsumerWidget {
                 label: 'Business Reports',
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
-                    final text = r.watch(fyPnLProvider).whenOrNull(
+                    final text =
+                        r
+                            .watch(fyPnLProvider)
+                            .whenOrNull(
                               data: (p) =>
                                   'Rev ${CurrencyFormatter.formatCompact(p.totalIncome)}'
                                   ' · Net ${CurrencyFormatter.formatCompact(p.netProfitLoss)} this FY',
                             ) ??
                         'Full fiscal year P&L';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF1565C0),
@@ -461,29 +504,30 @@ class _BusinessHub extends ConsumerWidget {
                 icon: Icons.receipt_outlined,
                 label: 'GST Returns (GSTR-1)',
                 subtitle: const _StaticSubtitle(
-                    'Generate workbook CSV + PDF summary for your CA'),
-                color: const Color(0xFF006064),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const Gstr1Screen()),
+                  'Generate workbook CSV + PDF summary for your CA',
                 ),
+                color: const Color(0xFF006064),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const Gstr1Screen())),
               ),
               _HubTile(
                 icon: Icons.balance_outlined,
                 label: 'GSTR-3B Offset Summary',
                 subtitle: const _StaticSubtitle(
-                    'Compute ITC offset and cash required to file'),
+                  'Compute ITC offset and cash required to file',
+                ),
                 color: const Color(0xFF4E342E),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const Gstr3bOffsetScreen()),
+                  MaterialPageRoute(builder: (_) => const Gstr3bOffsetScreen()),
                 ),
               ),
               _HubTile(
                 icon: Icons.import_export_outlined,
                 label: 'Tally XML Export',
                 subtitle: const _StaticSubtitle(
-                    'Export transactions for Tally ERP import'),
+                  'Export transactions for Tally ERP import',
+                ),
                 color: const Color(0xFF37474F),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const TallyExportScreen()),
@@ -513,7 +557,9 @@ class _HubSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(
-              left: AppSpacing.xs, bottom: AppSpacing.sm),
+            left: AppSpacing.xs,
+            bottom: AppSpacing.sm,
+          ),
           child: Text(
             title.toUpperCase(),
             style: context.textTheme.labelSmall?.copyWith(
@@ -569,14 +615,21 @@ class _HubTile extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: AppSpacing.iconMd),
       ),
-      title: Text(label,
-          style: context.textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w500)),
+      title: Text(
+        label,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       subtitle: subtitle,
-      trailing: Icon(Icons.chevron_right,
-          color: context.colorScheme.outlineVariant),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: context.colorScheme.outlineVariant,
+      ),
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
     );
   }
 }
@@ -587,10 +640,11 @@ class _StaticSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-        style: context.textTheme.bodySmall
-            ?.copyWith(color: context.colorScheme.outline));
+    return Text(
+      text,
+      style: context.textTheme.bodySmall?.copyWith(
+        color: context.colorScheme.outline,
+      ),
+    );
   }
 }
-
-

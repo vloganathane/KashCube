@@ -33,15 +33,16 @@ class BudgetScreen extends ConsumerWidget {
             tooltip: 'Budget options',
             onSelected: (v) async {
               if (v == 'copy') {
-                final notifier =
-                    ref.read(currentMonthBudgetsProvider.notifier);
+                final notifier = ref.read(currentMonthBudgetsProvider.notifier);
                 final count = await notifier.copyFromPreviousMonth();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(count == 0
-                          ? 'No new budgets to copy (all categories already set)'
-                          : 'Copied $count budget${count == 1 ? '' : 's'} from last month'),
+                      content: Text(
+                        count == 0
+                            ? 'No new budgets to copy (all categories already set)'
+                            : 'Copied $count budget${count == 1 ? '' : 's'} from last month',
+                      ),
                     ),
                   );
                 }
@@ -88,10 +89,7 @@ class BudgetScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _AddEditBudgetSheet(
-        month: month,
-        existing: existing,
-      ),
+      builder: (_) => _AddEditBudgetSheet(month: month, existing: existing),
     );
   }
 }
@@ -119,15 +117,18 @@ class _MonthBar extends ConsumerWidget {
           ),
           Text(
             DateFormat('MMMM yyyy').format(month),
-            style: context.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600),
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: isCurrentMonth
                 ? null
-                : () => ref.read(reportMonthProvider.notifier).state =
-                    DateTime(month.year, month.month + 1),
+                : () => ref.read(reportMonthProvider.notifier).state = DateTime(
+                    month.year,
+                    month.month + 1,
+                  ),
           ),
         ],
       ),
@@ -151,19 +152,24 @@ class _BudgetBody extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.savings_outlined,
-                size: 72, color: context.colorScheme.outlineVariant),
+            Icon(
+              Icons.savings_outlined,
+              size: 72,
+              color: context.colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
               'No budgets set',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+              style: context.textTheme.titleMedium?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Tap + to set spending limits for each category',
-              style: context.textTheme.bodyMedium
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colorScheme.outline,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -171,45 +177,50 @@ class _BudgetBody extends ConsumerWidget {
       );
     }
 
-    final totalBudget =
-        budgets.fold(0.0, (s, b) => s + b.budgetAmount);
+    final totalBudget = budgets.fold(0.0, (s, b) => s + b.budgetAmount);
     final totalSpent = budgets.fold(0.0, (s, b) => s + b.spentAmount);
     final overCount = budgets.where((b) => b.isOverBudget).length;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.base, AppSpacing.base, 96),
+        AppSpacing.base,
+        AppSpacing.base,
+        AppSpacing.base,
+        96,
+      ),
       children: [
         // Summary card
         _SummaryCard(
-            totalBudget: totalBudget,
-            totalSpent: totalSpent,
-            overCount: overCount),
+          totalBudget: totalBudget,
+          totalSpent: totalSpent,
+          overCount: overCount,
+        ),
         const SizedBox(height: AppSpacing.base),
 
         // Sort: over budget first, then near limit, then others
-        ...([...budgets]
-            ..sort((a, b) {
+        ...([...budgets]..sort((a, b) {
               if (a.isOverBudget && !b.isOverBudget) return -1;
               if (!a.isOverBudget && b.isOverBudget) return 1;
               if (a.isNearLimit && !b.isNearLimit) return -1;
               if (!a.isNearLimit && b.isNearLimit) return 1;
               return a.category.compareTo(b.category);
             }))
-            .map((budget) => _BudgetCard(
-                  budget: budget,
-                  month: month,
-                  onEdit: () => BudgetScreen._showAddEditSheet(
-                      context, ref, month, budget),
-                  onDelete: () async {
-                    final confirmed = await _confirmDelete(context);
-                    if (confirmed && budget.id != null) {
-                      await ref
-                          .read(currentMonthBudgetsProvider.notifier)
-                          .delete(budget.id!);
-                    }
-                  },
-                )),
+            .map(
+              (budget) => _BudgetCard(
+                budget: budget,
+                month: month,
+                onEdit: () =>
+                    BudgetScreen._showAddEditSheet(context, ref, month, budget),
+                onDelete: () async {
+                  final confirmed = await _confirmDelete(context);
+                  if (confirmed && budget.id != null) {
+                    await ref
+                        .read(currentMonthBudgetsProvider.notifier)
+                        .delete(budget.id!);
+                  }
+                },
+              ),
+            ),
       ],
     );
   }
@@ -221,17 +232,20 @@ class _BudgetBody extends ConsumerWidget {
           builder: (_) => AlertDialog(
             title: const Text('Delete budget?'),
             content: const Text(
-                'This removes the spending limit for this category.'),
+              'This removes the spending limit for this category.',
+            ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
               FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: FilledButton.styleFrom(
-                      backgroundColor:
-                          Theme.of(context).colorScheme.error),
-                  child: const Text('Delete')),
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('Delete'),
+              ),
             ],
           ),
         ) ??
@@ -270,24 +284,29 @@ class _SummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('Total Budget',
-                    style: context.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  'Total Budget',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 if (overCount > 0) ...[
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm, vertical: 2),
+                      horizontal: AppSpacing.sm,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: context.colorScheme.errorContainer,
-                      borderRadius:
-                          BorderRadius.circular(AppSpacing.radiusSm),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                     ),
                     child: Text(
                       '$overCount over budget',
                       style: context.textTheme.labelSmall?.copyWith(
-                          color: context.colorScheme.onErrorContainer,
-                          fontWeight: FontWeight.w600),
+                        color: context.colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -298,17 +317,20 @@ class _SummaryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _StatCol(
-                    label: 'Budgeted',
-                    value: CurrencyFormatter.format(totalBudget),
-                    color: context.colorScheme.onSurface),
+                  label: 'Budgeted',
+                  value: CurrencyFormatter.format(totalBudget),
+                  color: context.colorScheme.onSurface,
+                ),
                 _StatCol(
-                    label: 'Spent',
-                    value: CurrencyFormatter.format(totalSpent),
-                    color: colors.expense),
+                  label: 'Spent',
+                  value: CurrencyFormatter.format(totalSpent),
+                  color: colors.expense,
+                ),
                 _StatCol(
-                    label: isOver ? 'Over by' : 'Remaining',
-                    value: CurrencyFormatter.format(remaining.abs()),
-                    color: isOver ? colors.expense : colors.income),
+                  label: isOver ? 'Over by' : 'Remaining',
+                  value: CurrencyFormatter.format(remaining.abs()),
+                  color: isOver ? colors.expense : colors.income,
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -317,16 +339,16 @@ class _SummaryCard extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 8,
-                backgroundColor:
-                    context.colorScheme.surfaceContainerHighest,
+                backgroundColor: context.colorScheme.surfaceContainerHighest,
                 color: isOver ? colors.expense : colors.income,
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               '${(pct * 100).toStringAsFixed(0)}% of budget used',
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.labelSmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -336,26 +358,35 @@ class _SummaryCard extends StatelessWidget {
 }
 
 class _StatCol extends StatelessWidget {
-  const _StatCol(
-      {required this.label, required this.value, required this.color});
+  const _StatCol({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: context.colorScheme.outline)),
-          Text(value,
-              style: context.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: color,
-                  fontFamily: 'RobotoMono')),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: context.textTheme.labelSmall?.copyWith(
+          color: context.colorScheme.outline,
+        ),
+      ),
+      Text(
+        value,
+        style: context.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: color,
+          fontFamily: 'RobotoMono',
+        ),
+      ),
+    ],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -381,8 +412,8 @@ class _BudgetCard extends StatelessWidget {
     final barColor = budget.isOverBudget
         ? colors.expense
         : budget.isNearLimit
-            ? Colors.orange
-            : colors.income;
+        ? Colors.orange
+        : colors.income;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -398,8 +429,7 @@ class _BudgetCard extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor:
-                        context.colorScheme.primaryContainer,
+                    backgroundColor: context.colorScheme.primaryContainer,
                     child: Icon(
                       CategoryHelper.getIcon(budget.category),
                       size: AppSpacing.iconMd,
@@ -411,15 +441,17 @@ class _BudgetCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(budget.category,
-                            style:
-                                context.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            )),
+                        Text(
+                          budget.category,
+                          style: context.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Text(
                           _statusLabel(budget),
-                          style: context.textTheme.labelSmall
-                              ?.copyWith(color: barColor),
+                          style: context.textTheme.labelSmall?.copyWith(
+                            color: barColor,
+                          ),
                         ),
                       ],
                     ),
@@ -441,32 +473,35 @@ class _BudgetCard extends StatelessWidget {
                       Text(
                         'of ${CurrencyFormatter.format(budget.budgetAmount)}',
                         style: context.textTheme.labelSmall?.copyWith(
-                            color: context.colorScheme.outline),
+                          color: context.colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        size: AppSpacing.iconMd),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: AppSpacing.iconMd,
+                    ),
                     tooltip: 'Delete budget',
                     color: context.colorScheme.error,
                     onPressed: onDelete,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
-                        minWidth: 32, minHeight: 32),
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
               ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.radiusFull),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 child: LinearProgressIndicator(
                   value: pct,
                   minHeight: 6,
-                  backgroundColor:
-                      context.colorScheme.surfaceContainerHighest,
+                  backgroundColor: context.colorScheme.surfaceContainerHighest,
                   color: barColor,
                 ),
               ),
@@ -476,17 +511,19 @@ class _BudgetCard extends StatelessWidget {
                 children: [
                   Text(
                     '${(pct * 100).toStringAsFixed(0)}% used',
-                    style: context.textTheme.labelSmall
-                        ?.copyWith(color: context.colorScheme.outline),
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
                   ),
                   Text(
                     budget.isOverBudget
                         ? 'Over by ${CurrencyFormatter.format((-budget.remainingAmount))}'
                         : '${CurrencyFormatter.format(budget.remainingAmount)} left',
                     style: context.textTheme.labelSmall?.copyWith(
-                        color: budget.isOverBudget
-                            ? colors.expense
-                            : context.colorScheme.outline),
+                      color: budget.isOverBudget
+                          ? colors.expense
+                          : context.colorScheme.outline,
+                    ),
                   ),
                 ],
               ),
@@ -518,8 +555,7 @@ class _AddEditBudgetSheet extends ConsumerStatefulWidget {
       _AddEditBudgetSheetState();
 }
 
-class _AddEditBudgetSheetState
-    extends ConsumerState<_AddEditBudgetSheet> {
+class _AddEditBudgetSheetState extends ConsumerState<_AddEditBudgetSheet> {
   final _amountController = TextEditingController();
   String? _selectedCategory;
   final _formKey = GlobalKey<FormState>();
@@ -530,8 +566,7 @@ class _AddEditBudgetSheetState
     super.initState();
     if (widget.existing != null) {
       _selectedCategory = widget.existing!.category;
-      _amountController.text =
-          widget.existing!.budgetAmount.toStringAsFixed(0);
+      _amountController.text = widget.existing!.budgetAmount.toStringAsFixed(0);
     }
   }
 
@@ -544,8 +579,9 @@ class _AddEditBudgetSheetState
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Select a category')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a category')));
       return;
     }
 
@@ -569,7 +605,9 @@ class _AddEditBudgetSheetState
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save budget. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to save budget. Please try again.'),
+          ),
         );
       }
     }
@@ -599,8 +637,7 @@ class _AddEditBudgetSheetState
                 margin: const EdgeInsets.only(bottom: AppSpacing.base),
                 decoration: BoxDecoration(
                   color: context.colorScheme.outlineVariant,
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusFull),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
                 ),
               ),
             ),
@@ -618,34 +655,42 @@ class _AddEditBudgetSheetState
                 prefixIcon: Icon(Icons.category_outlined),
                 border: OutlineInputBorder(),
               ),
-              items: buildCategoryList(
-                      ref.watch(customCategoriesProvider), 'expense')
-                  .where((c) => c != kAddCustomCategorysentinel)
-                  .map((c) => DropdownMenuItem(
-                        value: c,
-                        child: Row(
-                          children: [
-                            Icon(CategoryHelper.getIcon(c),
+              items:
+                  buildCategoryList(
+                        ref.watch(customCategoriesProvider),
+                        'expense',
+                      )
+                      .where((c) => c != kAddCustomCategorysentinel)
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c,
+                          child: Row(
+                            children: [
+                              Icon(
+                                CategoryHelper.getIcon(c),
                                 size: AppSpacing.iconMd,
-                                color: CategoryHelper.getColor(c)),
-                            const SizedBox(width: AppSpacing.sm),
-                            Text(c),
-                          ],
+                                color: CategoryHelper.getColor(c),
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(c),
+                            ],
+                          ),
                         ),
-                      ))
-                  .toList(),
+                      )
+                      .toList(),
               onChanged: isEdit
                   ? null
                   : (v) => setState(() => _selectedCategory = v),
-              validator: (v) =>
-                  v == null ? 'Please select a category' : null,
+              validator: (v) => v == null ? 'Please select a category' : null,
             ),
             const SizedBox(height: AppSpacing.base),
 
             // Amount field
             TextFormField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Budget Amount',
                 prefixIcon: Icon(Icons.currency_rupee),
@@ -670,7 +715,8 @@ class _AddEditBudgetSheetState
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : Text(isEdit ? 'Update' : 'Set Budget'),
               ),
             ),

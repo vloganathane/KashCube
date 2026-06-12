@@ -109,14 +109,11 @@ void main() {
         'ice-1',
       );
 
-      expect(
-        events.map((e) => e.type),
-        <WebRtcPeerRuntimeEventType>[
-          WebRtcPeerRuntimeEventType.peerSessionCreated,
-          WebRtcPeerRuntimeEventType.dataChannelReady,
-          WebRtcPeerRuntimeEventType.peerSessionClosed,
-        ],
-      );
+      expect(events.map((e) => e.type), <WebRtcPeerRuntimeEventType>[
+        WebRtcPeerRuntimeEventType.peerSessionCreated,
+        WebRtcPeerRuntimeEventType.dataChannelReady,
+        WebRtcPeerRuntimeEventType.peerSessionClosed,
+      ]);
       expect(payloadFrame, '{"type":"SYNC"}');
     });
   });
@@ -133,14 +130,11 @@ void main() {
       await ops.closePeerSession();
 
       final events = await eventsFuture;
-      expect(
-        events.map((e) => e.type),
-        <WebRtcPeerRuntimeEventType>[
-          WebRtcPeerRuntimeEventType.peerSessionCreated,
-          WebRtcPeerRuntimeEventType.dataChannelReady,
-          WebRtcPeerRuntimeEventType.peerSessionClosed,
-        ],
-      );
+      expect(events.map((e) => e.type), <WebRtcPeerRuntimeEventType>[
+        WebRtcPeerRuntimeEventType.peerSessionCreated,
+        WebRtcPeerRuntimeEventType.dataChannelReady,
+        WebRtcPeerRuntimeEventType.peerSessionClosed,
+      ]);
       expect(events.map((e) => e.sessionId).toSet(), {'sess-shell'});
       expect(ops.sentDataChannelFrames, ['{"type":"PING"}']);
     });

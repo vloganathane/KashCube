@@ -34,12 +34,14 @@ class ManageUsersScreen extends ConsumerWidget {
             : ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 itemCount: users.length,
-                separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, indent: 72),
                 itemBuilder: (ctx, i) => _UserTile(
                   user: users[i],
                   onEdit: () => _openSheet(context, ref, users[i]),
                   onPermissions: () => _openPermissions(context, ref, users[i]),
-                  onDeactivate: () => _confirmDeactivate(context, ref, users[i]),
+                  onDeactivate: () =>
+                      _confirmDeactivate(context, ref, users[i]),
                 ),
               ),
       ),
@@ -64,22 +66,28 @@ class ManageUsersScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDeactivate(
-      BuildContext context, WidgetRef ref, AppUser user) async {
+    BuildContext context,
+    WidgetRef ref,
+    AppUser user,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Revoke Access'),
         content: Text(
-            'Remove app access for ${user.displayName}? Their records will be kept.'),
+          'Remove app access for ${user.displayName}? Their records will be kept.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(ctx).colorScheme.error),
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
             child: const Text('Revoke'),
           ),
         ],
@@ -113,11 +121,15 @@ class _UserTile extends StatelessWidget {
         child: Text(
           user.initials,
           style: TextStyle(
-              fontWeight: FontWeight.w700, color: cs.onSecondaryContainer),
+            fontWeight: FontWeight.w700,
+            color: cs.onSecondaryContainer,
+          ),
         ),
       ),
-      title: Text(user.displayName,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        user.displayName,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(user.role.label),
       trailing: PopupMenuButton<String>(
         onSelected: (v) {
@@ -146,21 +158,27 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.people_outline,
-              size: 64,
-              color:
-                  Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3)),
+          Icon(
+            Icons.people_outline,
+            size: 64,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: AppSpacing.base),
-          Text('No team members yet',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'No team members yet',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: AppSpacing.xs),
-          Text('Add a cashier, manager, or auditor',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  )),
+          Text(
+            'Add a cashier, manager, or auditor',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
           const SizedBox(height: AppSpacing.xl),
           FilledButton.icon(
             icon: const Icon(Icons.person_add_outlined),
@@ -192,6 +210,7 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
   late final TextEditingController _pinConfirmCtrl;
   late AppUserRole _role;
   bool _isSaving = false;
+
   /// Set when the user picks an existing staff party (Option A).
   /// Null means save will auto-create a new Party(staff) (Option B).
   Party? _selectedParty;
@@ -234,7 +253,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
       if (_isEdit) {
         // On edit: sync the party name if one is linked
         final existing = widget.existing!;
-        await ref.read(appUsersProvider.notifier).save(
+        await ref
+            .read(appUsersProvider.notifier)
+            .save(
               existing.copyWith(
                 displayName: name,
                 role: _role,
@@ -245,9 +266,13 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
         // If a new party was linked or name changed, sync the party name
         final linkedId = _selectedParty?.id ?? existing.linkedPartyId;
         if (linkedId != null && name.isNotEmpty) {
-          final party = await ref.read(partyRepositoryProvider).getById(linkedId);
+          final party = await ref
+              .read(partyRepositoryProvider)
+              .getById(linkedId);
           if (party != null && party.name != name) {
-            await ref.read(partyRepositoryProvider).update(party.copyWith(name: name));
+            await ref
+                .read(partyRepositoryProvider)
+                .update(party.copyWith(name: name));
           }
         }
       } else {
@@ -257,7 +282,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
         if (_selectedParty != null) {
           linkedPartyId = _selectedParty!.id!;
         } else {
-          linkedPartyId = await ref.read(partyRepositoryProvider).insert(
+          linkedPartyId = await ref
+              .read(partyRepositoryProvider)
+              .insert(
                 Party(
                   name: name,
                   partyType: PartyType.staff,
@@ -275,7 +302,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
           linkedPartyId: linkedPartyId,
         );
         final id = await ref.read(appUsersProvider.notifier).add(newUser);
-        await ref.read(appUserRepositoryProvider).seedRolePreset(
+        await ref
+            .read(appUserRepositoryProvider)
+            .seedRolePreset(
               userId: id,
               businessId: UserPermission.kPersonalScope,
               role: _role,
@@ -284,8 +313,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -322,10 +352,9 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
             const SizedBox(height: AppSpacing.base),
             Text(
               _isEdit ? 'Edit Member' : 'Add Team Member',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.base),
             PartyPickerField(
@@ -343,9 +372,11 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
                 padding: const EdgeInsets.only(top: AppSpacing.xs),
                 child: Row(
                   children: [
-                    Icon(Icons.link,
-                        size: 14,
-                        color: Theme.of(context).colorScheme.primary),
+                    Icon(
+                      Icons.link,
+                      size: 14,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Linked to existing staff party',
@@ -359,9 +390,11 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
                       onTap: () {
                         setState(() => _selectedParty = null);
                       },
-                      child: Icon(Icons.close,
-                          size: 14,
-                          color: Theme.of(context).colorScheme.outline),
+                      child: Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                   ],
                 ),
@@ -371,8 +404,7 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
               initialValue: _role,
               decoration: const InputDecoration(labelText: 'Role'),
               items: AppUserRole.values
-                  .map((r) =>
-                      DropdownMenuItem(value: r, child: Text(r.label)))
+                  .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
                   .toList(),
               onChanged: (v) => setState(() => _role = v!),
             ),
@@ -380,21 +412,23 @@ class _AddEditUserSheetState extends ConsumerState<AddEditUserSheet> {
             TextFormField(
               controller: _pinCtrl,
               decoration: InputDecoration(
-                  labelText:
-                      _isEdit ? 'New PIN (leave blank to keep)' : 'PIN (4 digits)'),
+                labelText: _isEdit
+                    ? 'New PIN (leave blank to keep)'
+                    : 'PIN (4 digits)',
+              ),
               keyboardType: TextInputType.number,
               obscureText: true,
               maxLength: 4,
               validator: (v) {
                 if (!_isEdit && (v == null || v.isEmpty)) return 'PIN required';
-                if (v != null && v.isNotEmpty && v.length != 4) return 'PIN must be 4 digits';
+                if (v != null && v.isNotEmpty && v.length != 4)
+                  return 'PIN must be 4 digits';
                 return null;
               },
             ),
             TextFormField(
               controller: _pinConfirmCtrl,
-              decoration:
-                  const InputDecoration(labelText: 'Confirm PIN'),
+              decoration: const InputDecoration(labelText: 'Confirm PIN'),
               keyboardType: TextInputType.number,
               obscureText: true,
               maxLength: 4,

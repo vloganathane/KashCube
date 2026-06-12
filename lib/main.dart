@@ -322,7 +322,9 @@ class _LockGateState extends ConsumerState<_LockGate>
         .timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('[LockGate] Timeout reading app lock setting; defaulting to unlocked');
+            debugPrint(
+              '[LockGate] Timeout reading app lock setting; defaulting to unlocked',
+            );
             return null;
           },
         );
@@ -480,4 +482,3 @@ class _LockGateState extends ConsumerState<_LockGate>
 }
 
 /// Creates a [LocalAuthentication] instance.
-

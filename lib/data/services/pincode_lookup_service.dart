@@ -58,10 +58,7 @@ class PincodeLookupService {
   static PincodeResult? lookup(String pin) {
     final entry = _data?[pin];
     if (entry == null || entry.length < 2) return null;
-    return PincodeResult(
-      city: entry[0] as String,
-      state: entry[1] as String,
-    );
+    return PincodeResult(city: entry[0] as String, state: entry[1] as String);
   }
 
   /// `true` once the asset has been fully loaded into memory.

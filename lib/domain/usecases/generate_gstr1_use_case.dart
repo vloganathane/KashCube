@@ -11,9 +11,9 @@ class GenerateGstr1UseCase {
     required BusinessRepository businessRepository,
     required InvoiceRepository invoiceRepository,
   }) : _service = Gstr1Service(
-          businessRepo: businessRepository,
-          invoiceRepo: invoiceRepository,
-        );
+         businessRepo: businessRepository,
+         invoiceRepo: invoiceRepository,
+       );
 
   final Gstr1Service _service;
 
@@ -27,7 +27,11 @@ class GenerateGstr1UseCase {
     required DateTime to,
   }) async {
     if (businessId <= 0) {
-      throw ArgumentError.value(businessId, 'businessId', 'Must be a valid ID.');
+      throw ArgumentError.value(
+        businessId,
+        'businessId',
+        'Must be a valid ID.',
+      );
     }
     if (from.isAfter(to)) {
       throw ArgumentError(

@@ -53,9 +53,9 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
     with TutorialMixin<TransactionsScreen> {
   // Keys for tutorial spotlights
-  final _fabKey        = GlobalKey();
-  final _searchKey     = GlobalKey();
-  final _filterKey     = GlobalKey();
+  final _fabKey = GlobalKey();
+  final _searchKey = GlobalKey();
+  final _filterKey = GlobalKey();
   // Key for the result spotlight — assigned to the first (newest) list tile.
   final _newestCardKey = GlobalKey();
 
@@ -72,81 +72,72 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
   @override
   List<TargetFocus> buildTargets() => [
-        TargetFocus(
-          identify: 'fab',
-          keyTarget: _fabKey,
-          shape: ShapeLightFocus.Circle,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              child: tutorialContentCard(
-                title: 'Add a transaction',
-                message:
-                    'Tap + to record income or expenses\n'
-                    'in seconds — cash, UPI, card, anything.',
-              ),
-            ),
-          ],
+    TargetFocus(
+      identify: 'fab',
+      keyTarget: _fabKey,
+      shape: ShapeLightFocus.Circle,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.top,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Add a transaction',
+            message:
+                'Tap + to record income or expenses\n'
+                'in seconds — cash, UPI, card, anything.',
+          ),
         ),
-        TargetFocus(
-          identify: 'search',
-          keyTarget: _searchKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              child: tutorialContentCard(
-                title: 'Search transactions',
-                message:
-                    'Find any transaction instantly by amount,\n'
-                    'party name, or category.',
-              ),
-            ),
-          ],
+      ],
+    ),
+    TargetFocus(
+      identify: 'search',
+      keyTarget: _searchKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Search transactions',
+            message:
+                'Find any transaction instantly by amount,\n'
+                'party name, or category.',
+          ),
         ),
-        TargetFocus(
-          identify: 'filter',
-          keyTarget: _filterKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 12,
-              ),
-              child: tutorialContentCard(
-                title: 'Filter & sort',
-                message:
-                    'Show only this week\'s expenses,\n'
-                    'or sort by amount — your call.',
-              ),
-            ),
-          ],
+      ],
+    ),
+    TargetFocus(
+      identify: 'filter',
+      keyTarget: _filterKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Filter & sort',
+            message:
+                'Show only this week\'s expenses,\n'
+                'or sort by amount — your call.',
+          ),
         ),
-      ];
+      ],
+    ),
+  ];
 
   @override
   List<TutorialMenuItem> get tutorialMenuItems => [
-        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
-        TutorialMenuItem(
-          label: 'How to add a transaction',
-          onTap: _replayAddTxFlow,
-        ),
-      ];
+    TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+    TutorialMenuItem(
+      label: 'How to add a transaction',
+      onTap: _replayAddTxFlow,
+    ),
+  ];
 
   @override
   void initState() {
@@ -161,19 +152,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       if (!mounted) return;
       // Reset first in case a previous visit left state stuck at addTxFab.
       ref.read(tutorialFlowProvider.notifier).abandon();
-      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTxFab);
+      ref
+          .read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.addTxFab);
     }
   }
 
   void _replayAddTxFlow() {
-    ref.read(settingsRepositoryProvider)
+    ref
+        .read(settingsRepositoryProvider)
         .set(SettingsKeys.tutorialTxFlowDone, 'false');
     // Always reset to none first — if state is already addTxFab (e.g. the
     // auto-start fired but the user dismissed the overlay without tapping SKIP),
     // calling advance(addTxFab) would be a no-op and ref.listen wouldn't fire.
     ref.read(tutorialFlowProvider.notifier).abandon();
-    ref.read(tutorialFlowProvider.notifier)
-        .advance(TutorialFlowStep.addTxFab);
+    ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.addTxFab);
   }
 
   TransactionFilter _activeFilter = TransactionFilter.all;
@@ -219,7 +212,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Let\'s add your first transaction',
-                message: 'Tap the + button to get started. '
+                message:
+                    'Tap the + button to get started. '
                     'We\'ll guide you through the form step by step.',
               ),
             ),
@@ -238,10 +232,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       alignSkip: Alignment.topRight,
       paddingFocus: 8,
       pulseEnable: true,
-      onFinish: () {},  // user taps FAB overlay — FAB onPressed handles the advance
+      onFinish:
+          () {}, // user taps FAB overlay — FAB onPressed handles the advance
       onSkip: () {
         ref.read(tutorialFlowProvider.notifier).abandon();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialTxFlowDone, 'true');
         return true;
       },
@@ -285,12 +281,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       pulseEnable: false,
       onFinish: () {
         ref.read(tutorialFlowProvider.notifier).finish();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialTxFlowDone, 'true');
       },
       onSkip: () {
         ref.read(tutorialFlowProvider.notifier).finish();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialTxFlowDone, 'true');
         return true;
       },
@@ -309,14 +307,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         final todayStart = DateTime(now.year, now.month, now.day);
         filtered = filtered.where((t) => !t.date.isBefore(todayStart)).toList();
       case TransactionFilter.thisWeek:
-        final weekStart = DateTime(now.year, now.month, now.day)
-            .subtract(Duration(days: now.weekday - 1));
-        filtered =
-            filtered.where((t) => !t.date.isBefore(weekStart)).toList();
+        final weekStart = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: now.weekday - 1));
+        filtered = filtered.where((t) => !t.date.isBefore(weekStart)).toList();
       case TransactionFilter.thisMonth:
         final monthStart = DateTime(now.year, now.month, 1);
-        filtered =
-            filtered.where((t) => !t.date.isBefore(monthStart)).toList();
+        filtered = filtered.where((t) => !t.date.isBefore(monthStart)).toList();
     }
 
     // Apply type filter
@@ -331,8 +330,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
 
     // Apply payment method filter
     if (_paymentMethodFilter != null) {
-      filtered =
-          filtered.where((t) => t.paymentMethod == _paymentMethodFilter).toList();
+      filtered = filtered
+          .where((t) => t.paymentMethod == _paymentMethodFilter)
+          .toList();
     }
 
     // Apply custom date range
@@ -393,16 +393,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined),
             tooltip: 'Ledger',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LedgerScreen()),
-            ),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
           ),
           IconButton(
             key: _searchKey,
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.transactions)),
+              MaterialPageRoute(
+                builder: (_) => const SearchScreen(
+                  initialFilter: SearchFilter.transactions,
+                ),
+              ),
             ),
           ),
           Badge(
@@ -425,14 +429,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                       ref.read(transactionsProvider).valueOrNull ?? [];
                   _exportCsv(context, ref, _applyFilter(transactions));
                 } else if (v == 'manage_categories') {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const CategoryManagementScreen(),
-                  ));
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CategoryManagementScreen(),
+                    ),
+                  );
                 } else if (v.startsWith('sort_')) {
                   final sortName = v.substring(5);
                   setState(() {
-                    _sortOrder = TransactionSortOrder.values
-                        .firstWhere((s) => s.name == sortName);
+                    _sortOrder = TransactionSortOrder.values.firstWhere(
+                      (s) => s.name == sortName,
+                    );
                   });
                 }
               },
@@ -499,13 +506,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           // in its initState.
           final step = ref.read(tutorialFlowProvider);
           if (step == TutorialFlowStep.addTxFab) {
-            ref.read(tutorialFlowProvider.notifier)
+            ref
+                .read(tutorialFlowProvider.notifier)
                 .advance(TutorialFlowStep.addTxAmount);
           }
           final added = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => const AddEditTransactionScreen(),
-            ),
+            MaterialPageRoute(builder: (_) => const AddEditTransactionScreen()),
           );
           if (added == true) {
             ref.read(transactionsProvider.notifier).loadTransactions();
@@ -527,8 +533,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                 // Filter chips
                 _FilterChips(
                   active: _activeFilter,
-                  onChanged: (filter) =>
-                      setState(() => _activeFilter = filter),
+                  onChanged: (filter) => setState(() => _activeFilter = filter),
                   totalCount: transactions.length,
                   filteredCount: filtered.length,
                 ),
@@ -538,66 +543,65 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
                   child: filtered.isEmpty
                       ? _buildEmptyState(transactions.isEmpty)
                       : isTable
-                          ? _buildDataTable(filtered, context, isWide)
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.base,
-                                vertical: AppSpacing.sm,
+                      ? _buildDataTable(filtered, context, isWide)
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.base,
+                            vertical: AppSpacing.sm,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            final txn = filtered[index];
+                            final colors = context.kashColors;
+                            final amountColor = txn.isIncome
+                                ? colors.income
+                                : colors.expense;
+                            final prefix = txn.isIncome ? '+' : '-';
+                            return ListTile(
+                              key: index == 0 ? _newestCardKey : null,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xs,
                               ),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, index) {
-                                final txn = filtered[index];
-                                final colors = context.kashColors;
-                                final amountColor =
-                                    txn.isIncome ? colors.income : colors.expense;
-                                final prefix = txn.isIncome ? '+' : '-';
-                                return ListTile(
-                                  key: index == 0 ? _newestCardKey : null,
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.xs,
-                                  ),
-                                  leading: CircleAvatar(
-                                    backgroundColor:
-                                        context.colorScheme.primaryContainer,
-                                    child: Icon(
-                                      CategoryHelper.getIcon(txn.category),
-                                      color:
-                                          context.colorScheme.onPrimaryContainer,
-                                      size: AppSpacing.iconMd,
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    context.colorScheme.primaryContainer,
+                                child: Icon(
+                                  CategoryHelper.getIcon(txn.category),
+                                  color: context.colorScheme.onPrimaryContainer,
+                                  size: AppSpacing.iconMd,
+                                ),
+                              ),
+                              title: Text(
+                                txn.partyName ?? txn.category,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                                style: context.textTheme.bodySmall,
+                              ),
+                              trailing: Text(
+                                '$prefix${CurrencyFormatter.format(txn.amount)}',
+                                style: context.textTheme.titleSmall?.copyWith(
+                                  color: amountColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'RobotoMono',
+                                ),
+                              ),
+                              onTap: () {
+                                if (txn.id != null) {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => TransactionDetailScreen(
+                                        transactionId: txn.id!,
+                                      ),
                                     ),
-                                  ),
-                                  title: Text(
-                                    txn.partyName ?? txn.category,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  subtitle: Text(
-                                    '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
-                                    style: context.textTheme.bodySmall,
-                                  ),
-                                  trailing: Text(
-                                    '$prefix${CurrencyFormatter.format(txn.amount)}',
-                                    style: context.textTheme.titleSmall?.copyWith(
-                                      color: amountColor,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'RobotoMono',
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    if (txn.id != null) {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              TransactionDetailScreen(
-                                            transactionId: txn.id!,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
+                                  );
+                                }
                               },
-                            ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -609,15 +613,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
           final selectedTxn = _selectedTransactionId == null
               ? null
               : transactions
-                  .where((t) => t.id == _selectedTransactionId)
-                  .firstOrNull;
+                    .where((t) => t.id == _selectedTransactionId)
+                    .firstOrNull;
 
           return Row(
             children: [
               Expanded(child: listPane),
               const VerticalDivider(width: 1, thickness: 1),
               SizedBox(
-                width: (MediaQuery.sizeOf(context).width * 0.33).clamp(300.0, 420.0),
+                width: (MediaQuery.sizeOf(context).width * 0.33).clamp(
+                  300.0,
+                  420.0,
+                ),
                 child: selectedTxn != null
                     ? TransactionDetailPanel(
                         transaction: selectedTxn,
@@ -674,15 +681,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
       final service = ref.read(csvExportServiceProvider);
       final path = await service.exportTransactions(transactions);
       if (!context.mounted) return;
-      await Share.shareXFiles(
-        [XFile(path)],
-        subject: 'Kash Cube Transactions',
-      );
+      await Share.shareXFiles([XFile(path)], subject: 'Kash Cube Transactions');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
@@ -708,9 +712,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            noTransactions
-                ? Icons.receipt_long_outlined
-                : Icons.search_off,
+            noTransactions ? Icons.receipt_long_outlined : Icons.search_off,
             size: 64,
             color: context.colorScheme.outlineVariant,
           ),
@@ -734,10 +736,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
   }
 
   /// Sortable [DataTable] shown in the list pane when width ≥ 600 dp.
-  /// 
+  ///
   /// On medium screens (600-839dp), tapping a row navigates to detail screen.
   /// On wide screens (≥840dp), tapping a row shows detail in side panel.
-  Widget _buildDataTable(List<Transaction> filtered, BuildContext context, bool isWide) {
+  Widget _buildDataTable(
+    List<Transaction> filtered,
+    BuildContext context,
+    bool isWide,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -747,8 +753,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
         final spacing = w > 900
             ? AppSpacing.xl
             : w > 600
-                ? AppSpacing.base
-                : AppSpacing.sm;
+            ? AppSpacing.base
+            : AppSpacing.sm;
 
         // Amount column index shifts when Category is hidden.
         final amountColIndex = showCategory ? 3 : 2;
@@ -807,15 +813,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen>
               ],
               rows: filtered.map((txn) {
                 final isSelected = txn.id == _selectedTransactionId;
-                final amountColor =
-                    txn.isIncome ? colors.income : colors.expense;
+                final amountColor = txn.isIncome
+                    ? colors.income
+                    : colors.expense;
                 final prefix = txn.isIncome ? '+' : '-';
                 return DataRow(
                   selected: isSelected,
                   color: WidgetStateProperty.resolveWith((states) {
                     if (states.contains(WidgetState.selected)) {
-                      return context.colorScheme.secondaryContainer
-                          .withValues(alpha: 0.4);
+                      return context.colorScheme.secondaryContainer.withValues(
+                        alpha: 0.4,
+                      );
                     }
                     return null;
                   }),
@@ -1010,7 +1018,13 @@ class _AdvancedFilterSheet extends StatefulWidget {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final void Function(
-      TransactionType?, String?, PaymentMethod?, DateTime?, DateTime?) onApply;
+    TransactionType?,
+    String?,
+    PaymentMethod?,
+    DateTime?,
+    DateTime?,
+  )
+  onApply;
   final VoidCallback onClear;
 
   @override
@@ -1198,9 +1212,7 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.calendar_today, size: 14),
                     label: Text(
-                      _dateTo == null
-                          ? 'To'
-                          : DateFormatter.format(_dateTo!),
+                      _dateTo == null ? 'To' : DateFormatter.format(_dateTo!),
                       maxLines: 1,
                     ),
                     onPressed: () async {
@@ -1220,8 +1232,10 @@ class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
                 if (_dateFrom != null || _dateTo != null)
                   IconButton(
                     icon: const Icon(Icons.close, size: 18),
-                    onPressed: () =>
-                        setState(() { _dateFrom = null; _dateTo = null; }),
+                    onPressed: () => setState(() {
+                      _dateFrom = null;
+                      _dateTo = null;
+                    }),
                   ),
               ],
             ),

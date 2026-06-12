@@ -18,26 +18,20 @@ import 'context_provider.dart';
 
 // ── Repository providers ─────────────────────────────────────────────────────
 
-final itemCatalogRepositoryProvider = Provider<ItemCatalogRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return ItemCatalogRepositoryImpl(contextId: contextId);
-  },
-);
+final itemCatalogRepositoryProvider = Provider<ItemCatalogRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return ItemCatalogRepositoryImpl(contextId: contextId);
+});
 
-final quoteRepositoryProvider = Provider<QuoteRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return QuoteRepositoryImpl(contextId: contextId);
-  },
-);
+final quoteRepositoryProvider = Provider<QuoteRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return QuoteRepositoryImpl(contextId: contextId);
+});
 
-final invoiceRepositoryProvider = Provider<InvoiceRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return InvoiceRepositoryImpl(contextId: contextId);
-  },
-);
+final invoiceRepositoryProvider = Provider<InvoiceRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return InvoiceRepositoryImpl(contextId: contextId);
+});
 
 // ── Filter ───────────────────────────────────────────────────────────────────
 
@@ -62,10 +56,9 @@ final quoteDateRangeProvider = StateProvider<DateTimeRange?>((_) => null);
 
 // ── Item Catalog ─────────────────────────────────────────────────────────────
 
-class CatalogNotifier
-    extends StateNotifier<AsyncValue<List<ItemCatalog>>> {
+class CatalogNotifier extends StateNotifier<AsyncValue<List<ItemCatalog>>> {
   CatalogNotifier(this._repo, this._businessId)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -95,8 +88,11 @@ class CatalogNotifier
         );
       } catch (e) {
         // Non-fatal: log and continue to refresh the UI.
-        AppLogger.instance.debug('Failed to set initial stock',
-            category: 'catalog', error: e);
+        AppLogger.instance.debug(
+          'Failed to set initial stock',
+          category: 'catalog',
+          error: e,
+        );
       }
     }
     await load();
@@ -112,8 +108,11 @@ class CatalogNotifier
           businessId: _businessId,
         );
       } catch (e) {
-        AppLogger.instance.debug('Failed to update stock',
-            category: 'catalog', error: e);
+        AppLogger.instance.debug(
+          'Failed to update stock',
+          category: 'catalog',
+          error: e,
+        );
       }
     }
     await load();
@@ -136,19 +135,22 @@ class CatalogNotifier
 }
 
 final catalogProvider =
-    StateNotifierProvider<CatalogNotifier, AsyncValue<List<ItemCatalog>>>(
-  (ref) {
-    final businessId = ref.watch(activeBusinessProvider)?.id;
-    return CatalogNotifier(ref.read(itemCatalogRepositoryProvider), businessId);
-  },
-);
+    StateNotifierProvider<CatalogNotifier, AsyncValue<List<ItemCatalog>>>((
+      ref,
+    ) {
+      final businessId = ref.watch(activeBusinessProvider)?.id;
+      return CatalogNotifier(
+        ref.read(itemCatalogRepositoryProvider),
+        businessId,
+      );
+    });
 
 // ── Quotes ───────────────────────────────────────────────────────────────────
 
 class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
   QuotesNotifier(this._repo, {required Future<void> Function() reloadInvoices})
-      : _reloadInvoices = reloadInvoices,
-        super(const AsyncValue.loading()) {
+    : _reloadInvoices = reloadInvoices,
+      super(const AsyncValue.loading()) {
     load();
   }
 
@@ -180,8 +182,7 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
   }
 
   Future<Invoice?> convertToInvoice(int quoteId) async {
-    final invoiceNo =
-        await InvoiceNumberService.instance.nextInvoiceNo();
+    final invoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
     final invoice = await _repo.convertToInvoice(quoteId, invoiceNo);
     await load();
     await _reloadInvoices(); // keep invoicesProvider in sync
@@ -204,11 +205,11 @@ class QuotesNotifier extends StateNotifier<AsyncValue<List<Quote>>> {
 
 final quotesProvider =
     StateNotifierProvider<QuotesNotifier, AsyncValue<List<Quote>>>(
-  (ref) => QuotesNotifier(
-    ref.read(quoteRepositoryProvider),
-    reloadInvoices: () => ref.read(invoicesProvider.notifier).load(),
-  ),
-);
+      (ref) => QuotesNotifier(
+        ref.read(quoteRepositoryProvider),
+        reloadInvoices: () => ref.read(invoicesProvider.notifier).load(),
+      ),
+    );
 
 // ── Invoices ─────────────────────────────────────────────────────────────────
 
@@ -234,13 +235,19 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
     // If the invoice was already sent/active (stock was previously deducted),
     // reverse the old movements then re-deduct based on the updated item list.
     // Draft edits have no prior movements, so skip for those.
-    final wasSent = invoice.status != InvoiceStatus.draft &&
+    final wasSent =
+        invoice.status != InvoiceStatus.draft &&
         invoice.status != InvoiceStatus.cancelled &&
         invoice.challanId == null; // DC-linked invoices: DC owns the movement.
     if (wasSent && invoice.id != null) {
-      await LotAllocationService.instance
-          .reverseLotMovements('invoice', invoice.id!);
-      await InventoryService.instance.reverseMovementsFor('invoice', invoice.id!);
+      await LotAllocationService.instance.reverseLotMovements(
+        'invoice',
+        invoice.id!,
+      );
+      await InventoryService.instance.reverseMovementsFor(
+        'invoice',
+        invoice.id!,
+      );
       for (final item in items) {
         if (item.catalogItemId != null && item.qty > 0) {
           await InventoryService.instance.deductStock(
@@ -260,8 +267,10 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
             referenceLineId: item.id,
           );
           if (item.id != null && allocs.isNotEmpty) {
-            await LotAllocationService.instance
-                .saveAllocationToInvoiceItem(item.id!, allocs);
+            await LotAllocationService.instance.saveAllocationToInvoiceItem(
+              item.id!,
+              allocs,
+            );
           }
         }
       }
@@ -331,8 +340,10 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
             referenceLineId: item.id,
           );
           if (item.id != null && allocs.isNotEmpty) {
-            await LotAllocationService.instance
-                .saveAllocationToInvoiceItem(item.id!, allocs);
+            await LotAllocationService.instance.saveAllocationToInvoiceItem(
+              item.id!,
+              allocs,
+            );
           }
         }
       }
@@ -344,16 +355,16 @@ class InvoicesNotifier extends StateNotifier<AsyncValue<List<Invoice>>> {
 
 final invoicesProvider =
     StateNotifierProvider<InvoicesNotifier, AsyncValue<List<Invoice>>>(
-  (ref) => InvoicesNotifier(ref.read(invoiceRepositoryProvider)),
-);
+      (ref) => InvoicesNotifier(ref.read(invoiceRepositoryProvider)),
+    );
 
 /// Filtered view of invoices
 final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
   final all = ref.watch(invoicesProvider);
   final statusFilter = ref.watch(invoiceFilterProvider);
-  final typeFilter  = ref.watch(invoiceTypeFilterProvider);
+  final typeFilter = ref.watch(invoiceTypeFilterProvider);
   final searchQuery = ref.watch(invoiceSearchQueryProvider);
-  final dateRange   = ref.watch(invoiceDateRangeProvider);
+  final dateRange = ref.watch(invoiceDateRangeProvider);
 
   return all.whenData((list) {
     var filtered = list;
@@ -365,7 +376,9 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
 
     // Apply invoice-type filter (Credit Note / Debit Note)
     if (typeFilter != null) {
-      filtered = filtered.where((inv) => inv.invoiceType == typeFilter).toList();
+      filtered = filtered
+          .where((inv) => inv.invoiceType == typeFilter)
+          .toList();
     }
 
     // Apply search filter (customer name or invoice number)
@@ -381,7 +394,9 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
     if (dateRange != null) {
       filtered = filtered.where((inv) {
         final invDate = inv.issueDate;
-        return invDate.isAfter(dateRange.start.subtract(const Duration(days: 1))) &&
+        return invDate.isAfter(
+              dateRange.start.subtract(const Duration(days: 1)),
+            ) &&
             invDate.isBefore(dateRange.end.add(const Duration(days: 1)));
       }).toList();
     }
@@ -393,9 +408,13 @@ final filteredInvoicesProvider = Provider<AsyncValue<List<Invoice>>>((ref) {
 /// Single invoice by id — reads from the same in-memory list that the Invoices
 /// tab uses, so status is ALWAYS consistent between list and detail.
 /// Falls back to a direct DB fetch only while [invoicesProvider] is still loading.
-final invoiceByIdProvider =
-    FutureProvider.family<Invoice?, int>((ref, id) async {
-  final fromList = ref.watch(invoicesProvider).whenOrNull(
+final invoiceByIdProvider = FutureProvider.family<Invoice?, int>((
+  ref,
+  id,
+) async {
+  final fromList = ref
+      .watch(invoicesProvider)
+      .whenOrNull(
         data: (list) {
           try {
             return list.firstWhere((inv) => inv.id == id);
@@ -437,7 +456,9 @@ final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
     if (dateRange != null) {
       filtered = filtered.where((quote) {
         final quoteDate = quote.createdAt;
-        return quoteDate.isAfter(dateRange.start.subtract(const Duration(days: 1))) &&
+        return quoteDate.isAfter(
+              dateRange.start.subtract(const Duration(days: 1)),
+            ) &&
             quoteDate.isBefore(dateRange.end.add(const Duration(days: 1)));
       }).toList();
     }
@@ -449,9 +470,10 @@ final filteredQuotesProvider = Provider<AsyncValue<List<Quote>>>((ref) {
 /// Single quote by id — reads from the same in-memory list that the Quotes
 /// tab uses, so status is ALWAYS consistent between list and detail.
 /// Falls back to a direct DB fetch only while [quotesProvider] is still loading.
-final quoteByIdProvider =
-    FutureProvider.family<Quote?, int>((ref, id) async {
-  final fromList = ref.watch(quotesProvider).whenOrNull(
+final quoteByIdProvider = FutureProvider.family<Quote?, int>((ref, id) async {
+  final fromList = ref
+      .watch(quotesProvider)
+      .whenOrNull(
         data: (list) {
           try {
             return list.firstWhere((q) => q.id == id);
@@ -473,8 +495,7 @@ final quoteByIdProvider =
 /// Finds a Quote from the in-memory list by its ID.
 /// Used by InvoiceDetailScreen to show the source quote card synchronously.
 final quoteFromListByIdProvider = Provider.family<Quote?, int>((ref, id) {
-  final all =
-      ref.watch(quotesProvider).whenOrNull(data: (list) => list) ?? [];
+  final all = ref.watch(quotesProvider).whenOrNull(data: (list) => list) ?? [];
   try {
     return all.firstWhere((q) => q.id == id);
   } catch (e) {
@@ -513,22 +534,29 @@ typedef OverdueInvoicesSummary = ({int count, double totalDue});
 
 /// Derives count + total pending from unpaid invoices (overdue or sent).
 /// Returns null when invoices haven't loaded yet.
-final overdueInvoicesSummaryProvider =
-    Provider<OverdueInvoicesSummary?>((ref) {
+final overdueInvoicesSummaryProvider = Provider<OverdueInvoicesSummary?>((ref) {
   final all = ref.watch(invoicesProvider);
-  return all.whenOrNull(data: (list) {
-    final unpaid = list.where((inv) =>
-        inv.status == InvoiceStatus.overdue ||
-        inv.status == InvoiceStatus.sent ||
-        inv.status == InvoiceStatus.partiallyPaid).toList();
-    if (unpaid.isEmpty) return (count: 0, totalDue: 0.0);
-    final totalDue = unpaid.fold(0.0, (sum, inv) => sum + inv.balanceDue);
-    return (count: unpaid.length, totalDue: totalDue);
-  });
+  return all.whenOrNull(
+    data: (list) {
+      final unpaid = list
+          .where(
+            (inv) =>
+                inv.status == InvoiceStatus.overdue ||
+                inv.status == InvoiceStatus.sent ||
+                inv.status == InvoiceStatus.partiallyPaid,
+          )
+          .toList();
+      if (unpaid.isEmpty) return (count: 0, totalDue: 0.0);
+      final totalDue = unpaid.fold(0.0, (sum, inv) => sum + inv.balanceDue);
+      return (count: unpaid.length, totalDue: totalDue);
+    },
+  );
 });
 
 /// All quotes for a given party name (used by Party Document Ledger).
-final quotesByCustomerProvider =
-    FutureProvider.family<List<Quote>, String>((ref, customerName) async {
+final quotesByCustomerProvider = FutureProvider.family<List<Quote>, String>((
+  ref,
+  customerName,
+) async {
   return ref.read(quoteRepositoryProvider).getByCustomer(customerName);
 });

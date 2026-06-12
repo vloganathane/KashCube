@@ -37,7 +37,10 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.bills)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.bills),
+              ),
             ),
           ),
         ],
@@ -82,8 +85,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
           // Bills list
           Expanded(
             child: billsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (bills) => _buildList(bills),
             ),
@@ -104,8 +106,7 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
       _BillFilter.upcoming =>
         bills.where((b) => !b.isPaidThisPeriod && !b.isOverdue).toList(),
       _BillFilter.overdue => bills.where((b) => b.isOverdue).toList(),
-      _BillFilter.paid =>
-        bills.where((b) => b.isPaidThisPeriod).toList(),
+      _BillFilter.paid => bills.where((b) => b.isPaidThisPeriod).toList(),
     };
 
     if (filtered.isEmpty) {
@@ -160,9 +161,9 @@ class _BillsScreenState extends ConsumerState<BillsScreen> {
   void _markPaid(Bill bill) {
     ref.read(scheduledBillsProvider.notifier).markPaid(bill.id!);
     ref.invalidate(totalMonthlyBillsProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${bill.name} marked as paid')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${bill.name} marked as paid')));
   }
 
   void _confirmDelete(Bill bill) {
@@ -236,7 +237,11 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        0,
+      ),
       child: Card(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -302,14 +307,14 @@ class _BillTile extends StatelessWidget {
     final statusColor = isPaid
         ? colors.income
         : isOverdue
-            ? colors.expense
-            : context.colorScheme.onSurface;
+        ? colors.expense
+        : context.colorScheme.onSurface;
 
     final statusLabel = isPaid
         ? 'Paid'
         : isOverdue
-            ? 'Overdue'
-            : 'Due in ${bill.daysUntilDue}d';
+        ? 'Overdue'
+        : 'Due in ${bill.daysUntilDue}d';
 
     return Card(
       child: InkWell(
@@ -344,9 +349,7 @@ class _BillTile extends StatelessWidget {
                       bill.name,
                       style: context.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
-                        decoration: isPaid
-                            ? TextDecoration.lineThrough
-                            : null,
+                        decoration: isPaid ? TextDecoration.lineThrough : null,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -386,10 +389,7 @@ class _BillTile extends StatelessWidget {
               if (!isPaid) ...[
                 const SizedBox(width: AppSpacing.sm),
                 IconButton(
-                  icon: Icon(
-                    Icons.check_circle_outline,
-                    color: colors.income,
-                  ),
+                  icon: Icon(Icons.check_circle_outline, color: colors.income),
                   tooltip: 'Mark Paid',
                   onPressed: onMarkPaid,
                   visualDensity: VisualDensity.compact,
@@ -542,8 +542,9 @@ class _AddEditBillSheetState extends State<_AddEditBillSheet> {
                   prefixIcon: Icon(Icons.currency_rupee),
                   hintText: '0',
                 ),
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Enter amount';
                   final n = double.tryParse(v.trim());
@@ -577,10 +578,9 @@ class _AddEditBillSheetState extends State<_AddEditBillSheet> {
                   prefixIcon: Icon(Icons.repeat),
                 ),
                 items: RecurringFrequency.values
-                    .map((f) => DropdownMenuItem(
-                          value: f,
-                          child: Text(f.label),
-                        ))
+                    .map(
+                      (f) => DropdownMenuItem(value: f, child: Text(f.label)),
+                    )
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _frequency = v);

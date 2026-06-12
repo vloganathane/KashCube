@@ -12,10 +12,7 @@ class BillPickerResult {
   final String filePath;
   final String fileName;
 
-  const BillPickerResult({
-    required this.filePath,
-    required this.fileName,
-  });
+  const BillPickerResult({required this.filePath, required this.fileName});
 }
 
 /// Shows a bottom sheet with options to attach a bill: Camera, Gallery, or PDF.
@@ -95,12 +92,9 @@ class _BillPickerSheet extends StatelessWidget {
       maxHeight: 1920,
     );
     if (image != null && context.mounted) {
-      Navigator.of(context).pop(
-        BillPickerResult(
-          filePath: image.path,
-          fileName: image.name,
-        ),
-      );
+      Navigator.of(
+        context,
+      ).pop(BillPickerResult(filePath: image.path, fileName: image.name));
     }
   }
 
@@ -113,12 +107,9 @@ class _BillPickerSheet extends StatelessWidget {
       maxHeight: 1920,
     );
     if (image != null && context.mounted) {
-      Navigator.of(context).pop(
-        BillPickerResult(
-          filePath: image.path,
-          fileName: image.name,
-        ),
-      );
+      Navigator.of(
+        context,
+      ).pop(BillPickerResult(filePath: image.path, fileName: image.name));
     }
   }
 
@@ -133,12 +124,9 @@ class _BillPickerSheet extends StatelessWidget {
         result.files.first.path != null &&
         context.mounted) {
       final file = result.files.first;
-      Navigator.of(context).pop(
-        BillPickerResult(
-          filePath: file.path!,
-          fileName: file.name,
-        ),
-      );
+      Navigator.of(
+        context,
+      ).pop(BillPickerResult(filePath: file.path!, fileName: file.name));
     }
   }
 }
@@ -161,16 +149,10 @@ class _PickerOption extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.primaryContainer,
-        child: Icon(
-          icon,
-          color: context.colorScheme.onPrimaryContainer,
-        ),
+        child: Icon(icon, color: context.colorScheme.onPrimaryContainer),
       ),
       title: Text(label),
-      subtitle: Text(
-        subtitle,
-        style: context.textTheme.bodySmall,
-      ),
+      subtitle: Text(subtitle, style: context.textTheme.bodySmall),
       onTap: onTap,
     );
   }
@@ -289,10 +271,7 @@ class BillPreviewCard extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
                   child: IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      color: context.colorScheme.error,
-                    ),
+                    icon: Icon(Icons.close, color: context.colorScheme.error),
                     onPressed: onRemove,
                     tooltip: 'Remove bill',
                   ),

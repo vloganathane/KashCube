@@ -27,10 +27,7 @@ class StaffScreen extends ConsumerWidget {
     final staffAsync = ref.watch(staffProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Staff & Payroll'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Staff & Payroll'), centerTitle: false),
       body: staffAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -43,8 +40,7 @@ class StaffScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.base),
               itemCount: staff.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (_, i) => _StaffTile(
                 staff: staff[i],
                 onTap: () => _openDetail(context, ref, staff[i]),
@@ -81,18 +77,23 @@ class StaffScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDeactivate(
-      BuildContext context, WidgetRef ref, Staff staff) async {
+    BuildContext context,
+    WidgetRef ref,
+    Staff staff,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Deactivate Staff?'),
         content: Text(
-            '${staff.name} will be marked inactive. All past records are preserved.'),
+          '${staff.name} will be marked inactive. All past records are preserved.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Deactivate'),
@@ -122,8 +123,11 @@ class _GatedPlaceholder extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.badge_outlined,
-                  size: 64, color: context.colorScheme.outline),
+              Icon(
+                Icons.badge_outlined,
+                size: 64,
+                color: context.colorScheme.outline,
+              ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Staff & Payroll is a\nBusiness tier feature',
@@ -134,13 +138,16 @@ class _GatedPlaceholder extends ConsumerWidget {
               Text(
                 'Track employees, record salary payments, and\nmanage HR details — all private, on-device.',
                 textAlign: TextAlign.center,
-                style: context.textTheme.bodySmall
-                    ?.copyWith(color: context.colorScheme.outline),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.outline,
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               FilledButton.icon(
-                onPressed: () =>
-                    showUpgradePromptSheet(context, featureName: 'Staff & Payroll'),
+                onPressed: () => showUpgradePromptSheet(
+                  context,
+                  featureName: 'Staff & Payroll',
+                ),
                 icon: const Icon(Icons.star_outline),
                 label: const Text('Upgrade to Business'),
               ),
@@ -166,17 +173,20 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.group_outlined,
-                size: 64, color: context.colorScheme.outline),
+            Icon(
+              Icons.group_outlined,
+              size: 64,
+              color: context.colorScheme.outline,
+            ),
             const SizedBox(height: AppSpacing.lg),
-            Text('No staff members yet',
-                style: context.textTheme.titleMedium),
+            Text('No staff members yet', style: context.textTheme.titleMedium),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Add employees or contractors to track\npayroll and HR details.',
               textAlign: TextAlign.center,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
@@ -229,16 +239,22 @@ class _StaffTile extends StatelessWidget {
             ),
           ),
         ),
-        title: Text(staff.name,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
+        title: Text(
+          staff.name,
+          style: const TextStyle(fontWeight: FontWeight.w500),
+        ),
         subtitle: Text(
           [
             if (staff.designation != null) staff.designation!,
             CurrencyFormatter.format(staff.baseSalary),
-            if (staff.salaryType == SalaryType.monthly) '/month'
-            else if (staff.salaryType == SalaryType.daily) '/day'
-            else if (staff.salaryType == SalaryType.hourly) '/hr'
-            else '/contract',
+            if (staff.salaryType == SalaryType.monthly)
+              '/month'
+            else if (staff.salaryType == SalaryType.daily)
+              '/day'
+            else if (staff.salaryType == SalaryType.hourly)
+              '/hr'
+            else
+              '/contract',
           ].join(' '),
           style: context.textTheme.bodySmall,
         ),
@@ -247,28 +263,34 @@ class _StaffTile extends StatelessWidget {
           itemBuilder: (_) => [
             const PopupMenuItem(
               value: 'edit',
-              child: Row(children: [
-                Icon(Icons.edit_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('Edit'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Edit'),
+                ],
+              ),
             ),
             const PopupMenuItem(
               value: 'salary',
-              child: Row(children: [
-                Icon(Icons.payments_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('Record Salary'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.payments_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Record Salary'),
+                ],
+              ),
             ),
             const PopupMenuDivider(),
             const PopupMenuItem(
               value: 'deactivate',
-              child: Row(children: [
-                Icon(Icons.person_off_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('Deactivate'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.person_off_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Deactivate'),
+                ],
+              ),
             ),
           ],
           onSelected: (v) {
@@ -308,20 +330,30 @@ class _StaffDetailSheet extends ConsumerWidget {
           // Header
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, AppSpacing.md, AppSpacing.base, 0),
+              AppSpacing.base,
+              AppSpacing.md,
+              AppSpacing.base,
+              0,
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(staff.name,
-                          style: context.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        staff.name,
+                        style: context.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                       if (staff.designation != null)
-                        Text(staff.designation!,
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(color: context.colorScheme.outline)),
+                        Text(
+                          staff.designation!,
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.outline,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -347,7 +379,9 @@ class _StaffDetailSheet extends ConsumerWidget {
           // Info chips
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
             child: Wrap(
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.xs,
@@ -359,7 +393,10 @@ class _StaffDetailSheet extends ConsumerWidget {
                 if (staff.phone != null)
                   _InfoChip(label: staff.phone!, icon: Icons.phone_outlined),
                 if (staff.department != null)
-                  _InfoChip(label: staff.department!, icon: Icons.business_outlined),
+                  _InfoChip(
+                    label: staff.department!,
+                    icon: Icons.business_outlined,
+                  ),
                 if (staff.joinDate != null)
                   _InfoChip(
                     label: 'Joined ${dateFormat.format(staff.joinDate!)}',
@@ -372,18 +409,24 @@ class _StaffDetailSheet extends ConsumerWidget {
           // Section title
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.base,
+              0,
+            ),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text('Salary History',
-                  style: context.textTheme.labelMedium
-                      ?.copyWith(color: context.colorScheme.outline)),
+              child: Text(
+                'Salary History',
+                style: context.textTheme.labelMedium?.copyWith(
+                  color: context.colorScheme.outline,
+                ),
+              ),
             ),
           ),
           Expanded(
             child: salaryAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('$e')),
               data: (payments) {
                 if (payments.isEmpty) {
@@ -396,17 +439,17 @@ class _StaffDetailSheet extends ConsumerWidget {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final p = payments[i];
-                    final isPaid =
-                        p.status == SalaryPaymentStatus.paid;
+                    final isPaid = p.status == SalaryPaymentStatus.paid;
                     return ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
                       title: Text(p.periodLabel),
                       subtitle: Text(
-                          p.paidDate != null
-                              ? 'Paid ${dateFormat.format(p.paidDate!)}'
-                              : p.status.name,
-                          style: context.textTheme.bodySmall),
+                        p.paidDate != null
+                            ? 'Paid ${dateFormat.format(p.paidDate!)}'
+                            : p.status.name,
+                        style: context.textTheme.bodySmall,
+                      ),
                       trailing: Text(
                         CurrencyFormatter.format(p.netSalary),
                         style: context.textTheme.bodyMedium?.copyWith(
@@ -458,7 +501,9 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
       _designCtrl.text = s.designation ?? '';
       _phoneCtrl.text = s.phone ?? '';
       _deptCtrl.text = s.department ?? '';
-      _salaryCtrl.text = s.baseSalary > 0 ? s.baseSalary.toStringAsFixed(0) : '';
+      _salaryCtrl.text = s.baseSalary > 0
+          ? s.baseSalary.toStringAsFixed(0)
+          : '';
       _salaryType = s.salaryType;
     }
   }
@@ -483,15 +528,12 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
       designation: _designCtrl.text.trim().isNotEmpty
           ? _designCtrl.text.trim()
           : null,
-      phone: _phoneCtrl.text.trim().isNotEmpty
-          ? _phoneCtrl.text.trim()
-          : null,
+      phone: _phoneCtrl.text.trim().isNotEmpty ? _phoneCtrl.text.trim() : null,
       department: _deptCtrl.text.trim().isNotEmpty
           ? _deptCtrl.text.trim()
           : null,
       salaryType: _salaryType,
-      baseSalary:
-          double.tryParse(_salaryCtrl.text.replaceAll(',', '')) ?? 0,
+      baseSalary: double.tryParse(_salaryCtrl.text.replaceAll(',', '')) ?? 0,
       businessId: businessId,
       createdAt: widget.existing?.createdAt ?? now,
       updatedAt: _isEdit ? now : null,
@@ -511,8 +553,11 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.md, AppSpacing.base,
-          AppSpacing.base + bottomPadding),
+        AppSpacing.base,
+        AppSpacing.md,
+        AppSpacing.base,
+        AppSpacing.base + bottomPadding,
+      ),
       child: Form(
         key: _form,
         child: SingleChildScrollView(
@@ -525,8 +570,9 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
                   Expanded(
                     child: Text(
                       _isEdit ? 'Edit Staff' : 'Add Staff Member',
-                      style: context.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: context.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -563,9 +609,7 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
                     child: TextFormField(
                       controller: _salaryCtrl,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: const InputDecoration(
                         labelText: 'Base Salary (₹)',
                         border: OutlineInputBorder(),
@@ -608,9 +652,7 @@ class _AddEditStaffSheetState extends ConsumerState<_AddEditStaffSheet> {
               TextFormField(
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
                   labelText: 'Phone',
                   border: OutlineInputBorder(),
@@ -701,13 +743,25 @@ class _RecordSalarySheetState extends ConsumerState<_RecordSalarySheet> {
       notes: _notesCtrl.text.trim().isNotEmpty ? _notesCtrl.text.trim() : null,
       createdAt: DateTime.now(),
     );
-    await ref.read(salaryPaymentsProvider(widget.staff.id!).notifier).record(payment);
+    await ref
+        .read(salaryPaymentsProvider(widget.staff.id!).notifier)
+        .record(payment);
     if (mounted) Navigator.pop(context);
   }
 
   static const _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   @override
@@ -717,8 +771,11 @@ class _RecordSalarySheetState extends ConsumerState<_RecordSalarySheet> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.md, AppSpacing.base,
-          AppSpacing.base + bottomPadding),
+        AppSpacing.base,
+        AppSpacing.md,
+        AppSpacing.base,
+        AppSpacing.base + bottomPadding,
+      ),
       child: Form(
         key: _form,
         child: SingleChildScrollView(
@@ -734,13 +791,15 @@ class _RecordSalarySheetState extends ConsumerState<_RecordSalarySheet> {
                       children: [
                         Text(
                           'Record Salary',
-                          style: context.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                          style: context.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                         Text(
                           widget.staff.name,
-                          style: context.textTheme.bodySmall
-                              ?.copyWith(color: context.colorScheme.outline),
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -852,17 +911,20 @@ class _RecordSalarySheetState extends ConsumerState<_RecordSalarySheet> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: context.colorScheme.primaryContainer
-                      .withValues(alpha: 0.4),
-                  borderRadius:
-                      BorderRadius.circular(AppSpacing.radiusSm),
+                  color: context.colorScheme.primaryContainer.withValues(
+                    alpha: 0.4,
+                  ),
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Net Salary',
-                        style: context.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                      'Net Salary',
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     Text(
                       CurrencyFormatter.format(_net),
                       style: context.textTheme.titleSmall?.copyWith(
@@ -893,8 +955,7 @@ class _RecordSalarySheetState extends ConsumerState<_RecordSalarySheet> {
                   ),
                 ],
                 selected: {_status},
-                onSelectionChanged: (s) =>
-                    setState(() => _status = s.first),
+                onSelectionChanged: (s) => setState(() => _status = s.first),
               ),
               const SizedBox(height: AppSpacing.md),
               TextFormField(

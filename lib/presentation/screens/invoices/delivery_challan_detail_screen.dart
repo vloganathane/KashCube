@@ -1,10 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_file/open_file.dart';
-import 'package:share_plus/share_plus.dart';
-
-import '../../../data/services/app_logger.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
@@ -17,7 +14,13 @@ import '../../../data/models/ewb_transport_details.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/services/database_helper.dart';
 import '../../../data/services/delivery_challan_pdf_service.dart';
+import '../../../data/services/pdf_copy_info.dart';
+import '../../../data/services/pdf_download_request.dart';
 import '../../../data/services/eway_bill_service.dart';
+import '../../../data/services/pdf_print_service.dart';
+import '../../../data/services/web/pdf_download_stub.dart'
+    if (dart.library.html) '../../../data/services/web/pdf_download_web.dart';
+import '../../widgets/pdf_preview_screen.dart';
 import 'ewb_preview_screen.dart';
 import '../../../data/services/fiscal_year_service.dart';
 import '../../providers/business_provider.dart';
@@ -37,8 +40,7 @@ class DeliveryChallanDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final challanAsync =
-        ref.watch(challanByIdProvider(challanId));
+    final challanAsync = ref.watch(challanByIdProvider(challanId));
 
     return challanAsync.when(
       data: (challan) {
@@ -89,6 +91,16 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
             onPressed: _loading ? null : _printPdf,
           ),
           IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Download PDF',
+            onPressed: _loading ? null : _downloadPdf,
+          ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Print PDF',
+            onPressed: _loading ? null : _sendToPrinter,
+          ),
+          IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share PDF',
             onPressed: _loading ? null : _sharePdf,
@@ -96,6 +108,14 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
           PopupMenuButton<_MenuAction>(
             onSelected: _handleMenu,
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: _MenuAction.download,
+                child: ListTile(
+                  leading: Icon(Icons.download_outlined),
+                  title: Text('Download PDF'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               if (challan.status == ChallanStatus.draft)
                 const PopupMenuItem(
                   value: _MenuAction.edit,
@@ -164,10 +184,13 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
             icon: const Icon(Icons.receipt_long_outlined),
             label: const Text('View Invoice'),
             onPressed: challan.convertedInvoiceId != null
-                ? () => Navigator.of(context).push(MaterialPageRoute(
+                ? () => Navigator.of(context).push(
+                    MaterialPageRoute(
                       builder: (_) => InvoiceDetailScreen(
-                          invoiceId: challan.convertedInvoiceId!),
-                    ))
+                        invoiceId: challan.convertedInvoiceId!,
+                      ),
+                    ),
+                  )
                 : null,
           ),
         ),
@@ -181,7 +204,11 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.base,
+          AppSpacing.base,
+        ),
         child: Row(
           children: [
             if (challan.status == ChallanStatus.draft) ...[
@@ -220,12 +247,14 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   // ── Actions ─────────────────────────────────────────────────────────────────
 
   Future<void> _edit() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => QuoteBuilderScreen(
-        docType: DocumentType.deliveryChallan,
-        challanId: challan.id,
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QuoteBuilderScreen(
+          docType: DocumentType.deliveryChallan,
+          challanId: challan.id,
+        ),
       ),
-    ));
+    );
     ref.read(challansProvider.notifier).invalidate();
   }
 
@@ -245,7 +274,9 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
   Future<void> _markReturned() async {
     final confirm = await _confirm(
-        'Mark as Returned', 'Goods have been returned to you?');
+      'Mark as Returned',
+      'Goods have been returned to you?',
+    );
     if (!confirm) return;
     setState(() => _loading = true);
     try {
@@ -266,8 +297,7 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
     setState(() => _loading = true);
     try {
-      final invoiceNo =
-          await FiscalYearService.instance.nextInvoiceNo();
+      final invoiceNo = await FiscalYearService.instance.nextInvoiceNo();
       final Invoice invoice = await ref
           .read(deliveryChallanRepositoryProvider)
           .convertToInvoice(challan.id!, invoiceNo);
@@ -288,6 +318,8 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
   void _handleMenu(_MenuAction action) {
     switch (action) {
+      case _MenuAction.download:
+        _downloadPdf();
       case _MenuAction.edit:
         _edit();
       case _MenuAction.ewayBill:
@@ -298,37 +330,34 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
   }
 
   Future<void> _printPdf() async {
-    setState(() => _loading = true);
-    try {
-      final business = challan.businessId != null
-          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
-          : null;
-      final customerParty = challan.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
-          : null;
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
-      final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms);
-      final result = await _openFile(file);
-      if (!result && mounted) {
-        _showError('Could not open PDF viewer');
-      }
-    } catch (e) {
-      _showError('PDF generation failed: $e');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PdfPreviewScreen(
+          title: 'Delivery Challan ${challan.challanNo}',
+          fileName: 'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
+          shareSubject: 'Delivery Challan ${challan.challanNo}',
+          downloadCopiesBuilder: () => _buildChallanDownloadCopies(),
+          previewBuilder: (_) => _generateChallanPdfBytes(),
+        ),
+      ),
+    );
   }
 
-  Future<void> _sharePdf() async {
-    // Gate: free-tier users see the upgrade prompt first.
+  Future<void> _sendToPrinter() async {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'challan');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'challan',
+      );
       if (!mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -339,16 +368,102 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
     setState(() => _loading = true);
     try {
-      final business = challan.businessId != null
-          ? await ref.read(businessRepositoryProvider).getById(challan.businessId!)
-          : null;
-      final customerParty = challan.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(challan.customerPartyId!)
-          : null;
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms);
-      final file = await DeliveryChallanPdfService.instance
-          .generateChallanPdf(challan, business: business, customerParty: customerParty, termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms, showFreeWatermark: showWatermark);
-      await _shareFile(file, 'Delivery Challan ${challan.challanNo}');
+      final pdfBytes = await _generateChallanPdfBytes(
+        showFreeWatermark: showWatermark,
+      );
+      final outcome = await PdfPrintService.instance.printPdfBytes(
+        pdfBytes,
+        jobName: 'Delivery Challan ${challan.challanNo}',
+      );
+      if (outcome == PdfPrintOutcome.unavailable) {
+        await PdfPrintService.instance.sharePdfBytes(
+          pdfBytes,
+          filename: 'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
+          subject: 'Delivery Challan ${challan.challanNo}',
+        );
+      }
+    } catch (e) {
+      _showError('Print failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _downloadPdf() async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'challan',
+      );
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
+    setState(() => _loading = true);
+    try {
+      final files = await _buildChallanDownloadCopies(
+        showFreeWatermark: showWatermark,
+      );
+      if (!mounted) return;
+      await downloadPdfFiles(files);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved ${files.length} PDF copies')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError('Download failed: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'challan',
+      );
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
+    setState(() => _loading = true);
+    try {
+      final pdfBytes = await _generateChallanPdfBytes(
+        showFreeWatermark: showWatermark,
+      );
+      await PdfPrintService.instance.sharePdfBytes(
+        pdfBytes,
+        filename: 'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
+        subject: 'Delivery Challan ${challan.challanNo}',
+      );
     } catch (e) {
       _showError('Share failed: $e');
     } finally {
@@ -356,10 +471,60 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
     }
   }
 
+  Future<Uint8List> _generateChallanPdfBytes({
+    bool showFreeWatermark = false,
+    String? copyLabel,
+  }) async {
+    final business = challan.businessId != null
+        ? await ref
+              .read(businessRepositoryProvider)
+              .getById(challan.businessId!)
+        : null;
+    final customerParty = challan.customerPartyId != null
+        ? await ref
+              .read(partyRepositoryProvider)
+              .getById(challan.customerPartyId!)
+        : null;
+    final terms = await ref
+        .read(settingsRepositoryProvider)
+        .get(SettingsKeys.challanTerms);
+    return DeliveryChallanPdfService.instance.generateChallanPdfBytes(
+      challan,
+      business: business,
+      customerParty: customerParty,
+      termsAndConditions: terms ?? SettingsKeys.defaultChallanTerms,
+      showFreeWatermark: showFreeWatermark,
+      copyLabel: copyLabel,
+    );
+  }
+
+  Future<List<PdfDownloadRequest>> _buildChallanDownloadCopies({
+    bool showFreeWatermark = false,
+  }) async {
+    final copyInfo = buildGoodsCopyInfo();
+    final files = <PdfDownloadRequest>[];
+    for (var i = 0; i < copyInfo.copyCount; i++) {
+      final copyLabel = copyInfo.labelForCopy(i);
+      final suffix = copyInfo.filenameSuffixForCopy(i);
+      final bytes = await _generateChallanPdfBytes(
+        showFreeWatermark: showFreeWatermark,
+        copyLabel: copyLabel,
+      );
+      files.add(
+        PdfDownloadRequest(
+          bytes: bytes,
+          fileName: 'DC_${challan.challanNo.replaceAll('/', '-')}_$suffix.pdf',
+        ),
+      );
+    }
+    return files;
+  }
+
   Future<void> _delete() async {
     final confirm = await _confirm(
-        'Delete Challan',
-        'This action cannot be undone. Delete ${challan.challanNo}?');
+      'Delete Challan',
+      'This action cannot be undone. Delete ${challan.challanNo}?',
+    );
     if (!confirm) return;
     await ref.read(challansProvider.notifier).remove(challan.id!);
     if (mounted) Navigator.of(context).pop();
@@ -409,45 +574,11 @@ class _ChallanDetailViewState extends ConsumerState<_ChallanDetailView> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  /// Opens a file with the device's default viewer (no-op on web).
-  Future<bool> _openFile(XFile xFile) async {
-    if (kIsWeb) return true;
-    try {
-      final result = await OpenFile.open(xFile.path);
-      return result.type == ResultType.done;
-    } catch (e, st) {
-      AppLogger.instance.warning(
-        'Failed to open delivery challan PDF file',
-        category: 'delivery_challan_detail',
-        error: e,
-        stackTrace: st,
-      );
-      return false;
-    }
-  }
-
-  Future<void> _shareFile(XFile xFile, String subject) async {
-    try {
-      await Share.shareXFiles(
-        [xFile],
-        subject: subject,
-      );
-    } catch (e, st) {
-      AppLogger.instance.warning(
-        'Failed to share delivery challan PDF file',
-        category: 'delivery_challan_detail',
-        error: e,
-        stackTrace: st,
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
-enum _MenuAction { edit, ewayBill, delete }
+enum _MenuAction { download, edit, ewayBill, delete }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
 
@@ -506,10 +637,7 @@ class _StatusBanner extends StatelessWidget {
         children: [
           Icon(icon, color: fg),
           const SizedBox(width: AppSpacing.sm),
-          Text(
-            label,
-            style: context.textTheme.labelLarge?.copyWith(color: fg),
-          ),
+          Text(label, style: context.textTheme.labelLarge?.copyWith(color: fg)),
         ],
       ),
     );
@@ -534,14 +662,16 @@ class _InfoCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Details',
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Details',
+              style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: AppSpacing.lg),
             _Row('Challan No.', challan.challanNo),
             _Row('Customer', challan.customerName),
-            _Row('Date',
-                DateFormatter.formatFull(challan.challanDate)),
+            _Row('Date', DateFormatter.formatFull(challan.challanDate)),
             _Row('Purpose', challan.purpose.label),
             if (challan.customerGstin != null &&
                 challan.customerGstin!.isNotEmpty)
@@ -550,11 +680,15 @@ class _InfoCard extends StatelessWidget {
                 challan.placeOfSupply!.isNotEmpty)
               _Row('Place of Supply', challan.placeOfSupply!),
             if (challan.dispatchDate != null)
-              _Row('Dispatched On',
-                  DateFormatter.formatFull(challan.dispatchDate!)),
+              _Row(
+                'Dispatched On',
+                DateFormatter.formatFull(challan.dispatchDate!),
+              ),
             if (challan.expectedReturnDate != null)
-              _Row('Expected Return',
-                  DateFormatter.formatFull(challan.expectedReturnDate!)),
+              _Row(
+                'Expected Return',
+                DateFormatter.formatFull(challan.expectedReturnDate!),
+              ),
             if (challan.ewbNo != null && challan.ewbNo!.isNotEmpty)
               _Row('EWB No.', challan.ewbNo!),
           ],
@@ -578,14 +712,21 @@ class _Row extends StatelessWidget {
         children: [
           SizedBox(
             width: 140,
-            child: Text(label,
-                style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.colorScheme.outline)),
+            child: Text(
+              label,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colorScheme.outline,
+              ),
+            ),
           ),
           Expanded(
-              child: Text(value,
-                  style: context.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w500))),
+            child: Text(
+              value,
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -613,78 +754,88 @@ class _ItemsCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Items',
-                    style: context.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                Text('${challan.items.length} item(s)',
-                    style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.outline)),
+                Text(
+                  'Items',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${challan.items.length} item(s)',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.outline,
+                  ),
+                ),
               ],
             ),
             const Divider(height: AppSpacing.lg),
             // Header
             Row(
               children: [
-                Expanded(
-                    flex: 3,
-                    child: _HeaderCell('Item')),
+                Expanded(flex: 3, child: _HeaderCell('Item')),
                 Expanded(child: _HeaderCell('Qty', right: true)),
                 Expanded(child: _HeaderCell('Rate', right: true)),
                 Expanded(child: _HeaderCell('Amount', right: true)),
               ],
             ),
             const Divider(height: AppSpacing.sm),
-            ...challan.items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.xs),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.itemName,
-                                style: context.textTheme.bodyMedium),
-                            if (item.description != null &&
-                                item.description!.isNotEmpty)
-                              Text(item.description!,
-                                  style: context.textTheme.bodySmall?.copyWith(
-                                      color: context.colorScheme.outline)),
-                          ],
+            ...challan.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.itemName,
+                            style: context.textTheme.bodyMedium,
+                          ),
+                          if (item.description != null &&
+                              item.description!.isNotEmpty)
+                            Text(
+                              item.description!,
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: context.colorScheme.outline,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        '${_fmtQty(item.qty)} ${item.unit}',
+                        textAlign: TextAlign.right,
+                        style: context.textTheme.bodyMedium,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        CurrencyFormatter.format(item.unitPrice),
+                        textAlign: TextAlign.right,
+                        style: context.textTheme.bodyMedium,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        CurrencyFormatter.format(item.lineTotal),
+                        textAlign: TextAlign.right,
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Expanded(
-                        child: Text(
-                          '${_fmtQty(item.qty)} ${item.unit}',
-                          textAlign: TextAlign.right,
-                          style: context.textTheme.bodyMedium,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          CurrencyFormatter.format(item.unitPrice),
-                          textAlign: TextAlign.right,
-                          style: context.textTheme.bodyMedium,
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          CurrencyFormatter.format(item.lineTotal),
-                          textAlign: TextAlign.right,
-                          style: context.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Divider(),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Total: ',
-                    style: context.textTheme.titleSmall),
+                Text('Total: ', style: context.textTheme.titleSmall),
                 Text(
                   CurrencyFormatter.format(challan.subtotal),
                   style: context.textTheme.titleSmall?.copyWith(
@@ -717,8 +868,9 @@ class _HeaderCell extends StatelessWidget {
     return Text(
       label,
       textAlign: right ? TextAlign.right : TextAlign.left,
-      style: context.textTheme.labelSmall
-          ?.copyWith(color: context.colorScheme.outline),
+      style: context.textTheme.labelSmall?.copyWith(
+        color: context.colorScheme.outline,
+      ),
     );
   }
 }
@@ -741,9 +893,12 @@ class _TransportCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Transport Details',
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Transport Details',
+              style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: AppSpacing.lg),
             if (challan.transporterName != null &&
                 challan.transporterName!.isNotEmpty)
@@ -763,11 +918,16 @@ class _TransportCard extends StatelessWidget {
 
   String _modeLabel(String m) {
     switch (m) {
-      case '1': return 'Road';
-      case '2': return 'Rail';
-      case '3': return 'Air';
-      case '4': return 'Ship';
-      default: return m;
+      case '1':
+        return 'Road';
+      case '2':
+        return 'Rail';
+      case '3':
+        return 'Air';
+      case '4':
+        return 'Ship';
+      default:
+        return m;
     }
   }
 }
@@ -790,9 +950,12 @@ class _NotesCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Notes',
-                style: context.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Notes',
+              style: context.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const Divider(height: AppSpacing.lg),
             Text(notes, style: context.textTheme.bodyMedium),
           ],
@@ -891,8 +1054,9 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
 
     final transport = EwbTransportDetails(
       mode: _mode,
-      vehicleNo:
-          _vehicleCtrl.text.trim().isEmpty ? null : _vehicleCtrl.text.trim(),
+      vehicleNo: _vehicleCtrl.text.trim().isEmpty
+          ? null
+          : _vehicleCtrl.text.trim(),
       transporterName: _transporterNameCtrl.text.trim().isEmpty
           ? null
           : _transporterNameCtrl.text.trim(),
@@ -900,10 +1064,12 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
           ? null
           : _transporterGstinCtrl.text.trim(),
       distanceKm: int.tryParse(_distanceCtrl.text.trim()),
-      transDocNo:
-          _docNoCtrl.text.trim().isEmpty ? null : _docNoCtrl.text.trim(),
-      transDocDate:
-          _docDateCtrl.text.trim().isEmpty ? null : _docDateCtrl.text.trim(),
+      transDocNo: _docNoCtrl.text.trim().isEmpty
+          ? null
+          : _docNoCtrl.text.trim(),
+      transDocDate: _docDateCtrl.text.trim().isEmpty
+          ? null
+          : _docDateCtrl.text.trim(),
     );
 
     try {
@@ -946,9 +1112,9 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -958,8 +1124,8 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isBelowThreshold =
-        EwayBillService.instance.isBelowThresholdForChallan(widget.challan);
+    final isBelowThreshold = EwayBillService.instance
+        .isBelowThresholdForChallan(widget.challan);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -991,8 +1157,9 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Delivery Challan ${widget.challan.challanNo}',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
 
@@ -1006,14 +1173,18 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline,
-                          size: 18, color: theme.colorScheme.secondary),
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: theme.colorScheme.secondary,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           'Challan total is below ₹50,000. EWB is optional for this consignment.',
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onSecondaryContainer),
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
                         ),
                       ),
                     ],
@@ -1032,14 +1203,18 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline,
-                          size: 18, color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.check_circle_outline,
+                        size: 18,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           'EWB No: ${widget.challan.ewbNo}',
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.onPrimaryContainer),
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
                         ),
                       ),
                     ],
@@ -1089,32 +1264,35 @@ class _DcEwayBillSheetState extends State<_DcEwayBillSheet> {
                   if (v.text.isEmpty) return const [];
                   return _frequentTransporters
                       .map((r) => r['name'] as String)
-                      .where((n) =>
-                          n.toLowerCase().contains(v.text.toLowerCase()));
+                      .where(
+                        (n) => n.toLowerCase().contains(v.text.toLowerCase()),
+                      );
                 },
                 onSelected: (name) {
                   _transporterNameCtrl.text = name;
-                  final match = _frequentTransporters
-                      .firstWhere((r) => r['name'] == name,
-                          orElse: () => {});
+                  final match = _frequentTransporters.firstWhere(
+                    (r) => r['name'] == name,
+                    orElse: () => {},
+                  );
                   if (match['gstin'] != null) {
                     _transporterGstinCtrl.text = match['gstin'] as String;
                   }
                 },
                 fieldViewBuilder:
                     (context, ctrl, focusNode, onEditingComplete) {
-                  ctrl.text = _transporterNameCtrl.text;
-                  ctrl.addListener(
-                      () => _transporterNameCtrl.text = ctrl.text);
-                  return TextFormField(
-                    controller: ctrl,
-                    focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      labelText: 'Transporter Name (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  );
-                },
+                      ctrl.text = _transporterNameCtrl.text;
+                      ctrl.addListener(
+                        () => _transporterNameCtrl.text = ctrl.text,
+                      );
+                      return TextFormField(
+                        controller: ctrl,
+                        focusNode: focusNode,
+                        decoration: const InputDecoration(
+                          labelText: 'Transporter Name (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      );
+                    },
               ),
               const SizedBox(height: AppSpacing.md),
 

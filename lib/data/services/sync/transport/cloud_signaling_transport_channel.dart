@@ -7,11 +7,7 @@ import 'sync_transport_channel.dart';
 
 typedef CloudSignalingAdapterFactory = CloudSignalingAdapter Function();
 
-enum CloudTurnRelayMode {
-  disabled,
-  preferred,
-  required,
-}
+enum CloudTurnRelayMode { disabled, preferred, required }
 
 class CloudSignalingSessionOptions {
   const CloudSignalingSessionOptions({
@@ -71,11 +67,11 @@ class CloudSignalingTransportChannel implements SyncTransportChannel {
     this.sessionOptions = const CloudSignalingSessionOptions(),
     CloudSignalingFrameMapper? frameMapper,
     SyncFrameIntegrityChecker? integrityChecker,
-  })  : _adapter =
-            (adapterFactory ?? () => CloudSignalingUnavailableAdapter())(),
-        _mapper = frameMapper ?? const CloudSignalingFrameMapper(),
-        _integrityChecker =
-            integrityChecker ?? const PassthroughSyncFrameIntegrityChecker();
+  }) : _adapter =
+           (adapterFactory ?? () => CloudSignalingUnavailableAdapter())(),
+       _mapper = frameMapper ?? const CloudSignalingFrameMapper(),
+       _integrityChecker =
+           integrityChecker ?? const PassthroughSyncFrameIntegrityChecker();
 
   final CloudSignalingAdapter _adapter;
   final CloudSignalingSessionOptions sessionOptions;

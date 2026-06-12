@@ -7,7 +7,7 @@ import '../../domain/repositories/account_repository.dart';
 /// SQLite implementation of [AccountRepository].
 class AccountRepositoryImpl implements AccountRepository {
   AccountRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _dbHelper;
 
@@ -24,10 +24,14 @@ class AccountRepositoryImpl implements AccountRepository {
     final db = await _db;
     final rows = await db.query(
       'accounts',
-      where: activeOnly ? 'is_active = 1 AND deleted_at IS NULL AND $_ctx' : 'deleted_at IS NULL AND $_ctx',
+      where: activeOnly
+          ? 'is_active = 1 AND deleted_at IS NULL AND $_ctx'
+          : 'deleted_at IS NULL AND $_ctx',
       orderBy: 'is_primary DESC, account_name ASC',
     );
-    return rows.map((r) => Account.fromMap(Map<String, dynamic>.from(r))).toList();
+    return rows
+        .map((r) => Account.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
   }
 
   @override
@@ -48,7 +52,9 @@ class AccountRepositoryImpl implements AccountRepository {
       whereArgs: [type.dbValue],
       orderBy: 'is_primary DESC, account_name ASC',
     );
-    return rows.map((r) => Account.fromMap(Map<String, dynamic>.from(r))).toList();
+    return rows
+        .map((r) => Account.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
   }
 
   @override
@@ -86,7 +92,10 @@ class AccountRepositoryImpl implements AccountRepository {
     final db = await _db;
     await db.update(
       'accounts',
-      {'is_active': active ? 1 : 0, 'updated_at': DateTime.now().toIso8601String()},
+      {
+        'is_active': active ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
       where: 'id = ?',
       whereArgs: [id],
     );

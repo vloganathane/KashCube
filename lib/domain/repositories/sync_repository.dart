@@ -199,10 +199,7 @@ class SyncTableCompleted extends SyncEvent {
 
 /// All tables completed syncing successfully.
 class SyncCompleted extends SyncEvent {
-  const SyncCompleted({
-    required this.totalRowsSynced,
-    required this.duration,
-  });
+  const SyncCompleted({required this.totalRowsSynced, required this.duration});
 
   final int totalRowsSynced;
   final Duration duration;
@@ -210,11 +207,7 @@ class SyncCompleted extends SyncEvent {
 
 /// Sync error occurred (connection lost, merge failure, etc.).
 class SyncError extends SyncEvent {
-  const SyncError({
-    required this.message,
-    this.error,
-    this.stackTrace,
-  });
+  const SyncError({required this.message, this.error, this.stackTrace});
 
   final String message;
   final Object? error;

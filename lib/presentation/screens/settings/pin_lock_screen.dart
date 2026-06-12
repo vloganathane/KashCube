@@ -237,10 +237,7 @@ class _PinLockScreenState extends ConsumerState<PinLockScreen> {
               ],
               const Spacer(),
               // Number pad
-              _NumberPad(
-                onDigit: _onDigit,
-                onBackspace: _onBackspace,
-              ),
+              _NumberPad(onDigit: _onDigit, onBackspace: _onBackspace),
               const SizedBox(height: AppSpacing.xxl),
             ],
           ),
@@ -296,10 +293,7 @@ class _PinDots extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _NumberPad extends StatelessWidget {
-  const _NumberPad({
-    required this.onDigit,
-    required this.onBackspace,
-  });
+  const _NumberPad({required this.onDigit, required this.onBackspace});
 
   final ValueChanged<int> onDigit;
   final VoidCallback onBackspace;
@@ -340,7 +334,9 @@ class _NumberPad extends StatelessWidget {
   Widget _row(List<int> digits) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: digits.map((d) => _DigitButton(digit: d, onTap: onDigit)).toList(),
+      children: digits
+          .map((d) => _DigitButton(digit: d, onTap: onDigit))
+          .toList(),
     );
   }
 }
@@ -364,10 +360,7 @@ class _DigitButton extends StatelessWidget {
           onTap: () => onTap(digit),
           customBorder: const CircleBorder(),
           child: Center(
-            child: Text(
-              '$digit',
-              style: context.textTheme.headlineMedium,
-            ),
+            child: Text('$digit', style: context.textTheme.headlineMedium),
           ),
         ),
       ),

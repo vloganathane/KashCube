@@ -6,7 +6,7 @@ import '../../domain/repositories/party_repository.dart';
 
 class PartyRepositoryImpl implements PartyRepository {
   PartyRepositoryImpl([DatabaseHelper? dbHelper, this.contextId])
-      : _db = dbHelper ?? DatabaseHelper.instance;
+    : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -96,7 +96,8 @@ class PartyRepositoryImpl implements PartyRepository {
     final q = '%${query.trim()}%';
     final rows = await db.query(
       'parties',
-      where: 'deleted_at IS NULL AND $_ctx AND (name LIKE ? OR phone_number LIKE ?)',
+      where:
+          'deleted_at IS NULL AND $_ctx AND (name LIKE ? OR phone_number LIKE ?)',
       whereArgs: [q, q],
       orderBy: 'name COLLATE NOCASE ASC',
     );

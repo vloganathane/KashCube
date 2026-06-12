@@ -5,23 +5,32 @@ void main() {
   group('DefaultSyncKeyRotationPolicy — version check', () {
     const policy = DefaultSyncKeyRotationPolicy(minAcceptableVersion: 2);
 
-    test('returns SyncKeyRotationRequired when keyVersion < minAcceptableVersion', () {
-      final result = policy.evaluate(keyVersion: 1, keyAgeSeconds: 0);
-      expect(result, isA<SyncKeyRotationRequired>());
-      final req = result as SyncKeyRotationRequired;
-      expect(req.reason, contains('1'));
-      expect(req.reason, contains('2'));
-    });
+    test(
+      'returns SyncKeyRotationRequired when keyVersion < minAcceptableVersion',
+      () {
+        final result = policy.evaluate(keyVersion: 1, keyAgeSeconds: 0);
+        expect(result, isA<SyncKeyRotationRequired>());
+        final req = result as SyncKeyRotationRequired;
+        expect(req.reason, contains('1'));
+        expect(req.reason, contains('2'));
+      },
+    );
 
-    test('returns SyncKeyRotationOk when keyVersion == minAcceptableVersion', () {
-      final result = policy.evaluate(keyVersion: 2, keyAgeSeconds: 0);
-      expect(result, isA<SyncKeyRotationOk>());
-    });
+    test(
+      'returns SyncKeyRotationOk when keyVersion == minAcceptableVersion',
+      () {
+        final result = policy.evaluate(keyVersion: 2, keyAgeSeconds: 0);
+        expect(result, isA<SyncKeyRotationOk>());
+      },
+    );
 
-    test('returns SyncKeyRotationOk when keyVersion > minAcceptableVersion', () {
-      final result = policy.evaluate(keyVersion: 5, keyAgeSeconds: 0);
-      expect(result, isA<SyncKeyRotationOk>());
-    });
+    test(
+      'returns SyncKeyRotationOk when keyVersion > minAcceptableVersion',
+      () {
+        final result = policy.evaluate(keyVersion: 5, keyAgeSeconds: 0);
+        expect(result, isA<SyncKeyRotationOk>());
+      },
+    );
   });
 
   group('DefaultSyncKeyRotationPolicy — age thresholds', () {
@@ -36,61 +45,61 @@ void main() {
       expect(result, isA<SyncKeyRotationOk>());
     });
 
-    test('returns SyncKeyRotationOk at exactly recommendRotationAfterDays boundary (30 days)', () {
-      // Exactly 30 days is NOT past the threshold (> not >=).
-      final result = policy.evaluate(
-        keyVersion: 1,
-        keyAgeSeconds: 30 * 86400,
-      );
-      expect(result, isA<SyncKeyRotationOk>());
-    });
+    test(
+      'returns SyncKeyRotationOk at exactly recommendRotationAfterDays boundary (30 days)',
+      () {
+        // Exactly 30 days is NOT past the threshold (> not >=).
+        final result = policy.evaluate(
+          keyVersion: 1,
+          keyAgeSeconds: 30 * 86400,
+        );
+        expect(result, isA<SyncKeyRotationOk>());
+      },
+    );
 
     test('returns SyncKeyRotationRecommended for key 31 days old', () {
-      final result = policy.evaluate(
-        keyVersion: 1,
-        keyAgeSeconds: 31 * 86400,
-      );
+      final result = policy.evaluate(keyVersion: 1, keyAgeSeconds: 31 * 86400);
       expect(result, isA<SyncKeyRotationRecommended>());
       final rec = result as SyncKeyRotationRecommended;
       expect(rec.reason, contains('31'));
     });
 
-    test('returns SyncKeyRotationRecommended at exactly maxKeyAgeDays boundary (90 days)', () {
-      // 90 > 30 (recommendRotationAfterDays) but NOT > 90 (maxKeyAgeDays),
-      // so rotation is recommended but not yet required.
-      final result = policy.evaluate(
-        keyVersion: 1,
-        keyAgeSeconds: 90 * 86400,
-      );
-      expect(result, isA<SyncKeyRotationRecommended>());
-    });
+    test(
+      'returns SyncKeyRotationRecommended at exactly maxKeyAgeDays boundary (90 days)',
+      () {
+        // 90 > 30 (recommendRotationAfterDays) but NOT > 90 (maxKeyAgeDays),
+        // so rotation is recommended but not yet required.
+        final result = policy.evaluate(
+          keyVersion: 1,
+          keyAgeSeconds: 90 * 86400,
+        );
+        expect(result, isA<SyncKeyRotationRecommended>());
+      },
+    );
 
     test('returns SyncKeyRotationRequired for key 91 days old', () {
-      final result = policy.evaluate(
-        keyVersion: 1,
-        keyAgeSeconds: 91 * 86400,
-      );
+      final result = policy.evaluate(keyVersion: 1, keyAgeSeconds: 91 * 86400);
       expect(result, isA<SyncKeyRotationRequired>());
       final req = result as SyncKeyRotationRequired;
       expect(req.reason, contains('91'));
     });
 
     test('returns SyncKeyRotationRequired for a very old key (365 days)', () {
-      final result = policy.evaluate(
-        keyVersion: 1,
-        keyAgeSeconds: 365 * 86400,
-      );
+      final result = policy.evaluate(keyVersion: 1, keyAgeSeconds: 365 * 86400);
       expect(result, isA<SyncKeyRotationRequired>());
     });
   });
 
   group('DefaultSyncKeyRotationPolicy — version floor beats age check', () {
-    test('version floor is evaluated before age -> Required even for fresh key', () {
-      final policy = DefaultSyncKeyRotationPolicy(minAcceptableVersion: 3);
-      final result = policy.evaluate(keyVersion: 2, keyAgeSeconds: 0);
-      // Version 2 < min 3 → Required, regardless of age = 0
-      expect(result, isA<SyncKeyRotationRequired>());
-    });
+    test(
+      'version floor is evaluated before age -> Required even for fresh key',
+      () {
+        final policy = DefaultSyncKeyRotationPolicy(minAcceptableVersion: 3);
+        final result = policy.evaluate(keyVersion: 2, keyAgeSeconds: 0);
+        // Version 2 < min 3 → Required, regardless of age = 0
+        expect(result, isA<SyncKeyRotationRequired>());
+      },
+    );
   });
 
   group('DefaultSyncKeyRotationPolicy — default values', () {

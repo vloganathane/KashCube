@@ -124,8 +124,7 @@ class Loan {
       principalAmount > 0 ? (paidAmount / principalAmount).clamp(0, 1) : 0;
 
   /// Days until due. Negative means overdue.
-  int? get daysUntilDue =>
-      dueDate?.difference(DateTime.now()).inDays;
+  int? get daysUntilDue => dueDate?.difference(DateTime.now()).inDays;
 
   /// Whether this is money you lent to someone.
   bool get isLent => direction == LoanDirection.lent;
@@ -194,8 +193,9 @@ class Loan {
       interestRate: (map['interest_rate'] as num?)?.toDouble(),
       interestType: InterestType.fromDb(map['interest_type'] as String?),
       totalInterest: (map['total_interest'] as num?)?.toDouble(),
-      repaymentFrequency:
-          RepaymentFrequency.fromDb(map['repayment_frequency'] as String?),
+      repaymentFrequency: RepaymentFrequency.fromDb(
+        map['repayment_frequency'] as String?,
+      ),
       notes: map['notes'] as String?,
       tags: map['tags'] as String?,
       businessId: map['business_id'] as int?,

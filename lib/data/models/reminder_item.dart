@@ -3,12 +3,7 @@ import 'invoice.dart';
 import 'transaction.dart';
 
 /// The type of entity that can be reminded about.
-enum ReminderType {
-  invoice,
-  booking,
-  credit,
-  bill,
-}
+enum ReminderType { invoice, booking, credit, bill }
 
 extension ReminderTypeLabel on ReminderType {
   String get label {
@@ -90,10 +85,7 @@ class ReminderItem {
       partyPhone: partyPhone,
       partyEmail: partyEmail,
       reminderSentAt: invoice.reminderSentAt,
-      metadata: {
-        'invoice_id': invoice.id,
-        'status': invoice.status.name,
-      },
+      metadata: {'invoice_id': invoice.id, 'status': invoice.status.name},
     );
   }
 

@@ -37,8 +37,7 @@ class Gstr3bXlsService {
     final dir = await getTemporaryDirectory();
     final safeGstin = wb.businessGstin.replaceAll(RegExp(r'[^A-Z0-9]'), '_');
     final safePeriod = wb.period.replaceAll(' ', '_');
-    final file = File(
-        '${dir.path}/GSTR3B_${safePeriod}_$safeGstin.xlsx');
+    final file = File('${dir.path}/GSTR3B_${safePeriod}_$safeGstin.xlsx');
     await file.writeAsBytes(bytes);
     return file;
   }
@@ -46,52 +45,56 @@ class Gstr3bXlsService {
   // ── Sheet helpers ─────────────────────────────────────────────────────────
 
   static CellStyle _titleStyle() => CellStyle(
-        bold: true,
-        fontSize: 13,
-        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
-        backgroundColorHex: ExcelColor.fromHexString('#1B5E20'),
-        horizontalAlign: HorizontalAlign.Center,
-      );
+    bold: true,
+    fontSize: 13,
+    fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+    backgroundColorHex: ExcelColor.fromHexString('#1B5E20'),
+    horizontalAlign: HorizontalAlign.Center,
+  );
 
   static CellStyle _subTitleStyle() => CellStyle(
-        bold: true,
-        fontSize: 10,
-        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
-        backgroundColorHex: ExcelColor.fromHexString('#1B5E20'),
-        horizontalAlign: HorizontalAlign.Center,
-      );
+    bold: true,
+    fontSize: 10,
+    fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+    backgroundColorHex: ExcelColor.fromHexString('#1B5E20'),
+    horizontalAlign: HorizontalAlign.Center,
+  );
 
   static CellStyle _headerStyle() => CellStyle(
-        bold: true,
-        fontSize: 9,
-        fontColorHex: ExcelColor.fromHexString('#1B5E20'),
-        backgroundColorHex: ExcelColor.fromHexString('#E8F5E9'),
-        horizontalAlign: HorizontalAlign.Center,
-      );
+    bold: true,
+    fontSize: 9,
+    fontColorHex: ExcelColor.fromHexString('#1B5E20'),
+    backgroundColorHex: ExcelColor.fromHexString('#E8F5E9'),
+    horizontalAlign: HorizontalAlign.Center,
+  );
 
   static CellStyle _labelStyle() => CellStyle(
-        bold: false,
-        fontSize: 9,
-        horizontalAlign: HorizontalAlign.Left,
-      );
+    bold: false,
+    fontSize: 9,
+    horizontalAlign: HorizontalAlign.Left,
+  );
 
   static CellStyle _totalStyle() => CellStyle(
-        bold: true,
-        fontSize: 9,
-        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
-        backgroundColorHex: ExcelColor.fromHexString('#2E7D32'),
-        horizontalAlign: HorizontalAlign.Right,
-      );
+    bold: true,
+    fontSize: 9,
+    fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+    backgroundColorHex: ExcelColor.fromHexString('#2E7D32'),
+    horizontalAlign: HorizontalAlign.Right,
+  );
 
-  static CellStyle _amtStyle() => CellStyle(
-        fontSize: 9,
-        horizontalAlign: HorizontalAlign.Right,
-      );
+  static CellStyle _amtStyle() =>
+      CellStyle(fontSize: 9, horizontalAlign: HorizontalAlign.Right);
 
-  void _writeCell(Sheet sheet, int row, int col, dynamic value,
-      {CellStyle? style}) {
-    final cell = sheet.cell(CellIndex.indexByColumnRow(
-        columnIndex: col, rowIndex: row));
+  void _writeCell(
+    Sheet sheet,
+    int row,
+    int col,
+    dynamic value, {
+    CellStyle? style,
+  }) {
+    final cell = sheet.cell(
+      CellIndex.indexByColumnRow(columnIndex: col, rowIndex: row),
+    );
     if (value is double || value is int) {
       cell.value = DoubleCellValue(value is int ? value.toDouble() : value);
     } else {
@@ -100,32 +103,51 @@ class Gstr3bXlsService {
     if (style != null) cell.cellStyle = style;
   }
 
-  void _writeTitleBlock(Sheet sheet, String title, String businessName,
-      String gstin, String period, int startRow) {
+  void _writeTitleBlock(
+    Sheet sheet,
+    String title,
+    String businessName,
+    String gstin,
+    String period,
+    int startRow,
+  ) {
     // Row 0: title
     _writeCell(sheet, startRow, 0, title, style: _titleStyle());
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow),
-        CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow),
+      CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow),
+    );
 
     // Row 1: business + gstin
-    _writeCell(sheet, startRow + 1, 0, businessName,
-        style: _subTitleStyle());
+    _writeCell(sheet, startRow + 1, 0, businessName, style: _subTitleStyle());
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow + 1),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: startRow + 1));
-    _writeCell(sheet, startRow + 1, 4, 'GSTIN: $gstin',
-        style: _subTitleStyle());
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow + 1),
+      CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: startRow + 1),
+    );
+    _writeCell(
+      sheet,
+      startRow + 1,
+      4,
+      'GSTIN: $gstin',
+      style: _subTitleStyle(),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: startRow + 1),
-        CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow + 1));
+      CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: startRow + 1),
+      CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow + 1),
+    );
 
     // Row 2: period
-    _writeCell(sheet, startRow + 2, 0, 'Period: $period',
-        style: _subTitleStyle());
+    _writeCell(
+      sheet,
+      startRow + 2,
+      0,
+      'Period: $period',
+      style: _subTitleStyle(),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow + 2),
-        CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow + 2));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: startRow + 2),
+      CellIndex.indexByColumnRow(columnIndex: 7, rowIndex: startRow + 2),
+    );
   }
 
   // ── Sheet 1: Table 3.1 Outward ───────────────────────────────────────────
@@ -133,13 +155,24 @@ class Gstr3bXlsService {
   void _buildOutwardSheet(Excel excel, Gstr3bWorkbook wb) {
     final sheet = excel['Table 3.1 – Outward Supply'];
 
-    _writeTitleBlock(sheet, 'GSTR-3B — Table 3.1: Outward Supply Liability',
-        wb.businessName, wb.businessGstin, wb.period, 0);
+    _writeTitleBlock(
+      sheet,
+      'GSTR-3B — Table 3.1: Outward Supply Liability',
+      wb.businessName,
+      wb.businessGstin,
+      wb.period,
+      0,
+    );
 
     // Column headers (row 4)
     const headers = [
-      'Category', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'CESS',
-      'Total Tax'
+      'Category',
+      'Taxable Value',
+      'IGST',
+      'CGST',
+      'SGST',
+      'CESS',
+      'Total Tax',
     ];
     for (int c = 0; c < headers.length; c++) {
       _writeCell(sheet, 4, c, headers[c], style: _headerStyle());
@@ -148,9 +181,9 @@ class Gstr3bXlsService {
     // Data rows
     final rows = [
       ['(a) Outward Taxable (Regular)', wb.outwardRegular],
-      ['(b) Zero Rated / Exports',      wb.outwardZeroRated],
-      ['(c) Nil / Exempted',            wb.outwardNilExempted],
-      ['(d) Inward (RCM)',              wb.rcmLiability],
+      ['(b) Zero Rated / Exports', wb.outwardZeroRated],
+      ['(c) Nil / Exempted', wb.outwardNilExempted],
+      ['(d) Inward (RCM)', wb.rcmLiability],
     ];
 
     int r = 5;
@@ -189,15 +222,21 @@ class Gstr3bXlsService {
   void _buildInwardItcSheet(Excel excel, Gstr3bWorkbook wb) {
     final sheet = excel['Table 4 – ITC'];
 
-    _writeTitleBlock(sheet,
-        'GSTR-3B — Table 4: Input Tax Credit (ITC)',
-        wb.businessName, wb.businessGstin, wb.period, 0);
+    _writeTitleBlock(
+      sheet,
+      'GSTR-3B — Table 4: Input Tax Credit (ITC)',
+      wb.businessName,
+      wb.businessGstin,
+      wb.period,
+      0,
+    );
 
     // Section A: ITC Available
     _writeCell(sheet, 4, 0, 'A. ITC AVAILABLE', style: _subTitleStyle());
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 4),
-        CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: 4));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 4),
+      CellIndex.indexByColumnRow(columnIndex: 5, rowIndex: 4),
+    );
 
     const headers = ['Category', 'IGST', 'CGST', 'SGST', 'CESS', 'Total'];
     for (int c = 0; c < headers.length; c++) {
@@ -205,9 +244,9 @@ class Gstr3bXlsService {
     }
 
     final itcRows = [
-      ['(1) Eligible ITC (Import + B2B)',     wb.itcEligible],
-      ['(2) ITC Reversed (Rule 42 / 43)',     wb.itcReversed],
-      ['(3) ITC Blocked (Sec. 17(5))',        wb.itcBlocked],
+      ['(1) Eligible ITC (Import + B2B)', wb.itcEligible],
+      ['(2) ITC Reversed (Rule 42 / 43)', wb.itcReversed],
+      ['(3) ITC Blocked (Sec. 17(5))', wb.itcBlocked],
     ];
 
     int r = 6;
@@ -224,8 +263,13 @@ class Gstr3bXlsService {
     }
 
     final netItc = wb.netItc;
-    _writeCell(sheet, r, 0, 'NET ITC (Eligible − Reversed)',
-        style: _totalStyle());
+    _writeCell(
+      sheet,
+      r,
+      0,
+      'NET ITC (Eligible − Reversed)',
+      style: _totalStyle(),
+    );
     _writeCell(sheet, r, 1, netItc.igst, style: _totalStyle());
     _writeCell(sheet, r, 2, netItc.cgst, style: _totalStyle());
     _writeCell(sheet, r, 3, netItc.sgst, style: _totalStyle());
@@ -243,18 +287,29 @@ class Gstr3bXlsService {
   void _buildOffsetSheet(Excel excel, Gstr3bWorkbook wb) {
     final sheet = excel['ITC Offset & Cash Payable'];
 
-    _writeTitleBlock(sheet,
-        'GSTR-3B — ITC Offset & Cash Ledger Summary',
-        wb.businessName, wb.businessGstin, wb.period, 0);
+    _writeTitleBlock(
+      sheet,
+      'GSTR-3B — ITC Offset & Cash Ledger Summary',
+      wb.businessName,
+      wb.businessGstin,
+      wb.period,
+      0,
+    );
 
     final result = wb.offsetData.compute();
 
     // Section: Paid by ITC
-    _writeCell(sheet, 4, 0, 'PAID BY ITC (Credit Utilisation)',
-        style: _subTitleStyle());
+    _writeCell(
+      sheet,
+      4,
+      0,
+      'PAID BY ITC (Credit Utilisation)',
+      style: _subTitleStyle(),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 4),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: 4));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 4),
+      CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: 4),
+    );
 
     const colHeader = ['Head', 'IGST', 'CGST', 'SGST'];
     for (int c = 0; c < colHeader.length; c++) {
@@ -262,7 +317,12 @@ class Gstr3bXlsService {
     }
 
     final creditRows = [
-      ['By Credit', result.igstByCredit, result.cgstByCredit, result.sgstByCredit],
+      [
+        'By Credit',
+        result.igstByCredit,
+        result.cgstByCredit,
+        result.sgstByCredit,
+      ],
     ];
     int r = 6;
     for (final row in creditRows) {
@@ -275,11 +335,17 @@ class Gstr3bXlsService {
 
     r++; // blank row
     // Section: Cash Required
-    _writeCell(sheet, r, 0, 'CASH LEDGER PAYMENT REQUIRED',
-        style: _subTitleStyle());
+    _writeCell(
+      sheet,
+      r,
+      0,
+      'CASH LEDGER PAYMENT REQUIRED',
+      style: _subTitleStyle(),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: r),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: r),
+      CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r),
+    );
     r++;
 
     for (int c = 0; c < colHeader.length; c++) {
@@ -288,7 +354,12 @@ class Gstr3bXlsService {
     r++;
 
     final cashRows = [
-      ['Cash Required', result.igstByCash, result.cgstByCash, result.sgstByCash],
+      [
+        'Cash Required',
+        result.igstByCash,
+        result.cgstByCash,
+        result.sgstByCash,
+      ],
     ];
     for (final row in cashRows) {
       _writeCell(sheet, r, 0, row[0], style: _labelStyle());
@@ -302,25 +373,37 @@ class Gstr3bXlsService {
     final totalCash = result.totalCash;
     r++;
     _writeCell(sheet, r, 0, 'TOTAL CASH TO PAY', style: _totalStyle());
-    _writeCell(sheet, r, 1,
-        _amtFmt.format(totalCash), style: CellStyle(
-          bold: true,
-          fontSize: 11,
-          fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
-          backgroundColorHex: ExcelColor.fromHexString('#B71C1C'),
-          horizontalAlign: HorizontalAlign.Right,
-        ));
+    _writeCell(
+      sheet,
+      r,
+      1,
+      _amtFmt.format(totalCash),
+      style: CellStyle(
+        bold: true,
+        fontSize: 11,
+        fontColorHex: ExcelColor.fromHexString('#FFFFFF'),
+        backgroundColorHex: ExcelColor.fromHexString('#B71C1C'),
+        horizontalAlign: HorizontalAlign.Right,
+      ),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: r),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r));
+      CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: r),
+      CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r),
+    );
 
     r += 2;
     // Credit carry-forward
-    _writeCell(sheet, r, 0, 'CREDIT BALANCE CARRY FORWARD',
-        style: _subTitleStyle());
+    _writeCell(
+      sheet,
+      r,
+      0,
+      'CREDIT BALANCE CARRY FORWARD',
+      style: _subTitleStyle(),
+    );
     sheet.merge(
-        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: r),
-        CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r));
+      CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: r),
+      CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: r),
+    );
     r++;
     for (int c = 0; c < colHeader.length; c++) {
       _writeCell(sheet, r, c, colHeader[c], style: _headerStyle());

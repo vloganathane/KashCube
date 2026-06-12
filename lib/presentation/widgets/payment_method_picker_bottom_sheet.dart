@@ -116,147 +116,151 @@ class _PaymentMethodPickerBottomSheetState
             ),
             const SizedBox(height: AppSpacing.lg),
 
-          // Title
-          Text(
-            widget.title ?? 'Payment Received',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.base),
-
-          // Amount (editable for partial payments)
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: theme.textTheme.headlineMedium?.copyWith(
-              color: colors.income,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'RobotoMono',
-            ),
-            decoration: InputDecoration(
-              labelText: 'Amount',
-              prefixText: '₹ ',
-              prefixStyle: theme.textTheme.headlineMedium?.copyWith(
-                color: colors.income,
-                fontWeight: FontWeight.bold,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outline),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: colors.income, width: 2),
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-            ),
-            onChanged: (value) {
-              setState(() {
-                _amount = double.tryParse(value) ?? widget.amount;
-              });
-            },
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            'Tap to edit for partial payment',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-
-          if (widget.customerName != null) ...[
-            const SizedBox(height: AppSpacing.xs),
+            // Title
             Text(
-              '${widget.partyPrefix} ${widget.customerName}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-              ),
-            ),
-          ],
-
-          const SizedBox(height: AppSpacing.xl),
-
-          // Date selector (if not today)
-          if (_selectedDate.day != DateTime.now().day ||
-              _selectedDate.month != DateTime.now().month ||
-              _selectedDate.year != DateTime.now().year ||
-              _showDatePicker) ...[
-            OutlinedButton.icon(
-              onPressed: _pickDate,
-              icon: const Icon(Icons.calendar_today, size: 16),
-              label: Text(
-                'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
-              ),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
+              widget.title ?? 'Payment Received',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: AppSpacing.base),
-          ],
 
-          // Payment method buttons
-          Text(
-            'Payment Method',
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            // Amount (editable for partial payments)
+            TextField(
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                color: colors.income,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'RobotoMono',
+              ),
+              decoration: InputDecoration(
+                labelText: 'Amount',
+                prefixText: '₹ ',
+                prefixStyle: theme.textTheme.headlineMedium?.copyWith(
+                  color: colors.income,
+                  fontWeight: FontWeight.bold,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.outline),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: theme.colorScheme.outline),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: colors.income, width: 2),
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _amount = double.tryParse(value) ?? widget.amount;
+                });
+              },
             ),
-          ),
-          const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              'Tap to edit for partial payment',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
 
-          // Grid of payment method buttons
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.md,
-            children: [
-              _PaymentMethodButton(
-                method: PaymentMethod.cash,
-                isRecommended: widget.lastUsedMethod == PaymentMethod.cash,
-                onTap: () => _selectMethod(PaymentMethod.cash),
-              ),
-              _PaymentMethodButton(
-                method: PaymentMethod.upi,
-                isRecommended: widget.lastUsedMethod == PaymentMethod.upi,
-                onTap: () => _selectMethod(PaymentMethod.upi),
-              ),
-              _PaymentMethodButton(
-                method: PaymentMethod.creditCard,
-                label: 'Card',
-                isRecommended: widget.lastUsedMethod == PaymentMethod.creditCard ||
-                    widget.lastUsedMethod == PaymentMethod.debitCard,
-                onTap: () => _selectMethod(PaymentMethod.creditCard),
-              ),
-              _PaymentMethodButton(
-                method: PaymentMethod.netBanking,
-                label: 'Bank',
-                isRecommended: widget.lastUsedMethod == PaymentMethod.netBanking,
-                onTap: () => _selectMethod(PaymentMethod.netBanking),
+            if (widget.customerName != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                '${widget.partyPrefix} ${widget.customerName}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
               ),
             ],
-          ),
 
-          const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
 
-          // Other date option
-          if (!_showDatePicker)
-            TextButton.icon(
-              onPressed: _showDateSelector,
-              icon: const Icon(Icons.access_time, size: 16),
-              label: const Text('Other Date...'),
-              style: TextButton.styleFrom(
-                minimumSize: const Size(double.infinity, 40),
+            // Date selector (if not today)
+            if (_selectedDate.day != DateTime.now().day ||
+                _selectedDate.month != DateTime.now().month ||
+                _selectedDate.year != DateTime.now().year ||
+                _showDatePicker) ...[
+              OutlinedButton.icon(
+                onPressed: _pickDate,
+                icon: const Icon(Icons.calendar_today, size: 16),
+                label: Text(
+                  'Date: ${DateFormat('dd MMM yyyy').format(_selectedDate)}',
+                ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
+
+            // Payment method buttons
+            Text(
+              'Payment Method',
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
 
-          // Bottom padding for safe area
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
-        ],
+            // Grid of payment method buttons
+            Wrap(
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
+              children: [
+                _PaymentMethodButton(
+                  method: PaymentMethod.cash,
+                  isRecommended: widget.lastUsedMethod == PaymentMethod.cash,
+                  onTap: () => _selectMethod(PaymentMethod.cash),
+                ),
+                _PaymentMethodButton(
+                  method: PaymentMethod.upi,
+                  isRecommended: widget.lastUsedMethod == PaymentMethod.upi,
+                  onTap: () => _selectMethod(PaymentMethod.upi),
+                ),
+                _PaymentMethodButton(
+                  method: PaymentMethod.creditCard,
+                  label: 'Card',
+                  isRecommended:
+                      widget.lastUsedMethod == PaymentMethod.creditCard ||
+                      widget.lastUsedMethod == PaymentMethod.debitCard,
+                  onTap: () => _selectMethod(PaymentMethod.creditCard),
+                ),
+                _PaymentMethodButton(
+                  method: PaymentMethod.netBanking,
+                  label: 'Bank',
+                  isRecommended:
+                      widget.lastUsedMethod == PaymentMethod.netBanking,
+                  onTap: () => _selectMethod(PaymentMethod.netBanking),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.lg),
+
+            // Other date option
+            if (!_showDatePicker)
+              TextButton.icon(
+                onPressed: _showDateSelector,
+                icon: const Icon(Icons.access_time, size: 16),
+                label: const Text('Other Date...'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 40),
+                ),
+              ),
+
+            // Bottom padding for safe area
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
         ),
       ),
     );
@@ -297,9 +301,13 @@ class _PaymentMethodButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return SizedBox(
-      width: (MediaQuery.of(context).size.width - AppSpacing.lg * 2 - AppSpacing.md) / 2,
+      width:
+          (MediaQuery.of(context).size.width -
+              AppSpacing.lg * 2 -
+              AppSpacing.md) /
+          2,
       height: 80,
       child: FilledButton.tonal(
         onPressed: onTap,
@@ -311,10 +319,7 @@ class _PaymentMethodButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: isRecommended
-                ? BorderSide(
-                    color: theme.colorScheme.primary,
-                    width: 2,
-                  )
+                ? BorderSide(color: theme.colorScheme.primary, width: 2)
                 : BorderSide.none,
           ),
         ),

@@ -41,22 +41,26 @@ class WebUiExtractor {
   bool get isExtracting => _extracting;
 
   Future<String> _extract() async {
-    final tmpDir  = await getTemporaryDirectory();
-    final outDir  = Directory('${tmpDir.path}/kashcube_web_ui');
+    final tmpDir = await getTemporaryDirectory();
+    final outDir = Directory('${tmpDir.path}/kashcube_web_ui');
 
     // Always re-extract to pick up new builds (simple version-insensitive approach).
     if (outDir.existsSync()) outDir.deleteSync(recursive: true);
     outDir.createSync(recursive: true);
 
     // Read the manifest to know which files to extract.
-    final manifestText = await rootBundle.loadString('assets/web_ui/manifest.txt');
+    final manifestText = await rootBundle.loadString(
+      'assets/web_ui/manifest.txt',
+    );
     final files = manifestText
         .split('\n')
         .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
         .toList();
 
-    debugPrint('[WebUiExtractor] Extracting ${files.length} files to ${outDir.path}');
+    debugPrint(
+      '[WebUiExtractor] Extracting ${files.length} files to ${outDir.path}',
+    );
 
     for (final relativePath in files) {
       final file = File('${outDir.path}/$relativePath');
@@ -90,7 +94,9 @@ class WebUiExtractor {
           // no_sleep.js is optional for wakelock on web UI; serve an empty
           // fallback to keep the embedded HTTP server booting.
           if (packageKey.endsWith('/no_sleep.js')) {
-            debugPrint('[WebUiExtractor] Optional asset missing: $packageKey. Using empty fallback file.');
+            debugPrint(
+              '[WebUiExtractor] Optional asset missing: $packageKey. Using empty fallback file.',
+            );
             return ByteData(0);
           }
           rethrow;

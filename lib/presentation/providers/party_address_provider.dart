@@ -12,7 +12,9 @@ final partyAddressRepositoryProvider = Provider<PartyAddressRepository>(
 
 // ── Per-party addresses (default first) ──────────────────────────────────────
 
-final partyAddressesProvider =
-    FutureProvider.family<List<PartyAddress>, int>((ref, partyId) {
+final partyAddressesProvider = FutureProvider.family<List<PartyAddress>, int>((
+  ref,
+  partyId,
+) {
   return ref.read(partyAddressRepositoryProvider).getByPartyId(partyId);
 });

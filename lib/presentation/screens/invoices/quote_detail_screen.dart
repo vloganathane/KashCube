@@ -1,8 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:open_file/open_file.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/constants/app_spacing.dart';
 import '../../../core/constants/subscription_tier.dart';
@@ -10,13 +9,19 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/date_formatter.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/quote.dart';
+import '../../../data/services/pdf_copy_info.dart';
+import '../../../data/services/pdf_download_request.dart';
 import '../../../data/services/invoice_pdf_service.dart';
+import '../../../data/services/pdf_print_service.dart';
+import '../../../data/services/web/pdf_download_stub.dart'
+    if (dart.library.html) '../../../data/services/web/pdf_download_web.dart';
 import '../../providers/business_provider.dart';
 import '../../../data/models/activity_log.dart';
 import '../../providers/activity_log_provider.dart';
 import '../../providers/invoice_provider.dart';
 import '../../providers/party_provider.dart';
 import '../../providers/settings_provider.dart';
+import '../../widgets/pdf_preview_screen.dart';
 import '../../widgets/upgrade_prompt_sheet.dart';
 import '../../widgets/template_selector.dart';
 import '../settings/upgrade_screen.dart';
@@ -100,6 +105,16 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
             onPressed: _loading ? null : _previewPdf,
           ),
           IconButton(
+            icon: const Icon(Icons.download_outlined),
+            tooltip: 'Download PDF',
+            onPressed: _loading ? null : _downloadPdf,
+          ),
+          IconButton(
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Print PDF',
+            onPressed: _loading ? null : _printPdf,
+          ),
+          IconButton(
             icon: const Icon(Icons.share_outlined),
             tooltip: 'Share PDF',
             onPressed: _loading ? null : _sharePdf,
@@ -107,6 +122,14 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
           PopupMenuButton<_Action>(
             onSelected: _handleMenu,
             itemBuilder: (_) => [
+              const PopupMenuItem(
+                value: _Action.download,
+                child: ListTile(
+                  leading: Icon(Icons.download_outlined),
+                  title: Text('Download PDF'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
               if (_canEdit)
                 const PopupMenuItem(
                   value: _Action.edit,
@@ -233,6 +256,8 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
 
   void _handleMenu(_Action action) {
     switch (action) {
+      case _Action.download:
+        _downloadPdf();
       case _Action.edit:
         _edit();
       case _Action.reject:
@@ -256,30 +281,113 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 
   Future<void> _previewPdf() async {
-    setState(() => _loading = true);
-    try {
-      final business = ref.read(activeBusinessProvider);
-      final party = quote.customerPartyId != null
-          ? await ref
-                .read(partyRepositoryProvider)
-                .getById(quote.customerPartyId!)
-          : null;
-      final tc = await ref
-          .read(settingsRepositoryProvider)
-          .get(SettingsKeys.quoteTerms);
-      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
-        quote,
-        business: business,
-        customerParty: party,
-        termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PdfPreviewScreen(
+          title: 'Quote ${quote.quoteNo}',
+          fileName: 'Quote_${quote.quoteNo}.pdf',
+          shareSubject: 'Quote ${quote.quoteNo}',
+          downloadCopiesBuilder: () => _buildQuoteDownloadCopies(
+            showUpiQr: ref.read(subscriptionTierProvider).isStarter,
+          ),
+          previewBuilder: (_) => _generateQuotePdfBytes(
+            showUpiQr: ref.read(subscriptionTierProvider).isStarter,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _printPdf() async {
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'quote',
       );
       if (!mounted) return;
-      if (!kIsWeb) await OpenFile.open(pdfFile.path);
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
+    setState(() => _loading = true);
+    try {
+      final pdfBytes = await _generateQuotePdfBytes(
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
+      );
+      if (!mounted) return;
+      final outcome = await PdfPrintService.instance.printPdfBytes(
+        pdfBytes,
+        jobName: 'Quote ${quote.quoteNo}',
+      );
+      if (outcome == PdfPrintOutcome.unavailable) {
+        await PdfPrintService.instance.sharePdfBytes(
+          pdfBytes,
+          filename: 'Quote_${quote.quoteNo}.pdf',
+          subject: 'Quote ${quote.quoteNo}',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Preview failed: $e')));
+      ).showSnackBar(SnackBar(content: Text('Print failed: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _downloadPdf() async {
+    // Gate: free-tier users see the upgrade prompt first.
+    final tier = ref.read(subscriptionTierProvider);
+    bool showWatermark = false;
+    if (tier.isFree) {
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'quote',
+      );
+      if (!mounted) return;
+      if (action == UpgradePromptAction.upgrade) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
+        return;
+      } else if (action == UpgradePromptAction.shareWithWatermark) {
+        showWatermark = true;
+      } else {
+        return;
+      }
+    }
+
+    setState(() => _loading = true);
+    try {
+      final files = await _buildQuoteDownloadCopies(
+        showFreeWatermark: showWatermark,
+        showUpiQr: tier.isStarter,
+      );
+      if (!mounted) return;
+      await downloadPdfFiles(files);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved ${files.length} PDF copies')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -311,19 +419,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     setState(() => _loading = true);
     try {
       final business = ref.read(activeBusinessProvider);
-      final party = quote.customerPartyId != null
-          ? await ref
-                .read(partyRepositoryProvider)
-                .getById(quote.customerPartyId!)
-          : null;
-      final tc = await ref
-          .read(settingsRepositoryProvider)
-          .get(SettingsKeys.quoteTerms);
-      final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
-        quote,
-        business: business,
-        customerParty: party,
-        termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
+      final pdfBytes = await _generateQuotePdfBytes(
         showFreeWatermark: showWatermark,
         showUpiQr: tier.isStarter,
       );
@@ -334,10 +430,11 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
           'Quote ${quote.quoteNo} for ${CurrencyFormatter.format(quote.total)}'
           '${due != null ? '\nValid till ${DateFormatter.formatFull(due)}' : ''}'
           '\n\n— ${business?.name ?? 'My Business'}';
-      await Share.shareXFiles(
-        [pdfFile],
+      await PdfPrintService.instance.sharePdfBytes(
+        pdfBytes,
+        filename: 'Quote_${quote.quoteNo}.pdf',
         subject: 'Quote ${quote.quoteNo}',
-        text: message,
+        body: message,
       );
       // Promote draft → sent after a successful share.
       if (quote.status == QuoteStatus.draft && quote.id != null) {
@@ -352,6 +449,55 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<Uint8List> _generateQuotePdfBytes({
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+    String? copyLabel,
+  }) async {
+    final business = ref.read(activeBusinessProvider);
+    final party = quote.customerPartyId != null
+        ? await ref
+              .read(partyRepositoryProvider)
+              .getById(quote.customerPartyId!)
+        : null;
+    final tc = await ref
+        .read(settingsRepositoryProvider)
+        .get(SettingsKeys.quoteTerms);
+    return InvoicePdfService.instance.generateQuotePdfBytes(
+      quote,
+      business: business,
+      customerParty: party,
+      termsAndConditions: tc ?? SettingsKeys.defaultQuoteTerms,
+      showFreeWatermark: showFreeWatermark,
+      showUpiQr: showUpiQr,
+      copyLabel: copyLabel,
+    );
+  }
+
+  Future<List<PdfDownloadRequest>> _buildQuoteDownloadCopies({
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+  }) async {
+    final copyInfo = buildQuoteCopyInfo(quote.items);
+    final files = <PdfDownloadRequest>[];
+    for (var i = 0; i < copyInfo.copyCount; i++) {
+      final copyLabel = copyInfo.labelForCopy(i);
+      final suffix = copyInfo.filenameSuffixForCopy(i);
+      final bytes = await _generateQuotePdfBytes(
+        showFreeWatermark: showFreeWatermark,
+        showUpiQr: showUpiQr,
+        copyLabel: copyLabel,
+      );
+      files.add(
+        PdfDownloadRequest(
+          bytes: bytes,
+          fileName: 'Quote_${quote.quoteNo}_$suffix.pdf',
+        ),
+      );
+    }
+    return files;
   }
 
   Future<void> _convertToInvoice() async {
@@ -457,7 +603,7 @@ class _QuoteDetailViewState extends ConsumerState<_QuoteDetailView> {
   }
 }
 
-enum _Action { edit, reject, delete }
+enum _Action { download, edit, reject, delete }
 
 // ── Activity Card ─────────────────────────────────────────────────────────────
 

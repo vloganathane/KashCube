@@ -67,10 +67,8 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final hasPhone =
-        item.partyPhone != null && item.partyPhone!.isNotEmpty;
-    final hasEmail =
-        item.partyEmail != null && item.partyEmail!.isNotEmpty;
+    final hasPhone = item.partyPhone != null && item.partyPhone!.isNotEmpty;
+    final hasEmail = item.partyEmail != null && item.partyEmail!.isNotEmpty;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -105,8 +103,8 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
           Text(
             '${item.type.label} · ${item.partyName}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
 
@@ -125,10 +123,7 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
           ),
           const SizedBox(height: AppSpacing.md),
 
-          Text(
-            'Send via:',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
+          Text('Send via:', style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: AppSpacing.sm),
 
           // ── Channel buttons ────────────────────────────────────────────
@@ -137,8 +132,8 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
               'No phone or email on record. '
               'Add contact details to the party to enable reminders.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
+                color: Theme.of(context).colorScheme.error,
+              ),
             )
           else
             Wrap(
@@ -176,8 +171,8 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
           Text(
             'Your messaging app will open with the message pre-filled.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
         ],
@@ -196,16 +191,13 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
     try {
       switch (channel) {
         case 'whatsapp':
-          success =
-              await comm.sendWhatsApp(widget.item.partyPhone!, msg);
+          success = await comm.sendWhatsApp(widget.item.partyPhone!, msg);
         case 'sms':
-          success =
-              await comm.sendSMS(widget.item.partyPhone!, msg);
+          success = await comm.sendSMS(widget.item.partyPhone!, msg);
         case 'email':
           final subject =
               '${widget.item.type.label} Reminder — ${widget.item.title}';
-          success = await comm.sendEmail(
-              widget.item.partyEmail!, subject, msg);
+          success = await comm.sendEmail(widget.item.partyEmail!, subject, msg);
       }
     } finally {
       if (mounted) setState(() => _sending = false);
@@ -225,8 +217,13 @@ class _ReminderBottomSheetState extends ConsumerState<ReminderBottomSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Could not open ${channel == 'whatsapp' ? 'WhatsApp' : channel == 'sms' ? 'SMS app' : 'email app'}. '
-              'Make sure the app is installed.'),
+            'Could not open ${channel == 'whatsapp'
+                ? 'WhatsApp'
+                : channel == 'sms'
+                ? 'SMS app'
+                : 'email app'}. '
+            'Make sure the app is installed.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -258,10 +255,7 @@ class _ChannelChip extends StatelessWidget {
           ? SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: color,
-              ),
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
             )
           : Icon(icon, size: 16, color: color),
       label: Text(label),

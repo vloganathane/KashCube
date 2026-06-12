@@ -34,7 +34,8 @@ class RecurringTransactionsScreen extends ConsumerWidget {
             tooltip: 'Search recurring',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const SearchScreen(initialFilter: SearchFilter.recurring),
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.recurring),
               ),
             ),
           ),
@@ -57,8 +58,9 @@ class RecurringTransactionsScreen extends ConsumerWidget {
                   Icon(
                     Icons.repeat,
                     size: 64,
-                    color: context.colorScheme.onSurfaceVariant
-                        .withValues(alpha: 0.4),
+                    color: context.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.4,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.base),
                   Text(
@@ -77,8 +79,7 @@ class RecurringTransactionsScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.base),
             itemCount: items.length,
-            separatorBuilder: (_, _) =>
-                const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (_, i) => _RecurringCard(item: items[i]),
           );
         },
@@ -88,9 +89,7 @@ class RecurringTransactionsScreen extends ConsumerWidget {
 
   void _openAddScreen(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddRecurringTransactionScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const AddRecurringTransactionScreen()),
     );
   }
 }
@@ -163,10 +162,7 @@ class _RecurringCard extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                item.category,
-                style: ctx.textTheme.titleLarge,
-              ),
+              Text(item.category, style: ctx.textTheme.titleLarge),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 _currencyFormat.format(item.amount),
@@ -177,10 +173,7 @@ class _RecurringCard extends ConsumerWidget {
                 label: 'Type',
                 value: item.type == 'income' ? 'Income' : 'Expense',
               ),
-              _DetailRow(
-                label: 'Frequency',
-                value: item.frequency.label,
-              ),
+              _DetailRow(label: 'Frequency', value: item.frequency.label),
               _DetailRow(
                 label: 'Next Date',
                 value: _dateFormat.format(item.nextDate),
@@ -188,10 +181,7 @@ class _RecurringCard extends ConsumerWidget {
               if (item.partyName != null)
                 _DetailRow(label: 'Party', value: item.partyName!),
               if (item.paymentMethod != null)
-                _DetailRow(
-                  label: 'Payment',
-                  value: item.paymentMethod!,
-                ),
+                _DetailRow(label: 'Payment', value: item.paymentMethod!),
               if (item.notes != null && item.notes!.isNotEmpty)
                 _DetailRow(label: 'Notes', value: item.notes!),
               if (item.lastGenerated != null)
@@ -221,17 +211,14 @@ class _RecurringCard extends ConsumerWidget {
                             ),
                             actions: [
                               TextButton(
-                                onPressed: () =>
-                                    Navigator.pop(context, false),
+                                onPressed: () => Navigator.pop(context, false),
                                 child: const Text('Cancel'),
                               ),
                               FilledButton(
                                 style: FilledButton.styleFrom(
-                                  backgroundColor:
-                                      context.colorScheme.error,
+                                  backgroundColor: context.colorScheme.error,
                                 ),
-                                onPressed: () =>
-                                    Navigator.pop(context, true),
+                                onPressed: () => Navigator.pop(context, true),
                                 child: const Text('Delete'),
                               ),
                             ],
@@ -239,8 +226,7 @@ class _RecurringCard extends ConsumerWidget {
                         );
                         if (confirmed == true) {
                           ref
-                              .read(
-                                  recurringTransactionsProvider.notifier)
+                              .read(recurringTransactionsProvider.notifier)
                               .remove(item.id!);
                         }
                       },
@@ -330,13 +316,15 @@ class _AddRecurringTransactionScreenState
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Recurring'),
-      ),
+      appBar: AppBar(title: const Text('Add Recurring')),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
           child: FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check),
@@ -364,8 +352,7 @@ class _AddRecurringTransactionScreenState
                 ),
               ],
               selected: {_type},
-              onSelectionChanged: (val) =>
-                  setState(() => _type = val.first),
+              onSelectionChanged: (val) => setState(() => _type = val.first),
             ),
             const SizedBox(height: AppSpacing.base),
 
@@ -377,8 +364,9 @@ class _AddRecurringTransactionScreenState
                 prefixText: '${AppConstants.currencySymbol} ',
                 border: OutlineInputBorder(),
               ),
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Enter amount';
                 if (double.tryParse(v) == null || double.parse(v) <= 0) {
@@ -413,8 +401,7 @@ class _AddRecurringTransactionScreenState
                 border: OutlineInputBorder(),
               ),
               items: RecurringFrequency.values
-                  .map((f) =>
-                      DropdownMenuItem(value: f, child: Text(f.label)))
+                  .map((f) => DropdownMenuItem(value: f, child: Text(f.label)))
                   .toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _frequency = v);
@@ -432,8 +419,7 @@ class _AddRecurringTransactionScreenState
                 final picked = await showDatePicker(
                   context: context,
                   initialDate: _startDate,
-                  firstDate:
-                      DateTime.now().subtract(const Duration(days: 365)),
+                  firstDate: DateTime.now().subtract(const Duration(days: 365)),
                   lastDate: DateTime.now().add(const Duration(days: 365)),
                 );
                 if (picked != null) {
@@ -451,8 +437,7 @@ class _AddRecurringTransactionScreenState
                 border: OutlineInputBorder(),
               ),
               items: AppConstants.paymentMethods
-                  .map((m) =>
-                      DropdownMenuItem(value: m, child: Text(m)))
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                   .toList(),
               onChanged: (v) {
                 if (v != null) setState(() => _paymentMethod = v);
@@ -477,7 +462,6 @@ class _AddRecurringTransactionScreenState
               maxLines: 2,
             ),
             const SizedBox(height: AppSpacing.xl),
-
           ],
         ),
       ),
@@ -494,12 +478,8 @@ class _AddRecurringTransactionScreenState
       frequency: _frequency,
       nextDate: _startDate,
       paymentMethod: _paymentMethod,
-      partyName: _partyController.text.isEmpty
-          ? null
-          : _partyController.text,
-      notes: _notesController.text.isEmpty
-          ? null
-          : _notesController.text,
+      partyName: _partyController.text.isEmpty ? null : _partyController.text,
+      notes: _notesController.text.isEmpty ? null : _notesController.text,
     );
 
     ref.read(recurringTransactionsProvider.notifier).add(recurring);

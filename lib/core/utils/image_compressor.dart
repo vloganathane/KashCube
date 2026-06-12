@@ -38,27 +38,29 @@ Future<String> compressPickedImage(XFile xfile) async {
     // Hard cap: 150 KB — reduce quality further if still too large.
     if (compressed.length > 150 * 1024) {
       compressed = await FlutterImageCompress.compressWithList(
-            compressed,
-            minWidth: 800,
-            minHeight: 600,
-            quality: 50,
-          );
+        compressed,
+        minWidth: 800,
+        minHeight: 600,
+        quality: 50,
+      );
     }
 
-    final dir      = await getApplicationDocumentsDirectory();
+    final dir = await getApplicationDocumentsDirectory();
     final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final dest     = File('${dir.path}/$fileName');
+    final dest = File('${dir.path}/$fileName');
     await dest.writeAsBytes(compressed);
 
-    debugPrint('[ImageCompress] → ${compressed.length ~/ 1024} KB after compression');
+    debugPrint(
+      '[ImageCompress] → ${compressed.length ~/ 1024} KB after compression',
+    );
     return dest.path;
   } catch (e) {
     debugPrint('[ImageCompress] Error ($e) — saving raw bytes to docs dir');
     try {
-      final bytes    = await xfile.readAsBytes();
-      final dir      = await getApplicationDocumentsDirectory();
+      final bytes = await xfile.readAsBytes();
+      final dir = await getApplicationDocumentsDirectory();
       final fileName = 'img_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final dest     = File('${dir.path}/$fileName');
+      final dest = File('${dir.path}/$fileName');
       await dest.writeAsBytes(bytes);
       return dest.path;
     } catch (e, st) {

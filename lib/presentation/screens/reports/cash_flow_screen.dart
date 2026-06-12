@@ -31,11 +31,11 @@ enum _CashFlowFilter { all, inflow, outflow, overdue }
 
 extension on _CashFlowFilter {
   String get label => switch (this) {
-        _CashFlowFilter.all => 'All',
-        _CashFlowFilter.inflow => 'Inflow',
-        _CashFlowFilter.outflow => 'Outflow',
-        _CashFlowFilter.overdue => 'Overdue',
-      };
+    _CashFlowFilter.all => 'All',
+    _CashFlowFilter.inflow => 'Inflow',
+    _CashFlowFilter.outflow => 'Outflow',
+    _CashFlowFilter.overdue => 'Overdue',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -66,7 +66,8 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const SearchScreen(
-                    initialFilter: SearchFilter.transactions),
+                  initialFilter: SearchFilter.transactions,
+                ),
               ),
             ),
           ),
@@ -85,9 +86,7 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
           return CustomScrollView(
             slivers: [
               // Summary strip
-              SliverToBoxAdapter(
-                child: _SummaryStrip(events: allEvents),
-              ),
+              SliverToBoxAdapter(child: _SummaryStrip(events: allEvents)),
               // Filter chips
               SliverToBoxAdapter(
                 child: _FilterChipRow(
@@ -101,7 +100,8 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
               else
                 ..._buildTimelineSliver(context, filtered),
               const SliverToBoxAdapter(
-                  child: SizedBox(height: AppSpacing.xxxl)),
+                child: SizedBox(height: AppSpacing.xxxl),
+              ),
             ],
           );
         },
@@ -110,7 +110,9 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
   }
 
   List<CashFlowEvent> _applyFilter(
-      List<CashFlowEvent> events, _CashFlowFilter filter) {
+    List<CashFlowEvent> events,
+    _CashFlowFilter filter,
+  ) {
     return switch (filter) {
       _CashFlowFilter.all => events,
       _CashFlowFilter.inflow =>
@@ -123,7 +125,9 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
   }
 
   List<Widget> _buildTimelineSliver(
-      BuildContext context, List<CashFlowEvent> events) {
+    BuildContext context,
+    List<CashFlowEvent> events,
+  ) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -133,41 +137,51 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
 
     for (int i = 0; i < events.length; i++) {
       final event = events[i];
-      final eventDay =
-          DateTime(event.date.year, event.date.month, event.date.day);
+      final eventDay = DateTime(
+        event.date.year,
+        event.date.month,
+        event.date.day,
+      );
 
       // Insert "TODAY / UPCOMING" divider
       if (!shownTodayDivider && !eventDay.isBefore(today)) {
-        slivers.add(SliverToBoxAdapter(
-          child: _SectionDivider(
+        slivers.add(
+          SliverToBoxAdapter(
+            child: _SectionDivider(
               label: 'TODAY — ${DateFormat('d MMM yy').format(today)}',
-              color: context.colorScheme.primary),
-        ));
+              color: context.colorScheme.primary,
+            ),
+          ),
+        );
         shownTodayDivider = true;
       } else if (shownTodayDivider &&
           !shownUpcomingDivider &&
           event.status == CashFlowStatus.upcoming &&
           eventDay.isAfter(today)) {
-        slivers.add(SliverToBoxAdapter(
-          child: _SectionDivider(
+        slivers.add(
+          SliverToBoxAdapter(
+            child: _SectionDivider(
               label: 'UPCOMING',
-              color: context.colorScheme.tertiary),
-        ));
+              color: context.colorScheme.tertiary,
+            ),
+          ),
+        );
         shownUpcomingDivider = true;
       }
 
-      slivers.add(SliverToBoxAdapter(
-        child: _EventTile(event: event),
-      ));
+      slivers.add(SliverToBoxAdapter(child: _EventTile(event: event)));
     }
 
     // If all events are in the past, still show today divider at end
     if (!shownTodayDivider) {
-      slivers.add(SliverToBoxAdapter(
-        child: _SectionDivider(
+      slivers.add(
+        SliverToBoxAdapter(
+          child: _SectionDivider(
             label: 'TODAY — ${DateFormat('d MMM yy').format(today)}',
-            color: context.colorScheme.primary),
-      ));
+            color: context.colorScheme.primary,
+          ),
+        ),
+      );
     }
 
     return slivers;
@@ -182,8 +196,7 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Cash Flow Timeline',
-                style: context.textTheme.titleLarge),
+            Text('Cash Flow Timeline', style: context.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Shows all recorded, upcoming, and overdue money movements '
@@ -192,25 +205,29 @@ class _CashFlowScreenState extends ConsumerState<CashFlowScreen> {
             ),
             const SizedBox(height: AppSpacing.base),
             _InfoRow(
-                icon: Icons.check_circle_outline,
-                color: Colors.green,
-                label: 'Recorded',
-                detail: 'Past transactions from your ledger'),
+              icon: Icons.check_circle_outline,
+              color: Colors.green,
+              label: 'Recorded',
+              detail: 'Past transactions from your ledger',
+            ),
             _InfoRow(
-                icon: Icons.warning_amber,
-                color: Colors.red,
-                label: 'Overdue',
-                detail: 'Past their due date, not yet settled'),
+              icon: Icons.warning_amber,
+              color: Colors.red,
+              label: 'Overdue',
+              detail: 'Past their due date, not yet settled',
+            ),
             _InfoRow(
-                icon: Icons.schedule,
-                color: Colors.orange,
-                label: 'Upcoming',
-                detail: 'Expected in the next 7–90 days'),
+              icon: Icons.schedule,
+              color: Colors.orange,
+              label: 'Upcoming',
+              detail: 'Expected in the next 7–90 days',
+            ),
             _InfoRow(
-                icon: Icons.autorenew,
-                color: Colors.blue,
-                label: 'Projected',
-                detail: 'Recurring bills beyond the near-term window'),
+              icon: Icons.autorenew,
+              color: Colors.blue,
+              label: 'Projected',
+              detail: 'Recurring bills beyond the near-term window',
+            ),
           ],
         ),
       ),
@@ -252,7 +269,9 @@ class _SummaryStrip extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: [
           Expanded(
@@ -305,7 +324,9 @@ class _StatBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: color.withAlpha(18),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -314,18 +335,23 @@ class _StatBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 2),
-            Text(label,
-                style: context.textTheme.labelSmall
-                    ?.copyWith(color: color)),
-          ]),
-          Text(value,
-              style: context.textTheme.titleSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
-              )),
+          Row(
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 2),
+              Text(
+                label,
+                style: context.textTheme.labelSmall?.copyWith(color: color),
+              ),
+            ],
+          ),
+          Text(
+            value,
+            style: context.textTheme.titleSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -348,8 +374,7 @@ class _FilterChipRow extends StatelessWidget {
       height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding:
-            const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
         itemCount: _CashFlowFilter.values.length,
         separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.xs),
         itemBuilder: (_, i) {
@@ -380,7 +405,9 @@ class _SectionDivider extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
       color: color.withAlpha(15),
       child: Text(
         label,
@@ -407,8 +434,9 @@ class _EventTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
     final (icon, iconColor) = _iconFor(event, colors);
-    final amountColor =
-        event.direction == CashFlowDirection.inflow ? colors.income : colors.expense;
+    final amountColor = event.direction == CashFlowDirection.inflow
+        ? colors.income
+        : colors.expense;
     final signedAmount = event.direction == CashFlowDirection.inflow
         ? '+${CurrencyFormatter.format(event.amount)}'
         : '-${CurrencyFormatter.format(event.amount)}';
@@ -417,7 +445,9 @@ class _EventTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
       leading: Container(
         width: 40,
         height: 40,
@@ -432,8 +462,9 @@ class _EventTile extends StatelessWidget {
           Expanded(
             child: Text(
               event.description,
-              style: context.textTheme.bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w500),
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -451,18 +482,21 @@ class _EventTile extends StatelessWidget {
             '${DateFormat('d MMM').format(event.date)}'
             '${event.partyName != null ? " · ${event.partyName}" : ""}'
             '${event.categoryLabel != null ? " · ${event.categoryLabel}" : ""}',
-            style: context.textTheme.bodySmall
-                ?.copyWith(color: context.colorScheme.outline),
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.outline,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
-          Builder(builder: (ctx) {
-            final info = _lifecycleFrom(event);
-            if (info == null) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: LifecycleTag(info: info),
-            );
-          }),
+          Builder(
+            builder: (ctx) {
+              final info = _lifecycleFrom(event);
+              if (info == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: LifecycleTag(info: info),
+              );
+            },
+          ),
         ],
       ),
       trailing: Text(
@@ -488,7 +522,10 @@ class _EventTile extends StatelessWidget {
         OverdueScheduledEvent() => (Icons.repeat_outlined, colors.expense),
         UpcomingScheduledEvent() => (Icons.repeat_outlined, colors.credit),
         ProjectedScheduledEvent() => (Icons.autorenew, Colors.blue),
-        UpcomingBookingEvent() => (Icons.calendar_month_outlined, colors.income),
+        UpcomingBookingEvent() => (
+          Icons.calendar_month_outlined,
+          colors.income,
+        ),
       };
 
   Widget? _statusBadge(CashFlowEvent event) {
@@ -503,17 +540,20 @@ class _EventTile extends StatelessWidget {
     final today = DateTime.now();
     final today0 = DateTime(today.year, today.month, today.day);
     return switch (event) {
-      RecordedEvent()         => null,
+      RecordedEvent() => null,
       ProjectedScheduledEvent() => null,
-      OverdueInvoiceEvent()  || OverdueCreditEvent() ||
-      OverdueLoanEvent()     || OverdueScheduledEvent() => LifecycleInfo(
-            stage: LifecycleStage.overdue,
-            daysInStage: today0
-                .difference(DateTime(
-                    event.date.year, event.date.month, event.date.day))
-                .inDays
-                .clamp(0, 9999),
-          ),
+      OverdueInvoiceEvent() ||
+      OverdueCreditEvent() ||
+      OverdueLoanEvent() ||
+      OverdueScheduledEvent() => LifecycleInfo(
+        stage: LifecycleStage.overdue,
+        daysInStage: today0
+            .difference(
+              DateTime(event.date.year, event.date.month, event.date.day),
+            )
+            .inDays
+            .clamp(0, 9999),
+      ),
       _ => null,
     };
   }
@@ -528,8 +568,7 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withAlpha(25),
         borderRadius: BorderRadius.circular(4),
@@ -561,12 +600,14 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.timeline,
-              size: 64, color: context.colorScheme.outline),
+          Icon(Icons.timeline, size: 64, color: context.colorScheme.outline),
           const SizedBox(height: AppSpacing.base),
-          Text('No events match this filter',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(color: context.colorScheme.outline)),
+          Text(
+            'No events match this filter',
+            style: context.textTheme.titleMedium?.copyWith(
+              color: context.colorScheme.outline,
+            ),
+          ),
         ],
       ),
     );
@@ -601,12 +642,18 @@ class _InfoRow extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label,
-                  style: context.textTheme.labelMedium
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              Text(detail,
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.colorScheme.outline)),
+              Text(
+                label,
+                style: context.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                detail,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.outline,
+                ),
+              ),
             ],
           ),
         ],

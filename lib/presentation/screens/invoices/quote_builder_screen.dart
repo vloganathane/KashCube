@@ -53,13 +53,13 @@ class QuoteBuilderScreen extends ConsumerStatefulWidget {
   final int? invoiceId;
   final int? challanId;
   final DocumentType docType;
+
   /// When [docType] is [DocumentType.creditNote] or [DocumentType.debitNote],
   /// pre-fills customer, items, and snapshots the original invoice link.
   final Invoice? sourceInvoice;
 
   @override
-  ConsumerState<QuoteBuilderScreen> createState() =>
-      _QuoteBuilderScreenState();
+  ConsumerState<QuoteBuilderScreen> createState() => _QuoteBuilderScreenState();
 }
 
 class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
@@ -75,7 +75,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _issueDateKey = GlobalKey();
   final _dueDateKey = GlobalKey();
   final _notesFieldKey = GlobalKey();
-  
+
   String _customerName = '';
   int? _customerPartyId;
   int? _selectedBusinessId;
@@ -202,32 +202,45 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           '${_monthName(source.issueDate.month)} '
           '${source.issueDate.year}';
       _items.clear();
-      _items.addAll(source.items.map(
-        (ii) => _LineItem(
-          itemName: ii.itemName,
-          description: ii.description ?? '',
-          qty: ii.qty,
-          unitPrice: ii.unitPrice,
-          taxPct: ii.taxPct,
-          discountPct: ii.discountPct,
-          hsnCode: ii.hsnCode,
-          unit: ii.unit,
-          hsnOrSac: ii.hsnOrSac,
-          catalogItemId: ii.catalogItemId,
+      _items.addAll(
+        source.items.map(
+          (ii) => _LineItem(
+            itemName: ii.itemName,
+            description: ii.description ?? '',
+            qty: ii.qty,
+            unitPrice: ii.unitPrice,
+            taxPct: ii.taxPct,
+            discountPct: ii.discountPct,
+            hsnCode: ii.hsnCode,
+            unit: ii.unit,
+            hsnOrSac: ii.hsnOrSac,
+            catalogItemId: ii.catalogItemId,
+          ),
         ),
-      ));
+      );
     });
     _initDocumentNumber();
   }
 
   static String _monthName(int m) => const [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m - 1];
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m - 1];
 
   Future<void> _loadQuote() async {
-    final quote =
-        await ref.read(quoteRepositoryProvider).getById(widget.quoteId!);
+    final quote = await ref
+        .read(quoteRepositoryProvider)
+        .getById(widget.quoteId!);
     if (quote == null) return;
     if (!mounted) return;
     setState(() {
@@ -237,38 +250,47 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _documentNoCtrl.text = quote.quoteNo;
       _customerPartyId = quote.customerPartyId;
       _selectedBusinessId = quote.businessId;
-      _validUntil = quote.validUntil ??
-          DateTime.now().add(const Duration(days: 30));
+      _validUntil =
+          quote.validUntil ?? DateTime.now().add(const Duration(days: 30));
       _notesController.text = quote.notes ?? '';
       _freightAmt = quote.freightAmt;
       _insuranceAmt = quote.insuranceAmt;
       _packingAmt = quote.packingAmt;
-      _freightCtrl.text = quote.freightAmt > 0 ? quote.freightAmt.toStringAsFixed(2) : '';
-      _insuranceCtrl.text = quote.insuranceAmt > 0 ? quote.insuranceAmt.toStringAsFixed(2) : '';
-      _packingCtrl.text = quote.packingAmt > 0 ? quote.packingAmt.toStringAsFixed(2) : '';
+      _freightCtrl.text = quote.freightAmt > 0
+          ? quote.freightAmt.toStringAsFixed(2)
+          : '';
+      _insuranceCtrl.text = quote.insuranceAmt > 0
+          ? quote.insuranceAmt.toStringAsFixed(2)
+          : '';
+      _packingCtrl.text = quote.packingAmt > 0
+          ? quote.packingAmt.toStringAsFixed(2)
+          : '';
       _items.clear();
-      _items.addAll(quote.items.map(
-        (qi) => _LineItem(
-          itemName: qi.itemName,
-          description: qi.description ?? '',
-          qty: qi.qty,
-          unitPrice: qi.unitPrice,
-          taxPct: qi.taxPct,
-          discountPct: qi.discountPct,
-          hsnCode: qi.hsnCode,
-          unit: qi.unit,
-          hsnOrSac: qi.hsnOrSac,
+      _items.addAll(
+        quote.items.map(
+          (qi) => _LineItem(
+            itemName: qi.itemName,
+            description: qi.description ?? '',
+            qty: qi.qty,
+            unitPrice: qi.unitPrice,
+            taxPct: qi.taxPct,
+            discountPct: qi.discountPct,
+            hsnCode: qi.hsnCode,
+            unit: qi.unit,
+            hsnOrSac: qi.hsnOrSac,
+          ),
         ),
-      ));
+      );
     });
   }
 
   Future<void> _loadInvoice() async {
-    final invoice =
-        await ref.read(invoiceRepositoryProvider).getById(widget.invoiceId!);
+    final invoice = await ref
+        .read(invoiceRepositoryProvider)
+        .getById(widget.invoiceId!);
     if (invoice == null) return;
     if (!mounted) return;
-    
+
     // Prevent editing paid or partially paid invoices
     if (invoice.status == InvoiceStatus.paid ||
         invoice.status == InvoiceStatus.partiallyPaid) {
@@ -293,7 +315,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       if (mounted) Navigator.pop(context);
       return;
     }
-    
+
     setState(() {
       _existingInvoice = invoice;
       _customerName = invoice.customerName;
@@ -307,9 +329,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _freightAmt = invoice.freightAmt;
       _insuranceAmt = invoice.insuranceAmt;
       _packingAmt = invoice.packingAmt;
-      _freightCtrl.text = invoice.freightAmt > 0 ? invoice.freightAmt.toStringAsFixed(2) : '';
-      _insuranceCtrl.text = invoice.insuranceAmt > 0 ? invoice.insuranceAmt.toStringAsFixed(2) : '';
-      _packingCtrl.text = invoice.packingAmt > 0 ? invoice.packingAmt.toStringAsFixed(2) : '';
+      _freightCtrl.text = invoice.freightAmt > 0
+          ? invoice.freightAmt.toStringAsFixed(2)
+          : '';
+      _insuranceCtrl.text = invoice.insuranceAmt > 0
+          ? invoice.insuranceAmt.toStringAsFixed(2)
+          : '';
+      _packingCtrl.text = invoice.packingAmt > 0
+          ? invoice.packingAmt.toStringAsFixed(2)
+          : '';
       // Restore delivery address snapshot from existing invoice
       if (invoice.deliveryAddress != null ||
           invoice.deliveryCity != null ||
@@ -326,20 +354,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         );
       }
       _items.clear();
-      _items.addAll(invoice.items.map(
-        (ii) => _LineItem(
-          itemName: ii.itemName,
-          description: ii.description ?? '',
-          qty: ii.qty,
-          unitPrice: ii.unitPrice,
-          taxPct: ii.taxPct,
-          discountPct: ii.discountPct,
-          hsnCode: ii.hsnCode,
-          unit: ii.unit,
-          hsnOrSac: ii.hsnOrSac,
-          catalogItemId: ii.catalogItemId,
+      _items.addAll(
+        invoice.items.map(
+          (ii) => _LineItem(
+            itemName: ii.itemName,
+            description: ii.description ?? '',
+            qty: ii.qty,
+            unitPrice: ii.unitPrice,
+            taxPct: ii.taxPct,
+            discountPct: ii.discountPct,
+            hsnCode: ii.hsnCode,
+            unit: ii.unit,
+            hsnOrSac: ii.hsnOrSac,
+            catalogItemId: ii.catalogItemId,
+          ),
         ),
-      ));
+      );
     });
   }
 
@@ -383,18 +413,20 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         );
       }
       _items.clear();
-      _items.addAll(challan.items.map(
-        (ci) => _LineItem(
-          itemName: ci.itemName,
-          description: ci.description ?? '',
-          qty: ci.qty,
-          unitPrice: ci.unitPrice,
-          hsnCode: ci.hsnCode,
-          unit: ci.unit,
-          hsnOrSac: ci.hsnOrSac,
-          catalogItemId: ci.catalogItemId,
+      _items.addAll(
+        challan.items.map(
+          (ci) => _LineItem(
+            itemName: ci.itemName,
+            description: ci.description ?? '',
+            qty: ci.qty,
+            unitPrice: ci.unitPrice,
+            hsnCode: ci.hsnCode,
+            unit: ci.unit,
+            hsnOrSac: ci.hsnOrSac,
+            catalogItemId: ci.catalogItemId,
+          ),
         ),
-      ));
+      );
     });
   }
 
@@ -415,101 +447,107 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     super.dispose();
   }
 
-  double get _subtotal =>
-      _items.fold(0.0, (s, i) => s + i.qty * i.unitPrice);
+  double get _subtotal => _items.fold(0.0, (s, i) => s + i.qty * i.unitPrice);
 
-  double get _taxTotal => _items.fold(
-      0.0,
-      (s, i) =>
-          s + i.qty * i.unitPrice * (i.taxPct / 100));
+  double get _taxTotal =>
+      _items.fold(0.0, (s, i) => s + i.qty * i.unitPrice * (i.taxPct / 100));
 
   double get _discountAmt => _items.fold(
-      0.0,
-      (s, i) =>
-          s +
-          i.qty *
-              i.unitPrice *
-              (1 + i.taxPct / 100) *
-              (i.discountPct / 100));
+    0.0,
+    (s, i) =>
+        s + i.qty * i.unitPrice * (1 + i.taxPct / 100) * (i.discountPct / 100),
+  );
 
-  double get _total => _subtotal + _taxTotal - _discountAmt + _freightAmt + _insuranceAmt + _packingAmt;
+  double get _total =>
+      _subtotal +
+      _taxTotal -
+      _discountAmt +
+      _freightAmt +
+      _insuranceAmt +
+      _packingAmt;
 
   List<QuoteItem> get _quoteItems => _items.map((li) {
-        final lineTotal = QuoteItem.computeLineTotal(
-          qty: li.qty,
-          unitPrice: li.unitPrice,
-          taxPct: li.taxPct,
-          discountPct: li.discountPct,
-        );
-        return QuoteItem(
-          quoteId: 0,
-          itemName: li.itemName,
-          description: li.description.isEmpty ? null : li.description,
-          qty: li.qty,
-          unitPrice: li.unitPrice,
-          taxPct: li.taxPct,
-          discountPct: li.discountPct,
-          lineTotal: lineTotal,
-          hsnCode: li.hsnCode,
-          unit: li.unit,
-          hsnOrSac: li.hsnOrSac,
-        );
-      }).toList();
+    final lineTotal = QuoteItem.computeLineTotal(
+      qty: li.qty,
+      unitPrice: li.unitPrice,
+      taxPct: li.taxPct,
+      discountPct: li.discountPct,
+    );
+    return QuoteItem(
+      quoteId: 0,
+      itemName: li.itemName,
+      description: li.description.isEmpty ? null : li.description,
+      qty: li.qty,
+      unitPrice: li.unitPrice,
+      taxPct: li.taxPct,
+      discountPct: li.discountPct,
+      lineTotal: lineTotal,
+      hsnCode: li.hsnCode,
+      unit: li.unit,
+      hsnOrSac: li.hsnOrSac,
+    );
+  }).toList();
 
   List<InvoiceItem> get _invoiceItems => _items.map((li) {
-        final lt = li.qty *
-            li.unitPrice *
-            (1 + li.taxPct / 100) *
-            (1 - li.discountPct / 100);
-        return InvoiceItem(
-          invoiceId: 0,
+    final lt =
+        li.qty *
+        li.unitPrice *
+        (1 + li.taxPct / 100) *
+        (1 - li.discountPct / 100);
+    return InvoiceItem(
+      invoiceId: 0,
+      itemName: li.itemName,
+      description: li.description.isEmpty ? null : li.description,
+      qty: li.qty,
+      unitPrice: li.unitPrice,
+      taxPct: li.taxPct,
+      discountPct: li.discountPct,
+      lineTotal: lt,
+      hsnCode: li.hsnCode,
+      unit: li.unit,
+      hsnOrSac: li.hsnOrSac,
+      catalogItemId: li.catalogItemId,
+    );
+  }).toList();
+
+  List<ChallanItem> get _challanItems => _items
+      .map(
+        (li) => ChallanItem(
+          challanId: 0,
           itemName: li.itemName,
           description: li.description.isEmpty ? null : li.description,
           qty: li.qty,
-          unitPrice: li.unitPrice,
-          taxPct: li.taxPct,
-          discountPct: li.discountPct,
-          lineTotal: lt,
-          hsnCode: li.hsnCode,
           unit: li.unit,
+          unitPrice: li.unitPrice,
+          hsnCode: li.hsnCode,
           hsnOrSac: li.hsnOrSac,
           catalogItemId: li.catalogItemId,
-        );
-      }).toList();
-
-  List<ChallanItem> get _challanItems => _items
-      .map((li) => ChallanItem(
-            challanId: 0,
-            itemName: li.itemName,
-            description: li.description.isEmpty ? null : li.description,
-            qty: li.qty,
-            unit: li.unit,
-            unitPrice: li.unitPrice,
-            hsnCode: li.hsnCode,
-            hsnOrSac: li.hsnOrSac,
-            catalogItemId: li.catalogItemId,
-          ))
+        ),
+      )
       .toList();
 
   Future<void> _save({bool send = false}) async {
     if (!_formKey.currentState!.validate()) return;
     _customerName = _customerCtrl.text.trim();
     if (_customerName.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
       return;
     }
-    if (_items.isEmpty ||
-        _items.every((i) => i.itemName.trim().isEmpty)) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Add at least one item')));
+    if (_items.isEmpty || _items.every((i) => i.itemName.trim().isEmpty)) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Add at least one item')));
       return;
     }
 
     // Advance tutorial flow if on save step
     final currentStep = ref.read(tutorialFlowProvider);
     if (currentStep == TutorialFlowStep.newInvoiceSave) {
-      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceResult);
+      ref
+          .read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newInvoiceResult);
     }
 
     setState(() => _isSaving = true);
@@ -588,9 +626,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     }
     if (mounted) setState(() => _existingQuote = quote.copyWith(id: savedId));
     if (send) {
-      final bizName =
-          ref.read(activeBusinessProvider)?.name ?? 'My Business';
-      final msg = 'Hi $_customerName,\n\n'
+      final bizName = ref.read(activeBusinessProvider)?.name ?? 'My Business';
+      final msg =
+          'Hi $_customerName,\n\n'
           'Quote #${quote.quoteNo} for ${CurrencyFormatter.format(_total)}.\n'
           'Valid till ${DateFormatter.format(_validUntil)}.\n\n'
           '— $bizName';
@@ -612,7 +650,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .read(partyRepositoryProvider)
                 .getById(_customerPartyId!);
           }
-          final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+          final quoteTerms = await ref
+              .read(settingsRepositoryProvider)
+              .get(SettingsKeys.quoteTerms);
           final tier = ref.read(subscriptionTierProvider);
           return InvoicePdfService.instance.generateQuotePdf(
             quote,
@@ -635,7 +675,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cannot save: invoice is paid and locked from editing'),
+            content: Text(
+              'Cannot save: invoice is paid and locked from editing',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -655,7 +697,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       }
       return;
     }
-    
+
     final status = _existingInvoice?.status ?? InvoiceStatus.draft;
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
@@ -697,12 +739,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       deliveryGstin: _selectedDeliveryAddress?.gstin,
       invoiceType: switch (widget.docType) {
         DocumentType.creditNote => InvoiceType.creditNote,
-        DocumentType.debitNote  => InvoiceType.debitNote,
-        _                       => _existingInvoice?.invoiceType ?? InvoiceType.taxInvoice,
+        DocumentType.debitNote => InvoiceType.debitNote,
+        _ => _existingInvoice?.invoiceType ?? InvoiceType.taxInvoice,
       },
-      originalInvoiceId:   _originalInvoiceId   ?? _existingInvoice?.originalInvoiceId,
-      originalInvoiceNo:   _originalInvoiceNo   ?? _existingInvoice?.originalInvoiceNo,
-      originalInvoiceDate: _originalInvoiceDate  ?? _existingInvoice?.originalInvoiceDate,
+      originalInvoiceId:
+          _originalInvoiceId ?? _existingInvoice?.originalInvoiceId,
+      originalInvoiceNo:
+          _originalInvoiceNo ?? _existingInvoice?.originalInvoiceNo,
+      originalInvoiceDate:
+          _originalInvoiceDate ?? _existingInvoice?.originalInvoiceDate,
       items: _invoiceItems,
       createdAt: _existingInvoice?.createdAt ?? DateTime.now(),
       updatedAt: DateTime.now(),
@@ -712,13 +757,16 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       await ref.read(invoicesProvider.notifier).edit(invoice, _invoiceItems);
       savedId = invoice.id!;
     } else {
-      savedId = await ref.read(invoicesProvider.notifier).add(invoice, _invoiceItems);
+      savedId = await ref
+          .read(invoicesProvider.notifier)
+          .add(invoice, _invoiceItems);
     }
-    if (mounted) setState(() => _existingInvoice = invoice.copyWith(id: savedId));
+    if (mounted)
+      setState(() => _existingInvoice = invoice.copyWith(id: savedId));
     if (send) {
-      final bizName =
-          ref.read(activeBusinessProvider)?.name ?? 'My Business';
-      final msg = 'Hi $_customerName,\n\n'
+      final bizName = ref.read(activeBusinessProvider)?.name ?? 'My Business';
+      final msg =
+          'Hi $_customerName,\n\n'
           'Invoice #${invoice.invoiceNo} for ${CurrencyFormatter.format(_total)}.'
           '${_dueDate != null ? '\nDue ${DateFormatter.format(_dueDate!)}.' : ''}\n\n'
           '— $bizName';
@@ -740,13 +788,16 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 .read(partyRepositoryProvider)
                 .getById(_customerPartyId!);
           }
-          final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
+          final invoiceTerms = await ref
+              .read(settingsRepositoryProvider)
+              .get(SettingsKeys.invoiceTerms);
           final tier = ref.read(subscriptionTierProvider);
           return InvoicePdfService.instance.generateInvoicePdf(
             invoice,
             business: business,
             customerParty: customerParty,
-            termsAndConditions: invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
+            termsAndConditions:
+                invoiceTerms ?? SettingsKeys.defaultInvoiceTerms,
             showFreeWatermark: tier.isFree,
             showUpiQr: tier.isStarter,
           );
@@ -758,8 +809,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   Future<void> _saveChallan() async {
     final activeBusiness = ref.read(activeBusinessProvider);
     final businessId = _selectedBusinessId ?? activeBusiness?.id;
-    final subtotal =
-        _items.fold<double>(0, (s, i) => s + i.qty * i.unitPrice);
+    final subtotal = _items.fold<double>(0, (s, i) => s + i.qty * i.unitPrice);
     final challan = DeliveryChallan(
       id: _existingChallan?.id,
       challanNo: _documentNoCtrl.text.trim().isEmpty
@@ -781,8 +831,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           : _transporterCtrl.text.trim(),
       transportMode: _transportMode,
       distanceKm: int.tryParse(_distanceCtrl.text),
-      ewbNo:
-          _ewbNoCtrl.text.trim().isEmpty ? null : _ewbNoCtrl.text.trim(),
+      ewbNo: _ewbNoCtrl.text.trim().isEmpty ? null : _ewbNoCtrl.text.trim(),
       customerGstin: _custGstinCtrl.text.trim().isEmpty
           ? null
           : _custGstinCtrl.text.trim(),
@@ -859,9 +908,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 // ── Message preview ─────────────────────────────────────
                 Text(
                   'Message preview',
-                  style: Theme.of(sheetCtx).textTheme.labelMedium?.copyWith(
-                        color: colorScheme.outline,
-                      ),
+                  style: Theme.of(
+                    sheetCtx,
+                  ).textTheme.labelMedium?.copyWith(color: colorScheme.outline),
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Container(
@@ -913,8 +962,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                         'The PDF and message will be shared together. '
                         'Pick WhatsApp, Email, SMS and more from '
                         'the share sheet.',
-                        style: Theme.of(sheetCtx).textTheme.bodySmall
-                            ?.copyWith(color: colorScheme.outline),
+                        style: Theme.of(sheetCtx).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.outline,
+                        ),
                       ),
                     ),
                   ],
@@ -968,19 +1018,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       final pdfFile = await generatePdf();
       if (!mounted) return;
       Navigator.pop(context);
-      await Share.shareXFiles(
-        [pdfFile],
-        subject: subject,
-        text: message,
-      );
+      await Share.shareXFiles([pdfFile], subject: subject, text: message);
       // Mark as sent only after the share sheet has been opened successfully.
       await onSent();
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -992,14 +1038,17 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: const Text(
-            'This will create a new invoice from this quote and mark the quote as Accepted.'),
+          'This will create a new invoice from this quote and mark the quote as Accepted.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Convert')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Convert'),
+          ),
         ],
       ),
     );
@@ -1009,9 +1058,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         .convertToInvoice(_existingQuote!.id!);
     if (invoice != null && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Invoice ${invoice.invoiceNo} created')),
+        SnackBar(content: Text('Invoice ${invoice.invoiceNo} created')),
       );
       Navigator.pop(context);
     }
@@ -1019,7 +1066,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
   Future<void> _previewQuote() async {
     if (_existingQuote == null) return;
-    
+
     // Show loading indicator
     if (!mounted) return;
     showDialog(
@@ -1033,17 +1080,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       // Fetch business if businessId is set
       Business? business;
       if (_existingQuote!.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingQuote!.businessId!);
       }
-      
+
       // Fetch customer party if customerPartyId is set
       Party? customerParty;
       if (_existingQuote!.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingQuote!.customerPartyId!);
       }
-      
+
       // Generate PDF
-      final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+      final quoteTerms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         _existingQuote!,
         business: business,
@@ -1052,13 +1105,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
         showUpiQr: ref.read(subscriptionTierProvider).isStarter,
       );
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
       // Open PDF in system viewer
       final result = await OpenFile.open(pdfFile.path);
-      
+
       if (result.type != ResultType.done && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open PDF: ${result.message}')),
@@ -1067,9 +1120,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -1080,10 +1133,16 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'quote');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'quote',
+      );
       if (!mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -1105,17 +1164,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       // Fetch business if businessId is set
       Business? business;
       if (_existingQuote!.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(_existingQuote!.businessId!);
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingQuote!.businessId!);
       }
-      
+
       // Fetch customer party if customerPartyId is set
       Party? customerParty;
       if (_existingQuote!.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(_existingQuote!.customerPartyId!);
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingQuote!.customerPartyId!);
       }
-      
+
       // Generate PDF
-      final quoteTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.quoteTerms);
+      final quoteTerms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.quoteTerms);
       final pdfFile = await InvoicePdfService.instance.generateQuotePdf(
         _existingQuote!,
         business: business,
@@ -1124,19 +1189,20 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         showFreeWatermark: showWatermark,
         showUpiQr: tier.isStarter,
       );
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
       final businessName = business?.name ?? 'My Business';
-      
+
       // Show share options
       final due = _existingQuote!.validUntil;
-      final message = 'Hi ${_existingQuote!.customerName},\n\n'
+      final message =
+          'Hi ${_existingQuote!.customerName},\n\n'
           'Quote ${_existingQuote!.quoteNo} for ${CurrencyFormatter.format(_existingQuote!.total)}'
           '${due != null ? '\nValid till ${DateFormatter.format(due)}' : ''}'
           '\n\n— $businessName';
-      
+
       await Share.shareXFiles(
         [XFile(pdfFile.path)],
         subject: 'Quote ${_existingQuote!.quoteNo}',
@@ -1147,9 +1213,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -1160,10 +1226,16 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'invoice');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'invoice',
+      );
       if (!mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -1185,17 +1257,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       // Fetch business if businessId is set
       Business? business;
       if (_existingInvoice!.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingInvoice!.businessId!);
       }
-      
+
       // Fetch customer party if customerPartyId is set
       Party? customerParty;
       if (_existingInvoice!.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingInvoice!.customerPartyId!);
       }
-      
+
       // Generate PDF
-      final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
+      final invoiceTerms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.invoiceTerms);
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         _existingInvoice!,
         business: business,
@@ -1204,19 +1282,20 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         showFreeWatermark: showWatermark,
         showUpiQr: tier.isStarter,
       );
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
       final businessName = business?.name ?? 'My Business';
-      
+
       // Show share options
       final due = _existingInvoice!.dueDate;
-      final message = 'Hi ${_existingInvoice!.customerName},\n\n'
+      final message =
+          'Hi ${_existingInvoice!.customerName},\n\n'
           'Invoice ${_existingInvoice!.invoiceNo} for ${CurrencyFormatter.format(_existingInvoice!.total)}'
           '${due != null ? '\nDue ${DateFormatter.format(due)}' : ''}'
           '\n\n— $businessName';
-      
+
       await Share.shareXFiles(
         [pdfFile],
         subject: 'Invoice ${_existingInvoice!.invoiceNo}',
@@ -1227,15 +1306,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
   Future<void> _previewInvoice() async {
     if (_existingInvoice == null) return;
-    
+
     // Show loading indicator
     if (!mounted) return;
     showDialog(
@@ -1249,17 +1328,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       // Fetch business if businessId is set
       Business? business;
       if (_existingInvoice!.businessId != null) {
-        business = await ref.read(businessRepositoryProvider).getById(_existingInvoice!.businessId!);
+        business = await ref
+            .read(businessRepositoryProvider)
+            .getById(_existingInvoice!.businessId!);
       }
-      
+
       // Fetch customer party if customerPartyId is set
       Party? customerParty;
       if (_existingInvoice!.customerPartyId != null) {
-        customerParty = await ref.read(partyRepositoryProvider).getById(_existingInvoice!.customerPartyId!);
+        customerParty = await ref
+            .read(partyRepositoryProvider)
+            .getById(_existingInvoice!.customerPartyId!);
       }
-      
+
       // Generate PDF
-      final invoiceTerms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.invoiceTerms);
+      final invoiceTerms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.invoiceTerms);
       final pdfFile = await InvoicePdfService.instance.generateInvoicePdf(
         _existingInvoice!,
         business: business,
@@ -1268,7 +1353,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
         showUpiQr: ref.read(subscriptionTierProvider).isStarter,
       );
-      
+
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
@@ -1284,9 +1369,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -1312,13 +1397,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             .read(partyRepositoryProvider)
             .getById(_existingChallan!.customerPartyId!);
       }
-      final pdfFile = await DeliveryChallanPdfService.instance.generateChallanPdf(
-        _existingChallan!,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
-        showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
-      );
+      final pdfFile = await DeliveryChallanPdfService.instance
+          .generateChallanPdf(
+            _existingChallan!,
+            business: business,
+            customerParty: customerParty,
+            termsAndConditions:
+                (await ref
+                    .read(settingsRepositoryProvider)
+                    .get(SettingsKeys.challanTerms)) ??
+                SettingsKeys.defaultChallanTerms,
+            showFreeWatermark: ref.read(subscriptionTierProvider).isFree,
+          );
       if (!mounted) return;
       Navigator.pop(context);
       if (!kIsWeb) {
@@ -1332,9 +1422,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -1345,10 +1435,16 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'delivery challan');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'delivery challan',
+      );
       if (!mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -1377,17 +1473,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             .read(partyRepositoryProvider)
             .getById(_existingChallan!.customerPartyId!);
       }
-      final pdfFile = await DeliveryChallanPdfService.instance.generateChallanPdf(
-        _existingChallan!,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: (await ref.read(settingsRepositoryProvider).get(SettingsKeys.challanTerms)) ?? SettingsKeys.defaultChallanTerms,
-        showFreeWatermark: showWatermark,
-      );
+      final pdfFile = await DeliveryChallanPdfService.instance
+          .generateChallanPdf(
+            _existingChallan!,
+            business: business,
+            customerParty: customerParty,
+            termsAndConditions:
+                (await ref
+                    .read(settingsRepositoryProvider)
+                    .get(SettingsKeys.challanTerms)) ??
+                SettingsKeys.defaultChallanTerms,
+            showFreeWatermark: showWatermark,
+          );
       if (!mounted) return;
       Navigator.pop(context);
       final businessName = business?.name ?? 'My Business';
-      final message = 'Hi ${_existingChallan!.customerName},\n\n'
+      final message =
+          'Hi ${_existingChallan!.customerName},\n\n'
           'Delivery Challan ${_existingChallan!.challanNo} '
           '(${_existingChallan!.items.length} item(s)).\n\n'
           '— $businessName';
@@ -1399,9 +1501,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating PDF: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     }
   }
 
@@ -1413,14 +1515,17 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       builder: (_) => AlertDialog(
         title: const Text('Convert to Invoice?'),
         content: const Text(
-            'This will create a new invoice from this challan and mark it as converted.'),
+          'This will create a new invoice from this challan and mark it as converted.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Convert')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Convert'),
+          ),
         ],
       ),
     );
@@ -1435,15 +1540,17 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Invoice ${invoice.invoiceNo} created')),
         );
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
-        ));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Conversion failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Conversion failed: $e')));
       }
     }
   }
@@ -1456,7 +1563,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   void _restartFormTutorial() {
     if (_customerCtrl.text.trim().isEmpty) {
       _showFormQuickMark(startAt: 0);
-    } else if (_items.every((i) => i.itemName.trim().isEmpty && i.unitPrice == 0)) {
+    } else if (_items.every(
+      (i) => i.itemName.trim().isEmpty && i.unitPrice == 0,
+    )) {
       _showFormQuickMark(startAt: 1);
     } else {
       _showFormQuickMark(startAt: 2);
@@ -1481,7 +1590,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: '1 / 3 — Customer',
-              message: 'Choose an existing customer or type a\n'
+              message:
+                  'Choose an existing customer or type a\n'
                   'new name. Required to send the invoice.',
             ),
           ),
@@ -1499,7 +1609,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: '2 / 3 — Line Items',
-              message: 'Enter item name, quantity, and unit price.\n'
+              message:
+                  'Enter item name, quantity, and unit price.\n'
                   'Tap Catalog to pick from saved items.',
             ),
           ),
@@ -1517,7 +1628,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: '3 / 3 — Save Invoice',
-              message: 'Saves the invoice and takes you back to\n'
+              message:
+                  'Saves the invoice and takes you back to\n'
                   'the list. You can share or print from there.',
             ),
           ),
@@ -1530,10 +1642,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     void scrollTo(TargetFocus? t) {
       final ctx = t?.keyTarget?.currentContext;
       if (ctx == null) return;
-      Scrollable.ensureVisible(ctx,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut,
-          alignment: 0.2);
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+        alignment: 0.2,
+      );
     }
 
     void scrollToNext(TargetFocus current) {
@@ -1591,7 +1705,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'Customer',
-              message: 'Pick from saved contacts or type a new\n'
+              message:
+                  'Pick from saved contacts or type a new\n'
                   'name. Their address auto-fills below.',
             ),
           ),
@@ -1609,7 +1724,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Delivery Address',
-                message: 'Appears on the invoice PDF. Auto-filled\n'
+                message:
+                    'Appears on the invoice PDF. Auto-filled\n'
                     'from the customer\'s default address —\n'
                     'tap to change or add one.',
               ),
@@ -1628,7 +1744,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Business',
-                message: 'Which of your businesses is issuing\n'
+                message:
+                    'Which of your businesses is issuing\n'
                     'this document. Affects the letterhead,\n'
                     'GST number, and bank details on the PDF.',
               ),
@@ -1647,7 +1764,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: isInvoice ? 'Invoice Number' : 'Quote Number',
-                message: 'Auto-generated and sequential. You can\n'
+                message:
+                    'Auto-generated and sequential. You can\n'
                     'edit it — just keep it unique for your\n'
                     'records and GST filing.',
               ),
@@ -1668,11 +1786,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 title: isInvoice ? 'Issue Date' : 'Valid Until',
                 message: isInvoice
                     ? 'The date printed on the invoice.\n'
-                        'Defaults to today — tap to change for\n'
-                        'backdated or future invoices.'
+                          'Defaults to today — tap to change for\n'
+                          'backdated or future invoices.'
                     : 'Expiry date for this quote. After this\n'
-                        'date the customer should request a fresh\n'
-                        'quote with updated prices.',
+                          'date the customer should request a fresh\n'
+                          'quote with updated prices.',
               ),
             ),
           ],
@@ -1689,7 +1807,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Due Date',
-                message: 'When payment is expected. Drives the\n'
+                message:
+                    'When payment is expected. Drives the\n'
                     'overdue badge and payment reminders\n'
                     '— highly recommended to set.',
               ),
@@ -1707,7 +1826,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             child: tutorialContentCard(
               title: 'Line Items',
-              message: 'Add items with name, qty, price, and\n'
+              message:
+                  'Add items with name, qty, price, and\n'
                   'tax %. Tap Catalog to reuse saved items.\n'
                   'Totals update automatically.',
             ),
@@ -1726,7 +1846,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Notes (optional)',
-                message: 'Printed at the bottom of the PDF.\n'
+                message:
+                    'Printed at the bottom of the PDF.\n'
                     'Use for payment terms, bank details,\n'
                     'or a thank-you message.',
               ),
@@ -1746,11 +1867,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               title: isInvoice ? 'Save Invoice' : 'Save as Draft',
               message: isInvoice
                   ? 'Saves the invoice. Tap Send (top right)\n'
-                      'to share as PDF via WhatsApp, email,\n'
-                      'or any other app.'
+                        'to share as PDF via WhatsApp, email,\n'
+                        'or any other app.'
                   : 'Saves the quote as a draft. You can\n'
-                      'convert it to an invoice once the\n'
-                      'customer confirms.',
+                        'convert it to an invoice once the\n'
+                        'customer confirms.',
             ),
           ),
         ],
@@ -1760,10 +1881,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     void scrollTo(TargetFocus? t) {
       final ctx = t?.keyTarget?.currentContext;
       if (ctx == null) return;
-      Scrollable.ensureVisible(ctx,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeInOut,
-          alignment: 0.2);
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeInOut,
+        alignment: 0.2,
+      );
     }
 
     void scrollToNext(TargetFocus current) {
@@ -1792,7 +1915,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       focusAnimationDuration: const Duration(milliseconds: 400),
       onClickTarget: scrollToNext,
       onClickOverlay: scrollToNext,
-      onSkip: () { return true; },
+      onSkip: () {
+        return true;
+      },
       onFinish: () {},
     ).show(context: context);
   }
@@ -1806,8 +1931,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     final isEdit = isInvoice
         ? _existingInvoice != null
         : isDC
-            ? _existingChallan != null
-            : _existingQuote != null;
+        ? _existingChallan != null
+        : _existingQuote != null;
     String title;
     if (isCN) {
       title = isEdit ? 'Edit Credit Note' : 'New Credit Note';
@@ -1820,7 +1945,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     } else {
       title = isEdit ? 'Edit Quote' : 'New Quote';
     }
-    
+
     // Tutorial flow listener.
     // newInvoiceCustomer: FAB path — advance fires before the push so we
     // can't rely on initState; catch it here and start the quick guide.
@@ -1838,13 +1963,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
           break;
       }
     });
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(title),
         actions: [
           // ? button — invoice/quote only (not DC/CN/DN)
-          if (!isDC && (widget.docType == DocumentType.invoice || widget.docType == DocumentType.quote))
+          if (!isDC &&
+              (widget.docType == DocumentType.invoice ||
+                  widget.docType == DocumentType.quote))
             if (!isEdit)
               // New: Quick guide + Field reference
               PopupMenuButton<int>(
@@ -1871,8 +1998,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               onPressed: isDC
                   ? _previewChallan
                   : isInvoice
-                      ? _previewInvoice
-                      : _previewQuote,
+                  ? _previewInvoice
+                  : _previewQuote,
             ),
           if (isEdit)
             IconButton(
@@ -1881,8 +2008,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               onPressed: isDC
                   ? _shareChallanPdf
                   : isInvoice
-                      ? _shareInvoicePdf
-                      : _shareQuotePdf,
+                  ? _shareInvoicePdf
+                  : _shareQuotePdf,
             ),
           if (!isInvoice &&
               !isDC &&
@@ -1911,7 +2038,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
           child: FilledButton(
             key: _saveButtonKey,
             onPressed: _isSaving ? null : () => _save(),
@@ -1919,12 +2050,15 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 ? const SizedBox(
                     height: 20,
                     width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(isInvoice
-                    ? 'Save Invoice'
-                    : isDC
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    isInvoice
+                        ? 'Save Invoice'
+                        : isDC
                         ? 'Save Challan'
-                        : 'Save as Draft'),
+                        : 'Save as Draft',
+                  ),
           ),
         ),
       ),
@@ -1945,9 +2079,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   _selectedDeliveryAddress = null;
                 });
                 // Look up party by name to get party ID
-                final parties = await ref.read(partyRepositoryProvider).getAll();
+                final parties = await ref
+                    .read(partyRepositoryProvider)
+                    .getAll();
                 final party = parties.cast<Party?>().firstWhere(
-                  (p) => p!.name.trim().toLowerCase() == name.trim().toLowerCase(),
+                  (p) =>
+                      p!.name.trim().toLowerCase() == name.trim().toLowerCase(),
                   orElse: () => null,
                 );
                 if (party != null && mounted) {
@@ -1955,11 +2092,13 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                     _customerPartyId = party.id;
                   });
                   // Auto-populate delivery address from party's default address
-                  if (party.id != null && widget.docType != DocumentType.quote) {
+                  if (party.id != null &&
+                      widget.docType != DocumentType.quote) {
                     final addresses = await ref
                         .read(partyAddressRepositoryProvider)
                         .getByPartyId(party.id!);
-                    final defaultAddr = addresses.where((a) => a.isDefault).firstOrNull ??
+                    final defaultAddr =
+                        addresses.where((a) => a.isDefault).firstOrNull ??
                         (addresses.isNotEmpty ? addresses.first : null);
                     if (mounted && defaultAddr != null) {
                       setState(() => _selectedDeliveryAddress = defaultAddr);
@@ -1975,23 +2114,23 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               KeyedSubtree(
                 key: _deliveryAddressKey,
                 child: _DeliveryAddressTile(
-                selectedAddress: _selectedDeliveryAddress,
-                partyId: _customerPartyId,
-                onTap: () async {
-                  await showDeliveryAddressPicker(
-                    context: context,
-                    partyId: _customerPartyId,
-                    current: _selectedDeliveryAddress,
-                    onSelected: (addr) {
-                      if (mounted) {
-                        setState(() => _selectedDeliveryAddress = addr);
-                      }
-                    },
-                  );
-                },
-                onClear: () =>
-                    setState(() => _selectedDeliveryAddress = null),
-              ),
+                  selectedAddress: _selectedDeliveryAddress,
+                  partyId: _customerPartyId,
+                  onTap: () async {
+                    await showDeliveryAddressPicker(
+                      context: context,
+                      partyId: _customerPartyId,
+                      current: _selectedDeliveryAddress,
+                      onSelected: (addr) {
+                        if (mounted) {
+                          setState(() => _selectedDeliveryAddress = addr);
+                        }
+                      },
+                    );
+                  },
+                  onClear: () =>
+                      setState(() => _selectedDeliveryAddress = null),
+                ),
               ),
               const SizedBox(height: AppSpacing.base),
             ],
@@ -2022,58 +2161,61 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
 
                     // Multiple businesses - show dropdown
                     final activeBusiness = ref.watch(activeBusinessProvider);
-                    final selectedId = _selectedBusinessId ?? activeBusiness?.id;
-                    
+                    final selectedId =
+                        _selectedBusinessId ?? activeBusiness?.id;
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         KeyedSubtree(
                           key: _businessSelectorKey,
                           child: DropdownButtonFormField<int>(
-                          initialValue: selectedId,
-                          decoration: const InputDecoration(
-                            labelText: 'Business',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.business_outlined),
-                          ),
-                          items: businesses.map((biz) {
-                            return DropdownMenuItem(
-                              value: biz.id,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    biz.name,
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
-                                  ),
-                                  if (biz.gstNo != null)
+                            initialValue: selectedId,
+                            decoration: const InputDecoration(
+                              labelText: 'Business',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.business_outlined),
+                            ),
+                            items: businesses.map((biz) {
+                              return DropdownMenuItem(
+                                value: biz.id,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
                                     Text(
-                                      'GST: ${biz.gstNo}',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withValues(alpha: 0.6),
+                                      biz.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedBusinessId = value;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Please select a business';
-                            }
-                            return null;
-                          },
-                        ),
+                                    if (biz.gstNo != null)
+                                      Text(
+                                        'GST: ${biz.gstNo}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withValues(alpha: 0.6),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedBusinessId = value;
+                              });
+                            },
+                            validator: (value) {
+                              if (value == null) {
+                                return 'Please select a business';
+                              }
+                              return null;
+                            },
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.base),
                       ],
@@ -2091,18 +2233,22 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 labelText: isInvoice
                     ? 'Invoice Number'
                     : isDC
-                        ? 'Challan Number'
-                        : 'Quote Number',
+                    ? 'Challan Number'
+                    : 'Quote Number',
                 hintText: isInvoice
                     ? 'INV-2026-001'
                     : isDC
-                        ? 'DC-25-26-0001'
-                        : 'QUO-2026-001',
+                    ? 'DC-25-26-0001'
+                    : 'QUO-2026-001',
                 prefixIcon: const Icon(Icons.confirmation_number_outlined),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Please enter ${isInvoice ? 'invoice' : isDC ? 'challan' : 'quote'} number';
+                  return 'Please enter ${isInvoice
+                      ? 'invoice'
+                      : isDC
+                      ? 'challan'
+                      : 'quote'} number';
                 }
                 return null;
               },
@@ -2110,25 +2256,25 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             const SizedBox(height: AppSpacing.base),
 
             // Date fields
-            if (isInvoice) ...[  
+            if (isInvoice) ...[
               KeyedSubtree(
                 key: _issueDateKey,
                 child: _DateField(
-                label: 'Issue Date',
-                value: _issueDate,
-                onChanged: (d) => setState(() => _issueDate = d),
-              ),
+                  label: 'Issue Date',
+                  value: _issueDate,
+                  onChanged: (d) => setState(() => _issueDate = d),
+                ),
               ),
               const SizedBox(height: AppSpacing.base),
               KeyedSubtree(
                 key: _dueDateKey,
                 child: _OptionalDateField(
-                label: 'Due Date (optional)',
-                value: _dueDate,
-                onChanged: (d) => setState(() => _dueDate = d),
+                  label: 'Due Date (optional)',
+                  value: _dueDate,
+                  onChanged: (d) => setState(() => _dueDate = d),
+                ),
               ),
-              ),
-            ] else if (isDC) ...[  
+            ] else if (isDC) ...[
               _DateField(
                 label: 'Challan Date',
                 value: _challanDate,
@@ -2149,7 +2295,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
             const SizedBox(height: AppSpacing.base),
 
             // DC-specific: Purpose + Transport
-            if (isDC) ...[  
+            if (isDC) ...[
               DropdownButtonFormField<ChallanPurpose>(
                 initialValue: _challanPurpose,
                 isExpanded: true,
@@ -2159,10 +2305,12 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: ChallanPurpose.values
-                    .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(p.label, overflow: TextOverflow.ellipsis),
-                        ))
+                    .map(
+                      (p) => DropdownMenuItem(
+                        value: p,
+                        child: Text(p.label, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                     .toList(),
                 onChanged: (v) => setState(() => _challanPurpose = v!),
               ),
@@ -2285,8 +2433,8 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 );
                 setState(() {
                   // If first item is empty, replace it instead of adding new one
-                  if (_items.length == 1 && 
-                      _items[0].itemName.isEmpty && 
+                  if (_items.length == 1 &&
+                      _items[0].itemName.isEmpty &&
                       _items[0].unitPrice == 0) {
                     _items[0] = catalogItem;
                   } else {
@@ -2296,9 +2444,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                 });
                 // Track usage for smart sorting
                 if (item.id != null) {
-                  ref
-                      .read(catalogProvider.notifier)
-                      .trackUsage(item.id!);
+                  ref.read(catalogProvider.notifier).trackUsage(item.id!);
                 }
               },
             ),
@@ -2315,7 +2461,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                       _TotalsRow('Tax', CurrencyFormatter.format(_taxTotal)),
                     if (!isDC && _discountAmt > 0)
                       _TotalsRow(
-                          'Discount', '-${CurrencyFormatter.format(_discountAmt)}'),
+                        'Discount',
+                        '-${CurrencyFormatter.format(_discountAmt)}',
+                      ),
                     _ChargeInputRow(
                       label: 'Freight',
                       controller: _freightCtrl,
@@ -2332,8 +2480,11 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
                       onChanged: (v) => setState(() => _packingAmt = v),
                     ),
                     const Divider(height: AppSpacing.base),
-                    _TotalsRow('Total', CurrencyFormatter.format(_total),
-                        bold: true),
+                    _TotalsRow(
+                      'Total',
+                      CurrencyFormatter.format(_total),
+                      bold: true,
+                    ),
                   ],
                 ),
               ),
@@ -2386,8 +2537,7 @@ class _LineItemsSection extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Items',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text('Items', style: Theme.of(context).textTheme.titleMedium),
                 Row(
                   children: [
                     TextButton.icon(
@@ -2409,22 +2559,22 @@ class _LineItemsSection extends StatelessWidget {
             ),
             const Divider(height: AppSpacing.sm),
             ...items.asMap().entries.map(
-                  (e) => _LineItemRow(
-                    index: e.key,
-                    item: e.value,
-                    showTaxDiscount: showTaxDiscount,
-                    onChanged: (updated) {
-                      items[e.key] = updated;
-                      onChanged();
-                    },
-                    onRemove: items.length > 1
-                        ? () {
-                            items.removeAt(e.key);
-                            onChanged();
-                          }
-                        : null,
-                  ),
-                ),
+              (e) => _LineItemRow(
+                index: e.key,
+                item: e.value,
+                showTaxDiscount: showTaxDiscount,
+                onChanged: (updated) {
+                  items[e.key] = updated;
+                  onChanged();
+                },
+                onRemove: items.length > 1
+                    ? () {
+                        items.removeAt(e.key);
+                        onChanged();
+                      }
+                    : null,
+              ),
+            ),
           ],
         ),
       ),
@@ -2435,7 +2585,8 @@ class _LineItemsSection extends StatelessWidget {
     final picked = await Navigator.push<ItemCatalog>(
       context,
       MaterialPageRoute(
-          builder: (_) => const ItemCatalogScreen(pickMode: true)),
+        builder: (_) => const ItemCatalogScreen(pickMode: true),
+      ),
     );
     if (picked != null) onAddFromCatalog(picked);
   }
@@ -2463,14 +2614,19 @@ class _LineItem {
   final double unitPrice;
   final double taxPct;
   final double discountPct;
+
   /// HSN or SAC code copied from item catalog.
   final String? hsnCode;
+
   /// GST UOM code (e-Way Bill master), e.g. 'KGS', 'NOS'.
   final String unit;
+
   /// 'HSN' for products/materials/equipment, 'SAC' for services/labour.
   final String hsnOrSac;
+
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
+
   /// Maximum Retail Price copied from catalog; null for manually-typed items.
   final double? mrp;
 
@@ -2486,29 +2642,29 @@ class _LineItem {
     String? hsnOrSac,
     int? catalogItemId,
     double? mrp,
-  }) =>
-      _LineItem(
-        itemName: itemName ?? this.itemName,
-        description: description ?? this.description,
-        qty: qty ?? this.qty,
-        unitPrice: unitPrice ?? this.unitPrice,
-        taxPct: taxPct ?? this.taxPct,
-        discountPct: discountPct ?? this.discountPct,
-        hsnCode: hsnCode ?? this.hsnCode,
-        unit: unit ?? this.unit,
-        hsnOrSac: hsnOrSac ?? this.hsnOrSac,
-        catalogItemId: catalogItemId ?? this.catalogItemId,
-        mrp: mrp ?? this.mrp,
-      );
+  }) => _LineItem(
+    itemName: itemName ?? this.itemName,
+    description: description ?? this.description,
+    qty: qty ?? this.qty,
+    unitPrice: unitPrice ?? this.unitPrice,
+    taxPct: taxPct ?? this.taxPct,
+    discountPct: discountPct ?? this.discountPct,
+    hsnCode: hsnCode ?? this.hsnCode,
+    unit: unit ?? this.unit,
+    hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+    catalogItemId: catalogItemId ?? this.catalogItemId,
+    mrp: mrp ?? this.mrp,
+  );
 }
 
 class _LineItemRow extends StatefulWidget {
-  const _LineItemRow(
-      {required this.index,
-      required this.item,
-      required this.onChanged,
-      this.onRemove,
-      this.showTaxDiscount = true});
+  const _LineItemRow({
+    required this.index,
+    required this.item,
+    required this.onChanged,
+    this.onRemove,
+    this.showTaxDiscount = true,
+  });
   final int index;
   final _LineItem item;
   final ValueChanged<_LineItem> onChanged;
@@ -2530,20 +2686,22 @@ class _LineItemRowState extends State<_LineItemRow> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.item.itemName);
-    _qtyCtrl =
-        TextEditingController(text: widget.item.qty.toString());
+    _qtyCtrl = TextEditingController(text: widget.item.qty.toString());
     _priceCtrl = TextEditingController(
-        text: widget.item.unitPrice == 0
-            ? ''
-            : widget.item.unitPrice.toStringAsFixed(2));
+      text: widget.item.unitPrice == 0
+          ? ''
+          : widget.item.unitPrice.toStringAsFixed(2),
+    );
     _taxCtrl = TextEditingController(
-        text: widget.item.taxPct == 0
-            ? ''
-            : widget.item.taxPct.toStringAsFixed(1));
+      text: widget.item.taxPct == 0
+          ? ''
+          : widget.item.taxPct.toStringAsFixed(1),
+    );
     _discCtrl = TextEditingController(
-        text: widget.item.discountPct == 0
-            ? ''
-            : widget.item.discountPct.toStringAsFixed(1));
+      text: widget.item.discountPct == 0
+          ? ''
+          : widget.item.discountPct.toStringAsFixed(1),
+    );
     // Rebuild when price changes so the MRP hint updates in real time.
     if (widget.item.mrp != null) {
       _priceCtrl.addListener(() => setState(() {}));
@@ -2580,13 +2738,15 @@ class _LineItemRowState extends State<_LineItemRow> {
   }
 
   void _emit() {
-    widget.onChanged(widget.item.copyWith(
-      itemName: _nameCtrl.text,
-      qty: double.tryParse(_qtyCtrl.text) ?? 1,
-      unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
-      taxPct: double.tryParse(_taxCtrl.text) ?? 0,
-      discountPct: double.tryParse(_discCtrl.text) ?? 0,
-    ));
+    widget.onChanged(
+      widget.item.copyWith(
+        itemName: _nameCtrl.text,
+        qty: double.tryParse(_qtyCtrl.text) ?? 1,
+        unitPrice: double.tryParse(_priceCtrl.text) ?? 0,
+        taxPct: double.tryParse(_taxCtrl.text) ?? 0,
+        discountPct: double.tryParse(_discCtrl.text) ?? 0,
+      ),
+    );
   }
 
   @override
@@ -2601,10 +2761,7 @@ class _LineItemRowState extends State<_LineItemRow> {
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        border: Border.all(
-            color: Theme.of(context)
-                .colorScheme
-                .outlineVariant),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -2612,14 +2769,20 @@ class _LineItemRowState extends State<_LineItemRow> {
         children: [
           Row(
             children: [
-              Text('Item ${widget.index + 1}',
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600)),
+              Text(
+                'Item ${widget.index + 1}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const Spacer(),
               Text(
                 CurrencyFormatter.format(lineTotal),
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 13),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               if (widget.onRemove != null)
                 IconButton(
@@ -2645,17 +2808,19 @@ class _LineItemRowState extends State<_LineItemRow> {
             children: [
               Expanded(
                 child: _NumField(
-                    ctrl: _qtyCtrl,
-                    label: 'Qty',
-                    onChanged: (_) => _emit()),
+                  ctrl: _qtyCtrl,
+                  label: 'Qty',
+                  onChanged: (_) => _emit(),
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 flex: 2,
                 child: _NumField(
-                    ctrl: _priceCtrl,
-                    label: 'Unit Price (₹)',
-                    onChanged: (_) => _emit()),
+                  ctrl: _priceCtrl,
+                  label: 'Unit Price (₹)',
+                  onChanged: (_) => _emit(),
+                ),
               ),
             ],
           ),
@@ -2663,25 +2828,28 @@ class _LineItemRowState extends State<_LineItemRow> {
             const SizedBox(height: AppSpacing.xs),
             _MrpHint(
               mrp: widget.item.mrp!,
-              currentPrice: double.tryParse(_priceCtrl.text) ?? widget.item.unitPrice,
+              currentPrice:
+                  double.tryParse(_priceCtrl.text) ?? widget.item.unitPrice,
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
-          if (widget.showTaxDiscount) ...[  
+          if (widget.showTaxDiscount) ...[
             Row(
               children: [
                 Expanded(
                   child: _NumField(
-                      ctrl: _taxCtrl,
-                      label: 'Tax %',
-                      onChanged: (_) => _emit()),
+                    ctrl: _taxCtrl,
+                    label: 'Tax %',
+                    onChanged: (_) => _emit(),
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: _NumField(
-                      ctrl: _discCtrl,
-                      label: 'Discount %',
-                      onChanged: (_) => _emit()),
+                    ctrl: _discCtrl,
+                    label: 'Discount %',
+                    onChanged: (_) => _emit(),
+                  ),
                 ),
               ],
             ),
@@ -2693,10 +2861,11 @@ class _LineItemRowState extends State<_LineItemRow> {
 }
 
 class _NumField extends StatelessWidget {
-  const _NumField(
-      {required this.ctrl,
-      required this.label,
-      required this.onChanged});
+  const _NumField({
+    required this.ctrl,
+    required this.label,
+    required this.onChanged,
+  });
   final TextEditingController ctrl;
   final String label;
   final ValueChanged<String> onChanged;
@@ -2710,8 +2879,7 @@ class _NumField extends StatelessWidget {
         isDense: true,
         border: const OutlineInputBorder(),
       ),
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       onChanged: onChanged,
     );
   }
@@ -2750,10 +2918,11 @@ class _MrpHint extends StatelessWidget {
 }
 
 class _DateField extends StatelessWidget {
-  const _DateField(
-      {required this.label,
-      required this.value,
-      required this.onChanged});
+  const _DateField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
   final String label;
   final DateTime value;
   final ValueChanged<DateTime> onChanged;
@@ -2784,8 +2953,11 @@ class _DateField extends StatelessWidget {
 
 /// Nullable date field — shows a placeholder when no date is set.
 class _OptionalDateField extends StatelessWidget {
-  const _OptionalDateField(
-      {required this.label, required this.value, required this.onChanged});
+  const _OptionalDateField({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
   final String label;
   final DateTime? value;
   final ValueChanged<DateTime?> onChanged;
@@ -2823,10 +2995,10 @@ class _OptionalDateField extends StatelessWidget {
           value != null ? DateFormatter.format(value!) : 'Not set',
           style: value == null
               ? TextStyle(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .onSurface
-                      .withValues(alpha: 0.4))
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.4),
+                )
               : null,
         ),
       ),
@@ -2847,14 +3019,16 @@ class _TotalsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: bold
-                  ? const TextStyle(fontWeight: FontWeight.bold)
-                  : null),
-          Text(value,
-              style: TextStyle(
-                  fontWeight:
-                      bold ? FontWeight.bold : FontWeight.w500)),
+          Text(
+            label,
+            style: bold ? const TextStyle(fontWeight: FontWeight.bold) : null,
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -2889,13 +3063,18 @@ class _ChargeInputRow extends StatelessWidget {
             child: TextField(
               controller: controller,
               textAlign: TextAlign.right,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: const TextStyle(fontSize: 14),
               decoration: const InputDecoration(
                 hintText: '0.00',
                 hintStyle: TextStyle(color: Colors.grey),
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
                 border: OutlineInputBorder(),
               ),
               onChanged: (text) {
@@ -2918,9 +3097,9 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       text,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            fontWeight: FontWeight.w600,
-          ),
+        color: Theme.of(context).colorScheme.primary,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }
@@ -2978,7 +3157,8 @@ class _DeliveryAddressTile extends StatelessWidget {
                       children: [
                         Text(
                           'Delivery: ${selectedAddress!.label}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
                                 color: cs.primary,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -2995,8 +3175,8 @@ class _DeliveryAddressTile extends StatelessWidget {
                   : Text(
                       'Add delivery address (optional)',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
             ),
             if (hasAddress)

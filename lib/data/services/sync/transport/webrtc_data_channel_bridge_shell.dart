@@ -14,7 +14,8 @@ class WebRtcDataChannelBridgeShell implements WebRtcNegotiationAwareBridge {
 
   final String sessionId;
 
-  final StreamController<String> _inbound = StreamController<String>.broadcast();
+  final StreamController<String> _inbound =
+      StreamController<String>.broadcast();
   final List<String> _outboundFrames = <String>[];
   final List<Map<String, dynamic>> _remoteIceCandidates =
       <Map<String, dynamic>>[];

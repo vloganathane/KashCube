@@ -68,34 +68,34 @@ enum SearchFilter {
 
 extension SearchFilterExt on SearchFilter {
   String get label => switch (this) {
-        SearchFilter.all => 'All',
-        SearchFilter.transactions => 'Transactions',
-        SearchFilter.invoices => 'Invoices',
-        SearchFilter.quotes => 'Quotes',
-        SearchFilter.credits => 'Credits',
-        SearchFilter.bills => 'Bills',
-        SearchFilter.purchaseBills => 'Purchase Bills',
-        SearchFilter.bookings => 'Bookings',
-        SearchFilter.parties => 'Parties',
-        SearchFilter.loans => 'Loans',
-        SearchFilter.challans => 'Challans',
-        SearchFilter.recurring => 'Recurring',
-      };
+    SearchFilter.all => 'All',
+    SearchFilter.transactions => 'Transactions',
+    SearchFilter.invoices => 'Invoices',
+    SearchFilter.quotes => 'Quotes',
+    SearchFilter.credits => 'Credits',
+    SearchFilter.bills => 'Bills',
+    SearchFilter.purchaseBills => 'Purchase Bills',
+    SearchFilter.bookings => 'Bookings',
+    SearchFilter.parties => 'Parties',
+    SearchFilter.loans => 'Loans',
+    SearchFilter.challans => 'Challans',
+    SearchFilter.recurring => 'Recurring',
+  };
 
   IconData get icon => switch (this) {
-        SearchFilter.all => Icons.apps,
-        SearchFilter.transactions => Icons.receipt_long_outlined,
-        SearchFilter.invoices => Icons.description_outlined,
-        SearchFilter.quotes => Icons.request_quote_outlined,
-        SearchFilter.credits => Icons.book_outlined,
-        SearchFilter.bills => Icons.calendar_today_outlined,
-        SearchFilter.purchaseBills => Icons.inventory_2_outlined,
-        SearchFilter.bookings => Icons.calendar_month_outlined,
-        SearchFilter.parties => Icons.people_outline,
-        SearchFilter.loans => Icons.account_balance_wallet_outlined,
-        SearchFilter.challans => Icons.local_shipping_outlined,
-        SearchFilter.recurring => Icons.repeat_outlined,
-      };
+    SearchFilter.all => Icons.apps,
+    SearchFilter.transactions => Icons.receipt_long_outlined,
+    SearchFilter.invoices => Icons.description_outlined,
+    SearchFilter.quotes => Icons.request_quote_outlined,
+    SearchFilter.credits => Icons.book_outlined,
+    SearchFilter.bills => Icons.calendar_today_outlined,
+    SearchFilter.purchaseBills => Icons.inventory_2_outlined,
+    SearchFilter.bookings => Icons.calendar_month_outlined,
+    SearchFilter.parties => Icons.people_outline,
+    SearchFilter.loans => Icons.account_balance_wallet_outlined,
+    SearchFilter.challans => Icons.local_shipping_outlined,
+    SearchFilter.recurring => Icons.repeat_outlined,
+  };
 }
 
 /// Unified global search across transactions, invoices, credits, bills,
@@ -141,19 +141,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   String get _hintText => switch (_filter) {
-        SearchFilter.all => 'Search everything…',
-        SearchFilter.transactions => 'Search transactions…',
-        SearchFilter.invoices => 'Search invoices…',
-        SearchFilter.quotes => 'Search quotes…',
-        SearchFilter.credits => 'Search dues…',
-        SearchFilter.bills => 'Search bills…',
-        SearchFilter.purchaseBills => 'Search purchase bills…',
-        SearchFilter.bookings => 'Search bookings…',
-        SearchFilter.parties => 'Search by name or phone…',
-        SearchFilter.loans => 'Search loans…',
-        SearchFilter.challans => 'Search challans…',
-        SearchFilter.recurring => 'Search recurring transactions…',
-      };
+    SearchFilter.all => 'Search everything…',
+    SearchFilter.transactions => 'Search transactions…',
+    SearchFilter.invoices => 'Search invoices…',
+    SearchFilter.quotes => 'Search quotes…',
+    SearchFilter.credits => 'Search dues…',
+    SearchFilter.bills => 'Search bills…',
+    SearchFilter.purchaseBills => 'Search purchase bills…',
+    SearchFilter.bookings => 'Search bookings…',
+    SearchFilter.parties => 'Search by name or phone…',
+    SearchFilter.loans => 'Search loans…',
+    SearchFilter.challans => 'Search challans…',
+    SearchFilter.recurring => 'Search recurring transactions…',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -275,12 +275,17 @@ class _HintState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search, size: 64, color: context.colorScheme.outlineVariant),
+            Icon(
+              Icons.search,
+              size: 64,
+              color: context.colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
               'Type at least 2 characters to search',
-              style: context.textTheme.bodyMedium
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -293,8 +298,9 @@ class _HintState extends StatelessWidget {
         children: [
           Text(
             'Recent',
-            style: context.textTheme.labelMedium
-                ?.copyWith(color: context.colorScheme.outline),
+            style: context.textTheme.labelMedium?.copyWith(
+              color: context.colorScheme.outline,
+            ),
           ),
           const SizedBox(height: AppSpacing.sm),
           Wrap(
@@ -398,85 +404,101 @@ class _SearchResults extends ConsumerWidget {
 
     final txns = _show(SearchFilter.transactions)
         ? (ref.watch(transactionsProvider).valueOrNull ?? <Transaction>[])
-            .where((t) => _matchTxn(t, q))
-            .toList()
+              .where((t) => _matchTxn(t, q))
+              .toList()
         : <Transaction>[];
 
     final invoices = _show(SearchFilter.invoices)
         ? (ref.watch(invoicesProvider).valueOrNull ?? <Invoice>[])
-            .where((inv) => _matchInvoice(inv, q))
-            .toList()
+              .where((inv) => _matchInvoice(inv, q))
+              .toList()
         : <Invoice>[];
 
     final quotes = _show(SearchFilter.quotes)
         ? (ref.watch(quotesProvider).valueOrNull ?? <Quote>[])
-            .where((qt) => _matchQuote(qt, q))
-            .toList()
+              .where((qt) => _matchQuote(qt, q))
+              .toList()
         : <Quote>[];
 
     final credits = _show(SearchFilter.credits)
-        ? (ref.watch(ledgerSummariesProvider).valueOrNull ?? <LedgerPartyEntry>[])
-            .where((e) => e.partyName.toLowerCase().contains(q))
-            .toList()
+        ? (ref.watch(ledgerSummariesProvider).valueOrNull ??
+                  <LedgerPartyEntry>[])
+              .where((e) => e.partyName.toLowerCase().contains(q))
+              .toList()
         : <LedgerPartyEntry>[];
 
     final bills = _show(SearchFilter.bills)
         ? (ref.watch(scheduledBillsProvider).valueOrNull ?? <Bill>[])
-            .where((b) => _matchBill(b, q))
-            .toList()
+              .where((b) => _matchBill(b, q))
+              .toList()
         : <Bill>[];
 
     final purchaseBills = _show(SearchFilter.purchaseBills)
         ? (ref.watch(purchaseBillsProvider).valueOrNull ?? <PurchaseBill>[])
-            .where((b) => _matchPurchaseBill(b, q))
-            .toList()
+              .where((b) => _matchPurchaseBill(b, q))
+              .toList()
         : <PurchaseBill>[];
 
     final bookings = _show(SearchFilter.bookings)
         ? (ref.watch(bookingsProvider).valueOrNull ?? <Booking>[])
-            .where((b) => _matchBooking(b, q))
-            .toList()
+              .where((b) => _matchBooking(b, q))
+              .toList()
         : <Booking>[];
 
     final parties = _show(SearchFilter.parties)
         ? (ref.watch(partiesProvider).valueOrNull ?? <Party>[])
-            .where((p) => _matchParty(p, q))
-            .toList()
+              .where((p) => _matchParty(p, q))
+              .toList()
         : <Party>[];
 
     final loans = _show(SearchFilter.loans)
         ? (ref.watch(activeLoansProvider).valueOrNull ?? <Loan>[])
-            .where((l) => _matchLoan(l, q))
-            .toList()
+              .where((l) => _matchLoan(l, q))
+              .toList()
         : <Loan>[];
 
     final challans = _show(SearchFilter.challans)
         ? (ref.watch(challansProvider).valueOrNull ?? <DeliveryChallan>[])
-            .where((c) => _matchChallan(c, q))
-            .toList()
+              .where((c) => _matchChallan(c, q))
+              .toList()
         : <DeliveryChallan>[];
 
     final recurring = _show(SearchFilter.recurring)
-        ? (ref.watch(recurringTransactionsProvider).valueOrNull ?? <RecurringTransaction>[])
-            .where((r) => _matchRecurring(r, q))
-            .toList()
+        ? (ref.watch(recurringTransactionsProvider).valueOrNull ??
+                  <RecurringTransaction>[])
+              .where((r) => _matchRecurring(r, q))
+              .toList()
         : <RecurringTransaction>[];
 
-    final total = txns.length + invoices.length + quotes.length + credits.length +
-        bills.length + purchaseBills.length + bookings.length + parties.length +
-        loans.length + challans.length + recurring.length;
+    final total =
+        txns.length +
+        invoices.length +
+        quotes.length +
+        credits.length +
+        bills.length +
+        purchaseBills.length +
+        bookings.length +
+        parties.length +
+        loans.length +
+        challans.length +
+        recurring.length;
 
     if (total == 0) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.search_off, size: 64, color: context.colorScheme.outlineVariant),
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: context.colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
             Text(
               'No results for "$query"',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+              style: context.textTheme.titleMedium?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -486,60 +508,136 @@ class _SearchResults extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
       children: [
-        if (txns.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Transactions', count: txns.length, icon: Icons.receipt_long),
+        if (txns.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Transactions',
+            count: txns.length,
+            icon: Icons.receipt_long,
+          ),
           ...txns.take(10).map((t) => _TxnTile(txn: t, query: query)),
-          if (txns.length > 10) _MoreRow(count: txns.length - 10, label: 'transactions'),
+          if (txns.length > 10)
+            _MoreRow(count: txns.length - 10, label: 'transactions'),
         ],
-        if (invoices.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Invoices', count: invoices.length, icon: Icons.description_outlined),
-          ...invoices.take(10).map((inv) => _InvoiceTile(invoice: inv, query: query)),
-          if (invoices.length > 10) _MoreRow(count: invoices.length - 10, label: 'invoices'),
+        if (invoices.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Invoices',
+            count: invoices.length,
+            icon: Icons.description_outlined,
+          ),
+          ...invoices
+              .take(10)
+              .map((inv) => _InvoiceTile(invoice: inv, query: query)),
+          if (invoices.length > 10)
+            _MoreRow(count: invoices.length - 10, label: 'invoices'),
         ],
-        if (quotes.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Quotes', count: quotes.length, icon: Icons.request_quote_outlined),
+        if (quotes.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Quotes',
+            count: quotes.length,
+            icon: Icons.request_quote_outlined,
+          ),
           ...quotes.take(10).map((qt) => _QuoteTile(quote: qt, query: query)),
-          if (quotes.length > 10) _MoreRow(count: quotes.length - 10, label: 'quotes'),
+          if (quotes.length > 10)
+            _MoreRow(count: quotes.length - 10, label: 'quotes'),
         ],
-        if (credits.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Credits', count: credits.length, icon: Icons.book),
+        if (credits.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Credits',
+            count: credits.length,
+            icon: Icons.book,
+          ),
           ...credits.take(10).map((e) => _CreditTile(entry: e, query: query)),
-          if (credits.length > 10) _MoreRow(count: credits.length - 10, label: 'credits'),
+          if (credits.length > 10)
+            _MoreRow(count: credits.length - 10, label: 'credits'),
         ],
-        if (bills.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Bills', count: bills.length, icon: Icons.calendar_today_outlined),
+        if (bills.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Bills',
+            count: bills.length,
+            icon: Icons.calendar_today_outlined,
+          ),
           ...bills.take(10).map((b) => _BillTile(bill: b, query: query)),
-          if (bills.length > 10) _MoreRow(count: bills.length - 10, label: 'bills'),
+          if (bills.length > 10)
+            _MoreRow(count: bills.length - 10, label: 'bills'),
         ],
-        if (purchaseBills.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Purchase Bills', count: purchaseBills.length, icon: Icons.inventory_2_outlined),
-          ...purchaseBills.take(10).map((b) => _PurchaseBillTile(bill: b, query: query)),
-          if (purchaseBills.length > 10) _MoreRow(count: purchaseBills.length - 10, label: 'purchase bills'),
+        if (purchaseBills.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Purchase Bills',
+            count: purchaseBills.length,
+            icon: Icons.inventory_2_outlined,
+          ),
+          ...purchaseBills
+              .take(10)
+              .map((b) => _PurchaseBillTile(bill: b, query: query)),
+          if (purchaseBills.length > 10)
+            _MoreRow(count: purchaseBills.length - 10, label: 'purchase bills'),
         ],
-        if (bookings.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Bookings', count: bookings.length, icon: Icons.calendar_month_outlined),
-          ...bookings.take(10).map((b) => _BookingTile(booking: b, query: query)),
-          if (bookings.length > 10) _MoreRow(count: bookings.length - 10, label: 'bookings'),
+        if (bookings.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Bookings',
+            count: bookings.length,
+            icon: Icons.calendar_month_outlined,
+          ),
+          ...bookings
+              .take(10)
+              .map((b) => _BookingTile(booking: b, query: query)),
+          if (bookings.length > 10)
+            _MoreRow(count: bookings.length - 10, label: 'bookings'),
         ],
-        if (parties.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Parties', count: parties.length, icon: Icons.people_outline),
+        if (parties.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Parties',
+            count: parties.length,
+            icon: Icons.people_outline,
+          ),
           ...parties.take(10).map((p) => _PartyTile(party: p, query: query)),
-          if (parties.length > 10) _MoreRow(count: parties.length - 10, label: 'parties'),
+          if (parties.length > 10)
+            _MoreRow(count: parties.length - 10, label: 'parties'),
         ],
-        if (loans.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Loans', count: loans.length, icon: Icons.account_balance_wallet_outlined),
+        if (loans.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Loans',
+            count: loans.length,
+            icon: Icons.account_balance_wallet_outlined,
+          ),
           ...loans.take(10).map((l) => _LoanTile(loan: l, query: query)),
-          if (loans.length > 10) _MoreRow(count: loans.length - 10, label: 'loans'),
+          if (loans.length > 10)
+            _MoreRow(count: loans.length - 10, label: 'loans'),
         ],
-        if (challans.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Challans', count: challans.length, icon: Icons.local_shipping_outlined),
-          ...challans.take(10).map((c) => _ChallanTile(challan: c, query: query)),
-          if (challans.length > 10) _MoreRow(count: challans.length - 10, label: 'challans'),
+        if (challans.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Challans',
+            count: challans.length,
+            icon: Icons.local_shipping_outlined,
+          ),
+          ...challans
+              .take(10)
+              .map((c) => _ChallanTile(challan: c, query: query)),
+          if (challans.length > 10)
+            _MoreRow(count: challans.length - 10, label: 'challans'),
         ],
-        if (recurring.isNotEmpty) ...[const SizedBox(height: AppSpacing.base),
-          _SectionHeader(title: 'Recurring', count: recurring.length, icon: Icons.repeat_outlined),
-          ...recurring.take(10).map((r) => _RecurringTile(item: r, query: query)),
-          if (recurring.length > 10) _MoreRow(count: recurring.length - 10, label: 'recurring'),
+        if (recurring.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.base),
+          _SectionHeader(
+            title: 'Recurring',
+            count: recurring.length,
+            icon: Icons.repeat_outlined,
+          ),
+          ...recurring
+              .take(10)
+              .map((r) => _RecurringTile(item: r, query: query)),
+          if (recurring.length > 10)
+            _MoreRow(count: recurring.length - 10, label: 'recurring'),
         ],
         const SizedBox(height: AppSpacing.xl),
       ],
@@ -552,7 +650,11 @@ class _SearchResults extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.count, required this.icon});
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.icon,
+  });
 
   final String title;
   final int count;
@@ -564,12 +666,24 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
         children: [
-          Icon(icon, size: AppSpacing.iconSm, color: context.colorScheme.primary),
+          Icon(
+            icon,
+            size: AppSpacing.iconSm,
+            color: context.colorScheme.primary,
+          ),
           const SizedBox(width: AppSpacing.sm),
-          Text(title, style: context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: 2,
+            ),
             decoration: BoxDecoration(
               color: context.colorScheme.primaryContainer,
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -594,13 +708,15 @@ class _MoreRow extends StatelessWidget {
   final String label;
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-        child: Text(
-          '+ $count more $label',
-          style: context.textTheme.bodySmall?.copyWith(color: context.colorScheme.outline),
-          textAlign: TextAlign.center,
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+    child: Text(
+      '+ $count more $label',
+      style: context.textTheme.bodySmall?.copyWith(
+        color: context.colorScheme.outline,
+      ),
+      textAlign: TextAlign.center,
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -620,14 +736,19 @@ class _Highlight extends StatelessWidget {
       return Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
     }
     return Text.rich(
-      TextSpan(children: [
-        TextSpan(text: text.substring(0, idx)),
-        TextSpan(
-          text: text.substring(idx, idx + lowerQ.length),
-          style: TextStyle(fontWeight: FontWeight.bold, color: context.colorScheme.primary),
-        ),
-        TextSpan(text: text.substring(idx + lowerQ.length)),
-      ]),
+      TextSpan(
+        children: [
+          TextSpan(text: text.substring(0, idx)),
+          TextSpan(
+            text: text.substring(idx, idx + lowerQ.length),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: context.colorScheme.primary,
+            ),
+          ),
+          TextSpan(text: text.substring(idx + lowerQ.length)),
+        ],
+      ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -653,19 +774,31 @@ class _TxnTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.primaryContainer,
-        child: Icon(CategoryHelper.getIcon(txn.category),
-            color: context.colorScheme.onPrimaryContainer, size: AppSpacing.iconMd),
+        child: Icon(
+          CategoryHelper.getIcon(txn.category),
+          color: context.colorScheme.onPrimaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: txn.partyName ?? txn.category, query: query),
-      subtitle: Text('${DateFormatter.format(txn.date)} · ${txn.category}',
-          style: context.textTheme.bodySmall),
-      trailing: Text('$prefix${CurrencyFormatter.format(txn.amount)}',
-          style: context.textTheme.titleSmall?.copyWith(
-              color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono')),
+      subtitle: Text(
+        '${DateFormatter.format(txn.date)} · ${txn.category}',
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Text(
+        '$prefix${CurrencyFormatter.format(txn.amount)}',
+        style: context.textTheme.titleSmall?.copyWith(
+          color: amountColor,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'RobotoMono',
+        ),
+      ),
       onTap: () {
         if (txn.id != null) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => TransactionDetailScreen(transactionId: txn.id!)),
+            MaterialPageRoute(
+              builder: (_) => TransactionDetailScreen(transactionId: txn.id!),
+            ),
           );
         }
       },
@@ -693,35 +826,50 @@ class _InvoiceTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.secondaryContainer,
-        child: Icon(Icons.description_outlined,
-            color: context.colorScheme.onSecondaryContainer, size: AppSpacing.iconMd),
+        child: Icon(
+          Icons.description_outlined,
+          color: context.colorScheme.onSecondaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: invoice.customerName, query: query),
-      subtitle: Text('${invoice.invoiceNo} · ${DateFormatter.format(invoice.issueDate)}',
-          style: context.textTheme.bodySmall),
+      subtitle: Text(
+        '${invoice.invoiceNo} · ${DateFormatter.format(invoice.issueDate)}',
+        style: context.textTheme.bodySmall,
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(CurrencyFormatter.format(invoice.total),
-              style: context.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600, fontFamily: 'RobotoMono')),
+          Text(
+            CurrencyFormatter.format(invoice.total),
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
             ),
-            child: Text(invoice.status.label,
-                style: context.textTheme.labelSmall
-                    ?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+            child: Text(
+              invoice.status.label,
+              style: context.textTheme.labelSmall?.copyWith(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
       onTap: () {
         if (invoice.id != null) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!)),
+            MaterialPageRoute(
+              builder: (_) => InvoiceDetailScreen(invoiceId: invoice.id!),
+            ),
           );
         }
       },
@@ -736,31 +884,51 @@ class _BillTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOverdue = !bill.isPaidThisPeriod && bill.nextDueDate.isBefore(DateTime.now());
+    final isOverdue =
+        !bill.isPaidThisPeriod && bill.nextDueDate.isBefore(DateTime.now());
     final statusColor = isOverdue
         ? context.colorScheme.error
-        : bill.isPaidThisPeriod ? Colors.green : Colors.orange;
-    final statusLabel = isOverdue ? 'Overdue' : bill.isPaidThisPeriod ? 'Paid' : 'Upcoming';
+        : bill.isPaidThisPeriod
+        ? Colors.green
+        : Colors.orange;
+    final statusLabel = isOverdue
+        ? 'Overdue'
+        : bill.isPaidThisPeriod
+        ? 'Paid'
+        : 'Upcoming';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.tertiaryContainer,
-        child: Icon(Icons.receipt_outlined,
-            color: context.colorScheme.onTertiaryContainer, size: AppSpacing.iconMd),
+        child: Icon(
+          Icons.receipt_outlined,
+          color: context.colorScheme.onTertiaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: bill.name, query: query),
-      subtitle: Text('${bill.category} · Due ${bill.dueDay}${_ord(bill.dueDay)}',
-          style: context.textTheme.bodySmall),
+      subtitle: Text(
+        '${bill.category} · Due ${bill.dueDay}${_ord(bill.dueDay)}',
+        style: context.textTheme.bodySmall,
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(CurrencyFormatter.format(bill.amount),
-              style: context.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600, fontFamily: 'RobotoMono')),
-          Text(statusLabel,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+          Text(
+            CurrencyFormatter.format(bill.amount),
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
+          Text(
+            statusLabel,
+            style: context.textTheme.labelSmall?.copyWith(
+              color: statusColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
       onTap: () => Navigator.of(context).pop(),
@@ -769,7 +937,12 @@ class _BillTile extends StatelessWidget {
 
   String _ord(int n) {
     if (n >= 11 && n <= 13) return 'th';
-    return switch (n % 10) { 1 => 'st', 2 => 'nd', 3 => 'rd', _ => 'th' };
+    return switch (n % 10) {
+      1 => 'st',
+      2 => 'nd',
+      3 => 'rd',
+      _ => 'th',
+    };
   }
 }
 
@@ -790,16 +963,27 @@ class _CreditTile extends StatelessWidget {
         backgroundColor: context.colorScheme.primaryContainer,
         child: Text(
           entry.partyName.isNotEmpty ? entry.partyName[0].toUpperCase() : '?',
-          style: TextStyle(color: context.colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: context.colorScheme.onPrimaryContainer,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       title: _Highlight(text: entry.partyName, query: query),
-      subtitle: Text(isPositive ? 'Owes you' : 'You owe', style: context.textTheme.bodySmall),
-      trailing: Text(CurrencyFormatter.format(net.abs()),
-          style: context.textTheme.titleSmall
-              ?.copyWith(color: balanceColor, fontWeight: FontWeight.w600)),
-      onTap: () =>
-          Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
+      subtitle: Text(
+        isPositive ? 'Owes you' : 'You owe',
+        style: context.textTheme.bodySmall,
+      ),
+      trailing: Text(
+        CurrencyFormatter.format(net.abs()),
+        style: context.textTheme.titleSmall?.copyWith(
+          color: balanceColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
     );
   }
 }
@@ -822,29 +1006,43 @@ class _BookingTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.primaryContainer,
-        child: Icon(Icons.calendar_month_outlined,
-            color: context.colorScheme.onPrimaryContainer, size: AppSpacing.iconMd),
+        child: Icon(
+          Icons.calendar_month_outlined,
+          color: context.colorScheme.onPrimaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: booking.customerName, query: query),
       subtitle: Text(
         '${booking.serviceName} · ${DateFormatter.format(booking.startDatetime)}'
         '${booking.bookingRef != null ? ' · ${booking.bookingRef}' : ''}',
-        maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textTheme.bodySmall,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: context.textTheme.bodySmall,
       ),
       trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 2,
+        ),
         decoration: BoxDecoration(
           color: statusColor.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
         ),
-        child: Text(booking.status.label,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+        child: Text(
+          booking.status.label,
+          style: context.textTheme.labelSmall?.copyWith(
+            color: statusColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
       onTap: () {
         if (booking.id != null) {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: booking.id!)),
+            MaterialPageRoute(
+              builder: (_) => BookingDetailScreen(bookingId: booking.id!),
+            ),
           );
         }
       },
@@ -868,9 +1066,11 @@ class _PurchaseBillTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.secondaryContainer,
-        child: Icon(Icons.inventory_2_outlined,
-            color: context.colorScheme.onSecondaryContainer,
-            size: AppSpacing.iconMd),
+        child: Icon(
+          Icons.inventory_2_outlined,
+          color: context.colorScheme.onSecondaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: bill.vendorName, query: query),
       subtitle: Text(
@@ -887,11 +1087,12 @@ class _PurchaseBillTile extends StatelessWidget {
           Text(
             CurrencyFormatter.format(bill.total),
             style: context.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -899,16 +1100,20 @@ class _PurchaseBillTile extends StatelessWidget {
             child: Text(
               bill.status.label,
               style: context.textTheme.labelSmall?.copyWith(
-                  color: statusColor, fontWeight: FontWeight.w600),
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
       ),
       onTap: () {
         if (bill.id != null) {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
-          ));
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => PurchaseBillDetailScreen(billId: bill.id!),
+            ),
+          );
         }
       },
     );
@@ -924,7 +1129,8 @@ class _PartyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final subtitle = [
       party.partyType.label,
-      if (party.phoneNumber != null && party.phoneNumber!.isNotEmpty) party.phoneNumber!,
+      if (party.phoneNumber != null && party.phoneNumber!.isNotEmpty)
+        party.phoneNumber!,
     ].join(' · ');
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
@@ -932,18 +1138,25 @@ class _PartyTile extends StatelessWidget {
         backgroundColor: context.colorScheme.primaryContainer,
         child: Text(
           party.name.isNotEmpty ? party.name[0].toUpperCase() : '?',
-          style: TextStyle(color: context.colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: context.colorScheme.onPrimaryContainer,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       title: _Highlight(text: party.name, query: query),
       subtitle: Text(subtitle, style: context.textTheme.bodySmall),
       trailing: party.totalTransactions > 0
-          ? Text('${party.totalTransactions} txns',
-              style: context.textTheme.labelSmall?.copyWith(color: context.colorScheme.outline))
+          ? Text(
+              '${party.totalTransactions} txns',
+              style: context.textTheme.labelSmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
+            )
           : null,
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => Party360Screen(party: party)),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => Party360Screen(party: party))),
     );
   }
 }
@@ -962,13 +1175,13 @@ class _LoanTile extends StatelessWidget {
     final statusColor = loan.isOverdue
         ? context.colorScheme.error
         : loan.isCleared
-            ? Colors.green
-            : Colors.orange;
+        ? Colors.green
+        : Colors.orange;
     final statusLabel = loan.isOverdue
         ? 'Overdue'
         : loan.isCleared
-            ? 'Cleared'
-            : 'Active';
+        ? 'Cleared'
+        : 'Active';
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
@@ -991,18 +1204,23 @@ class _LoanTile extends StatelessWidget {
           Text(
             CurrencyFormatter.format(loan.pendingAmount),
             style: context.textTheme.titleSmall?.copyWith(
-                color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+              color: amountColor,
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
           ),
           Text(
             statusLabel,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+            style: context.textTheme.labelSmall?.copyWith(
+              color: statusColor,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const LoansScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const LoansScreen())),
     );
   }
 }
@@ -1042,8 +1260,10 @@ class _ChallanTile extends StatelessWidget {
         children: [
           Text(
             CurrencyFormatter.format(challan.subtotal),
-            style: context.textTheme.titleSmall
-                ?.copyWith(fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -1053,8 +1273,10 @@ class _ChallanTile extends StatelessWidget {
             ),
             child: Text(
               challan.status.name,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+              style: context.textTheme.labelSmall?.copyWith(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -1063,7 +1285,9 @@ class _ChallanTile extends StatelessWidget {
         if (challan.id != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
-                builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!)),
+              builder: (_) =>
+                  DeliveryChallanDetailScreen(challanId: challan.id!),
+            ),
           );
         }
       },
@@ -1103,11 +1327,14 @@ class _RecurringTile extends StatelessWidget {
       trailing: Text(
         '$prefix${CurrencyFormatter.format(item.amount)}',
         style: context.textTheme.titleSmall?.copyWith(
-            color: amountColor, fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+          color: amountColor,
+          fontWeight: FontWeight.w600,
+          fontFamily: 'RobotoMono',
+        ),
       ),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen())),
     );
   }
 }
@@ -1122,17 +1349,19 @@ class _QuoteTile extends StatelessWidget {
     final statusColor = switch (quote.status) {
       QuoteStatus.accepted => Colors.green,
       QuoteStatus.rejected => context.colorScheme.error,
-      QuoteStatus.sent     => Colors.orange,
-      QuoteStatus.draft    => context.colorScheme.outline,
+      QuoteStatus.sent => Colors.orange,
+      QuoteStatus.draft => context.colorScheme.outline,
       QuoteStatus.pendingNumber => context.colorScheme.outline,
     };
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
       leading: CircleAvatar(
         backgroundColor: context.colorScheme.tertiaryContainer,
-        child: Icon(Icons.request_quote_outlined,
-            color: context.colorScheme.onTertiaryContainer,
-            size: AppSpacing.iconMd),
+        child: Icon(
+          Icons.request_quote_outlined,
+          color: context.colorScheme.onTertiaryContainer,
+          size: AppSpacing.iconMd,
+        ),
       ),
       title: _Highlight(text: quote.customerName, query: query),
       subtitle: Text(
@@ -1146,7 +1375,9 @@ class _QuoteTile extends StatelessWidget {
           Text(
             CurrencyFormatter.format(quote.total),
             style: context.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600, fontFamily: 'RobotoMono'),
+              fontWeight: FontWeight.w600,
+              fontFamily: 'RobotoMono',
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -1156,8 +1387,10 @@ class _QuoteTile extends StatelessWidget {
             ),
             child: Text(
               quote.status.label,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+              style: context.textTheme.labelSmall?.copyWith(
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -1166,7 +1399,8 @@ class _QuoteTile extends StatelessWidget {
         if (quote.id != null) {
           Navigator.of(context).push(
             MaterialPageRoute(
-                builder: (_) => QuoteDetailScreen(quoteId: quote.id!)),
+              builder: (_) => QuoteDetailScreen(quoteId: quote.id!),
+            ),
           );
         }
       },

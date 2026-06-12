@@ -21,27 +21,24 @@ class SyncWatermark {
   final String? lastSyncCursor;
 
   factory SyncWatermark.fromMap(Map<String, dynamic> map) => SyncWatermark(
-        peerIdentityId: map['peer_identity_id'] as String,
-        tableName:      map['table_name'] as String,
-        lastSyncedAt:   DateTime.parse(map['last_synced_at'] as String),
-        lastSyncCursor: map['last_sync_cursor'] as String?,
-      );
+    peerIdentityId: map['peer_identity_id'] as String,
+    tableName: map['table_name'] as String,
+    lastSyncedAt: DateTime.parse(map['last_synced_at'] as String),
+    lastSyncCursor: map['last_sync_cursor'] as String?,
+  );
 
   Map<String, dynamic> toMap() => {
-        'peer_identity_id': peerIdentityId,
-        'table_name':       tableName,
-        'last_synced_at':   lastSyncedAt.toIso8601String(),
-        if (lastSyncCursor != null) 'last_sync_cursor': lastSyncCursor,
-      };
+    'peer_identity_id': peerIdentityId,
+    'table_name': tableName,
+    'last_synced_at': lastSyncedAt.toIso8601String(),
+    if (lastSyncCursor != null) 'last_sync_cursor': lastSyncCursor,
+  };
 
-  SyncWatermark copyWith({
-    DateTime? lastSyncedAt,
-    String? lastSyncCursor,
-  }) =>
+  SyncWatermark copyWith({DateTime? lastSyncedAt, String? lastSyncCursor}) =>
       SyncWatermark(
         peerIdentityId: peerIdentityId,
-        tableName:      tableName,
-        lastSyncedAt:   lastSyncedAt ?? this.lastSyncedAt,
+        tableName: tableName,
+        lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
         lastSyncCursor: lastSyncCursor ?? this.lastSyncCursor,
       );
 

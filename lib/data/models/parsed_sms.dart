@@ -56,9 +56,9 @@ enum SmsSourceType {
 
 /// Confidence level of the parsed transaction.
 enum ConfidenceLevel {
-  high,   // >= 0.85
+  high, // >= 0.85
   medium, // >= 0.65
-  low,    // >= 0.40
+  low, // >= 0.40
   veryLow; // < 0.40
 
   static ConfidenceLevel fromScore(double score) {
@@ -140,7 +140,13 @@ class ParsedSms extends Equatable {
   bool get isCredit => direction == TransactionDirection.received;
 
   @override
-  List<Object?> get props => [amount, partyName, direction, sourceType, smsBody];
+  List<Object?> get props => [
+    amount,
+    partyName,
+    direction,
+    sourceType,
+    smsBody,
+  ];
 
   @override
   String toString() {

@@ -43,8 +43,8 @@ class DashboardSummary {
 /// Provider for this month's dashboard summary.
 final dashboardSummaryProvider =
     StateNotifierProvider<DashboardNotifier, AsyncValue<DashboardSummary>>(
-  (ref) => DashboardNotifier(ref.watch(transactionRepositoryProvider)),
-);
+      (ref) => DashboardNotifier(ref.watch(transactionRepositoryProvider)),
+    );
 
 /// Computes dashboard summary from transaction data.
 class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
@@ -60,31 +60,56 @@ class DashboardNotifier extends StateNotifier<AsyncValue<DashboardSummary>> {
       final monthStart = DateTime(now.year, now.month, 1);
       final monthEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
 
-      final income = await _transactionRepo.getTotalIncome(monthStart, monthEnd);
-      final expense = await _transactionRepo.getTotalExpense(monthStart, monthEnd);
-      final invested = await _transactionRepo.getTotalInvested(monthStart, monthEnd);
-      final redeemed = await _transactionRepo.getTotalRedeemed(monthStart, monthEnd);
-      final categorySummary = await _transactionRepo.getCategorySummary(monthStart, monthEnd);
+      final income = await _transactionRepo.getTotalIncome(
+        monthStart,
+        monthEnd,
+      );
+      final expense = await _transactionRepo.getTotalExpense(
+        monthStart,
+        monthEnd,
+      );
+      final invested = await _transactionRepo.getTotalInvested(
+        monthStart,
+        monthEnd,
+      );
+      final redeemed = await _transactionRepo.getTotalRedeemed(
+        monthStart,
+        monthEnd,
+      );
+      final categorySummary = await _transactionRepo.getCategorySummary(
+        monthStart,
+        monthEnd,
+      );
 
       // Mode breakdown (run in parallel)
       final results = await Future.wait([
         _transactionRepo.getTotalIncome(monthStart, monthEnd, mode: 'personal'),
-        _transactionRepo.getTotalExpense(monthStart, monthEnd, mode: 'personal'),
+        _transactionRepo.getTotalExpense(
+          monthStart,
+          monthEnd,
+          mode: 'personal',
+        ),
         _transactionRepo.getTotalIncome(monthStart, monthEnd, mode: 'business'),
-        _transactionRepo.getTotalExpense(monthStart, monthEnd, mode: 'business'),
+        _transactionRepo.getTotalExpense(
+          monthStart,
+          monthEnd,
+          mode: 'business',
+        ),
       ]);
 
-      state = AsyncValue.data(DashboardSummary(
-        totalIncome: income,
-        totalExpense: expense,
-        balance: income - expense,
-        totalInvestment: invested - redeemed,
-        categorySummary: categorySummary,
-        personalIncome: results[0],
-        personalExpense: results[1],
-        businessIncome: results[2],
-        businessExpense: results[3],
-      ));
+      state = AsyncValue.data(
+        DashboardSummary(
+          totalIncome: income,
+          totalExpense: expense,
+          balance: income - expense,
+          totalInvestment: invested - redeemed,
+          categorySummary: categorySummary,
+          personalIncome: results[0],
+          personalExpense: results[1],
+          businessIncome: results[2],
+          businessExpense: results[3],
+        ),
+      );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -103,7 +128,7 @@ final todayCashflowProvider = FutureProvider<TodayCashflow>((ref) async {
   final repo = ref.watch(transactionRepositoryProvider);
   final now = DateTime.now();
   final dayStart = DateTime(now.year, now.month, now.day);
-  final dayEnd   = DateTime(now.year, now.month, now.day, 23, 59, 59);
+  final dayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
   final results = await Future.wait([
     repo.getTotalIncome(dayStart, dayEnd),
@@ -153,11 +178,15 @@ class AccountBalance {
   double get runningBalance => openingBalance + allTimeIncome - allTimeExpense;
 
   /// Available credit remaining (credit cards only).
-  double get availableCredit =>
-      creditLimit > 0 ? (creditLimit - openingBalance - allTimeExpense + allTimeIncome) : 0;
+  double get availableCredit => creditLimit > 0
+      ? (creditLimit - openingBalance - allTimeExpense + allTimeIncome)
+      : 0;
 
   bool get hasActivity =>
-      openingBalance != 0 || allTimeIncome != 0 || allTimeExpense != 0 || creditLimit != 0;
+      openingBalance != 0 ||
+      allTimeIncome != 0 ||
+      allTimeExpense != 0 ||
+      creditLimit != 0;
 }
 
 /// Provider for per-account balances.
@@ -174,28 +203,32 @@ class AccountBalance {
 /// Note: [Account.linkedBankAccountId] (debit card / UPI → parent savings
 /// account) is stored but balance roll-up is Phase 2 — each account currently
 /// tracks its own transactions independently.
-final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async {
+final accountBalancesProvider = FutureProvider<List<AccountBalance>>((
+  ref,
+) async {
   final acctRepo = ref.watch(accountRepositoryProvider);
-  final txnRepo  = ref.watch(transactionRepositoryProvider);
+  final txnRepo = ref.watch(transactionRepositoryProvider);
 
-  final accounts          = await acctRepo.getAll(activeOnly: true);
-  final netsByAccountId   = await txnRepo.getAllTimeByAccountId();
-  final unlinkedByMethod  = await txnRepo.getAllTimeUnlinkedByPaymentMethod();
+  final accounts = await acctRepo.getAll(activeOnly: true);
+  final netsByAccountId = await txnRepo.getAllTimeByAccountId();
+  final unlinkedByMethod = await txnRepo.getAllTimeUnlinkedByPaymentMethod();
 
   final balances = <AccountBalance>[];
 
   // ── One entry per named account ────────────────────────────────────────
   for (final account in accounts) {
     final nets = netsByAccountId[account.id] ?? (income: 0.0, expense: 0.0);
-    balances.add(AccountBalance(
-      method: account.accountType.representativeMethod,
-      openingBalance: account.openingBalance ?? 0.0,
-      allTimeIncome: nets.income,
-      allTimeExpense: nets.expense,
-      creditLimit: account.creditLimit ?? 0.0,
-      accountName: account.accountName,
-      accountId: account.id,
-    ));
+    balances.add(
+      AccountBalance(
+        method: account.accountType.representativeMethod,
+        openingBalance: account.openingBalance ?? 0.0,
+        allTimeIncome: nets.income,
+        allTimeExpense: nets.expense,
+        creditLimit: account.creditLimit ?? 0.0,
+        accountName: account.accountName,
+        accountId: account.id,
+      ),
+    );
   }
 
   // ── Unlinked transactions (no account_id), grouped by payment_method ───
@@ -204,14 +237,16 @@ final accountBalancesProvider = FutureProvider<List<AccountBalance>>((ref) async
     final method = PaymentMethod.fromDb(entry.key);
     final nets = entry.value;
     if (nets.income != 0 || nets.expense != 0) {
-      balances.add(AccountBalance(
-        method: method,
-        openingBalance: 0.0,
-        allTimeIncome: nets.income,
-        allTimeExpense: nets.expense,
-        // Label: "Other (UPI)", "Other (Cash)", etc. — visually distinct from named accounts.
-        accountName: 'Other (${method.label})',
-      ));
+      balances.add(
+        AccountBalance(
+          method: method,
+          openingBalance: 0.0,
+          allTimeIncome: nets.income,
+          allTimeExpense: nets.expense,
+          // Label: "Other (UPI)", "Other (Cash)", etc. — visually distinct from named accounts.
+          accountName: 'Other (${method.label})',
+        ),
+      );
     }
   }
 
@@ -237,12 +272,14 @@ void invalidateBalanceProviders(Ref ref) {
 /// All-time invested (still deployed) and redeemed (returned) totals.
 /// Net invested = invested − redeemed = capital still in market/FD/etc.
 final allTimeInvestmentProvider =
-    FutureProvider<({double invested, double redeemed, double net})>((ref) async {
-  final repo = ref.watch(transactionRepositoryProvider);
-  final data = await repo.getAllTimeInvestments();
-  return (
-    invested: data.invested,
-    redeemed: data.redeemed,
-    net: data.invested - data.redeemed,
-  );
-});
+    FutureProvider<({double invested, double redeemed, double net})>((
+      ref,
+    ) async {
+      final repo = ref.watch(transactionRepositoryProvider);
+      final data = await repo.getAllTimeInvestments();
+      return (
+        invested: data.invested,
+        redeemed: data.redeemed,
+        net: data.invested - data.redeemed,
+      );
+    });

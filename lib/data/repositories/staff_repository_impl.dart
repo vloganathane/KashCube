@@ -20,8 +20,7 @@ class StaffRepository {
       conditions.add('(business_id = ? OR business_id IS NULL)');
       args.add(businessId);
     }
-    final where =
-        conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
+    final where = conditions.isEmpty ? '' : 'WHERE ${conditions.join(' AND ')}';
     final rows = await db.rawQuery(
       'SELECT * FROM staff $where ORDER BY name COLLATE NOCASE',
       args,
@@ -100,8 +99,11 @@ class StaffRepository {
   /// Returns the staff record linked to [partyId], or null if none.
   Future<Staff?> getByPartyId(int partyId) async {
     final db = await _db.database;
-    final rows = await db
-        .query('staff', where: 'party_id = ?', whereArgs: [partyId]);
+    final rows = await db.query(
+      'staff',
+      where: 'party_id = ?',
+      whereArgs: [partyId],
+    );
     if (rows.isEmpty) return null;
     return Staff.fromMap(rows.first);
   }
@@ -129,10 +131,7 @@ class StaffRepository {
   }
 
   /// Payments for a given month across all staff (for payroll run view).
-  Future<List<SalaryPayment>> getPaymentsForPeriod(
-    int month,
-    int year,
-  ) async {
+  Future<List<SalaryPayment>> getPaymentsForPeriod(int month, int year) async {
     final db = await _db.database;
     final rows = await db.rawQuery(
       'SELECT * FROM salary_payments '

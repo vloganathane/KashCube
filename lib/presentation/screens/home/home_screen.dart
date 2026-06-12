@@ -60,8 +60,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     with TutorialMixin<HomeScreen> {
   // Keys for tutorial spotlights
   final _balanceDeckKey = GlobalKey();
-  final _searchKey      = GlobalKey();
-  final _tuneKey        = GlobalKey();
+  final _searchKey = GlobalKey();
+  final _tuneKey = GlobalKey();
 
   @override
   String get tutorialKey => SettingsKeys.tutorialHomeDone;
@@ -87,7 +87,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           align: ContentAlign.bottom,
           child: tutorialContentCard(
             title: 'Your financial snapshot',
-            message: 'Swipe the balance card to see your income, expenses, and net balance at a glance.',
+            message:
+                'Swipe the balance card to see your income, expenses, and net balance at a glance.',
           ),
         ),
       ],
@@ -100,7 +101,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           align: ContentAlign.bottom,
           child: tutorialContentCard(
             title: 'Search everything',
-            message: 'Find any transaction, party, or invoice instantly by amount, name, or note.',
+            message:
+                'Find any transaction, party, or invoice instantly by amount, name, or note.',
           ),
         ),
       ],
@@ -113,7 +115,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           align: ContentAlign.bottom,
           child: tutorialContentCard(
             title: 'Customise your Home',
-            message: 'Show or hide sections, reorder widgets, and tailor the dashboard to what you care about most.',
+            message:
+                'Show or hide sections, reorder widgets, and tailor the dashboard to what you care about most.',
           ),
         ),
       ],
@@ -122,10 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   List<TutorialMenuItem> get tutorialMenuItems => [
-    TutorialMenuItem(
-      label: 'Replay Home tour',
-      onTap: replayTutorial,
-    ),
+    TutorialMenuItem(label: 'Replay Home tour', onTap: replayTutorial),
   ];
 
   @override
@@ -136,7 +136,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final dashboardAsync   = ref.watch(dashboardSummaryProvider);
+    final dashboardAsync = ref.watch(dashboardSummaryProvider);
     final homeWidgetConfig = ref.watch(homeWidgetProvider);
 
     return Scaffold(
@@ -194,9 +194,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   tooltip: 'Search',
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SearchScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const SearchScreen()),
                     );
                   },
                 ),
@@ -233,11 +231,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       KeyedSubtree(
         key: _balanceDeckKey,
         child: dashboardAsync.when(
-          data:    (s) => _DashboardDeck(summary: s),
-          loading: ()  => const _DashboardCardsLoading(),
-          error:   (e, _) => Center(
-            child: Text('Error: $e',
-                style: TextStyle(color: context.colorScheme.error))),
+          data: (s) => _DashboardDeck(summary: s),
+          loading: () => const _DashboardCardsLoading(),
+          error: (e, _) => Center(
+            child: Text(
+              'Error: $e',
+              style: TextStyle(color: context.colorScheme.error),
+            ),
+          ),
         ),
       ),
       const SizedBox(height: AppSpacing.sm),
@@ -328,9 +329,7 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
           child: Container(
             decoration: BoxDecoration(
               color: warningColor.withValues(alpha: 0.08),
-              border: Border(
-                left: BorderSide(color: warningColor, width: 3),
-              ),
+              border: Border(left: BorderSide(color: warningColor, width: 3)),
             ),
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.md,
@@ -341,8 +340,11 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_month_outlined,
-                    size: 20, color: warningColor),
+                Icon(
+                  Icons.calendar_month_outlined,
+                  size: 20,
+                  color: warningColor,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -359,17 +361,21 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                        builder: (_) => const FyCloseWizardScreen()),
+                      builder: (_) => const FyCloseWizardScreen(),
+                    ),
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: warningColor.withValues(alpha: 0.15),
                     foregroundColor: warningColor,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    textStyle: context.textTheme.labelSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                    textStyle: context.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   child: const Text('Close FY'),
                 ),
@@ -380,7 +386,9 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
                   onPressed: () => setState(() => _dismissed = true),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(
-                      minWidth: 28, minHeight: 28),
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
                   tooltip: 'Dismiss for this session',
                 ),
               ],
@@ -391,14 +399,23 @@ class _YearEndBannerSliverState extends ConsumerState<_YearEndBannerSliver> {
     );
   }
 
-  String _formatDate(DateTime d) =>
-      '${d.day} ${_monthName(d.month)} ${d.year}';
+  String _formatDate(DateTime d) => '${d.day} ${_monthName(d.month)} ${d.year}';
 
   String _monthName(int m) => const [
-        '',
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
 }
 
 // ---------------------------------------------------------------------------
@@ -445,15 +462,19 @@ class _BackupNudgeBannerSliverState
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(Icons.shield_outlined,
-                    size: 18, color: scheme.onPrimaryContainer),
+                Icon(
+                  Icons.shield_outlined,
+                  size: 18,
+                  color: scheme.onPrimaryContainer,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
                     'Your data is only on this device. '
                     'Set a backup passphrase so you never lose it.',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: scheme.onPrimaryContainer),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: scheme.onPrimaryContainer,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -465,21 +486,28 @@ class _BackupNudgeBannerSliverState
                     ),
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        scheme.onPrimaryContainer.withValues(alpha: 0.15),
+                    backgroundColor: scheme.onPrimaryContainer.withValues(
+                      alpha: 0.15,
+                    ),
                     foregroundColor: scheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+                      horizontal: AppSpacing.base,
+                      vertical: AppSpacing.xs,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    textStyle: context.textTheme.labelMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    textStyle: context.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   child: const Text('Back up'),
                 ),
                 IconButton(
-                  icon: Icon(Icons.close,
-                      size: 16, color: scheme.onPrimaryContainer),
+                  icon: Icon(
+                    Icons.close,
+                    size: 16,
+                    color: scheme.onPrimaryContainer,
+                  ),
                   onPressed: () async {
                     await dismissBackupNudge();
                     if (mounted) {
@@ -515,12 +543,15 @@ class _PendingSmsBannerSliver extends ConsumerWidget {
     if (!autoDetect) return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     final config = ref.watch(homeWidgetProvider);
-    final widgetEnabled = config
-        .any((c) => c.id == HomeWidgetId.pendingSms && c.enabled);
-    if (!widgetEnabled) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    final widgetEnabled = config.any(
+      (c) => c.id == HomeWidgetId.pendingSms && c.enabled,
+    );
+    if (!widgetEnabled)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     final pending = ref.watch(pendingSmsConfirmationsProvider);
-    if (pending.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (pending.isEmpty)
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
 
     final count = pending.length;
     final scheme = Theme.of(context).colorScheme;
@@ -535,15 +566,20 @@ class _PendingSmsBannerSliver extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              Icon(Icons.sms_outlined, size: 18, color: scheme.onSecondaryContainer),
+              Icon(
+                Icons.sms_outlined,
+                size: 18,
+                color: scheme.onSecondaryContainer,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   count == 1
                       ? '1 SMS transaction pending review'
                       : '$count SMS transactions pending review',
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: scheme.onSecondaryContainer),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSecondaryContainer,
+                  ),
                 ),
               ),
               TextButton(
@@ -551,7 +587,9 @@ class _PendingSmsBannerSliver extends ConsumerWidget {
                 style: TextButton.styleFrom(
                   foregroundColor: scheme.onSecondaryContainer,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.xs, vertical: 0),
+                    horizontal: AppSpacing.xs,
+                    vertical: 0,
+                  ),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: const Text('Review'),
@@ -614,12 +652,12 @@ class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
     ]);
     if (!mounted) return;
     setState(() {
-      _name      = vals[0];
-      _phone     = vals[1];
-      _email     = vals[2];
-      _website   = vals[3];
-      _whatsapp  = vals[4];
-      _linkedin  = vals[5];
+      _name = vals[0];
+      _phone = vals[1];
+      _email = vals[2];
+      _website = vals[3];
+      _whatsapp = vals[4];
+      _linkedin = vals[5];
       _instagram = vals[6];
       _loadingPersonal = false;
     });
@@ -638,8 +676,9 @@ class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
     showVCardQrDialog(
       context,
       vcard: vcard,
-      displayName:
-          (_name != null && _name!.isNotEmpty) ? _name! : 'My Personal Card',
+      displayName: (_name != null && _name!.isNotEmpty)
+          ? _name!
+          : 'My Personal Card',
       subtitle: _phone ?? _email,
     );
   }
@@ -660,7 +699,10 @@ class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
         children: [
           // Handle
           Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm, bottom: AppSpacing.xs),
+            padding: const EdgeInsets.only(
+              top: AppSpacing.sm,
+              bottom: AppSpacing.xs,
+            ),
             child: Center(
               child: Container(
                 width: 40,
@@ -675,17 +717,18 @@ class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
             child: Row(
               children: [
                 const Icon(Icons.qr_code_2_outlined),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'My QR Cards',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -728,75 +771,89 @@ class _QuickShareQrSheetState extends ConsumerState<_QuickShareQrSheet> {
                   onTap: _loadingPersonal ? null : _openPersonalQr,
                 ),
                 if (widget.showBusinesses && businesses.isNotEmpty) ...[
-                  const Divider(indent: AppSpacing.base, endIndent: AppSpacing.base),
+                  const Divider(
+                    indent: AppSpacing.base,
+                    endIndent: AppSpacing.base,
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.base, AppSpacing.xs, 0, AppSpacing.xs),
+                      AppSpacing.base,
+                      AppSpacing.xs,
+                      0,
+                      AppSpacing.xs,
+                    ),
                     child: Text(
                       'Business Profiles',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            letterSpacing: 0.8,
-                          ),
+                        color: cs.onSurfaceVariant,
+                        letterSpacing: 0.8,
+                      ),
                     ),
                   ),
-                  ...businesses.map((biz) => ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: cs.secondaryContainer,
-                          child: Text(
-                            biz.name.isNotEmpty
-                                ? biz.name[0].toUpperCase()
-                                : 'B',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: cs.onSecondaryContainer),
+                  ...businesses.map(
+                    (biz) => ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: cs.secondaryContainer,
+                        child: Text(
+                          biz.name.isNotEmpty ? biz.name[0].toUpperCase() : 'B',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSecondaryContainer,
                           ),
                         ),
-                        title: Text(
-                          biz.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          biz.phone ?? biz.email ?? biz.gstNo ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        trailing: biz.isActive
-                            ? Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: cs.primary.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'Active',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: cs.primary,
-                                          fontWeight: FontWeight.w700),
+                      ),
+                      title: Text(
+                        biz.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        biz.phone ?? biz.email ?? biz.gstNo ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: biz.isActive
+                          ? Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: cs.primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Active',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: cs.primary,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  const SizedBox(width: AppSpacing.xs),
-                                  Icon(Icons.qr_code_2_outlined,
-                                      color: cs.primary),
-                                ],
-                              )
-                            : Icon(Icons.qr_code_2_outlined,
-                                color: cs.onSurfaceVariant),
-                        onTap: () => showVCardQrDialog(
-                          context,
-                          vcard: vCardFromBusiness(biz),
-                          displayName:
-                              (biz.ownerName?.isNotEmpty ?? false)
-                                  ? biz.ownerName!
-                                  : biz.name,
-                          subtitle: biz.phone ?? biz.email,
-                        ),
-                      )),
+                                ),
+                                const SizedBox(width: AppSpacing.xs),
+                                Icon(
+                                  Icons.qr_code_2_outlined,
+                                  color: cs.primary,
+                                ),
+                              ],
+                            )
+                          : Icon(
+                              Icons.qr_code_2_outlined,
+                              color: cs.onSurfaceVariant,
+                            ),
+                      onTap: () => showVCardQrDialog(
+                        context,
+                        vcard: vCardFromBusiness(biz),
+                        displayName: (biz.ownerName?.isNotEmpty ?? false)
+                            ? biz.ownerName!
+                            : biz.name,
+                        subtitle: biz.phone ?? biz.email,
+                      ),
+                    ),
+                  ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
               ],
@@ -836,8 +893,9 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
     final summary = widget.summary;
     final colors = context.kashColors;
 
-    final lent     = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
-    final borrowed = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
+    final lent = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+    final borrowed =
+        ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
     final hasLoans = lent > 0 || borrowed > 0;
 
     // All-time account balance (Model C: opening + all-time inflows − outflows)
@@ -877,7 +935,9 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 ),
                 loading: () => const SizedBox(
                   height: 36,
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
                 error: (_, _) => Text(
                   '₹—',
@@ -893,7 +953,10 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                 onTap: () => _showAccountBreakdownSheet(context),
                 borderRadius: BorderRadius.circular(20),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 2,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
@@ -928,83 +991,94 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
               // Monthly net flow pill — always shown so users understand
               // why the all-time balance and the monthly income/expense differ.
               const SizedBox(height: AppSpacing.xs),
-              Builder(builder: (ctx) {
-                final net = summary.totalIncome - summary.totalExpense;
-                final pos = net >= 0;
-                return Container(
+              Builder(
+                builder: (ctx) {
+                  final net = summary.totalIncome - summary.totalExpense;
+                  final pos = net >= 0;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: (pos ? colors.income : colors.expense).withAlpha(
+                        25,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          pos ? Icons.trending_up : Icons.trending_down,
+                          size: 11,
+                          color: pos ? colors.income : colors.expense,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${pos ? '+' : ''}${CurrencyFormatter.formatCompact(net)}  this month',
+                          style: ctx.textTheme.labelSmall?.copyWith(
+                            color: pos ? colors.income : colors.expense,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              // Secondary: Net Balance + breakdown — only when loans exist
+              if (hasLoans) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 2),
+                    horizontal: AppSpacing.sm,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: (pos ? colors.income : colors.expense).withAlpha(25),
+                    color: context.colorScheme.surfaceContainerHighest
+                        .withAlpha(80),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        pos ? Icons.trending_up : Icons.trending_down,
-                        size: 11,
-                        color: pos ? colors.income : colors.expense,
-                      ),
-                      const SizedBox(width: 3),
                       Text(
-                        '${pos ? '+' : ''}${CurrencyFormatter.formatCompact(net)}  this month',
-                        style: ctx.textTheme.labelSmall?.copyWith(
-                          color: pos ? colors.income : colors.expense,
-                          fontWeight: FontWeight.w600,
+                        'Net worth ',
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: context.colorScheme.outline,
                         ),
                       ),
-                    ],
-                  ),
-                );
-              }),
-
-              // Secondary: Net Balance + breakdown — only when loans exist
-              if (hasLoans) ...[
-              const SizedBox(height: AppSpacing.xs),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm, vertical: 2),
-                decoration: BoxDecoration(
-                  color: context.colorScheme.surfaceContainerHighest.withAlpha(80),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Net worth ',
-                      style: context.textTheme.labelSmall?.copyWith(
-                        color: context.colorScheme.outline,
-                      ),
-                    ),
-                    Text(
-                      CurrencyFormatter.formatCompact(netBalance),
-                      style: context.textTheme.labelSmall?.copyWith(
-                        color: netBalance >= 0 ? colors.income : colors.expense,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'RobotoMono',
-                      ),
-                    ),
-                    _BalanceDot(),
-                    if (lent > 0) ...[
-                      _BalanceChip(
-                        label: 'lent',
-                        value: CurrencyFormatter.formatCompact(lent),
-                        color: colors.income,
+                      Text(
+                        CurrencyFormatter.formatCompact(netBalance),
+                        style: context.textTheme.labelSmall?.copyWith(
+                          color: netBalance >= 0
+                              ? colors.income
+                              : colors.expense,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'RobotoMono',
+                        ),
                       ),
                       _BalanceDot(),
+                      if (lent > 0) ...[
+                        _BalanceChip(
+                          label: 'lent',
+                          value: CurrencyFormatter.formatCompact(lent),
+                          color: colors.income,
+                        ),
+                        _BalanceDot(),
+                      ],
+                      if (borrowed > 0)
+                        _BalanceChip(
+                          label: 'owed',
+                          value: CurrencyFormatter.formatCompact(borrowed),
+                          color: colors.expense,
+                        ),
                     ],
-                    if (borrowed > 0)
-                      _BalanceChip(
-                        label: 'owed',
-                        value: CurrencyFormatter.formatCompact(borrowed),
-                        color: colors.expense,
-                      ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
 
               // Swipeable cards — only when expanded
               AnimatedSize(
@@ -1034,7 +1108,9 @@ class _DashboardDeckState extends ConsumerState<_DashboardDeck> {
                               final active = i == _page;
                               return AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
-                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 3,
+                                ),
                                 width: active ? 14 : 5,
                                 height: 5,
                                 decoration: BoxDecoration(
@@ -1076,16 +1152,16 @@ class _AccountBreakdownSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accountsAsync    = ref.watch(accountBalancesProvider);
-    final lentAsync        = ref.watch(totalOutstandingLentProvider);
-    final borrowedAsync    = ref.watch(totalOutstandingBorrowedProvider);
-    final billsAsync       = ref.watch(totalMonthlyScheduledExpenseProvider);
-    final investmentAsync  = ref.watch(allTimeInvestmentProvider);
-    final colors           = context.kashColors;
+    final accountsAsync = ref.watch(accountBalancesProvider);
+    final lentAsync = ref.watch(totalOutstandingLentProvider);
+    final borrowedAsync = ref.watch(totalOutstandingBorrowedProvider);
+    final billsAsync = ref.watch(totalMonthlyScheduledExpenseProvider);
+    final investmentAsync = ref.watch(allTimeInvestmentProvider);
+    final colors = context.kashColors;
 
-    final lent      = lentAsync.valueOrNull ?? 0.0;
-    final borrowed  = borrowedAsync.valueOrNull ?? 0.0;
-    final bills     = billsAsync.valueOrNull ?? 0.0;
+    final lent = lentAsync.valueOrNull ?? 0.0;
+    final borrowed = borrowedAsync.valueOrNull ?? 0.0;
+    final bills = billsAsync.valueOrNull ?? 0.0;
     final netInvest = investmentAsync.valueOrNull?.net ?? 0.0;
 
     return DraggableScrollableSheet(
@@ -1096,14 +1172,19 @@ class _AccountBreakdownSheet extends ConsumerWidget {
       builder: (_, scrollCtrl) => SingleChildScrollView(
         controller: scrollCtrl,
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.md, AppSpacing.base, AppSpacing.xxl),
+          AppSpacing.base,
+          AppSpacing.md,
+          AppSpacing.base,
+          AppSpacing.xxl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Handle
             Center(
               child: Container(
-                width: 36, height: 4,
+                width: 36,
+                height: 4,
                 margin: const EdgeInsets.only(bottom: AppSpacing.md),
                 decoration: BoxDecoration(
                   color: context.colorScheme.outlineVariant,
@@ -1126,56 +1207,70 @@ class _AccountBreakdownSheet extends ConsumerWidget {
               error: (e, _) => Text('Error: $e'),
               data: (accounts) {
                 final active = accounts.where((a) => a.hasActivity).toList();
-                final cashTotal =
-                    active.fold<double>(0.0, (s, a) => s + a.runningBalance);
+                final cashTotal = active.fold<double>(
+                  0.0,
+                  (s, a) => s + a.runningBalance,
+                );
                 if (active.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.md,
+                    ),
                     child: Text(
                       'No transactions yet. Add transactions to see balances.',
                       style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   );
                 }
                 return Column(
                   children: [
                     ...active.map((a) {
-                      final isCreditCard =
-                          a.method == PaymentMethod.creditCard;
+                      final isCreditCard = a.method == PaymentMethod.creditCard;
                       // Credit cards: show outstanding as a liability.
                       final displayBal = isCreditCard
-                          ? -(a.openingBalance + a.allTimeExpense - a.allTimeIncome)
+                          ? -(a.openingBalance +
+                                a.allTimeExpense -
+                                a.allTimeIncome)
                           : a.runningBalance;
                       final balColor = isCreditCard
                           ? (displayBal < 0
-                              ? colors.expense
-                              : context.colorScheme.onSurface)
+                                ? colors.expense
+                                : context.colorScheme.onSurface)
                           : (displayBal >= 0 ? colors.income : colors.expense);
                       return ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
-                          backgroundColor: context.colorScheme.secondaryContainer,
+                          backgroundColor:
+                              context.colorScheme.secondaryContainer,
                           radius: 18,
-                          child: Icon(_paymentMethodIcon(a.method),
-                              size: 18,
-                              color: context.colorScheme.onSecondaryContainer),
+                          child: Icon(
+                            _paymentMethodIcon(a.method),
+                            size: 18,
+                            color: context.colorScheme.onSecondaryContainer,
+                          ),
                         ),
-                        title: Text(a.displayName,
-                            style: context.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w500)),
+                        title: Text(
+                          a.displayName,
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                         subtitle: isCreditCard && a.creditLimit > 0
                             ? Text(
                                 'Limit: ${CurrencyFormatter.formatCompact(a.creditLimit)}  •  '
                                 'Available: ${CurrencyFormatter.formatCompact(a.availableCredit)}',
                                 style: context.textTheme.bodySmall?.copyWith(
-                                    color: context.colorScheme.onSurfaceVariant),
+                                  color: context.colorScheme.onSurfaceVariant,
+                                ),
                               )
                             : Text(
                                 '${CurrencyFormatter.formatCompact(a.allTimeIncome)} in  •  '
                                 '${CurrencyFormatter.formatCompact(a.allTimeExpense)} out',
                                 style: context.textTheme.bodySmall?.copyWith(
-                                    color: context.colorScheme.onSurfaceVariant),
+                                  color: context.colorScheme.onSurfaceVariant,
+                                ),
                               ),
                         trailing: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1184,8 +1279,8 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                             Text(
                               isCreditCard
                                   ? (displayBal < 0
-                                      ? '-${CurrencyFormatter.format(displayBal.abs())} owed'
-                                      : CurrencyFormatter.format(displayBal))
+                                        ? '-${CurrencyFormatter.format(displayBal.abs())} owed'
+                                        : CurrencyFormatter.format(displayBal))
                                   : CurrencyFormatter.format(displayBal),
                               style: context.textTheme.bodyMedium?.copyWith(
                                 color: balColor,
@@ -1220,18 +1315,26 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor:
-                        colors.income.withAlpha(30),
+                    backgroundColor: colors.income.withAlpha(30),
                     radius: 18,
-                    child: Icon(Icons.arrow_upward,
-                        size: 16, color: colors.income),
+                    child: Icon(
+                      Icons.arrow_upward,
+                      size: 16,
+                      color: colors.income,
+                    ),
                   ),
-                  title: Text('To Receive',
-                      style: context.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w500)),
-                  subtitle: Text('Outstanding lending — others owe you',
-                      style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant)),
+                  title: Text(
+                    'To Receive',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Outstanding lending — others owe you',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   trailing: Text(
                     '+${CurrencyFormatter.format(lent)}',
                     style: context.textTheme.bodyMedium?.copyWith(
@@ -1245,18 +1348,26 @@ class _AccountBreakdownSheet extends ConsumerWidget {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor:
-                        colors.expense.withAlpha(30),
+                    backgroundColor: colors.expense.withAlpha(30),
                     radius: 18,
-                    child: Icon(Icons.arrow_downward,
-                        size: 16, color: colors.expense),
+                    child: Icon(
+                      Icons.arrow_downward,
+                      size: 16,
+                      color: colors.expense,
+                    ),
                   ),
-                  title: Text('To Repay',
-                      style: context.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w500)),
-                  subtitle: Text('Outstanding loans — you owe others',
-                      style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant)),
+                  title: Text(
+                    'To Repay',
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Outstanding loans — you owe others',
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   trailing: Text(
                     '-${CurrencyFormatter.format(borrowed)}',
                     style: context.textTheme.bodyMedium?.copyWith(
@@ -1269,46 +1380,56 @@ class _AccountBreakdownSheet extends ConsumerWidget {
             ],
 
             // ── Section 3: Investments ─────────────────────────────────
-            investmentAsync.whenOrNull(data: (inv) {
-              if (inv.invested == 0) return null;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.lg),
-                  _SheetSectionHeader(
-                    icon: Icons.trending_up_outlined,
-                    label: 'Investments',
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: CircleAvatar(
-                      backgroundColor: colors.investment.withAlpha(30),
-                      radius: 18,
-                      child: Icon(Icons.savings_outlined,
-                          size: 16, color: colors.investment),
-                    ),
-                    title: Text('Total Deployed',
-                        style: context.textTheme.bodyMedium
-                            ?.copyWith(fontWeight: FontWeight.w500)),
-                    subtitle: Text(
-                      '${CurrencyFormatter.formatCompact(inv.invested)} invested  •  '
-                      '${CurrencyFormatter.formatCompact(inv.redeemed)} redeemed',
-                      style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
-                    ),
-                    trailing: Text(
-                      '${inv.net < 0 ? '-' : ''}${CurrencyFormatter.format(inv.net)}',
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        color: colors.investment,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'RobotoMono',
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }) ?? const SizedBox.shrink(),
+            investmentAsync.whenOrNull(
+                  data: (inv) {
+                    if (inv.invested == 0) return null;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.lg),
+                        _SheetSectionHeader(
+                          icon: Icons.trending_up_outlined,
+                          label: 'Investments',
+                        ),
+                        const SizedBox(height: AppSpacing.xs),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundColor: colors.investment.withAlpha(30),
+                            radius: 18,
+                            child: Icon(
+                              Icons.savings_outlined,
+                              size: 16,
+                              color: colors.investment,
+                            ),
+                          ),
+                          title: Text(
+                            'Total Deployed',
+                            style: context.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${CurrencyFormatter.formatCompact(inv.invested)} invested  •  '
+                            '${CurrencyFormatter.formatCompact(inv.redeemed)} redeemed',
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          trailing: Text(
+                            '${inv.net < 0 ? '-' : ''}${CurrencyFormatter.format(inv.net)}',
+                            style: context.textTheme.bodyMedium?.copyWith(
+                              color: colors.investment,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'RobotoMono',
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ) ??
+                const SizedBox.shrink(),
 
             // ── Section 4: Recurring Bills ────────────────────────────────
             if (bills > 0) ...[
@@ -1321,19 +1442,26 @@ class _AccountBreakdownSheet extends ConsumerWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor:
-                      context.colorScheme.tertiaryContainer,
+                  backgroundColor: context.colorScheme.tertiaryContainer,
                   radius: 18,
-                  child: Icon(Icons.calendar_month_outlined,
-                      size: 16,
-                      color: context.colorScheme.onTertiaryContainer),
+                  child: Icon(
+                    Icons.calendar_month_outlined,
+                    size: 16,
+                    color: context.colorScheme.onTertiaryContainer,
+                  ),
                 ),
-                title: Text('Monthly Committed',
-                    style: context.textTheme.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w500)),
-                subtitle: Text('Scheduled bills & recurring payments',
-                    style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant)),
+                title: Text(
+                  'Monthly Committed',
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  'Scheduled bills & recurring payments',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 trailing: Text(
                   '${CurrencyFormatter.format(bills)}/mo',
                   style: context.textTheme.bodyMedium?.copyWith(
@@ -1351,20 +1479,22 @@ class _AccountBreakdownSheet extends ConsumerWidget {
               const Divider(height: 1),
               const SizedBox(height: AppSpacing.xs),
               accountsAsync.whenOrNull(
-                data: (accounts) {
-                  final cashTotal = accounts
-                      .where((a) => a.hasActivity)
-                      .fold<double>(0.0, (s, a) => s + a.runningBalance);
-                  final netWorth = cashTotal + lent - borrowed + netInvest;
-                  return _SheetTotalRow(
-                    label: 'Net Worth',
-                    sublabel: 'Cash + investments + receivables − liabilities',
-                    value: netWorth,
-                    colors: colors,
-                    large: true,
-                  );
-                },
-              ) ?? const SizedBox.shrink(),
+                    data: (accounts) {
+                      final cashTotal = accounts
+                          .where((a) => a.hasActivity)
+                          .fold<double>(0.0, (s, a) => s + a.runningBalance);
+                      final netWorth = cashTotal + lent - borrowed + netInvest;
+                      return _SheetTotalRow(
+                        label: 'Net Worth',
+                        sublabel:
+                            'Cash + investments + receivables − liabilities',
+                        value: netWorth,
+                        colors: colors,
+                        large: true,
+                      );
+                    },
+                  ) ??
+                  const SizedBox.shrink(),
             ],
           ],
         ),
@@ -1445,30 +1575,33 @@ class _SheetTotalRow extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: (large
-                          ? context.textTheme.titleSmall
-                          : context.textTheme.bodyMedium)
-                      ?.copyWith(fontWeight: FontWeight.w700),
+                  style:
+                      (large
+                              ? context.textTheme.titleSmall
+                              : context.textTheme.bodyMedium)
+                          ?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 if (sublabel != null)
                   Text(
                     sublabel!,
                     style: context.textTheme.bodySmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant),
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
                   ),
               ],
             ),
           ),
           Text(
             CurrencyFormatter.format(value),
-            style: (large
-                    ? context.textTheme.titleSmall
-                    : context.textTheme.bodyMedium)
-                ?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'RobotoMono',
-            ),
+            style:
+                (large
+                        ? context.textTheme.titleSmall
+                        : context.textTheme.bodyMedium)
+                    ?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'RobotoMono',
+                    ),
           ),
         ],
       ),
@@ -1485,10 +1618,14 @@ class _OverviewCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final monthlyScheduledAsync = ref.watch(totalMonthlyScheduledExpenseProvider);
+    final monthlyScheduledAsync = ref.watch(
+      totalMonthlyScheduledExpenseProvider,
+    );
     // Total outstanding = outstanding lent (to receive) + outstanding borrowed (to pay)
-    final lentOutstanding     = ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
-    final borrowedOutstanding = ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
+    final lentOutstanding =
+        ref.watch(totalOutstandingLentProvider).valueOrNull ?? 0.0;
+    final borrowedOutstanding =
+        ref.watch(totalOutstandingBorrowedProvider).valueOrNull ?? 0.0;
     final totalOutstanding = lentOutstanding + borrowedOutstanding;
 
     return _SwipeCard(
@@ -1498,35 +1635,44 @@ class _OverviewCard extends ConsumerWidget {
       onLabelColor: context.colorScheme.onPrimaryContainer,
       statsRow: [
         _CardStat(
-          icon: Icons.arrow_downward, label: 'Income',
+          icon: Icons.arrow_downward,
+          label: 'Income',
           value: CurrencyFormatter.formatCompact(summary.totalIncome),
           color: colors.income,
         ),
         _CardStat(
-          icon: Icons.arrow_upward, label: 'Expense',
+          icon: Icons.arrow_upward,
+          label: 'Expense',
           value: CurrencyFormatter.formatCompact(summary.totalExpense),
           color: colors.expense,
         ),
         _CardStat(
-          icon: Icons.trending_up, label: 'Invest',
+          icon: Icons.trending_up,
+          label: 'Invest',
           value: CurrencyFormatter.formatCompact(summary.totalInvestment),
           color: colors.investment,
         ),
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.event_repeat, label: 'Bills Payable',
+          icon: Icons.event_repeat,
+          label: 'Bills Payable',
           value: monthlyScheduledAsync.maybeWhen(
-            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+            data: (v) => CurrencyFormatter.formatCompact(v),
+            orElse: () => '…',
+          ),
           suffix: '/mo',
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen())),
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()),
+          ),
         ),
         _CardFooterTile(
-          icon: Icons.handshake_outlined, label: 'Loans',
+          icon: Icons.handshake_outlined,
+          label: 'Loans',
           value: CurrencyFormatter.formatCompact(totalOutstanding),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LoansScreen())),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LoansScreen())),
         ),
       ],
     );
@@ -1542,7 +1688,9 @@ class _PersonalCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final monthlyScheduledAsync = ref.watch(totalMonthlyScheduledExpenseProvider);
+    final monthlyScheduledAsync = ref.watch(
+      totalMonthlyScheduledExpenseProvider,
+    );
     final income = summary.personalIncome ?? 0;
     final expense = summary.personalExpense ?? 0;
     final pnl = summary.personalPnl;
@@ -1556,29 +1704,36 @@ class _PersonalCard extends ConsumerWidget {
       onLabelColor: context.colorScheme.onSecondaryContainer,
       statsRow: [
         _CardStat(
-          icon: Icons.arrow_downward, label: 'Income',
+          icon: Icons.arrow_downward,
+          label: 'Income',
           value: CurrencyFormatter.formatCompact(income),
           color: colors.income,
         ),
         _CardStat(
-          icon: Icons.arrow_upward, label: 'Expense',
+          icon: Icons.arrow_upward,
+          label: 'Expense',
           value: CurrencyFormatter.formatCompact(expense),
           color: colors.expense,
         ),
         _CardStat(
-          icon: Icons.balance, label: 'Net',
+          icon: Icons.balance,
+          label: 'Net',
           value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
           color: pnlColor,
         ),
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.event_repeat, label: 'Bills Payable',
+          icon: Icons.event_repeat,
+          label: 'Bills Payable',
           value: monthlyScheduledAsync.maybeWhen(
-            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
+            data: (v) => CurrencyFormatter.formatCompact(v),
+            orElse: () => '…',
+          ),
           suffix: '/mo',
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen())),
+            MaterialPageRoute(builder: (_) => const BillsAndPaymentsScreen()),
+          ),
         ),
       ],
     );
@@ -1609,35 +1764,46 @@ class _BusinessCard extends ConsumerWidget {
       onLabelColor: context.colorScheme.onTertiaryContainer,
       statsRow: [
         _CardStat(
-          icon: Icons.arrow_downward, label: 'Income',
+          icon: Icons.arrow_downward,
+          label: 'Income',
           value: CurrencyFormatter.formatCompact(income),
           color: colors.income,
         ),
         _CardStat(
-          icon: Icons.arrow_upward, label: 'Expense',
+          icon: Icons.arrow_upward,
+          label: 'Expense',
           value: CurrencyFormatter.formatCompact(expense),
           color: colors.expense,
         ),
         _CardStat(
-          icon: Icons.balance, label: 'Net',
+          icon: Icons.balance,
+          label: 'Net',
           value: '$pnlPrefix${CurrencyFormatter.formatCompact(pnl.abs())}',
           color: pnlColor,
         ),
       ],
       footerTiles: [
         _CardFooterTile(
-          icon: Icons.call_made, label: 'Lent out',
+          icon: Icons.call_made,
+          label: 'Lent out',
           value: lentAsync.maybeWhen(
-            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LedgerScreen())),
+            data: (v) => CurrencyFormatter.formatCompact(v),
+            orElse: () => '…',
+          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
         ),
         _CardFooterTile(
-          icon: Icons.call_received, label: 'Borrowed',
+          icon: Icons.call_received,
+          label: 'Borrowed',
           value: borrowedAsync.maybeWhen(
-            data: (v) => CurrencyFormatter.formatCompact(v), orElse: () => '…'),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LedgerScreen())),
+            data: (v) => CurrencyFormatter.formatCompact(v),
+            orElse: () => '…',
+          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
         ),
       ],
     );
@@ -1673,7 +1839,11 @@ class _SwipeCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md, AppSpacing.xs, AppSpacing.md, AppSpacing.xs),
+          AppSpacing.md,
+          AppSpacing.xs,
+          AppSpacing.md,
+          AppSpacing.xs,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -1743,8 +1913,9 @@ class _CardStat extends StatelessWidget {
             const SizedBox(width: 2),
             Text(
               label,
-              style: context.textTheme.labelSmall
-                  ?.copyWith(color: color.withAlpha(180)),
+              style: context.textTheme.labelSmall?.copyWith(
+                color: color.withAlpha(180),
+              ),
             ),
           ],
         ),
@@ -1959,9 +2130,8 @@ class _TransactionTile extends StatelessWidget {
           ? () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => TransactionDetailScreen(
-                    transactionId: transactionId!,
-                  ),
+                  builder: (_) =>
+                      TransactionDetailScreen(transactionId: transactionId!),
                 ),
               );
             }
@@ -2025,10 +2195,13 @@ class _TodayCashflowBar extends ConsumerWidget {
 
         return Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
-            color: context.colorScheme.surfaceContainerHighest
-                .withValues(alpha: 0.50),
+            color: context.colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.50,
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -2137,9 +2310,11 @@ class _UpcomingBookingsSection extends ConsumerWidget {
       error: (_, _) => const SizedBox.shrink(),
       data: (bookings) {
         final active = bookings
-            .where((b) =>
-                b.status == BookingStatus.pending ||
-                b.status == BookingStatus.confirmed)
+            .where(
+              (b) =>
+                  b.status == BookingStatus.pending ||
+                  b.status == BookingStatus.confirmed,
+            )
             .take(3)
             .toList();
         if (active.isEmpty) return const SizedBox.shrink();
@@ -2158,9 +2333,7 @@ class _UpcomingBookingsSection extends ConsumerWidget {
                 ),
                 TextButton(
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const BookingsScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const BookingsScreen()),
                   ),
                   child: const Text('See All'),
                 ),
@@ -2197,15 +2370,26 @@ class _BookingTimelineTile extends StatelessWidget {
     final isTomorrow = bookingDay == today.add(const Duration(days: 1));
 
     const shortMonths = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     final shortMonth = shortMonths[booking.startDatetime.month];
 
     final Color statusColor = switch (booking.status) {
       BookingStatus.confirmed => colors.income,
-      BookingStatus.pending   => context.colorScheme.primary,
-      _                       => context.colorScheme.outline,
+      BookingStatus.pending => context.colorScheme.primary,
+      _ => context.colorScheme.outline,
     };
 
     return Card(
@@ -2223,7 +2407,9 @@ class _BookingTimelineTile extends StatelessWidget {
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(
             children: [
               // Date block
@@ -2246,7 +2432,11 @@ class _BookingTimelineTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      isToday ? 'Today' : isTomorrow ? 'Tmrw' : shortMonth,
+                      isToday
+                          ? 'Today'
+                          : isTomorrow
+                          ? 'Tmrw'
+                          : shortMonth,
                       style: context.textTheme.labelSmall?.copyWith(
                         color: context.colorScheme.onPrimaryContainer
                             .withValues(alpha: 0.7),
@@ -2288,7 +2478,9 @@ class _BookingTimelineTile extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 2),
+                      horizontal: AppSpacing.sm,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
@@ -2301,7 +2493,7 @@ class _BookingTimelineTile extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (!isPersonal && booking.totalAmount > 0) ...[  
+                  if (!isPersonal && booking.totalAmount > 0) ...[
                     const SizedBox(height: 2),
                     Text(
                       CurrencyFormatter.format(booking.totalAmount),
@@ -2342,7 +2534,8 @@ class _AlertsSection extends ConsumerWidget {
     final hasCredits = lent > 0;
     final hasCreditsPending = creditsPending > 0;
 
-    if (!hasOverdue && !hasCredits && !hasCreditsPending) return const SizedBox.shrink();
+    if (!hasOverdue && !hasCredits && !hasCreditsPending)
+      return const SizedBox.shrink();
 
     return Column(
       children: [
@@ -2358,15 +2551,12 @@ class _AlertsSection extends ConsumerWidget {
             ),
             TextButton.icon(
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const ActionCenterScreen()),
+                MaterialPageRoute(builder: (_) => const ActionCenterScreen()),
               ),
               icon: const Icon(Icons.chevron_right_rounded, size: 16),
               iconAlignment: IconAlignment.end,
               label: const Text('See All'),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-              ),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
             ),
           ],
         ),
@@ -2386,9 +2576,9 @@ class _AlertsSection extends ConsumerWidget {
             label: 'Lent out (pending)',
             value: CurrencyFormatter.format(lent),
             color: context.kashColors.credit,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LedgerScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
           ),
         if (hasCreditsPending)
           _AlertActionTile(
@@ -2396,9 +2586,9 @@ class _AlertsSection extends ConsumerWidget {
             label: 'Dues pending (to collect)',
             value: CurrencyFormatter.format(creditsPending),
             color: context.kashColors.credit,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CreditsScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const CreditsScreen())),
           ),
         const SizedBox(height: AppSpacing.sm),
       ],
@@ -2431,7 +2621,9 @@ class _AlertActionTile extends StatelessWidget {
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(
             children: [
               Container(
@@ -2489,6 +2681,7 @@ class _UpcomingSection extends ConsumerStatefulWidget {
 class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
   static const _previewCount = 5;
   bool _expanded = false;
+
   /// Keys of items the user has already swiped — remove immediately so the
   /// Dismissible widget leaves the tree before the provider refreshes.
   final Set<String> _dismissedKeys = {};
@@ -2522,8 +2715,9 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
         }).toList();
         if (visible.isEmpty) return const SizedBox.shrink();
         final overdueCount = visible.where((i) => i.isOverdue).length;
-        final displayed =
-            _expanded ? visible : visible.take(_previewCount).toList();
+        final displayed = _expanded
+            ? visible
+            : visible.take(_previewCount).toList();
         final extra = visible.length - _previewCount;
 
         return Column(
@@ -2541,8 +2735,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (overdueCount > 0) ...
-                    [
+                    if (overdueCount > 0) ...[
                       const SizedBox(width: AppSpacing.sm),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -2565,11 +2758,8 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
                 ),
                 if (visible.length > _previewCount)
                   TextButton(
-                    onPressed: () =>
-                        setState(() => _expanded = !_expanded),
-                    child: Text(
-                      _expanded ? 'Show less' : 'See $extra more',
-                    ),
+                    onPressed: () => setState(() => _expanded = !_expanded),
+                    child: Text(_expanded ? 'Show less' : 'See $extra more'),
                   ),
               ],
             ),
@@ -2589,8 +2779,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
                 background: Container(
                   decoration: BoxDecoration(
                     color: Colors.green.shade600,
-                    borderRadius:
-                        BorderRadius.circular(AppSpacing.radiusMd),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                   ),
                   padding: const EdgeInsets.only(left: AppSpacing.lg),
                   alignment: Alignment.centerLeft,
@@ -2628,9 +2817,7 @@ class _UpcomingSectionState extends ConsumerState<_UpcomingSection> {
 
   Future<void> _onMarkPaid(UpcomingItem item) async {
     if (item is ScheduledUpcomingItem) {
-      await ref
-          .read(scheduledPaymentsProvider.notifier)
-          .markPaid(item.payment);
+      await ref.read(scheduledPaymentsProvider.notifier).markPaid(item.payment);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2784,16 +2971,17 @@ class _BudgetSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final budgets = ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
+    final budgets =
+        ref.watch(currentMonthBudgetsProvider).valueOrNull ?? const [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Card(
           child: InkWell(
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const BudgetScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
@@ -2803,13 +2991,16 @@ class _BudgetSection extends ConsumerWidget {
                   // ── Header row ─────────────────────────────────────────
                   Row(
                     children: [
-                      const Icon(Icons.stacked_bar_chart_rounded,
-                          size: AppSpacing.iconMd),
+                      const Icon(
+                        Icons.stacked_bar_chart_rounded,
+                        size: AppSpacing.iconMd,
+                      ),
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Budget vs Actual',
-                        style: context.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
+                        style: context.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       const Spacer(),
                       Text(
@@ -2825,14 +3016,17 @@ class _BudgetSection extends ConsumerWidget {
                     const SizedBox(height: AppSpacing.base),
                     Row(
                       children: [
-                        Icon(Icons.add_circle_outline,
-                            size: AppSpacing.iconSm,
-                            color: context.colorScheme.outline),
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: AppSpacing.iconSm,
+                          color: context.colorScheme.outline,
+                        ),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
                           'Set spending limits for each category',
                           style: context.textTheme.bodySmall?.copyWith(
-                              color: context.colorScheme.outline),
+                            color: context.colorScheme.outline,
+                          ),
                         ),
                       ],
                     ),
@@ -2850,7 +3044,8 @@ class _BudgetSection extends ConsumerWidget {
                         child: Text(
                           '+ ${budgets.length - 3} more categories',
                           style: context.textTheme.labelSmall?.copyWith(
-                              color: context.colorScheme.outline),
+                            color: context.colorScheme.outline,
+                          ),
                         ),
                       ),
                   ],
@@ -2871,22 +3066,25 @@ class _HomeBudgetRow extends StatelessWidget {
 
   /// Compact Indian currency: ₹5K, ₹1.5L, ₹1Cr
   static String _compact(double v) {
-    if (v >= 1e7)       return '\u20b9${(v / 1e7).toStringAsFixed(v % 1e7 == 0 ? 0 : 1)}Cr';
-    if (v >= 1e5)       return '\u20b9${(v / 1e5).toStringAsFixed(v % 1e5 == 0 ? 0 : 1)}L';
-    if (v >= 1000)      return '\u20b9${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}K';
+    if (v >= 1e7)
+      return '\u20b9${(v / 1e7).toStringAsFixed(v % 1e7 == 0 ? 0 : 1)}Cr';
+    if (v >= 1e5)
+      return '\u20b9${(v / 1e5).toStringAsFixed(v % 1e5 == 0 ? 0 : 1)}L';
+    if (v >= 1000)
+      return '\u20b9${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}K';
     return CurrencyFormatter.format(v);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors  = context.kashColors;
-    final isOver  = budget.isOverBudget;
-    final pct     = budget.spentPercentage.clamp(0.0, 1.0);
+    final colors = context.kashColors;
+    final isOver = budget.isOverBudget;
+    final pct = budget.spentPercentage.clamp(0.0, 1.0);
     final barColor = isOver
         ? colors.expense
         : budget.isNearLimit
-            ? Colors.orange
-            : colors.income;
+        ? Colors.orange
+        : colors.income;
     final iconColor = CategoryHelper.getColor(budget.category);
 
     return Padding(
@@ -2896,9 +3094,11 @@ class _HomeBudgetRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(CategoryHelper.getIcon(budget.category),
-                  size: AppSpacing.iconSm,
-                  color: iconColor),
+              Icon(
+                CategoryHelper.getIcon(budget.category),
+                size: AppSpacing.iconSm,
+                color: iconColor,
+              ),
               const SizedBox(width: AppSpacing.xs),
               Expanded(
                 child: Text(
@@ -2911,8 +3111,7 @@ class _HomeBudgetRow extends StatelessWidget {
               Text(
                 '${_compact(budget.spentAmount)} / ${_compact(budget.budgetAmount)}',
                 style: context.textTheme.labelSmall?.copyWith(
-                  color:
-                      isOver ? colors.expense : context.colorScheme.outline,
+                  color: isOver ? colors.expense : context.colorScheme.outline,
                 ),
               ),
             ],
@@ -2946,7 +3145,7 @@ class _BudgetLegend extends StatelessWidget {
           label: 'Budget',
         ),
         const SizedBox(width: AppSpacing.base),
-        _LegendDot(color: colors.income,  label: 'Spent (ok)'),
+        _LegendDot(color: colors.income, label: 'Spent (ok)'),
         const SizedBox(width: AppSpacing.base),
         _LegendDot(color: colors.expense, label: 'Over budget'),
       ],
@@ -2956,7 +3155,7 @@ class _BudgetLegend extends StatelessWidget {
 
 class _LegendDot extends StatelessWidget {
   const _LegendDot({required this.color, required this.label});
-  final Color  color;
+  final Color color;
   final String label;
 
   @override
@@ -2992,9 +3191,9 @@ class _ReportsShortcutSection extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         TextButton.icon(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ReportsScreen()),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ReportsScreen())),
           icon: const Icon(Icons.bar_chart_outlined, size: 16),
           label: const Text('See Reports'),
         ),
@@ -3023,8 +3222,9 @@ class _RecentTransactionsSection extends ConsumerWidget {
           children: [
             Text(
               'Recent Transactions',
-              style: context.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w600),
+              style: context.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
             TextButton(
               onPressed: () =>
@@ -3041,15 +3241,17 @@ class _RecentTransactionsSection extends ConsumerWidget {
             return Column(
               children: transactions
                   .take(5)
-                  .map((txn) => _TransactionTile(
-                        transactionId: txn.id,
-                        category: txn.category,
-                        partyName: txn.partyName,
-                        amount: txn.amount,
-                        isIncome: txn.isIncome,
-                        date: txn.date,
-                        paymentMethod: txn.paymentMethod.label,
-                      ))
+                  .map(
+                    (txn) => _TransactionTile(
+                      transactionId: txn.id,
+                      category: txn.category,
+                      partyName: txn.partyName,
+                      amount: txn.amount,
+                      isIncome: txn.isIncome,
+                      date: txn.date,
+                      paymentMethod: txn.paymentMethod.label,
+                    ),
+                  )
                   .toList(),
             );
           },

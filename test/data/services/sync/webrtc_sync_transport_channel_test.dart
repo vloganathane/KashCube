@@ -8,7 +8,8 @@ import 'package:kash_cube/data/services/sync/transport/webrtc_peer_ops.dart';
 import 'package:kash_cube/data/services/sync/transport/webrtc_sync_transport_channel.dart';
 
 class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
-  final StreamController<String> _inbound = StreamController<String>.broadcast();
+  final StreamController<String> _inbound =
+      StreamController<String>.broadcast();
   final List<String> sentFrames = <String>[];
 
   @override
@@ -30,7 +31,8 @@ class _FakeWebRtcBridge implements WebRtcDataChannelBridge {
 }
 
 class _FakeControlPlaneChannel implements SyncTransportChannel {
-  final StreamController<dynamic> _stream = StreamController<dynamic>.broadcast();
+  final StreamController<dynamic> _stream =
+      StreamController<dynamic>.broadcast();
   final List<Map<String, dynamic>> sentPayloads = <Map<String, dynamic>>[];
   Uri? connectedUri;
   bool closed = false;
@@ -159,36 +161,39 @@ void main() {
   });
 
   group('WebRtcSyncTransportChannel mailbox/runtime bridge', () {
-    test('syncRuntimeFromMailbox applies offer, answer, and ICE candidates', () {
-      final channel = WebRtcSyncTransportChannel();
-      final mailbox = channel.mailbox;
-      const sessionId = 'sess-001';
+    test(
+      'syncRuntimeFromMailbox applies offer, answer, and ICE candidates',
+      () {
+        final channel = WebRtcSyncTransportChannel();
+        final mailbox = channel.mailbox;
+        const sessionId = 'sess-001';
 
-      mailbox.stageLocalOffer(sessionId: sessionId, offerSdp: 'offer-sdp');
-      mailbox.ingestSignalingFrame({
-        'type': SyncSignalingMessages.signalAnswer,
-        'session_id': sessionId,
-        'sdp': 'answer-sdp',
-      });
-      mailbox.ingestSignalingFrame({
-        'type': SyncSignalingMessages.signalIceCandidate,
-        'session_id': sessionId,
-        'candidate': {'candidate': 'ice-1'},
-      });
-      mailbox.ingestSignalingFrame({
-        'type': SyncSignalingMessages.signalIceCandidate,
-        'session_id': sessionId,
-        'candidate': {'candidate': 'ice-2'},
-      });
+        mailbox.stageLocalOffer(sessionId: sessionId, offerSdp: 'offer-sdp');
+        mailbox.ingestSignalingFrame({
+          'type': SyncSignalingMessages.signalAnswer,
+          'session_id': sessionId,
+          'sdp': 'answer-sdp',
+        });
+        mailbox.ingestSignalingFrame({
+          'type': SyncSignalingMessages.signalIceCandidate,
+          'session_id': sessionId,
+          'candidate': {'candidate': 'ice-1'},
+        });
+        mailbox.ingestSignalingFrame({
+          'type': SyncSignalingMessages.signalIceCandidate,
+          'session_id': sessionId,
+          'candidate': {'candidate': 'ice-2'},
+        });
 
-      final runtime = channel.syncRuntimeFromMailbox(sessionId: sessionId);
+        final runtime = channel.syncRuntimeFromMailbox(sessionId: sessionId);
 
-      expect(runtime.hasOffer, isTrue);
-      expect(runtime.hasAnswer, isTrue);
-      expect(runtime.remoteIceCount, 2);
-      expect(runtime.localOfferSdp, 'offer-sdp');
-      expect(runtime.remoteAnswerSdp, 'answer-sdp');
-    });
+        expect(runtime.hasOffer, isTrue);
+        expect(runtime.hasAnswer, isTrue);
+        expect(runtime.remoteIceCount, 2);
+        expect(runtime.localOfferSdp, 'offer-sdp');
+        expect(runtime.remoteAnswerSdp, 'answer-sdp');
+      },
+    );
 
     test('registered bridge routes inbound stream from bridge', () async {
       final channel = WebRtcSyncTransportChannel();
@@ -206,7 +211,9 @@ void main() {
 
     test('connect wires control plane stream into transport stream', () async {
       final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+      final channel = WebRtcSyncTransportChannel(
+        controlPlaneChannel: controlPlane,
+      );
 
       await channel.connect(Uri.parse('ws://127.0.0.1:8080/ws'));
       controlPlane.emitInbound('{"type":"AUTH_OK"}');
@@ -218,20 +225,23 @@ void main() {
       expect(controlPlane.closed, isTrue);
     });
 
-    test('noop bridge supports lifecycle registration without throws', () async {
-      final channel = WebRtcSyncTransportChannel();
-      const sessionId = 'sess-003';
+    test(
+      'noop bridge supports lifecycle registration without throws',
+      () async {
+        final channel = WebRtcSyncTransportChannel();
+        const sessionId = 'sess-003';
 
-      channel.registerDataChannelBridge(
-        sessionId: sessionId,
-        bridge: NoopWebRtcDataChannelBridge(),
-      );
+        channel.registerDataChannelBridge(
+          sessionId: sessionId,
+          bridge: NoopWebRtcDataChannelBridge(),
+        );
 
-      expect(() => channel.sendJson({'type': 'PING'}), returnsNormally);
+        expect(() => channel.sendJson({'type': 'PING'}), returnsNormally);
 
-      await channel.unregisterDataChannelBridge(sessionId);
-      await channel.close();
-    });
+        await channel.unregisterDataChannelBridge(sessionId);
+        await channel.close();
+      },
+    );
 
     test('bridge shell stores negotiation artifacts when registered', () async {
       final channel = WebRtcSyncTransportChannel();
@@ -253,75 +263,89 @@ void main() {
       await channel.close();
     });
 
-    test('runtime sync propagates offer/answer/ICE into negotiation-aware bridge', () async {
-      final channel = WebRtcSyncTransportChannel();
-      final mailbox = channel.mailbox;
-      const sessionId = 'sess-005';
-      final bridge = WebRtcDataChannelBridgeShell(sessionId: sessionId);
+    test(
+      'runtime sync propagates offer/answer/ICE into negotiation-aware bridge',
+      () async {
+        final channel = WebRtcSyncTransportChannel();
+        final mailbox = channel.mailbox;
+        const sessionId = 'sess-005';
+        final bridge = WebRtcDataChannelBridgeShell(sessionId: sessionId);
 
-      channel.registerDataChannelBridge(sessionId: sessionId, bridge: bridge);
+        channel.registerDataChannelBridge(sessionId: sessionId, bridge: bridge);
 
-      mailbox.stageLocalOffer(sessionId: sessionId, offerSdp: 'offer-from-mailbox');
-      mailbox.ingestSignalingFrame({
-        'type': SyncSignalingMessages.signalAnswer,
-        'session_id': sessionId,
-        'sdp': 'answer-from-mailbox',
-      });
-      mailbox.ingestSignalingFrame({
-        'type': SyncSignalingMessages.signalIceCandidate,
-        'session_id': sessionId,
-        'candidate': {'candidate': 'ice-mailbox-1'},
-      });
+        mailbox.stageLocalOffer(
+          sessionId: sessionId,
+          offerSdp: 'offer-from-mailbox',
+        );
+        mailbox.ingestSignalingFrame({
+          'type': SyncSignalingMessages.signalAnswer,
+          'session_id': sessionId,
+          'sdp': 'answer-from-mailbox',
+        });
+        mailbox.ingestSignalingFrame({
+          'type': SyncSignalingMessages.signalIceCandidate,
+          'session_id': sessionId,
+          'candidate': {'candidate': 'ice-mailbox-1'},
+        });
 
-      channel.syncRuntimeFromMailbox(sessionId: sessionId);
+        channel.syncRuntimeFromMailbox(sessionId: sessionId);
 
-      expect(bridge.localOfferSdp, 'offer-from-mailbox');
-      expect(bridge.remoteAnswerSdp, 'answer-from-mailbox');
-      expect(bridge.remoteIceCandidates, hasLength(1));
+        expect(bridge.localOfferSdp, 'offer-from-mailbox');
+        expect(bridge.remoteAnswerSdp, 'answer-from-mailbox');
+        expect(bridge.remoteIceCandidates, hasLength(1));
 
-      await channel.unregisterDataChannelBridge(sessionId);
-      await channel.close();
-    });
+        await channel.unregisterDataChannelBridge(sessionId);
+        await channel.close();
+      },
+    );
 
-    test('bridge shell syncs buffered artifacts into attached peer ops', () async {
-      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-006')
-        ..applyLocalOfferSdp('offer-buffered')
-        ..applyRemoteAnswerSdp('answer-buffered')
-        ..addRemoteIceCandidate({'candidate': 'ice-buffered'});
-      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-006');
-      await bridge.sendFrame('{"type":"SYNC","table":"transactions"}');
+    test(
+      'bridge shell syncs buffered artifacts into attached peer ops',
+      () async {
+        final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-006')
+          ..applyLocalOfferSdp('offer-buffered')
+          ..applyRemoteAnswerSdp('answer-buffered')
+          ..addRemoteIceCandidate({'candidate': 'ice-buffered'});
+        final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-006');
+        await bridge.sendFrame('{"type":"SYNC","table":"transactions"}');
 
-      await bridge.attachPeerOps(peerOps);
+        await bridge.attachPeerOps(peerOps);
 
-      expect(peerOps.localOfferSdp, 'offer-buffered');
-      expect(peerOps.remoteAnswerSdp, 'answer-buffered');
-      expect(peerOps.remoteIceCandidates, hasLength(1));
-      expect(peerOps.ensureDataChannelCount, 1);
-      expect(peerOps.createPeerSessionCount, 1);
-      expect(bridge.isDataChannelReady, isFalse);
-      expect(peerOps.sentDataChannelFrames, isEmpty);
+        expect(peerOps.localOfferSdp, 'offer-buffered');
+        expect(peerOps.remoteAnswerSdp, 'answer-buffered');
+        expect(peerOps.remoteIceCandidates, hasLength(1));
+        expect(peerOps.ensureDataChannelCount, 1);
+        expect(peerOps.createPeerSessionCount, 1);
+        expect(bridge.isDataChannelReady, isFalse);
+        expect(peerOps.sentDataChannelFrames, isEmpty);
 
-      peerOps.emitReadyEvent();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        peerOps.emitReadyEvent();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(bridge.isDataChannelReady, isTrue);
-      expect(peerOps.sentDataChannelFrames, ['{"type":"SYNC","table":"transactions"}']);
+        expect(bridge.isDataChannelReady, isTrue);
+        expect(peerOps.sentDataChannelFrames, [
+          '{"type":"SYNC","table":"transactions"}',
+        ]);
 
-      await bridge.close();
-      expect(peerOps.closePeerSessionCount, 1);
-    });
+        await bridge.close();
+        expect(peerOps.closePeerSessionCount, 1);
+      },
+    );
 
-    test('bridge shell deduplicates ICE before forwarding to peer ops', () async {
-      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007');
-      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-007');
+    test(
+      'bridge shell deduplicates ICE before forwarding to peer ops',
+      () async {
+        final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007');
+        final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-007');
 
-      await bridge.attachPeerOps(peerOps);
-      bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
-      bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
+        await bridge.attachPeerOps(peerOps);
+        bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
+        bridge.addRemoteIceCandidate({'candidate': 'ice-dup'});
 
-      expect(bridge.remoteIceCandidates, hasLength(1));
-      expect(peerOps.remoteIceCandidates, hasLength(1));
-    });
+        expect(bridge.remoteIceCandidates, hasLength(1));
+        expect(peerOps.remoteIceCandidates, hasLength(1));
+      },
+    );
 
     test('bridge forwards inbound payload frames from peer ops', () async {
       final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-007b');
@@ -332,23 +356,23 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Payload frames are ignored until the data channel is reported ready.
-      final gatedFuture = bridge.inboundFrames.timeout(
-        const Duration(milliseconds: 20),
-        onTimeout: (sink) => sink.close(),
-      ).toList();
+      final gatedFuture = bridge.inboundFrames
+          .timeout(
+            const Duration(milliseconds: 20),
+            onTimeout: (sink) => sink.close(),
+          )
+          .toList();
       expect(await gatedFuture, isEmpty);
 
       final inboundFuture = bridge.inboundFrames.firstWhere(
-        (frame) => !frame.contains('"type":"${SyncSignalingMessages.webRtcRuntime}"'),
+        (frame) =>
+            !frame.contains('"type":"${SyncSignalingMessages.webRtcRuntime}"'),
       );
       peerOps.emitReadyEvent();
       await Future<void>.delayed(const Duration(milliseconds: 10));
       peerOps.emitInboundPayloadFrame('{"type":"ROWS","table":"transactions"}');
 
-      expect(
-        await inboundFuture,
-        '{"type":"ROWS","table":"transactions"}',
-      );
+      expect(await inboundFuture, '{"type":"ROWS","table":"transactions"}');
 
       await bridge.close();
     });
@@ -368,36 +392,60 @@ void main() {
       await channel.close();
     });
 
-    test('routes control-plane frames over websocket and eligible payloads over ready data plane', () async {
-      final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
-      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-011');
-      final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-011');
+    test(
+      'routes control-plane frames over websocket and eligible payloads over ready data plane',
+      () async {
+        final controlPlane = _FakeControlPlaneChannel();
+        final channel = WebRtcSyncTransportChannel(
+          controlPlaneChannel: controlPlane,
+        );
+        final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-011');
+        final peerOps = _FakeWebRtcPeerOps(sessionId: 'sess-011');
 
-      await channel.connect(Uri.parse('ws://127.0.0.1:8081/ws'));
-      channel.registerDataChannelBridge(sessionId: 'sess-011', bridge: bridge);
-      await bridge.attachPeerOps(peerOps);
+        await channel.connect(Uri.parse('ws://127.0.0.1:8081/ws'));
+        channel.registerDataChannelBridge(
+          sessionId: 'sess-011',
+          bridge: bridge,
+        );
+        await bridge.attachPeerOps(peerOps);
 
-      channel.sendJson({'type': SyncSignalingMessages.auth, 'token': 'abc'});
-      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
+        channel.sendJson({'type': SyncSignalingMessages.auth, 'token': 'abc'});
+        channel.sendJson({
+          'type': SyncSignalingMessages.write,
+          'table': 'transactions',
+        });
 
-      expect(controlPlane.sentPayloads, hasLength(2));
-      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.auth);
-      expect(controlPlane.sentPayloads.last['type'], SyncSignalingMessages.write);
-      expect(peerOps.sentDataChannelFrames, isEmpty);
+        expect(controlPlane.sentPayloads, hasLength(2));
+        expect(
+          controlPlane.sentPayloads.first['type'],
+          SyncSignalingMessages.auth,
+        );
+        expect(
+          controlPlane.sentPayloads.last['type'],
+          SyncSignalingMessages.write,
+        );
+        expect(peerOps.sentDataChannelFrames, isEmpty);
 
-      peerOps.emitReadyEvent();
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        peerOps.emitReadyEvent();
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
-      expect(peerOps.sentDataChannelFrames, ['{"type":"WRITE","table":"transactions"}']);
+        channel.sendJson({
+          'type': SyncSignalingMessages.write,
+          'table': 'transactions',
+        });
+        expect(peerOps.sentDataChannelFrames, [
+          '{"type":"WRITE","table":"transactions"}',
+        ]);
 
-      await channel.close();
-    });
+        await channel.close();
+      },
+    );
 
     test('falls back to websocket when ready data-plane send fails', () async {
       final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+      final channel = WebRtcSyncTransportChannel(
+        controlPlaneChannel: controlPlane,
+      );
       final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-012');
       final peerOps = _FakeWebRtcPeerOps(
         sessionId: 'sess-012',
@@ -411,88 +459,113 @@ void main() {
       peerOps.emitReadyEvent();
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      channel.sendJson({'type': SyncSignalingMessages.write, 'table': 'transactions'});
+      channel.sendJson({
+        'type': SyncSignalingMessages.write,
+        'table': 'transactions',
+      });
       await Future<void>.delayed(const Duration(milliseconds: 10));
 
       expect(peerOps.sentDataChannelFrames, isEmpty);
       expect(controlPlane.sentPayloads, hasLength(1));
-      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.write);
+      expect(
+        controlPlane.sentPayloads.first['type'],
+        SyncSignalingMessages.write,
+      );
 
       await channel.close();
     });
 
-    test('routes eligible payloads to matching session bridge from payload session_id', () async {
-      final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+    test(
+      'routes eligible payloads to matching session bridge from payload session_id',
+      () async {
+        final controlPlane = _FakeControlPlaneChannel();
+        final channel = WebRtcSyncTransportChannel(
+          controlPlaneChannel: controlPlane,
+        );
 
-      final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-a');
-      final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-b');
-      final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-a');
-      final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-b');
+        final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-a');
+        final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-b');
+        final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-a');
+        final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-b');
 
-      await channel.connect(Uri.parse('ws://127.0.0.1:8083/ws'));
+        await channel.connect(Uri.parse('ws://127.0.0.1:8083/ws'));
 
-      channel.registerDataChannelBridge(sessionId: 'sess-a', bridge: bridgeA);
-      await bridgeA.attachPeerOps(peerOpsA);
-      peerOpsA.emitReadyEvent();
+        channel.registerDataChannelBridge(sessionId: 'sess-a', bridge: bridgeA);
+        await bridgeA.attachPeerOps(peerOpsA);
+        peerOpsA.emitReadyEvent();
 
-      channel.registerDataChannelBridge(sessionId: 'sess-b', bridge: bridgeB);
-      await bridgeB.attachPeerOps(peerOpsB);
-      peerOpsB.emitReadyEvent();
+        channel.registerDataChannelBridge(sessionId: 'sess-b', bridge: bridgeB);
+        await bridgeB.attachPeerOps(peerOpsB);
+        peerOpsB.emitReadyEvent();
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      channel.sendJson({
-        'type': SyncSignalingMessages.write,
-        'session_id': 'sess-a',
-        'table': 'transactions',
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        channel.sendJson({
+          'type': SyncSignalingMessages.write,
+          'session_id': 'sess-a',
+          'table': 'transactions',
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(peerOpsA.sentDataChannelFrames, [
-        '{"type":"WRITE","session_id":"sess-a","table":"transactions"}',
-      ]);
-      expect(peerOpsB.sentDataChannelFrames, isEmpty);
-      expect(controlPlane.sentPayloads, isEmpty);
+        expect(peerOpsA.sentDataChannelFrames, [
+          '{"type":"WRITE","session_id":"sess-a","table":"transactions"}',
+        ]);
+        expect(peerOpsB.sentDataChannelFrames, isEmpty);
+        expect(controlPlane.sentPayloads, isEmpty);
 
-      await channel.close();
-    });
+        await channel.close();
+      },
+    );
 
-    test('falls back to websocket when payload targets non-ready session', () async {
-      final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(controlPlaneChannel: controlPlane);
+    test(
+      'falls back to websocket when payload targets non-ready session',
+      () async {
+        final controlPlane = _FakeControlPlaneChannel();
+        final channel = WebRtcSyncTransportChannel(
+          controlPlaneChannel: controlPlane,
+        );
 
-      final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-ready');
-      final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-waiting');
-      final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-ready');
-      final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-waiting');
+        final bridgeA = WebRtcDataChannelBridgeShell(sessionId: 'sess-ready');
+        final bridgeB = WebRtcDataChannelBridgeShell(sessionId: 'sess-waiting');
+        final peerOpsA = _FakeWebRtcPeerOps(sessionId: 'sess-ready');
+        final peerOpsB = _FakeWebRtcPeerOps(sessionId: 'sess-waiting');
 
-      await channel.connect(Uri.parse('ws://127.0.0.1:8084/ws'));
+        await channel.connect(Uri.parse('ws://127.0.0.1:8084/ws'));
 
-      channel.registerDataChannelBridge(sessionId: 'sess-ready', bridge: bridgeA);
-      await bridgeA.attachPeerOps(peerOpsA);
-      peerOpsA.emitReadyEvent();
+        channel.registerDataChannelBridge(
+          sessionId: 'sess-ready',
+          bridge: bridgeA,
+        );
+        await bridgeA.attachPeerOps(peerOpsA);
+        peerOpsA.emitReadyEvent();
 
-      channel.registerDataChannelBridge(sessionId: 'sess-waiting', bridge: bridgeB);
-      await bridgeB.attachPeerOps(peerOpsB);
+        channel.registerDataChannelBridge(
+          sessionId: 'sess-waiting',
+          bridge: bridgeB,
+        );
+        await bridgeB.attachPeerOps(peerOpsB);
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      channel.sendJson({
-        'type': SyncSignalingMessages.write,
-        'session_id': 'sess-waiting',
-        'table': 'transactions',
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        channel.sendJson({
+          'type': SyncSignalingMessages.write,
+          'session_id': 'sess-waiting',
+          'table': 'transactions',
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(peerOpsA.sentDataChannelFrames, isEmpty);
-      expect(peerOpsB.sentDataChannelFrames, isEmpty);
-      expect(controlPlane.sentPayloads, hasLength(1));
-      expect(controlPlane.sentPayloads.first['session_id'], 'sess-waiting');
-      expect(controlPlane.sentPayloads.first['type'], SyncSignalingMessages.write);
+        expect(peerOpsA.sentDataChannelFrames, isEmpty);
+        expect(peerOpsB.sentDataChannelFrames, isEmpty);
+        expect(controlPlane.sentPayloads, hasLength(1));
+        expect(controlPlane.sentPayloads.first['session_id'], 'sess-waiting');
+        expect(
+          controlPlane.sentPayloads.first['type'],
+          SyncSignalingMessages.write,
+        );
 
-      await channel.close();
-    });
+        await channel.close();
+      },
+    );
 
     test('sends periodic heartbeat ping over control plane', () async {
       final controlPlane = _FakeControlPlaneChannel();
@@ -515,26 +588,29 @@ void main() {
       await channel.close();
     });
 
-    test('emits heartbeat timeout signaling error when pong is missing', () async {
-      final controlPlane = _FakeControlPlaneChannel();
-      final channel = WebRtcSyncTransportChannel(
-        controlPlaneChannel: controlPlane,
-        heartbeatInterval: const Duration(milliseconds: 10),
-        heartbeatTimeout: const Duration(milliseconds: 20),
-      );
+    test(
+      'emits heartbeat timeout signaling error when pong is missing',
+      () async {
+        final controlPlane = _FakeControlPlaneChannel();
+        final channel = WebRtcSyncTransportChannel(
+          controlPlaneChannel: controlPlane,
+          heartbeatInterval: const Duration(milliseconds: 10),
+          heartbeatTimeout: const Duration(milliseconds: 20),
+        );
 
-      await channel.connect(Uri.parse('ws://127.0.0.1:8086/ws'));
+        await channel.connect(Uri.parse('ws://127.0.0.1:8086/ws'));
 
-      final timeoutFrameFuture = channel.stream
-          .where((frame) => frame is String)
-          .cast<String>()
-          .firstWhere((frame) => frame.contains('"HEARTBEAT_TIMEOUT"'));
+        final timeoutFrameFuture = channel.stream
+            .where((frame) => frame is String)
+            .cast<String>()
+            .firstWhere((frame) => frame.contains('"HEARTBEAT_TIMEOUT"'));
 
-      final timeoutFrame = await timeoutFrameFuture;
-      expect(timeoutFrame, contains('"type":"SIGNAL_ERROR"'));
+        final timeoutFrame = await timeoutFrameFuture;
+        expect(timeoutFrame, contains('"type":"SIGNAL_ERROR"'));
 
-      await channel.close();
-    });
+        await channel.close();
+      },
+    );
 
     test('allows heartbeat timeout to re-arm after pong arrives', () async {
       final controlPlane = _FakeControlPlaneChannel();
@@ -564,36 +640,41 @@ void main() {
       await channel.close();
     });
 
-    test('custom peer ops factory can attach flutter_webrtc shell placeholder', () async {
-      FlutterWebRtcPeerOpsShell? createdPeerOps;
-      final channel = WebRtcSyncTransportChannel(
-        peerOpsFactory: (sessionId) {
-          createdPeerOps = FlutterWebRtcPeerOpsShell(sessionId: sessionId);
-          return createdPeerOps!;
-        },
-      );
-      final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-009');
+    test(
+      'custom peer ops factory can attach flutter_webrtc shell placeholder',
+      () async {
+        FlutterWebRtcPeerOpsShell? createdPeerOps;
+        final channel = WebRtcSyncTransportChannel(
+          peerOpsFactory: (sessionId) {
+            createdPeerOps = FlutterWebRtcPeerOpsShell(sessionId: sessionId);
+            return createdPeerOps!;
+          },
+        );
+        final bridge = WebRtcDataChannelBridgeShell(sessionId: 'sess-009');
 
-      channel.registerDataChannelBridge(sessionId: 'sess-009', bridge: bridge);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        channel.registerDataChannelBridge(
+          sessionId: 'sess-009',
+          bridge: bridge,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(bridge.hasPeerOps, isTrue);
-      expect(createdPeerOps, isNotNull);
-      expect(createdPeerOps!.sessionId, 'sess-009');
+        expect(bridge.hasPeerOps, isTrue);
+        expect(createdPeerOps, isNotNull);
+        expect(createdPeerOps!.sessionId, 'sess-009');
 
-      bridge.applyLocalOfferSdp('offer-custom');
-      bridge.applyRemoteAnswerSdp('answer-custom');
-      bridge.addRemoteIceCandidate({'candidate': 'ice-custom'});
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+        bridge.applyLocalOfferSdp('offer-custom');
+        bridge.applyRemoteAnswerSdp('answer-custom');
+        bridge.addRemoteIceCandidate({'candidate': 'ice-custom'});
+        await Future<void>.delayed(const Duration(milliseconds: 10));
 
-      expect(createdPeerOps!.localOfferSdp, 'offer-custom');
-      expect(createdPeerOps!.remoteAnswerSdp, 'answer-custom');
-      expect(createdPeerOps!.remoteIceCandidates, hasLength(1));
-      expect(createdPeerOps!.dataChannelEnsured, isTrue);
+        expect(createdPeerOps!.localOfferSdp, 'offer-custom');
+        expect(createdPeerOps!.remoteAnswerSdp, 'answer-custom');
+        expect(createdPeerOps!.remoteIceCandidates, hasLength(1));
+        expect(createdPeerOps!.dataChannelEnsured, isTrue);
 
-      await channel.unregisterDataChannelBridge('sess-009');
-      await channel.close();
-    });
-
+        await channel.unregisterDataChannelBridge('sess-009');
+        await channel.close();
+      },
+    );
   });
 }

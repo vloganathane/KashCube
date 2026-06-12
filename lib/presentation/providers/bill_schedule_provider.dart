@@ -12,8 +12,8 @@ final billScheduleRepositoryProvider = Provider<BillScheduleRepository>(
 /// Main list provider: all active bills.
 final scheduledBillsProvider =
     StateNotifierProvider<ScheduledBillsNotifier, AsyncValue<List<Bill>>>(
-  (ref) => ScheduledBillsNotifier(ref.read(billScheduleRepositoryProvider)),
-);
+      (ref) => ScheduledBillsNotifier(ref.read(billScheduleRepositoryProvider)),
+    );
 
 /// Notifier with CRUD + markPaid for scheduled bills.
 class ScheduledBillsNotifier extends StateNotifier<AsyncValue<List<Bill>>> {

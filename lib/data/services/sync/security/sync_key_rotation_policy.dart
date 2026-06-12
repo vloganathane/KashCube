@@ -104,7 +104,8 @@ class DefaultSyncKeyRotationPolicy extends SyncKeyRotationPolicy {
     // Version floor check — hard requirement, evaluated first.
     if (keyVersion < minAcceptableVersion) {
       return SyncKeyRotationRequired(
-        reason: 'Key version $keyVersion is below the minimum acceptable '
+        reason:
+            'Key version $keyVersion is below the minimum acceptable '
             'version $minAcceptableVersion',
       );
     }
@@ -114,7 +115,8 @@ class DefaultSyncKeyRotationPolicy extends SyncKeyRotationPolicy {
     // Mandatory age threshold.
     if (keyAgeDays > maxKeyAgeDays) {
       return SyncKeyRotationRequired(
-        reason: 'Key is $keyAgeDays days old, exceeding the mandatory '
+        reason:
+            'Key is $keyAgeDays days old, exceeding the mandatory '
             'rotation threshold of $maxKeyAgeDays days',
       );
     }
@@ -122,7 +124,8 @@ class DefaultSyncKeyRotationPolicy extends SyncKeyRotationPolicy {
     // Soft recommendation threshold.
     if (keyAgeDays > recommendRotationAfterDays) {
       return SyncKeyRotationRecommended(
-        reason: 'Key is $keyAgeDays days old; rotation is recommended '
+        reason:
+            'Key is $keyAgeDays days old; rotation is recommended '
             'after $recommendRotationAfterDays days',
       );
     }

@@ -52,35 +52,35 @@ class ProductReview extends Equatable {
   }
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'product_id': productId,
-        'rating': rating,
-        if (reviewText != null) 'review_text': reviewText,
-        if (reviewerName != null) 'reviewer_name': reviewerName,
-        'created_at': createdAt.toIso8601String(),
-        if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'product_id': productId,
+    'rating': rating,
+    if (reviewText != null) 'review_text': reviewText,
+    if (reviewerName != null) 'reviewer_name': reviewerName,
+    'created_at': createdAt.toIso8601String(),
+    if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
+  };
 
   factory ProductReview.fromMap(Map<String, dynamic> map) => ProductReview(
-        id: map['id'] as int?,
-        productId: map['product_id'] as int,
-        rating: map['rating'] as int,
-        reviewText: map['review_text'] as String?,
-        reviewerName: map['reviewer_name'] as String?,
-        createdAt: DateTime.parse(map['created_at'] as String),
-        deletedAt: map['deleted_at'] != null
-            ? DateTime.parse(map['deleted_at'] as String)
-            : null,
-      );
+    id: map['id'] as int?,
+    productId: map['product_id'] as int,
+    rating: map['rating'] as int,
+    reviewText: map['review_text'] as String?,
+    reviewerName: map['reviewer_name'] as String?,
+    createdAt: DateTime.parse(map['created_at'] as String),
+    deletedAt: map['deleted_at'] != null
+        ? DateTime.parse(map['deleted_at'] as String)
+        : null,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        productId,
-        rating,
-        reviewText,
-        reviewerName,
-        createdAt,
-        deletedAt,
-      ];
+    id,
+    productId,
+    rating,
+    reviewText,
+    reviewerName,
+    createdAt,
+    deletedAt,
+  ];
 }

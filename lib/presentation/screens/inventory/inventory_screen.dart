@@ -63,12 +63,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           '$count low',
                           style: TextStyle(color: context.kashColors.expense),
                         ),
-                        onPressed: () =>
-                            setState(() => _showLowStockOnly = !_showLowStockOnly),
-                        backgroundColor: context.kashColors.expense
-                            .withValues(alpha: 0.08),
+                        onPressed: () => setState(
+                          () => _showLowStockOnly = !_showLowStockOnly,
+                        ),
+                        backgroundColor: context.kashColors.expense.withValues(
+                          alpha: 0.08,
+                        ),
                         side: BorderSide(
-                          color: context.kashColors.expense.withValues(alpha: 0.3),
+                          color: context.kashColors.expense.withValues(
+                            alpha: 0.3,
+                          ),
                         ),
                       ),
                     )
@@ -90,18 +94,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(inventoryProvider(effectiveId).notifier).load(),
+            onRefresh: () =>
+                ref.read(inventoryProvider(effectiveId).notifier).load(),
             child: ListView.separated(
               padding: const EdgeInsets.all(AppSpacing.base),
               itemCount: displayed.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.sm),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
               itemBuilder: (_, i) => _ItemTile(
                 item: displayed[i],
                 onAdjust: (type) =>
                     _showAdjustDialog(displayed[i], type, effectiveId),
-                onViewHistory: () =>
-                    _showMovementsSheet(displayed[i]),
+                onViewHistory: () => _showMovementsSheet(displayed[i]),
                 onEditCatalog: () =>
                     _openCatalogEdit(displayed[i], effectiveId),
               ),
@@ -189,7 +192,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
 /// For multi-business accounts, renders a compact dropdown so the user can
 /// switch the inventory view without changing the global active company.
 class _BusinessTitle extends ConsumerWidget {
-  const _BusinessTitle({required this.selectedBusinessId, required this.onChanged});
+  const _BusinessTitle({
+    required this.selectedBusinessId,
+    required this.onChanged,
+  });
 
   final int? selectedBusinessId;
   final ValueChanged<int?> onChanged;
@@ -213,10 +219,12 @@ class _BusinessTitle extends ConsumerWidget {
         ),
         style: style,
         items: businesses
-            .map((b) => DropdownMenuItem<int?>(
-                  value: b.id,
-                  child: Text(b.name, style: style),
-                ))
+            .map(
+              (b) => DropdownMenuItem<int?>(
+                value: b.id,
+                child: Text(b.name, style: style),
+              ),
+            )
             .toList(),
         onChanged: onChanged,
       ),
@@ -240,8 +248,11 @@ class _GatedPlaceholder extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.inventory_2_outlined,
-                  size: 64, color: context.colorScheme.outline),
+              Icon(
+                Icons.inventory_2_outlined,
+                size: 64,
+                color: context.colorScheme.outline,
+              ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Inventory tracking is a\nBusiness tier feature',
@@ -252,12 +263,14 @@ class _GatedPlaceholder extends ConsumerWidget {
               Text(
                 'Track stock levels, get low-stock alerts, and manage\nproduct quantities.',
                 textAlign: TextAlign.center,
-                style: context.textTheme.bodySmall
-                    ?.copyWith(color: context.colorScheme.outline),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: context.colorScheme.outline,
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
               FilledButton.icon(
-                onPressed: () => showUpgradePromptSheet(context, featureName: 'Inventory'),
+                onPressed: () =>
+                    showUpgradePromptSheet(context, featureName: 'Inventory'),
                 icon: const Icon(Icons.star_outline),
                 label: const Text('Upgrade to Business'),
               ),
@@ -283,8 +296,11 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.inventory_outlined,
-                size: 64, color: context.colorScheme.outline),
+            Icon(
+              Icons.inventory_outlined,
+              size: 64,
+              color: context.colorScheme.outline,
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
               hasItems
@@ -299,8 +315,9 @@ class _EmptyState extends StatelessWidget {
                   ? 'All your tracked products are well stocked.'
                   : 'Go to Item Catalog and enable "Track Inventory"\nfor products you want to monitor.',
               textAlign: TextAlign.center,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -336,21 +353,28 @@ class _ItemTile extends StatelessWidget {
       child: ListTile(
         onTap: onEditCatalog,
         contentPadding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.sm, AppSpacing.sm, AppSpacing.sm),
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.sm,
+          AppSpacing.sm,
+        ),
         title: Row(
           children: [
             Expanded(
               child: Text(
                 item.name,
-                style: context.textTheme.bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.w500),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             if (isLow)
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm, vertical: 2),
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   color: colors.expense.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -374,8 +398,9 @@ class _ItemTile extends StatelessWidget {
               children: [
                 Text(
                   'Stock: ',
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.colorScheme.outline),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.outline,
+                  ),
                 ),
                 Text(
                   '${item.stockQty.toStringAsFixed(item.stockQty % 1 == 0 ? 0 : 1)} ${item.unit}',
@@ -386,25 +411,28 @@ class _ItemTile extends StatelessWidget {
                 ),
                 Text(
                   '  ·  Reorder at ${item.lowStockThreshold.toStringAsFixed(item.lowStockThreshold % 1 == 0 ? 0 : 1)}',
-                  style: context.textTheme.bodySmall
-                      ?.copyWith(color: context.colorScheme.outline),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: context.colorScheme.outline,
+                  ),
                 ),
               ],
             ),
-            if (item.lastCountedAt != null) ...[              
+            if (item.lastCountedAt != null) ...[
               const SizedBox(height: 2),
               Row(
                 children: [
                   Text(
                     'Counted ${DateFormat('d MMM').format(item.lastCountedAt!)}',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: context.colorScheme.outline),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
                   ),
                   if (item.lastCountedQty != null)
                     Text(
                       '  ·  ${item.lastCountedQty!.toStringAsFixed(item.lastCountedQty! % 1 == 0 ? 0 : 1)} ${item.unit}',
-                      style: context.textTheme.bodySmall
-                          ?.copyWith(color: context.colorScheme.outline),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      ),
                     ),
                 ],
               ),
@@ -417,44 +445,54 @@ class _ItemTile extends StatelessWidget {
           itemBuilder: (_) => [
             const PopupMenuItem(
               value: _AdjustType.add,
-              child: Row(children: [
-                Icon(Icons.add_circle_outline, size: 18),
-                SizedBox(width: 8),
-                Text('Add Stock'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Add Stock'),
+                ],
+              ),
             ),
             const PopupMenuItem(
               value: _AdjustType.deduct,
-              child: Row(children: [
-                Icon(Icons.remove_circle_outline, size: 18),
-                SizedBox(width: 8),
-                Text('Deduct Stock'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.remove_circle_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Deduct Stock'),
+                ],
+              ),
             ),
             const PopupMenuItem(
               value: _AdjustType.set,
-              child: Row(children: [
-                Icon(Icons.edit_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('Set Stock'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.edit_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Set Stock'),
+                ],
+              ),
             ),
             const PopupMenuItem(
               value: _AdjustType.physicalCount,
-              child: Row(children: [
-                Icon(Icons.fact_check_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('Physical Count'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.fact_check_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Physical Count'),
+                ],
+              ),
             ),
             const PopupMenuDivider(),
             const PopupMenuItem(
               value: _AdjustType.history,
-              child: Row(children: [
-                Icon(Icons.history_outlined, size: 18),
-                SizedBox(width: 8),
-                Text('View History'),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.history_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('View History'),
+                ],
+              ),
             ),
           ],
           onSelected: onAdjust,
@@ -484,8 +522,9 @@ class _AdjustDialogState extends State<_AdjustDialog> {
   void initState() {
     super.initState();
     if (widget.type == _AdjustType.set) {
-      _qtyCtrl.text = widget.item.stockQty
-          .toStringAsFixed(widget.item.stockQty % 1 == 0 ? 0 : 2);
+      _qtyCtrl.text = widget.item.stockQty.toStringAsFixed(
+        widget.item.stockQty % 1 == 0 ? 0 : 2,
+      );
     }
   }
 
@@ -497,12 +536,12 @@ class _AdjustDialogState extends State<_AdjustDialog> {
   }
 
   String get _title => switch (widget.type) {
-        _AdjustType.add => 'Add Stock',
-        _AdjustType.deduct => 'Deduct Stock',
-        _AdjustType.set => 'Set Stock',
-        _AdjustType.physicalCount => 'Physical Count',
-        _AdjustType.history => 'View History',
-      };
+    _AdjustType.add => 'Add Stock',
+    _AdjustType.deduct => 'Deduct Stock',
+    _AdjustType.set => 'Set Stock',
+    _AdjustType.physicalCount => 'Physical Count',
+    _AdjustType.history => 'View History',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -515,14 +554,16 @@ class _AdjustDialogState extends State<_AdjustDialog> {
           children: [
             Text(
               widget.item.name,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
             const SizedBox(height: AppSpacing.base),
             TextFormField(
               controller: _qtyCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: widget.type == _AdjustType.set
                     ? 'New stock quantity'
@@ -558,8 +599,9 @@ class _AdjustDialogState extends State<_AdjustDialog> {
           onPressed: () {
             if (!_form.currentState!.validate()) return;
             final qty = double.parse(_qtyCtrl.text);
-            final notes =
-                _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+            final notes = _notesCtrl.text.trim().isEmpty
+                ? null
+                : _notesCtrl.text.trim();
             Navigator.pop(context, (qty, notes));
           },
           child: Text(_title),
@@ -605,8 +647,9 @@ class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
   Widget build(BuildContext context) {
     final variance = _variance;
     final varianceIsZero = variance == 0;
-    final varianceColor =
-        variance >= 0 ? context.kashColors.income : context.kashColors.expense;
+    final varianceColor = variance >= 0
+        ? context.kashColors.income
+        : context.kashColors.expense;
     final variancePrefix = variance > 0 ? '+' : '';
     final unit = widget.item.unit;
 
@@ -620,14 +663,17 @@ class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
           children: [
             Text(
               widget.item.name,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 color: context.colorScheme.outline.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(AppSpacing.sm),
@@ -636,13 +682,15 @@ class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
                 children: [
                   Text(
                     'Book stock: ',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: context.colorScheme.outline),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
                   ),
                   Text(
                     '${widget.item.stockQty.toStringAsFixed(widget.item.stockQty % 1 == 0 ? 0 : 1)} $unit',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -650,8 +698,9 @@ class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
             const SizedBox(height: AppSpacing.md),
             TextFormField(
               controller: _ctrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: 'Actual count ($unit)',
                 border: const OutlineInputBorder(),
@@ -667,14 +716,15 @@ class _PhysicalCountDialogState extends State<_PhysicalCountDialog> {
                 return null;
               },
             ),
-            if (_actualQty != null) ...[              
+            if (_actualQty != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
                   Text(
                     'Variance: ',
-                    style: context.textTheme.bodySmall
-                        ?.copyWith(color: context.colorScheme.outline),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
                   ),
                   Text(
                     varianceIsZero
@@ -741,7 +791,11 @@ class _MovementsSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, AppSpacing.md, AppSpacing.base, 0),
+              AppSpacing.base,
+              AppSpacing.md,
+              AppSpacing.base,
+              0,
+            ),
             child: Row(
               children: [
                 Expanded(
@@ -765,9 +819,7 @@ class _MovementsSheet extends ConsumerWidget {
               error: (e, _) => Center(child: Text('$e')),
               data: (movements) {
                 if (movements.isEmpty) {
-                  return const Center(
-                    child: Text('No stock movements yet.'),
-                  );
+                  return const Center(child: Text('No stock movements yet.'));
                 }
                 return ListView.separated(
                   controller: controller,
@@ -795,12 +847,16 @@ class _MovementsSheet extends ConsumerWidget {
                         ),
                       ),
                       title: Text(m.movementType.label),
-                      subtitle: Text(dateFormat.format(m.createdAt),
-                          style: context.textTheme.bodySmall),
+                      subtitle: Text(
+                        dateFormat.format(m.createdAt),
+                        style: context.textTheme.bodySmall,
+                      ),
                       trailing: Text(
                         '${isIn ? '+' : ''}${m.qty.toStringAsFixed(m.qty % 1 == 0 ? 0 : 1)}  →  ${m.stockAfter.toStringAsFixed(m.stockAfter % 1 == 0 ? 0 : 1)}',
-                        style: context.textTheme.bodySmall
-                            ?.copyWith(color: color, fontWeight: FontWeight.w600),
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       isThreeLine: m.notes != null,
                     );

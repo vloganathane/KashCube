@@ -9,10 +9,8 @@ final _inventoryService = InventoryService.instance;
 
 // ── Inventory list ────────────────────────────────────────────────────────────
 
-class InventoryNotifier
-    extends StateNotifier<AsyncValue<List<ItemCatalog>>> {
-  InventoryNotifier(this._businessId)
-      : super(const AsyncValue.loading()) {
+class InventoryNotifier extends StateNotifier<AsyncValue<List<ItemCatalog>>> {
+  InventoryNotifier(this._businessId) : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -26,32 +24,50 @@ class InventoryNotifier
   }
 
   Future<void> addStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.addStock(itemId, qty,
-        notes: notes, businessId: _businessId);
+    await _inventoryService.addStock(
+      itemId,
+      qty,
+      notes: notes,
+      businessId: _businessId,
+    );
     await load();
   }
 
   Future<void> deductStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.deductStock(itemId, qty,
-        notes: notes, businessId: _businessId);
+    await _inventoryService.deductStock(
+      itemId,
+      qty,
+      notes: notes,
+      businessId: _businessId,
+    );
     await load();
   }
 
   Future<void> setStock(int itemId, double qty, {String? notes}) async {
-    await _inventoryService.setStock(itemId, qty,
-        notes: notes, businessId: _businessId);
+    await _inventoryService.setStock(
+      itemId,
+      qty,
+      notes: notes,
+      businessId: _businessId,
+    );
     await load();
   }
 
   Future<void> setTrackInventory(int itemId, {required bool track}) async {
-    await _inventoryService.setTrackInventory(itemId,
-        track: track, businessId: _businessId);
+    await _inventoryService.setTrackInventory(
+      itemId,
+      track: track,
+      businessId: _businessId,
+    );
     await load();
   }
 
   Future<void> setThreshold(int itemId, double threshold) async {
-    await _inventoryService.setLowStockThreshold(itemId, threshold,
-        businessId: _businessId);
+    await _inventoryService.setLowStockThreshold(
+      itemId,
+      threshold,
+      businessId: _businessId,
+    );
     await load();
   }
 
@@ -73,15 +89,16 @@ class InventoryNotifier
 
 final inventoryProvider = StateNotifierProvider.autoDispose
     .family<InventoryNotifier, AsyncValue<List<ItemCatalog>>, int?>(
-  (ref, businessId) => InventoryNotifier(businessId),
-);
+      (ref, businessId) => InventoryNotifier(businessId),
+    );
 
 // ── Low-stock items ────────────────────────────────────────────────────────────
 
-final lowStockItemsProvider =
-    FutureProvider.autoDispose.family<List<ItemCatalog>, int?>(
-  (ref, businessId) => _inventoryService.getLowStockItems(businessId: businessId),
-);
+final lowStockItemsProvider = FutureProvider.autoDispose
+    .family<List<ItemCatalog>, int?>(
+      (ref, businessId) =>
+          _inventoryService.getLowStockItems(businessId: businessId),
+    );
 
 final lowStockCountProvider = Provider.autoDispose.family<int, int?>(
   (ref, businessId) =>
@@ -92,8 +109,8 @@ final lowStockCountProvider = Provider.autoDispose.family<int, int?>(
 
 final stockMovementsProvider = FutureProvider.autoDispose
     .family<List<StockMovement>, int>((ref, itemId) {
-  return _inventoryService.getMovementsForItem(itemId);
-});
+      return _inventoryService.getMovementsForItem(itemId);
+    });
 
 // ── Helper: active business id ────────────────────────────────────────────────
 

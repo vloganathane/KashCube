@@ -25,10 +25,10 @@ import 'inventory_service.dart';
 // Task constants
 // ────────────────────────────────────────────────────────────────────────────
 
-const _taskName       = 'com.kashcube.action_center_daily';
+const _taskName = 'com.kashcube.action_center_daily';
 const _taskUniqueName = 'kash_cube_action_center_daily';
 
-const _channelId   = 'kash_action_center';
+const _channelId = 'kash_action_center';
 const _channelName = 'Action Center Alerts';
 const _channelDesc =
     'Daily summary of overdue invoices, dues, bills and loan EMIs';
@@ -36,26 +36,27 @@ const _channelDesc =
 const _notificationId = 60000;
 
 // Auto-backup task constants
-const _autoBackupTaskName       = 'com.kashcube.auto_backup';
-const _autoBackupUniqueName     = 'kash_cube_auto_backup';
-const _autoBackupChannelId      = 'kash_auto_backup';
-const _autoBackupChannelName    = 'Auto Backup';
-const _autoBackupNotifId        = 60001;
+const _autoBackupTaskName = 'com.kashcube.auto_backup';
+const _autoBackupUniqueName = 'kash_cube_auto_backup';
+const _autoBackupChannelId = 'kash_auto_backup';
+const _autoBackupChannelName = 'Auto Backup';
+const _autoBackupNotifId = 60001;
 // SharedPreferences keys (mirrors EncryptedBackupService)
-const _kAutoBackupEnabled  = 'auto_backup_enabled';
+const _kAutoBackupEnabled = 'auto_backup_enabled';
 const _kAutoBackupInterval = 'auto_backup_interval';
-const _kLastBackupDate     = 'last_backup_date';
+const _kLastBackupDate = 'last_backup_date';
 
 // Low-stock alert task constants
-const _lowStockTaskName       = 'com.kashcube.low_stock_alert';
-const _lowStockUniqueName     = 'kash_cube_low_stock_alert';
-const _lowStockChannelId      = 'kash_low_stock';
-const _lowStockChannelName    = 'Low Stock Alerts';
-const _lowStockChannelDesc    = 'Daily check for products that are running low on inventory';
-const _lowStockNotifId        = 60002;
+const _lowStockTaskName = 'com.kashcube.low_stock_alert';
+const _lowStockUniqueName = 'kash_cube_low_stock_alert';
+const _lowStockChannelId = 'kash_low_stock';
+const _lowStockChannelName = 'Low Stock Alerts';
+const _lowStockChannelDesc =
+    'Daily check for products that are running low on inventory';
+const _lowStockNotifId = 60002;
 
 // P2P sync probe task constants
-const _p2pSyncTaskName   = 'com.kashcube.p2p_sync_probe';
+const _p2pSyncTaskName = 'com.kashcube.p2p_sync_probe';
 const _p2pSyncUniqueName = 'kash_cube_p2p_sync';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -93,7 +94,9 @@ void callbackDispatcher() {
       // mDNS cannot reliably resolve in a background isolate, so this probe
       // task is a placeholder — real sync happens in the foreground via
       // P2pCoordinator.
-      debugPrint('[P2pSync] Background probe task fired — foreground sync preferred');
+      debugPrint(
+        '[P2pSync] Background probe task fired — foreground sync preferred',
+      );
     }
     return Future.value(true);
   });
@@ -113,9 +116,11 @@ Future<void> _runActionCenterCheck() async {
     // handle, preventing it from sharing (and closing) the main isolate's handle.
     db = await openDatabase(dbPath, readOnly: true, singleInstance: false);
     final today = DateTime.now();
-    final todayIso = DateTime(today.year, today.month, today.day)
-        .toIso8601String()
-        .substring(0, 10); // 'YYYY-MM-DD'
+    final todayIso = DateTime(
+      today.year,
+      today.month,
+      today.day,
+    ).toIso8601String().substring(0, 10); // 'YYYY-MM-DD'
 
     int overdueCount = 0;
 
@@ -167,9 +172,7 @@ Future<void> _runActionCenterCheck() async {
 Future<void> _showNotification(int overdueCount) async {
   final plugin = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  await plugin.initialize(
-    const InitializationSettings(android: androidInit),
-  );
+  await plugin.initialize(const InitializationSettings(android: androidInit));
 
   final itemWord = overdueCount == 1 ? 'item needs' : 'items need';
   final details = NotificationDetails(
@@ -191,7 +194,9 @@ Future<void> _showNotification(int overdueCount) async {
     details,
   );
 
-  debugPrint('[ActionCenterBg] Notification shown for $overdueCount overdue items');
+  debugPrint(
+    '[ActionCenterBg] Notification shown for $overdueCount overdue items',
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -215,7 +220,11 @@ Future<void> _runAutoBackup() async {
     final backupDir = Directory(path_pkg.join(appDir.path, 'backups'));
     if (!await backupDir.exists()) await backupDir.create(recursive: true);
 
-    final ts = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
+    final ts = DateTime.now()
+        .toIso8601String()
+        .replaceAll(':', '-')
+        .split('.')
+        .first;
     final backupPath = path_pkg.join(backupDir.path, 'auto_kash_cube_$ts.db');
     await dbFile.copy(backupPath);
 
@@ -233,8 +242,7 @@ Future<void> _runAutoBackup() async {
 Future<void> _pruneAutoBackupsInDir(Directory backupDir) async {
   final files = <File>[];
   await for (final entity in backupDir.list()) {
-    if (entity is File &&
-        path_pkg.basename(entity.path).startsWith('auto_')) {
+    if (entity is File && path_pkg.basename(entity.path).startsWith('auto_')) {
       files.add(entity);
     }
   }
@@ -256,9 +264,7 @@ Future<void> _pruneAutoBackupsInDir(Directory backupDir) async {
 Future<void> _showAutoBackupFailureNotification() async {
   final plugin = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  await plugin.initialize(
-    const InitializationSettings(android: androidInit),
-  );
+  await plugin.initialize(const InitializationSettings(android: androidInit));
   await plugin.show(
     _autoBackupNotifId,
     'Auto Backup Failed',
@@ -301,13 +307,10 @@ Future<void> _runLowStockCheck() async {
   }
 }
 
-Future<void> _showLowStockNotification(
-    int count, List<String> names) async {
+Future<void> _showLowStockNotification(int count, List<String> names) async {
   final plugin = FlutterLocalNotificationsPlugin();
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  await plugin.initialize(
-    const InitializationSettings(android: androidInit),
-  );
+  await plugin.initialize(const InitializationSettings(android: androidInit));
 
   final itemWord = count == 1 ? 'product is' : 'products are';
   final body = names.isNotEmpty
@@ -344,7 +347,8 @@ Future<void> _showLowStockNotification(
 /// Uses [ExistingWorkPolicy.keep]: if the task is already scheduled, no-op.
 /// Call once from [main()] after [WidgetsFlutterBinding.ensureInitialized()].
 Future<void> registerActionCenterDailyTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().initialize(
       callbackDispatcher,
@@ -381,9 +385,7 @@ Duration _initialDelayUntil9am() {
   }
   final delay = target.difference(now);
   // Cap at 24 h (WorkManager periodic task minimum is 15 min)
-  return delay > const Duration(hours: 24)
-      ? const Duration(hours: 24)
-      : delay;
+  return delay > const Duration(hours: 24) ? const Duration(hours: 24) : delay;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -396,7 +398,8 @@ Duration _initialDelayUntil9am() {
 /// Always call after [registerActionCenterDailyTask] so WorkManager is
 /// already initialised.
 Future<void> registerAutoBackupTask(String interval) async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().registerPeriodicTask(
       _autoBackupUniqueName,
@@ -419,7 +422,8 @@ Future<void> registerAutoBackupTask(String interval) async {
 
 /// Cancels the periodic auto-backup task.
 Future<void> cancelAutoBackupTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().cancelByUniqueName(_autoBackupUniqueName);
     debugPrint('[AutoBackup] Task cancelled');
@@ -433,7 +437,8 @@ Future<void> cancelAutoBackupTask() async {
 /// WorkManager tasks can be cleared by OS updates or app installs — calling
 /// this on every startup ensures the schedule stays active.
 Future<void> maybeRestoreAutoBackupTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     final prefs = await SharedPreferences.getInstance();
     final enabled = prefs.getBool(_kAutoBackupEnabled) ?? false;
@@ -468,7 +473,8 @@ Duration _intervalToDuration(String interval) {
 /// No-op if WorkManager is unavailable.  Call after
 /// [registerActionCenterDailyTask] so WorkManager is already initialised.
 Future<void> registerLowStockDailyTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().registerPeriodicTask(
       _lowStockUniqueName,
@@ -498,17 +504,18 @@ Future<void> registerLowStockDailyTask() async {
 ///
 /// No-op on non-mobile platforms.
 Future<void> registerP2pSyncTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().registerPeriodicTask(
       _p2pSyncUniqueName,
       _p2pSyncTaskName,
       frequency: const Duration(minutes: 15),
       constraints: Constraints(
-        networkType:          NetworkType.connected,
+        networkType: NetworkType.connected,
         requiresBatteryNotLow: false,
-        requiresCharging:      false,
-        requiresDeviceIdle:   false,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
         requiresStorageNotLow: false,
       ),
       existingWorkPolicy: ExistingWorkPolicy.keep,
@@ -521,7 +528,8 @@ Future<void> registerP2pSyncTask() async {
 
 /// Cancels the P2P sync probe task.
 Future<void> cancelP2pSyncTask() async {
-  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux) return;
+  if (kIsWeb || Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+    return;
   try {
     await Workmanager().cancelByUniqueName(_p2pSyncUniqueName);
     debugPrint('[P2pSync] Background probe task cancelled');

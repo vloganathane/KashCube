@@ -44,12 +44,20 @@ class ReportPdfService {
           pw.SizedBox(height: 20),
           if (pnl.incomeByCat.isNotEmpty) ...[
             _buildCategoryTable(
-                'Income Breakdown', pnl.incomeByCat, _incomeColor, pnl.totalIncome),
+              'Income Breakdown',
+              pnl.incomeByCat,
+              _incomeColor,
+              pnl.totalIncome,
+            ),
             pw.SizedBox(height: 16),
           ],
           if (pnl.expenseByCat.isNotEmpty) ...[
             _buildCategoryTable(
-                'Expense Breakdown', pnl.expenseByCat, _expenseColor, pnl.totalExpense),
+              'Expense Breakdown',
+              pnl.expenseByCat,
+              _expenseColor,
+              pnl.totalExpense,
+            ),
             pw.SizedBox(height: 16),
           ],
           if (pnl.topParties.isNotEmpty) ...[
@@ -97,7 +105,10 @@ class ReportPdfService {
               ],
             ),
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
               decoration: pw.BoxDecoration(
                 color: _accent,
                 borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
@@ -125,10 +136,16 @@ class ReportPdfService {
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
         pw.Expanded(
-            child: _summaryCard('Total Income', pnl.totalIncome, _incomeColor)),
+          child: _summaryCard('Total Income', pnl.totalIncome, _incomeColor),
+        ),
         pw.SizedBox(width: 10),
         pw.Expanded(
-            child: _summaryCard('Total Expenses', pnl.totalExpense, _expenseColor)),
+          child: _summaryCard(
+            'Total Expenses',
+            pnl.totalExpense,
+            _expenseColor,
+          ),
+        ),
         pw.SizedBox(width: 10),
         pw.Expanded(
           child: _summaryCard(
@@ -142,8 +159,12 @@ class ReportPdfService {
     );
   }
 
-  pw.Widget _summaryCard(String label, double amount, PdfColor color,
-      {String prefix = ''}) {
+  pw.Widget _summaryCard(
+    String label,
+    double amount,
+    PdfColor color, {
+    String prefix = '',
+  }) {
     return pw.Container(
       padding: const pw.EdgeInsets.all(10),
       decoration: pw.BoxDecoration(
@@ -192,7 +213,10 @@ class ReportPdfService {
         pw.Text(
           title,
           style: pw.TextStyle(
-              fontSize: 10, fontWeight: pw.FontWeight.bold, color: _dark),
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: _dark,
+          ),
         ),
         pw.SizedBox(height: 5),
         pw.Table(
@@ -211,24 +235,28 @@ class ReportPdfService {
                 _cell('Share', header: true, align: pw.TextAlign.right),
               ],
             ),
-            ...sorted.map((e) => pw.TableRow(
-                  children: [
-                    _cell(e.key),
-                    _cell(_rupee(e.value), align: pw.TextAlign.right),
-                    _cell(
-                      total > 0 ? _pct(e.value / total) : '—',
-                      align: pw.TextAlign.right,
-                    ),
-                  ],
-                )),
+            ...sorted.map(
+              (e) => pw.TableRow(
+                children: [
+                  _cell(e.key),
+                  _cell(_rupee(e.value), align: pw.TextAlign.right),
+                  _cell(
+                    total > 0 ? _pct(e.value / total) : '—',
+                    align: pw.TextAlign.right,
+                  ),
+                ],
+              ),
+            ),
             pw.TableRow(
               decoration: pw.BoxDecoration(color: _surface),
               children: [
                 _cell('Total', bold: true),
-                _cell(_rupee(total),
-                    bold: true,
-                    align: pw.TextAlign.right,
-                    color: accentColor),
+                _cell(
+                  _rupee(total),
+                  bold: true,
+                  align: pw.TextAlign.right,
+                  color: accentColor,
+                ),
                 _cell('100%', bold: true, align: pw.TextAlign.right),
               ],
             ),
@@ -246,7 +274,10 @@ class ReportPdfService {
         pw.Text(
           'Top Parties',
           style: pw.TextStyle(
-              fontSize: 10, fontWeight: pw.FontWeight.bold, color: _dark),
+            fontSize: 10,
+            fontWeight: pw.FontWeight.bold,
+            color: _dark,
+          ),
         ),
         pw.SizedBox(height: 5),
         pw.Table(
@@ -263,12 +294,14 @@ class ReportPdfService {
                 _cell('Total', header: true, align: pw.TextAlign.right),
               ],
             ),
-            ...top5.map((p) => pw.TableRow(
-                  children: [
-                    _cell(p.partyName),
-                    _cell(_rupee(p.totalAmount), align: pw.TextAlign.right),
-                  ],
-                )),
+            ...top5.map(
+              (p) => pw.TableRow(
+                children: [
+                  _cell(p.partyName),
+                  _cell(_rupee(p.totalAmount), align: pw.TextAlign.right),
+                ],
+              ),
+            ),
           ],
         ),
       ],

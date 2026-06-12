@@ -25,10 +25,7 @@ class TransactionsHubScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transactions'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Transactions'), centerTitle: false),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
@@ -41,22 +38,25 @@ class TransactionsHubScreen extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final text =
-                        r.watch(dashboardSummaryProvider).whenOrNull(
+                        r
+                            .watch(dashboardSummaryProvider)
+                            .whenOrNull(
                               data: (s) =>
                                   '${CurrencyFormatter.formatCompact(s.totalIncome)} in'
                                   ' · ${CurrencyFormatter.formatCompact(s.totalExpense)} out',
                             ) ??
                         'All income & expenses';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF1B5E20),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const TransactionsScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const TransactionsScreen()),
                 ),
               ),
               _HubTile(
@@ -64,22 +64,26 @@ class TransactionsHubScreen extends ConsumerWidget {
                 label: 'Ledger',
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
-                    final text = r.watch(partiesProvider).whenOrNull(
+                    final text =
+                        r
+                            .watch(partiesProvider)
+                            .whenOrNull(
                               data: (list) =>
                                   '${list.length} ${list.length == 1 ? 'party' : 'parties'}',
                             ) ??
                         'Party-wise account book';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF006064),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const LedgerScreen(),
-                  ),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LedgerScreen())),
               ),
             ],
           ),
@@ -90,14 +94,14 @@ class TransactionsHubScreen extends ConsumerWidget {
               _HubTile(
                 icon: Icons.payments_outlined,
                 label: 'Bills Payable',
-                subtitle:
-                    const _StaticSubtitle('Personal dues & subscriptions'),
+                subtitle: const _StaticSubtitle(
+                  'Personal dues & subscriptions',
+                ),
                 color: const Color(0xFF6A1B9A),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const BillsAndPaymentsScreen(
-                      billContext: 'personal',
-                    ),
+                    builder: (_) =>
+                        const BillsAndPaymentsScreen(billContext: 'personal'),
                   ),
                 ),
               ),
@@ -112,25 +116,28 @@ class TransactionsHubScreen extends ConsumerWidget {
                 label: 'Loans & Credits',
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
-                    final lentAmt =
-                        r.watch(totalPendingLentProvider).valueOrNull;
-                    final borrAmt =
-                        r.watch(totalPendingBorrowedProvider).valueOrNull;
+                    final lentAmt = r
+                        .watch(totalPendingLentProvider)
+                        .valueOrNull;
+                    final borrAmt = r
+                        .watch(totalPendingBorrowedProvider)
+                        .valueOrNull;
                     final text = (lentAmt != null || borrAmt != null)
                         ? '${CurrencyFormatter.formatCompact(lentAmt ?? 0)} lent'
-                            ' · ${CurrencyFormatter.formatCompact(borrAmt ?? 0)} owed'
+                              ' · ${CurrencyFormatter.formatCompact(borrAmt ?? 0)} owed'
                         : 'Lent, borrowed & dues';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFFE65100),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const LoansScreen(),
-                  ),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const LoansScreen())),
               ),
             ],
           ),
@@ -142,7 +149,8 @@ class TransactionsHubScreen extends ConsumerWidget {
                 icon: Icons.category_outlined,
                 label: 'Categories',
                 subtitle: const _StaticSubtitle(
-                    'View & manage transaction categories'),
+                  'View & manage transaction categories',
+                ),
                 color: const Color(0xFF00695C),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -162,14 +170,19 @@ class TransactionsHubScreen extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final text =
-                        r.watch(dashboardSummaryProvider).whenOrNull(
+                        r
+                            .watch(dashboardSummaryProvider)
+                            .whenOrNull(
                               data: (s) =>
                                   'Net ${CurrencyFormatter.formatCompact(s.balance)} this month',
                             ) ??
                         'Income vs expense analysis';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF1565C0),
@@ -186,31 +199,36 @@ class TransactionsHubScreen extends ConsumerWidget {
                 subtitle: Consumer(
                   builder: (ctx, r, _) {
                     final text =
-                        r.watch(currentMonthBudgetsProvider).whenOrNull(
+                        r
+                            .watch(currentMonthBudgetsProvider)
+                            .whenOrNull(
                               data: (list) => list.isEmpty
                                   ? 'No budgets set'
                                   : '${list.length} budget${list.length == 1 ? '' : 's'} active',
                             ) ??
                         'Monthly spend limits';
-                    return Text(text,
-                        style: ctx.textTheme.bodySmall
-                            ?.copyWith(color: ctx.colorScheme.outline));
+                    return Text(
+                      text,
+                      style: ctx.textTheme.bodySmall?.copyWith(
+                        color: ctx.colorScheme.outline,
+                      ),
+                    );
                   },
                 ),
                 color: const Color(0xFF6A1B9A),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const BudgetScreen()),
-                ),
+                onTap: () => Navigator.of(
+                  context,
+                ).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
               ),
               _HubTile(
                 icon: Icons.show_chart_outlined,
                 label: 'Cash Flow Timeline',
                 subtitle: const _StaticSubtitle(
-                    'Overdue, upcoming & projected money movement'),
+                  'Overdue, upcoming & projected money movement',
+                ),
                 color: const Color(0xFF00695C),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                      builder: (_) => const CashFlowScreen()),
+                  MaterialPageRoute(builder: (_) => const CashFlowScreen()),
                 ),
               ),
             ],
@@ -237,7 +255,9 @@ class _HubSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(
-              left: AppSpacing.xs, bottom: AppSpacing.sm),
+            left: AppSpacing.xs,
+            bottom: AppSpacing.sm,
+          ),
           child: Text(
             title.toUpperCase(),
             style: context.textTheme.labelSmall?.copyWith(
@@ -293,14 +313,21 @@ class _HubTile extends StatelessWidget {
         ),
         child: Icon(icon, color: color, size: AppSpacing.iconMd),
       ),
-      title: Text(label,
-          style: context.textTheme.bodyMedium
-              ?.copyWith(fontWeight: FontWeight.w500)),
+      title: Text(
+        label,
+        style: context.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       subtitle: subtitle,
-      trailing: Icon(Icons.chevron_right,
-          color: context.colorScheme.outlineVariant),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: context.colorScheme.outlineVariant,
+      ),
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
     );
   }
 }
@@ -311,8 +338,11 @@ class _StaticSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(text,
-        style: context.textTheme.bodySmall
-            ?.copyWith(color: context.colorScheme.outline));
+    return Text(
+      text,
+      style: context.textTheme.bodySmall?.copyWith(
+        color: context.colorScheme.outline,
+      ),
+    );
   }
 }

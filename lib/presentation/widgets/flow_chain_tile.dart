@@ -21,11 +21,7 @@ import '../../data/models/party_reminder.dart';
 import 'lifecycle_tag.dart';
 
 class FlowChainTile extends StatelessWidget {
-  const FlowChainTile({
-    super.key,
-    required this.chain,
-    this.onTap,
-  });
+  const FlowChainTile({super.key, required this.chain, this.onTap});
 
   final BusinessFlowChain chain;
   final VoidCallback? onTap;
@@ -33,11 +29,17 @@ class FlowChainTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
-    final (statusColor, statusLabel) = _statusStyle(context, colors, chain.status);
+    final (statusColor, statusLabel) = _statusStyle(
+      context,
+      colors,
+      chain.status,
+    );
 
     return Card(
       margin: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         onTap: onTap,
@@ -54,8 +56,9 @@ class FlowChainTile extends StatelessWidget {
                   Expanded(
                     child: Text(
                       chain.chainTitle,
-                      style: context.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -75,15 +78,17 @@ class FlowChainTile extends StatelessWidget {
                       children: [
                         Text(
                           'Total: ${CurrencyFormatter.format(chain.totalValue)}',
-                          style: context.textTheme.bodySmall
-                              ?.copyWith(color: context.colorScheme.outline),
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.outline,
+                          ),
                         ),
                         if (chain.outstandingAmount > 0)
                           Text(
                             'Outstanding: ${CurrencyFormatter.format(chain.outstandingAmount)}',
                             style: context.textTheme.labelMedium?.copyWith(
-                                color: colors.expense,
-                                fontWeight: FontWeight.w600),
+                              color: colors.expense,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                       ],
                     ),
@@ -91,8 +96,9 @@ class FlowChainTile extends StatelessWidget {
                   // Days since origin
                   Text(
                     '${chain.daysSinceOrigin}d ago',
-                    style: context.textTheme.labelSmall
-                        ?.copyWith(color: context.colorScheme.outline),
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.outline,
+                    ),
                   ),
                 ],
               ),
@@ -106,9 +112,7 @@ class FlowChainTile extends StatelessWidget {
               if (chain.invoice != null) ...[
                 const SizedBox(height: AppSpacing.xs),
                 LifecycleTag(
-                  info: LifecycleClassifier.forInvoice(
-                    chain.invoice!,
-                  ),
+                  info: LifecycleClassifier.forInvoice(chain.invoice!),
                 ),
               ],
 
@@ -137,14 +141,16 @@ class FlowChainTile extends StatelessWidget {
   }
 
   (Color, String) _statusStyle(
-      BuildContext context, KashCubeColors colors, ChainStatus status) =>
-      switch (status) {
-        ChainStatus.complete         => (colors.income, 'Complete'),
-        ChainStatus.awaitingPayment  => (colors.expense, 'Awaiting Payment'),
-        ChainStatus.awaitingInvoice  => (colors.credit, 'Awaiting Invoice'),
-        ChainStatus.invoicedPartially => (Colors.orange, 'Partial'),
-        ChainStatus.cancelled        => (context.colorScheme.outline, 'Cancelled'),
-      };
+    BuildContext context,
+    KashCubeColors colors,
+    ChainStatus status,
+  ) => switch (status) {
+    ChainStatus.complete => (colors.income, 'Complete'),
+    ChainStatus.awaitingPayment => (colors.expense, 'Awaiting Payment'),
+    ChainStatus.awaitingInvoice => (colors.credit, 'Awaiting Invoice'),
+    ChainStatus.invoicedPartially => (Colors.orange, 'Partial'),
+    ChainStatus.cancelled => (context.colorScheme.outline, 'Cancelled'),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -159,16 +165,16 @@ class _OriginBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = switch (origin) {
-      ChainOrigin.quote         => 'Q',
-      ChainOrigin.challan       => 'C',
-      ChainOrigin.booking       => 'B',
+      ChainOrigin.quote => 'Q',
+      ChainOrigin.challan => 'C',
+      ChainOrigin.booking => 'B',
       ChainOrigin.directInvoice => 'I',
     };
 
     final tooltip = switch (origin) {
-      ChainOrigin.quote         => 'Started from Quote',
-      ChainOrigin.challan       => 'Started from Challan',
-      ChainOrigin.booking       => 'Started from Booking',
+      ChainOrigin.quote => 'Started from Quote',
+      ChainOrigin.challan => 'Started from Challan',
+      ChainOrigin.booking => 'Started from Booking',
       ChainOrigin.directInvoice => 'Direct Invoice',
     };
 
@@ -208,8 +214,10 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withAlpha(22),
         borderRadius: BorderRadius.circular(6),
@@ -246,11 +254,14 @@ class _PipelineStepper extends StatelessWidget {
       if (chain.origin == ChainOrigin.booking || chain.booking != null)
         ('Booking', chain.booking != null),
       ('Invoice', chain.invoice != null),
-      if (chain.reminders.isNotEmpty) ('Reminded ×${chain.reminders.length}', true),
-      ('Paid',
-          chain.status == ChainStatus.complete ||
-              (chain.receivedAmount > 0 &&
-                  chain.receivedAmount >= chain.totalValue)),
+      if (chain.reminders.isNotEmpty)
+        ('Reminded ×${chain.reminders.length}', true),
+      (
+        'Paid',
+        chain.status == ChainStatus.complete ||
+            (chain.receivedAmount > 0 &&
+                chain.receivedAmount >= chain.totalValue),
+      ),
     ];
 
     if (steps.isEmpty) return const SizedBox.shrink();
@@ -281,8 +292,9 @@ class _StepDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? context.colorScheme.primary : context.colorScheme.outlineVariant;
+    final color = active
+        ? context.colorScheme.primary
+        : context.colorScheme.outlineVariant;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -338,16 +350,23 @@ class _ReminderBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final icon = switch (reminder.channel) {
       ReminderChannel.whatsapp => Icons.chat_bubble_outline_rounded,
-      ReminderChannel.sms      => Icons.sms_outlined,
-      ReminderChannel.email    => Icons.email_outlined,
+      ReminderChannel.sms => Icons.sms_outlined,
+      ReminderChannel.email => Icons.email_outlined,
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
-        color: context.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        color: context.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.5,
+        ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-            color: context.colorScheme.outlineVariant, width: 0.7),
+          color: context.colorScheme.outlineVariant,
+          width: 0.7,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -368,8 +387,19 @@ class _ReminderBubble extends StatelessWidget {
 
   String _short(DateTime dt) {
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month]}';
   }

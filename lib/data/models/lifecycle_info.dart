@@ -32,16 +32,16 @@ enum LifecycleStage {
 extension LifecycleStageExt on LifecycleStage {
   /// Short display label shown inside [LifecycleTag].
   String get label => switch (this) {
-        LifecycleStage.draft         => 'DRAFT',
-        LifecycleStage.active        => 'ACTIVE',
-        LifecycleStage.sent          => 'SENT',
-        LifecycleStage.reminded      => 'REMINDED',
-        LifecycleStage.partiallyPaid => 'PARTIAL',
-        LifecycleStage.overdue       => 'OVERDUE',
-        LifecycleStage.paying        => 'PAYING',
-        LifecycleStage.cleared       => 'CLEARED',
-        LifecycleStage.paid          => 'PAID',
-      };
+    LifecycleStage.draft => 'DRAFT',
+    LifecycleStage.active => 'ACTIVE',
+    LifecycleStage.sent => 'SENT',
+    LifecycleStage.reminded => 'REMINDED',
+    LifecycleStage.partiallyPaid => 'PARTIAL',
+    LifecycleStage.overdue => 'OVERDUE',
+    LifecycleStage.paying => 'PAYING',
+    LifecycleStage.cleared => 'CLEARED',
+    LifecycleStage.paid => 'PAID',
+  };
 
   /// Terminal stages — item no longer needs attention.
   bool get isTerminal =>

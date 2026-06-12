@@ -53,13 +53,13 @@ int _daysOverdue(DateTime? dueDate) {
 /// Items are sorted from most urgent (highest sortScore) first.
 /// Only items due within the next 30 days (or already overdue) are included.
 final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
-  final creditsAsync   = ref.watch(activeCreditsProvider);
-  final loansAsync     = ref.watch(activeLoansProvider);
-  final overdueLoans   = ref.watch(overdueLoansProvider);
-  final billsAsync     = ref.watch(upcomingScheduledProvider);
-  final overdueBills   = ref.watch(overdueScheduledProvider);
-  final invoicesAsync  = ref.watch(invoicesProvider);
-  final leakingAsync   = ref.watch(leakingChainsProvider);
+  final creditsAsync = ref.watch(activeCreditsProvider);
+  final loansAsync = ref.watch(activeLoansProvider);
+  final overdueLoans = ref.watch(overdueLoansProvider);
+  final billsAsync = ref.watch(upcomingScheduledProvider);
+  final overdueBills = ref.watch(overdueScheduledProvider);
+  final invoicesAsync = ref.watch(invoicesProvider);
+  final leakingAsync = ref.watch(leakingChainsProvider);
 
   // Wait for all sources
   if (creditsAsync.isLoading ||
@@ -72,9 +72,12 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     return const AsyncLoading();
   }
 
-  if (creditsAsync.hasError) return AsyncError(creditsAsync.error!, creditsAsync.stackTrace!);
-  if (loansAsync.hasError)   return AsyncError(loansAsync.error!, loansAsync.stackTrace!);
-  if (invoicesAsync.hasError) return AsyncError(invoicesAsync.error!, invoicesAsync.stackTrace!);
+  if (creditsAsync.hasError)
+    return AsyncError(creditsAsync.error!, creditsAsync.stackTrace!);
+  if (loansAsync.hasError)
+    return AsyncError(loansAsync.error!, loansAsync.stackTrace!);
+  if (invoicesAsync.hasError)
+    return AsyncError(invoicesAsync.error!, invoicesAsync.stackTrace!);
 
   final items = <ActionItem>[];
   final now = DateTime.now();
@@ -88,26 +91,31 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     if (due != null && due.isAfter(cutoff)) continue; // too far away
     final urgency = _urgencyFor(due);
     final overdueDays = _daysOverdue(due);
-    items.add(ActionItem(
-      type: ActionItemType.dues,
-      direction: c.direction == CreditDirection.given
-          ? ActionItemDirection.toCollect
-          : ActionItemDirection.toPay,
-      urgency: urgency,
-      daysOverdue: overdueDays,
-      title: c.customerName,
-      subtitle: 'Due',
-      amount: c.pendingAmount,
-      dueDate: c.dueDate,
-      sourceId: c.id ?? 0,
-      lifecycleInfo: LifecycleClassifier.forCredit(c),
-    ));
+    items.add(
+      ActionItem(
+        type: ActionItemType.dues,
+        direction: c.direction == CreditDirection.given
+            ? ActionItemDirection.toCollect
+            : ActionItemDirection.toPay,
+        urgency: urgency,
+        daysOverdue: overdueDays,
+        title: c.customerName,
+        subtitle: 'Due',
+        amount: c.pendingAmount,
+        dueDate: c.dueDate,
+        sourceId: c.id ?? 0,
+        lifecycleInfo: LifecycleClassifier.forCredit(c),
+      ),
+    );
   }
 
   // ── Loans / EMIs ────────────────────────────────────────────────────────────
   // Combine active (upcoming EMIs) + explicit overdue loans — deduplicate by id
   final loanMap = <int, Loan>{};
-  for (final l in [...loansAsync.valueOrNull ?? [], ...overdueLoans.valueOrNull ?? []]) {
+  for (final l in [
+    ...loansAsync.valueOrNull ?? [],
+    ...overdueLoans.valueOrNull ?? [],
+  ]) {
     if (l.id != null) loanMap[l.id!] = l;
   }
   final loans = loanMap.values.toList();
@@ -118,26 +126,31 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     if (due != null && due.isAfter(cutoff)) continue;
     final urgency = _urgencyFor(due);
     final overdueDays = _daysOverdue(due);
-    items.add(ActionItem(
-      type: ActionItemType.loanEmi,
-      direction: l.isLent
-          ? ActionItemDirection.toCollect
-          : ActionItemDirection.toPay,
-      urgency: urgency,
-      daysOverdue: overdueDays,
-      title: l.lenderName,
-      subtitle: 'Loan EMI',
-      amount: l.pendingAmount,
-      dueDate: due,
-      sourceId: l.id ?? 0,
-      lifecycleInfo: LifecycleClassifier.forLoan(l),
-    ));
+    items.add(
+      ActionItem(
+        type: ActionItemType.loanEmi,
+        direction: l.isLent
+            ? ActionItemDirection.toCollect
+            : ActionItemDirection.toPay,
+        urgency: urgency,
+        daysOverdue: overdueDays,
+        title: l.lenderName,
+        subtitle: 'Loan EMI',
+        amount: l.pendingAmount,
+        dueDate: due,
+        sourceId: l.id ?? 0,
+        lifecycleInfo: LifecycleClassifier.forLoan(l),
+      ),
+    );
   }
 
   // ── Scheduled Bills ─────────────────────────────────────────────────────────
   // Deduplicate by id
   final billMap = <int, ScheduledPayment>{};
-  for (final b in [...billsAsync.valueOrNull ?? [], ...overdueBills.valueOrNull ?? []]) {
+  for (final b in [
+    ...billsAsync.valueOrNull ?? [],
+    ...overdueBills.valueOrNull ?? [],
+  ]) {
     if (b.id != null) billMap[b.id!] = b;
   }
   final bills = billMap.values.toList();
@@ -147,18 +160,20 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     if (due.isAfter(cutoff)) continue;
     final urgency = _urgencyFor(due);
     final overdueDays = _daysOverdue(due);
-    items.add(ActionItem(
-      type: ActionItemType.bill,
-      direction: ActionItemDirection.toPay,
-      urgency: urgency,
-      daysOverdue: overdueDays,
-      title: b.name,
-      subtitle: b.partyName,
-      amount: b.amount,
-      dueDate: due,
-      sourceId: b.id ?? 0,
-      lifecycleInfo: LifecycleClassifier.forBill(b),
-    ));
+    items.add(
+      ActionItem(
+        type: ActionItemType.bill,
+        direction: ActionItemDirection.toPay,
+        urgency: urgency,
+        daysOverdue: overdueDays,
+        title: b.name,
+        subtitle: b.partyName,
+        amount: b.amount,
+        dueDate: due,
+        sourceId: b.id ?? 0,
+        lifecycleInfo: LifecycleClassifier.forBill(b),
+      ),
+    );
   }
 
   // ── Invoices ────────────────────────────────────────────────────────────────
@@ -171,21 +186,23 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     if (due != null && due.isAfter(cutoff)) continue;
     final urgency = _urgencyFor(due);
     final overdueDays = _daysOverdue(due);
-    items.add(ActionItem(
-      type: ActionItemType.invoice,
-      direction: ActionItemDirection.toCollect,
-      urgency: urgency,
-      daysOverdue: overdueDays,
-      title: inv.customerName,
-      subtitle: 'Invoice ${inv.invoiceNo}',
-      amount: inv.balanceDue,
-      dueDate: inv.dueDate,
-      sourceId: inv.id ?? 0,
-      lifecycleInfo: LifecycleClassifier.forInvoice(
-        inv,
-        lastReminderAt: inv.reminderSentAt,
+    items.add(
+      ActionItem(
+        type: ActionItemType.invoice,
+        direction: ActionItemDirection.toCollect,
+        urgency: urgency,
+        daysOverdue: overdueDays,
+        title: inv.customerName,
+        subtitle: 'Invoice ${inv.invoiceNo}',
+        amount: inv.balanceDue,
+        dueDate: inv.dueDate,
+        sourceId: inv.id ?? 0,
+        lifecycleInfo: LifecycleClassifier.forInvoice(
+          inv,
+          lastReminderAt: inv.reminderSentAt,
+        ),
       ),
-    ));
+    );
   }
 
   // ── Leaking Chains (E5) ────────────────────────────────────────────────────
@@ -196,20 +213,22 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
     final urgency = days >= 4
         ? ActionUrgency.overdue
         : days == 0
-            ? ActionUrgency.dueToday
-            : ActionUrgency.dueThisWeek;
-    items.add(ActionItem(
-      type: ActionItemType.leakingChain,
-      direction: ActionItemDirection.toCollect,
-      urgency: urgency,
-      daysOverdue: days,
-      title: chain.partyName,
-      subtitle: chain.chainTitle,
-      amount: chain.totalValue,
-      dueDate: null,
-      sourceId: chain.partyId, // used to navigate to Party360Screen
-      lifecycleInfo: null,
-    ));
+        ? ActionUrgency.dueToday
+        : ActionUrgency.dueThisWeek;
+    items.add(
+      ActionItem(
+        type: ActionItemType.leakingChain,
+        direction: ActionItemDirection.toCollect,
+        urgency: urgency,
+        daysOverdue: days,
+        title: chain.partyName,
+        subtitle: chain.chainTitle,
+        amount: chain.totalValue,
+        dueDate: null,
+        sourceId: chain.partyId, // used to navigate to Party360Screen
+        lifecycleInfo: null,
+      ),
+    );
   }
 
   // Sort highest sortScore first
@@ -223,10 +242,11 @@ final actionCenterProvider = Provider<AsyncValue<List<ActionItem>>>((ref) {
 /// Count of overdue items — used for badge on home screen.
 final actionCenterOverdueCountProvider = Provider<int>((ref) {
   return ref
-      .watch(actionCenterProvider)
-      .valueOrNull
-      ?.where((i) => i.urgency == ActionUrgency.overdue)
-      .length ?? 0;
+          .watch(actionCenterProvider)
+          .valueOrNull
+          ?.where((i) => i.urgency == ActionUrgency.overdue)
+          .length ??
+      0;
 });
 
 /// Total amount to collect (overdue + this week).

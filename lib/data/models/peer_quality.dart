@@ -69,7 +69,8 @@ class PeerQuality {
 
     // Latency component (0-20 points, inverse: lower latency = higher score)
     // Assume 500ms is poor, 0ms is perfect
-    final normalizedLatency = (500.0 - averageLatencyMs.clamp(0.0, 500.0)) / 500.0;
+    final normalizedLatency =
+        (500.0 - averageLatencyMs.clamp(0.0, 500.0)) / 500.0;
     final latencyComponent = normalizedLatency * 20.0;
 
     // Uptime component (0-10 points)
@@ -77,7 +78,10 @@ class PeerQuality {
     final uptimeSeconds = totalUptime.inSeconds;
     final uptimeComponent = (uptimeSeconds / 3600.0).clamp(0.0, 1.0) * 10.0;
 
-    return successComponent + deliveryComponent + latencyComponent + uptimeComponent;
+    return successComponent +
+        deliveryComponent +
+        latencyComponent +
+        uptimeComponent;
   }
 
   /// Record a connection attempt.

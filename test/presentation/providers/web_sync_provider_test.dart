@@ -39,32 +39,38 @@ void main() {
   });
 
   group('WebSyncNotifier heartbeat reconnect', () {
-    test('schedules reconnect on HEARTBEAT_TIMEOUT when session is available', () async {
-      var reconnectAttempts = 0;
-      final notifier = WebSyncNotifier(
-        sessionIdProvider: () => 'sess-reconnect',
-        heartbeatReconnectBaseDelay: const Duration(milliseconds: 5),
-        maxHeartbeatReconnectAttempts: 3,
-        reconnectRunner: (wsUrl, sessionId) async {
-          reconnectAttempts += 1;
-          return true;
-        },
-      );
-      notifier.setWsUrlForTest('ws://127.0.0.1:9001/ws');
+    test(
+      'schedules reconnect on HEARTBEAT_TIMEOUT when session is available',
+      () async {
+        var reconnectAttempts = 0;
+        final notifier = WebSyncNotifier(
+          sessionIdProvider: () => 'sess-reconnect',
+          heartbeatReconnectBaseDelay: const Duration(milliseconds: 5),
+          maxHeartbeatReconnectAttempts: 3,
+          reconnectRunner: (wsUrl, sessionId) async {
+            reconnectAttempts += 1;
+            return true;
+          },
+        );
+        notifier.setWsUrlForTest('ws://127.0.0.1:9001/ws');
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'SIGNAL_ERROR',
-        'code': 'HEARTBEAT_TIMEOUT',
-        'reason': 'Control plane heartbeat timeout',
-      });
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'SIGNAL_ERROR',
+          'code': 'HEARTBEAT_TIMEOUT',
+          'reason': 'Control plane heartbeat timeout',
+        });
 
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(reconnectAttempts, 1);
-      expect(notifier.state.progressMsg, 'Reconnected after heartbeat timeout');
+        expect(reconnectAttempts, 1);
+        expect(
+          notifier.state.progressMsg,
+          'Reconnected after heartbeat timeout',
+        );
 
-      notifier.dispose();
-    });
+        notifier.dispose();
+      },
+    );
 
     test('does not reconnect when session id is unavailable', () async {
       var reconnectAttempts = 0;
@@ -87,7 +93,10 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(reconnectAttempts, 0);
-      expect(notifier.state.progressMsg, 'Connection lost. Auto-reconnect unavailable.');
+      expect(
+        notifier.state.progressMsg,
+        'Connection lost. Auto-reconnect unavailable.',
+      );
 
       notifier.dispose();
     });
@@ -205,182 +214,197 @@ void main() {
   });
 
   group('WebSyncNotifier inbound replay dedupe', () {
-    test('dedupes replayed PUSH rows by sync_id before merge and notify', () async {
-      final mergedTables = <String>[];
-      final mergedRowCounts = <int>[];
-      final notifiedTables = <String>[];
-      final notifier = WebSyncNotifier(
-        upsertRowsHook: (table, rows) async {
-          mergedTables.add(table);
-          mergedRowCounts.add(rows.length);
-        },
-        notifyChangeHook: (table) {
-          notifiedTables.add(table);
-        },
-      );
+    test(
+      'dedupes replayed PUSH rows by sync_id before merge and notify',
+      () async {
+        final mergedTables = <String>[];
+        final mergedRowCounts = <int>[];
+        final notifiedTables = <String>[];
+        final notifier = WebSyncNotifier(
+          upsertRowsHook: (table, rows) async {
+            mergedTables.add(table);
+            mergedRowCounts.add(rows.length);
+          },
+          notifyChangeHook: (table) {
+            notifiedTables.add(table);
+          },
+        );
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'PUSH',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
-        ],
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
+          ],
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'PUSH',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
-        ],
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'push-1', 'amount': 100},
+          ],
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      expect(mergedTables, ['transactions']);
-      expect(mergedRowCounts, [1]);
-      expect(notifiedTables, ['transactions']);
+        expect(mergedTables, ['transactions']);
+        expect(mergedRowCounts, [1]);
+        expect(notifiedTables, ['transactions']);
 
-      notifier.dispose();
-    });
+        notifier.dispose();
+      },
+    );
 
-    test('dedupes replayed ROWS rows by sync_id before merge and notify', () async {
-      final mergedTables = <String>[];
-      final mergedRowCounts = <int>[];
-      final notifiedTables = <String>[];
-      final notifier = WebSyncNotifier(
-        upsertRowsHook: (table, rows) async {
-          mergedTables.add(table);
-          mergedRowCounts.add(rows.length);
-        },
-        notifyChangeHook: (table) {
-          notifiedTables.add(table);
-        },
-      );
+    test(
+      'dedupes replayed ROWS rows by sync_id before merge and notify',
+      () async {
+        final mergedTables = <String>[];
+        final mergedRowCounts = <int>[];
+        final notifiedTables = <String>[];
+        final notifier = WebSyncNotifier(
+          upsertRowsHook: (table, rows) async {
+            mergedTables.add(table);
+            mergedRowCounts.add(rows.length);
+          },
+          notifyChangeHook: (table) {
+            notifiedTables.add(table);
+          },
+        );
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'ROWS',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
-        ],
-        'is_final': false,
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
+          ],
+          'is_final': false,
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'ROWS',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
-        ],
-        'is_final': false,
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'ROWS',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'rows-1', 'amount': 100},
+          ],
+          'is_final': false,
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      expect(mergedTables, ['transactions']);
-      expect(mergedRowCounts, [1]);
-      expect(notifiedTables, ['transactions']);
+        expect(mergedTables, ['transactions']);
+        expect(mergedRowCounts, [1]);
+        expect(notifiedTables, ['transactions']);
 
-      notifier.dispose();
-    });
+        notifier.dispose();
+      },
+    );
   });
 
   group('WebSyncNotifier disconnect cleanup integration', () {
-    test('disconnect clears pending outbound writes for next session', () async {
-      final firstChannel = _FakeSyncTransportChannel();
-      final secondChannel = _FakeSyncTransportChannel();
-      final notifier = WebSyncNotifier(
-        writeAckTimeout: const Duration(milliseconds: 5),
-        maxWriteRetryAttempts: 2,
-      );
+    test(
+      'disconnect clears pending outbound writes for next session',
+      () async {
+        final firstChannel = _FakeSyncTransportChannel();
+        final secondChannel = _FakeSyncTransportChannel();
+        final notifier = WebSyncNotifier(
+          writeAckTimeout: const Duration(milliseconds: 5),
+          maxWriteRetryAttempts: 2,
+        );
 
-      notifier.setChannelForTest(firstChannel);
-      notifier.enqueueOutboundWriteForTest(<String, dynamic>{
-        'type': 'WRITE',
-        'table': 'transactions',
-        'sync_id': 'cleanup-write-1',
-        'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
-      });
+        notifier.setChannelForTest(firstChannel);
+        notifier.enqueueOutboundWriteForTest(<String, dynamic>{
+          'type': 'WRITE',
+          'table': 'transactions',
+          'sync_id': 'cleanup-write-1',
+          'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
+        });
 
-      expect(notifier.pendingOutboundWriteCountForTest, 1);
-      expect(firstChannel.sentPayloads, hasLength(1));
+        expect(notifier.pendingOutboundWriteCountForTest, 1);
+        expect(firstChannel.sentPayloads, hasLength(1));
 
-      notifier.disconnect();
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.disconnect();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      expect(notifier.pendingOutboundWriteCountForTest, 0);
-      expect(firstChannel.closeCount, 1);
+        expect(notifier.pendingOutboundWriteCountForTest, 0);
+        expect(firstChannel.closeCount, 1);
 
-      notifier.setChannelForTest(secondChannel);
-      notifier.enqueueOutboundWriteForTest(<String, dynamic>{
-        'type': 'WRITE',
-        'table': 'transactions',
-        'sync_id': 'cleanup-write-1',
-        'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
-      });
+        notifier.setChannelForTest(secondChannel);
+        notifier.enqueueOutboundWriteForTest(<String, dynamic>{
+          'type': 'WRITE',
+          'table': 'transactions',
+          'sync_id': 'cleanup-write-1',
+          'row': <String, dynamic>{'sync_id': 'cleanup-write-1'},
+        });
 
-      expect(secondChannel.sentPayloads, hasLength(1));
-      expect(notifier.pendingOutboundWriteCountForTest, 1);
+        expect(secondChannel.sentPayloads, hasLength(1));
+        expect(notifier.pendingOutboundWriteCountForTest, 1);
 
-      notifier.dispose();
-    });
+        notifier.dispose();
+      },
+    );
 
-    test('disconnect clears inbound dedupe cache so next session can merge same sync_id again', () async {
-      final mergedTables = <String>[];
-      final mergedRowCounts = <int>[];
-      final notifiedTables = <String>[];
-      final notifier = WebSyncNotifier(
-        upsertRowsHook: (table, rows) async {
-          mergedTables.add(table);
-          mergedRowCounts.add(rows.length);
-        },
-        notifyChangeHook: (table) {
-          notifiedTables.add(table);
-        },
-      );
+    test(
+      'disconnect clears inbound dedupe cache so next session can merge same sync_id again',
+      () async {
+        final mergedTables = <String>[];
+        final mergedRowCounts = <int>[];
+        final notifiedTables = <String>[];
+        final notifier = WebSyncNotifier(
+          upsertRowsHook: (table, rows) async {
+            mergedTables.add(table);
+            mergedRowCounts.add(rows.length);
+          },
+          notifyChangeHook: (table) {
+            notifiedTables.add(table);
+          },
+        );
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'PUSH',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
-        ],
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
+          ],
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      notifier.disconnect();
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.disconnect();
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      notifier.ingestMessageForTest(<String, dynamic>{
-        'type': 'PUSH',
-        'table': 'transactions',
-        'rows': <Map<String, dynamic>>[
-          <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
-        ],
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+        notifier.ingestMessageForTest(<String, dynamic>{
+          'type': 'PUSH',
+          'table': 'transactions',
+          'rows': <Map<String, dynamic>>[
+            <String, dynamic>{'sync_id': 'session-row-1', 'amount': 100},
+          ],
+        });
+        await Future<void>.delayed(const Duration(milliseconds: 5));
 
-      expect(mergedTables, ['transactions', 'transactions']);
-      expect(mergedRowCounts, [1, 1]);
-      expect(notifiedTables, ['transactions', 'transactions']);
+        expect(mergedTables, ['transactions', 'transactions']);
+        expect(mergedRowCounts, [1, 1]);
+        expect(notifiedTables, ['transactions', 'transactions']);
 
-      notifier.dispose();
-    });
+        notifier.dispose();
+      },
+    );
   });
 
   group('WebSyncNotifier cloud signaling readiness gate', () {
-    test('cloudAdapterInjected defaults to false (gate blocks cloud connect)', () {
-      // Constructing with cloudRelay but no adapter injected means the gate
-      // will block and the notifier will default to local signaling.
-      final notifier = WebSyncNotifier(
-        signalingMode: SyncSignalingMode.cloudRelay,
-        // cloudAdapterInjected not passed → defaults false
-      );
-      // The notifier constructs successfully; blocking happens at connect time.
-      expect(notifier.state.state, WsConnState.disconnected);
-      notifier.dispose();
-    });
+    test(
+      'cloudAdapterInjected defaults to false (gate blocks cloud connect)',
+      () {
+        // Constructing with cloudRelay but no adapter injected means the gate
+        // will block and the notifier will default to local signaling.
+        final notifier = WebSyncNotifier(
+          signalingMode: SyncSignalingMode.cloudRelay,
+          // cloudAdapterInjected not passed → defaults false
+        );
+        // The notifier constructs successfully; blocking happens at connect time.
+        expect(notifier.state.state, WsConnState.disconnected);
+        notifier.dispose();
+      },
+    );
 
     test('cloudAdapterInjected true marks adapter as present for gate', () {
       final notifier = WebSyncNotifier(

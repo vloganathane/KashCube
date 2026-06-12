@@ -28,7 +28,10 @@ void main() {
     });
 
     test('formats with decimals when showDecimals=true', () {
-      expect(CurrencyFormatter.format(1234.50, showDecimals: true), '₹1,234.50');
+      expect(
+        CurrencyFormatter.format(1234.50, showDecimals: true),
+        '₹1,234.50',
+      );
     });
   });
 

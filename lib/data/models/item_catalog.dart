@@ -351,7 +351,8 @@ class ItemCatalog extends Equatable {
     if (mpn != null) 'mpn': mpn,
     'availability': availability,
     'price_currency': priceCurrency,
-    if (priceValidUntil != null) 'price_valid_until': priceValidUntil!.toIso8601String(),
+    if (priceValidUntil != null)
+      'price_valid_until': priceValidUntil!.toIso8601String(),
     if (manufacturerName != null) 'manufacturer_name': manufacturerName,
     if (color != null) 'color': color,
     if (size != null) 'size': size,

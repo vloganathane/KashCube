@@ -58,8 +58,7 @@ class NotificationService {
     tz_data.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Kolkata'));
 
-    const androidInit =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     // macOS (and iOS) share DarwinInitializationSettings.
     // Request alert/badge/sound so notifications appear in Notification Center.
     const darwinInit = DarwinInitializationSettings(
@@ -87,7 +86,8 @@ class NotificationService {
     if (kIsWeb) return false;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     final granted = await android?.requestNotificationsPermission() ?? false;
     debugPrint('[Notifications] Permission granted: $granted');
     return granted;
@@ -103,8 +103,7 @@ class NotificationService {
   ///  • Due in 1 day  → notification at 9:00 AM tomorrow.
   ///  • Due in 2+ days→ notification at 9:00 AM on due date
   ///                     + "1 day before" at 9:00 AM the day prior.
-  Future<void> scheduleUpcomingNotifications(
-      List<UpcomingItem> items) async {
+  Future<void> scheduleUpcomingNotifications(List<UpcomingItem> items) async {
     if (!_initialized) await initialize();
     await cancelAll();
 
@@ -116,21 +115,28 @@ class NotificationService {
       final due = item.dueDate;
       // 9:00 AM IST on the due date
       final dueMorning = tz.TZDateTime(
-          tz.local, due.year, due.month, due.day, 9, 0, 0);
+        tz.local,
+        due.year,
+        due.month,
+        due.day,
+        9,
+        0,
+        0,
+      );
 
       final (int baseId, String title, String body) = switch (item) {
         LoanUpcomingItem l => (
-            _loanBase + (l.loan.id ?? 0),
-            l.loan.isLent
-                ? 'Collect from ${l.loan.lenderName}'
-                : 'Pay back ${l.loan.lenderName}',
-            '${CurrencyFormatter.format(l.paymentAmount)} installment due',
-          ),
+          _loanBase + (l.loan.id ?? 0),
+          l.loan.isLent
+              ? 'Collect from ${l.loan.lenderName}'
+              : 'Pay back ${l.loan.lenderName}',
+          '${CurrencyFormatter.format(l.paymentAmount)} installment due',
+        ),
         ScheduledUpcomingItem b => (
-            _billBase + (b.payment.id ?? 0),
-            b.payment.name,
-            '${CurrencyFormatter.format(b.payment.amount)} due',
-          ),
+          _billBase + (b.payment.id ?? 0),
+          b.payment.name,
+          '${CurrencyFormatter.format(b.payment.amount)} due',
+        ),
       };
 
       // ── Due-date notification ──
@@ -160,7 +166,8 @@ class NotificationService {
     }
 
     debugPrint(
-        '[Notifications] Scheduled ${items.where((i) => !i.isOverdue).length} upcoming reminders');
+      '[Notifications] Scheduled ${items.where((i) => !i.isOverdue).length} upcoming reminders',
+    );
   }
 
   // ── Bookings ───────────────────────────────────────────────────────────────
@@ -222,7 +229,9 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
     );
 
-    debugPrint('[Notifications] Booking reminder scheduled for id=$id at $fireAt');
+    debugPrint(
+      '[Notifications] Booking reminder scheduled for id=$id at $fireAt',
+    );
   }
 
   /// Cancels the 24-h reminder for the given booking.
@@ -242,8 +251,9 @@ class NotificationService {
   Future<void> checkAndShowYearEndAlerts() async {
     if (!_initialized) await initialize();
 
-    final isApproaching =
-        await FiscalYearService.instance.isApproachingYearEnd(daysBeforeEnd: 7);
+    final isApproaching = await FiscalYearService.instance.isApproachingYearEnd(
+      daysBeforeEnd: 7,
+    );
     final isResetDue = await FiscalYearService.instance.isResetDue();
 
     if (!isApproaching && !isResetDue) return;
@@ -272,17 +282,19 @@ class NotificationService {
         '$label ends in $daysLeft $dayWord — review and close on time.',
         details,
       );
-      debugPrint('[Notifications] Year-end alert: $daysLeft days left for $label');
+      debugPrint(
+        '[Notifications] Year-end alert: $daysLeft days left for $label',
+      );
     }
 
     if (isResetDue) {
       // The FY has already flipped but the user never ran the closing wizard.
       final fy = await FiscalYearService.instance.currentFiscalYear;
       final prevFyEnd = fy.start.subtract(const Duration(days: 1));
-      final prevFy =
-          await FiscalYearService.instance.getFiscalYearFor(prevFyEnd);
-      final prevLabel =
-          await FiscalYearService.instance.getFYLabel(prevFy);
+      final prevFy = await FiscalYearService.instance.getFiscalYearFor(
+        prevFyEnd,
+      );
+      final prevLabel = await FiscalYearService.instance.getFYLabel(prevFy);
       await _plugin.show(
         _fyBase + 1,
         'Year-end closing pending',
@@ -332,7 +344,9 @@ class NotificationService {
         'Your last backup was $days days ago. Back up now to protect your data.',
         details,
       );
-      debugPrint('[Notifications] Backup reminder: $days days since last backup');
+      debugPrint(
+        '[Notifications] Backup reminder: $days days since last backup',
+      );
     }
   }
 

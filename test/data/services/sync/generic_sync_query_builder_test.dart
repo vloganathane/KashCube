@@ -13,55 +13,52 @@ SyncTablePlan _deltaTs({
   bool hasDeletedAt = true,
   String? keyColumn = 'sync_id',
   SyncScope scope = SyncScope.all,
-}) =>
-    SyncTablePlan(
-      tableName:         table,
-      mode:              SyncMode.deltaTs,
-      keyColumn:         keyColumn,
-      hasUpdatedAt:      hasUpdatedAt,
-      hasCreatedAt:      hasCreatedAt,
-      hasDeletedAt:      hasDeletedAt,
-      hasVersion:        false,
-      scope:             scope,
-      schemaFingerprint: '$table:test',
-      columns:           const {},
-    );
+}) => SyncTablePlan(
+  tableName: table,
+  mode: SyncMode.deltaTs,
+  keyColumn: keyColumn,
+  hasUpdatedAt: hasUpdatedAt,
+  hasCreatedAt: hasCreatedAt,
+  hasDeletedAt: hasDeletedAt,
+  hasVersion: false,
+  scope: scope,
+  schemaFingerprint: '$table:test',
+  columns: const {},
+);
 
 SyncTablePlan _deltaVersion({
   String table = 'settings',
   bool hasDeletedAt = false,
   String? keyColumn = 'key',
-}) =>
-    SyncTablePlan(
-      tableName:         table,
-      mode:              SyncMode.deltaVersion,
-      keyColumn:         keyColumn,
-      hasUpdatedAt:      false,
-      hasCreatedAt:      false,
-      hasDeletedAt:      hasDeletedAt,
-      hasVersion:        true,
-      scope:             SyncScope.all,
-      schemaFingerprint: '$table:test',
-      columns:           const {},
-    );
+}) => SyncTablePlan(
+  tableName: table,
+  mode: SyncMode.deltaVersion,
+  keyColumn: keyColumn,
+  hasUpdatedAt: false,
+  hasCreatedAt: false,
+  hasDeletedAt: hasDeletedAt,
+  hasVersion: true,
+  scope: SyncScope.all,
+  schemaFingerprint: '$table:test',
+  columns: const {},
+);
 
 SyncTablePlan _snapshot({
   String table = 'hsn_master',
   bool hasDeletedAt = false,
   String? keyColumn = 'hsn_code',
-}) =>
-    SyncTablePlan(
-      tableName:         table,
-      mode:              SyncMode.snapshot,
-      keyColumn:         keyColumn,
-      hasUpdatedAt:      false,
-      hasCreatedAt:      false,
-      hasDeletedAt:      hasDeletedAt,
-      hasVersion:        false,
-      scope:             SyncScope.webOnly,
-      schemaFingerprint: '$table:test',
-      columns:           const {},
-    );
+}) => SyncTablePlan(
+  tableName: table,
+  mode: SyncMode.snapshot,
+  keyColumn: keyColumn,
+  hasUpdatedAt: false,
+  hasCreatedAt: false,
+  hasDeletedAt: hasDeletedAt,
+  hasVersion: false,
+  scope: SyncScope.webOnly,
+  schemaFingerprint: '$table:test',
+  columns: const {},
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
@@ -73,9 +70,7 @@ void main() {
 
     group('deltaTs', () {
       test('full scan when since is null', () {
-        final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan: _deltaTs(),
-        );
+        final q = GenericSyncQueryBuilder.buildOutboundQuery(plan: _deltaTs());
         expect(q.args, isEmpty);
         expect(q.sql, contains('SELECT * FROM invoices'));
         expect(q.sql, isNot(contains('julianday(?)')));
@@ -122,8 +117,7 @@ void main() {
           since: DateTime.utc(2025, 1, 1),
         );
         // since is provided but there are no columns to filter on
-        expect(q.args, isEmpty,
-            reason: 'no column to bind the since arg to');
+        expect(q.args, isEmpty, reason: 'no column to bind the since arg to');
         expect(q.sql, isNot(contains('julianday(?)')));
       });
 
@@ -136,7 +130,7 @@ void main() {
 
       test('custom limit is respected', () {
         final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan:  _deltaTs(),
+          plan: _deltaTs(),
           limit: 500,
         );
         expect(q.sql, contains('LIMIT 500'));
@@ -144,11 +138,14 @@ void main() {
 
       test('UTC normalisation uses julianday + LIKE %Z guard', () {
         final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan:  _deltaTs(),
+          plan: _deltaTs(),
           since: DateTime.utc(2025, 1, 1),
         );
         expect(q.sql, contains("LIKE '%Z'"));
-        expect(q.sql, contains("julianday(COALESCE(updated_at, created_at), 'utc')"));
+        expect(
+          q.sql,
+          contains("julianday(COALESCE(updated_at, created_at), 'utc')"),
+        );
       });
     });
 
@@ -167,7 +164,7 @@ void main() {
 
       test('incremental query with afterVersion', () {
         final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan:         _deltaVersion(),
+          plan: _deltaVersion(),
           afterVersion: 42,
         );
         expect(q.args, equals([42]));
@@ -184,7 +181,7 @@ void main() {
 
       test('limit is respected', () {
         final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan:  _deltaVersion(),
+          plan: _deltaVersion(),
           limit: 50,
         );
         expect(q.sql, contains('LIMIT 50'));
@@ -195,9 +192,7 @@ void main() {
 
     group('snapshot', () {
       test('returns full scan with no args', () {
-        final q = GenericSyncQueryBuilder.buildOutboundQuery(
-          plan: _snapshot(),
-        );
+        final q = GenericSyncQueryBuilder.buildOutboundQuery(plan: _snapshot());
         expect(q.args, isEmpty);
         expect(q.sql, contains('SELECT * FROM hsn_master'));
         expect(q.sql, isNot(contains('WHERE')));
@@ -242,8 +237,14 @@ void main() {
 
     test('picks updated_at over created_at', () {
       final rows = [
-        {'updated_at': '2025-06-01T10:00:00.000Z', 'created_at': '2025-01-01T00:00:00.000Z'},
-        {'updated_at': '2025-07-15T08:30:00.000Z', 'created_at': '2025-01-02T00:00:00.000Z'},
+        {
+          'updated_at': '2025-06-01T10:00:00.000Z',
+          'created_at': '2025-01-01T00:00:00.000Z',
+        },
+        {
+          'updated_at': '2025-07-15T08:30:00.000Z',
+          'created_at': '2025-01-02T00:00:00.000Z',
+        },
       ];
       final ts = GenericSyncQueryBuilder.maxTimestamp(rows);
       expect(ts, DateTime.utc(2025, 7, 15, 8, 30));

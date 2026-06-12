@@ -11,7 +11,9 @@ import '../providers/transaction_provider.dart';
 ///
 /// Inject this into [SmsService] rather than calling [SmsParser] statics
 /// directly — doing so allows mocking in unit tests.
-final smsParserProvider = Provider<SmsParserService>((_) => const SmsParserService());
+final smsParserProvider = Provider<SmsParserService>(
+  (_) => const SmsParserService(),
+);
 
 /// Provider for the SMS service instance.
 final smsServiceProvider = Provider<SmsService>((ref) {
@@ -38,8 +40,8 @@ final existingSmsProvider = FutureProvider<List<ParsedSms>>((ref) async {
 /// for the user to confirm/reject before saving.
 final pendingSmsConfirmationsProvider =
     StateNotifierProvider<PendingSmsNotifier, List<ParsedSms>>(
-  (ref) => PendingSmsNotifier(),
-);
+      (ref) => PendingSmsNotifier(),
+    );
 
 class PendingSmsNotifier extends StateNotifier<List<ParsedSms>> {
   PendingSmsNotifier() : super([]);
@@ -128,4 +130,3 @@ Future<int> scanSmsInbox(WidgetRef ref) async {
     ref.read(smsScanningProvider.notifier).state = false;
   }
 }
-

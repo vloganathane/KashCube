@@ -28,18 +28,14 @@ class TemplateListScreen extends ConsumerWidget {
         heroTag: null,
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => const TemplateBuilderScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const TemplateBuilderScreen()),
         ).then((_) => ref.read(documentTemplatesProvider.notifier).reload()),
         tooltip: 'New template',
         child: const Icon(Icons.add),
       ),
       body: templatesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Text('Failed to load templates: $e'),
-        ),
+        error: (e, _) => Center(child: Text('Failed to load templates: $e')),
         data: (templates) {
           if (templates.isEmpty) {
             return const Center(child: Text('No templates found.'));
@@ -54,7 +50,8 @@ class TemplateListScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final record = templates[index];
               // Active = DB is_active OR matches current settings provider id
-              final isActive = record.isActive ||
+              final isActive =
+                  record.isActive ||
                   (record.isPreset &&
                       (record.basedOn == activeTemplate.id ||
                           'tpl_${record.id}' == activeTemplate.id));
@@ -115,9 +112,7 @@ class TemplateListScreen extends ConsumerWidget {
       useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete template?'),
-        content: Text(
-          '"${record.name}" will be permanently deleted.',
-        ),
+        content: Text('"${record.name}" will be permanently deleted.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

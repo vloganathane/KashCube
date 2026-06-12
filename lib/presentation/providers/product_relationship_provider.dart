@@ -8,12 +8,10 @@ import 'context_provider.dart';
 // ── Repository Provider ──────────────────────────────────────────────────────
 
 final productRelationshipRepositoryProvider =
-    Provider<ProductRelationshipRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return ProductRelationshipRepositoryImpl(contextId: contextId);
-  },
-);
+    Provider<ProductRelationshipRepository>((ref) {
+      final contextId = ref.watch(activeContextProvider);
+      return ProductRelationshipRepositoryImpl(contextId: contextId);
+    });
 
 // ── State Notifier ───────────────────────────────────────────────────────────
 
@@ -22,7 +20,7 @@ final productRelationshipRepositoryProvider =
 class ProductRelationshipsNotifier
     extends StateNotifier<AsyncValue<List<ProductRelationship>>> {
   ProductRelationshipsNotifier(this._repo, this._productId)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -61,7 +59,10 @@ class ProductRelationshipsNotifier
   }
 
   /// Updates the relationship type.
-  Future<void> updateType(int relationshipId, ProductRelationshipType newType) async {
+  Future<void> updateType(
+    int relationshipId,
+    ProductRelationshipType newType,
+  ) async {
     final existing = state.value?.firstWhere((r) => r.id == relationshipId);
     if (existing == null) return;
 
@@ -74,12 +75,12 @@ class ProductRelationshipsNotifier
 // ── Provider ─────────────────────────────────────────────────────────────────
 
 /// Family provider that yields relationships for a specific product ID.
-final productRelationshipsProvider = StateNotifierProvider.family<
-    ProductRelationshipsNotifier,
-    AsyncValue<List<ProductRelationship>>,
-    int>(
-  (ref, productId) {
-    final repo = ref.watch(productRelationshipRepositoryProvider);
-    return ProductRelationshipsNotifier(repo, productId);
-  },
-);
+final productRelationshipsProvider =
+    StateNotifierProvider.family<
+      ProductRelationshipsNotifier,
+      AsyncValue<List<ProductRelationship>>,
+      int
+    >((ref, productId) {
+      final repo = ref.watch(productRelationshipRepositoryProvider);
+      return ProductRelationshipsNotifier(repo, productId);
+    });

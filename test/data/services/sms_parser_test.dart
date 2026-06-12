@@ -33,17 +33,20 @@ void main() {
   // UPI — HDFC Bank
   // ---------------------------------------------------------------------------
   group('SmsParser.parse — HDFC Bank debit', () {
-    test('parses HDFC bank debit alert with correct bankAccount sourceType', () {
-      // Bank senders always produce SmsSourceType.bankAccount, not .upi
-      const body =
-          'Rs.250 debited from A/c XX9876 via UPI on 14-Mar-26.'
-          ' UPI Ref 312345678901. Avl Bal Rs.10,250.00.';
-      final result = SmsParser.parse(body, 'HDFCBK');
-      expect(result, isNotNull);
-      expect(result!.amount, 250.0);
-      expect(result.isDebit, isTrue);
-      expect(result.sourceType, SmsSourceType.bankAccount);
-    });
+    test(
+      'parses HDFC bank debit alert with correct bankAccount sourceType',
+      () {
+        // Bank senders always produce SmsSourceType.bankAccount, not .upi
+        const body =
+            'Rs.250 debited from A/c XX9876 via UPI on 14-Mar-26.'
+            ' UPI Ref 312345678901. Avl Bal Rs.10,250.00.';
+        final result = SmsParser.parse(body, 'HDFCBK');
+        expect(result, isNotNull);
+        expect(result!.amount, 250.0);
+        expect(result.isDebit, isTrue);
+        expect(result.sourceType, SmsSourceType.bankAccount);
+      },
+    );
   });
 
   // ---------------------------------------------------------------------------
@@ -79,7 +82,8 @@ void main() {
     });
 
     test('GPay pattern fires correctly for GPAY sender', () {
-      const body = 'You have received Rs.1,500 from Amit Singh via Google Pay.'
+      const body =
+          'You have received Rs.1,500 from Amit Singh via Google Pay.'
           ' UPI Ref: 412345678901.';
       final result = SmsParser.parse(body, 'GPAY');
       expect(result, isNotNull);

@@ -32,9 +32,7 @@ class _SmsPermissionScreenState extends ConsumerState<SmsPermissionScreen> {
 
     if (granted) {
       // Enable the provider so the SMS listener starts on next app-shell init.
-      await ref
-          .read(smsAutoDetectEnabledProvider.notifier)
-          .setEnabled(true);
+      await ref.read(smsAutoDetectEnabledProvider.notifier).setEnabled(true);
       if (mounted) Navigator.of(context).pop(true);
     } else {
       // Permission denied — show a brief explanation and stay on screen.
@@ -77,11 +75,7 @@ class _SmsPermissionScreenState extends ConsumerState<SmsPermissionScreen> {
               const SizedBox(height: AppSpacing.xxxl),
 
               // ── Hero icon ─────────────────────────────────────────────────
-              Icon(
-                Icons.sms_outlined,
-                size: 72,
-                color: colorScheme.primary,
-              ),
+              Icon(Icons.sms_outlined, size: 72, color: colorScheme.primary),
               const SizedBox(height: AppSpacing.xl),
 
               // ── Headline ──────────────────────────────────────────────────
@@ -108,17 +102,14 @@ class _SmsPermissionScreenState extends ConsumerState<SmsPermissionScreen> {
               // ── Feature bullets ───────────────────────────────────────────
               ..._features.map(
                 (f) => Padding(
-                  padding:
-                      const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(f.icon,
-                          size: 22, color: colorScheme.primary),
+                      Icon(f.icon, size: 22, color: colorScheme.primary),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
-                        child: Text(f.label,
-                            style: textTheme.bodyMedium),
+                        child: Text(f.label, style: textTheme.bodyMedium),
                       ),
                     ],
                   ),
@@ -136,9 +127,11 @@ class _SmsPermissionScreenState extends ConsumerState<SmsPermissionScreen> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.lock_outline,
-                        size: 20,
-                        color: colorScheme.onSurfaceVariant),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
@@ -168,8 +161,7 @@ class _SmsPermissionScreenState extends ConsumerState<SmsPermissionScreen> {
                         ),
                       )
                     : const Icon(Icons.check_circle_outline),
-                label: Text(
-                    _requesting ? 'Requesting…' : 'Grant Permission'),
+                label: Text(_requesting ? 'Requesting…' : 'Grant Permission'),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                 ),

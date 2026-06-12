@@ -31,7 +31,9 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Play Store billing is not available on this device.'),
+            content: Text(
+              'Play Store billing is not available on this device.',
+            ),
           ),
         );
       }
@@ -45,9 +47,9 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
       // tier will be updated automatically in [subscriptionTierProvider].
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Purchase error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Purchase error: $e')));
       }
     } finally {
       if (mounted) setState(() => _purchasingProductId = null);
@@ -59,9 +61,9 @@ class _UpgradeScreenState extends ConsumerState<UpgradeScreen> {
     if (iap == null) return;
     await iap.restorePurchases();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Purchases restored')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Purchases restored')));
     }
   }
 
@@ -230,6 +232,7 @@ class _PricingCard extends StatelessWidget {
   final String monthlyProductId;
   final int annualSavingsPct;
   final SubscriptionTier currentTier;
+
   /// The product ID currently being purchased (null = none in-flight).
   final String? purchasingProductId;
   final void Function(String productId) onPurchase;
@@ -255,8 +258,8 @@ class _PricingCard extends StatelessWidget {
           color: _isActive
               ? cs.primary
               : highlight
-                  ? cs.primary.withAlpha(120)
-                  : cs.outlineVariant,
+              ? cs.primary.withAlpha(120)
+              : cs.outlineVariant,
           width: _isActive ? 2 : 1,
         ),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
@@ -300,7 +303,10 @@ class _PricingCard extends StatelessWidget {
                   color: cs.primary,
                 ),
               ),
-              Text('/year', style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant)),
+              Text(
+                '/year',
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
               const SizedBox(width: AppSpacing.sm),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -329,20 +335,19 @@ class _PricingCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
 
           // Feature list
-          ...features.map((f) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.check_circle_outline,
-                        size: 16, color: cs.primary),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(f, style: tt.bodyMedium),
-                    ),
-                  ],
-                ),
-              )),
+          ...features.map(
+            (f) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.check_circle_outline, size: 16, color: cs.primary),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(child: Text(f, style: tt.bodyMedium)),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: AppSpacing.md),
 
           // CTA buttons — shown only if this tier is not already active
@@ -359,9 +364,9 @@ class _PricingCard extends StatelessWidget {
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(iapEnabled
-                        ? 'Get $annualPrice/year'
-                        : 'Coming soon'),
+                    : Text(
+                        iapEnabled ? 'Get $annualPrice/year' : 'Coming soon',
+                      ),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -377,9 +382,9 @@ class _PricingCard extends StatelessWidget {
                         width: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(iapEnabled
-                        ? 'Try $monthlyPrice/month'
-                        : 'Coming soon'),
+                    : Text(
+                        iapEnabled ? 'Try $monthlyPrice/month' : 'Coming soon',
+                      ),
               ),
             ),
           ],
@@ -457,7 +462,11 @@ class _ComingSoonBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.schedule_outlined, color: cs.onTertiaryContainer, size: 20),
+          Icon(
+            Icons.schedule_outlined,
+            color: cs.onTertiaryContainer,
+            size: 20,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -522,9 +531,8 @@ class _DebugTierPanel extends ConsumerWidget {
               labelStyle: isActive
                   ? TextStyle(color: context.colorScheme.onErrorContainer)
                   : null,
-              onPressed: () => ref
-                  .read(subscriptionTierProvider.notifier)
-                  .setTier(tier),
+              onPressed: () =>
+                  ref.read(subscriptionTierProvider.notifier).setTier(tier),
             );
           }).toList(),
         ),

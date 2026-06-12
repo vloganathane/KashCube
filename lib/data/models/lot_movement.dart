@@ -7,7 +7,7 @@ enum LotMovementType {
   challanOut,
   adjustment,
   reversal,
-  physicalCount;
+  physicalCount,
 }
 
 /// A single quantity change recorded against a [StockLot].
@@ -52,37 +52,37 @@ class LotMovement extends Equatable {
   final DateTime createdAt;
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'business_id': businessId,
-        'item_id': itemId,
-        'lot_id': lotId,
-        'movement_type': movementType.name,
-        'qty': qty,
-        'lot_qty_after': lotQtyAfter,
-        'reference_type': referenceType,
-        'reference_id': referenceId,
-        'reference_line_id': referenceLineId,
-        'notes': notes,
-        'created_at': createdAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'business_id': businessId,
+    'item_id': itemId,
+    'lot_id': lotId,
+    'movement_type': movementType.name,
+    'qty': qty,
+    'lot_qty_after': lotQtyAfter,
+    'reference_type': referenceType,
+    'reference_id': referenceId,
+    'reference_line_id': referenceLineId,
+    'notes': notes,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory LotMovement.fromMap(Map<String, dynamic> m) => LotMovement(
-        id: m['id'] as int?,
-        businessId: m['business_id'] as int,
-        itemId: m['item_id'] as int,
-        lotId: m['lot_id'] as int,
-        movementType: LotMovementType.values.firstWhere(
-          (t) => t.name == (m['movement_type'] as String?),
-          orElse: () => LotMovementType.adjustment,
-        ),
-        qty: (m['qty'] as num).toDouble(),
-        lotQtyAfter: (m['lot_qty_after'] as num).toDouble(),
-        referenceType: m['reference_type'] as String?,
-        referenceId: m['reference_id'] as int?,
-        referenceLineId: m['reference_line_id'] as int?,
-        notes: m['notes'] as String?,
-        createdAt: DateTime.parse(m['created_at'] as String),
-      );
+    id: m['id'] as int?,
+    businessId: m['business_id'] as int,
+    itemId: m['item_id'] as int,
+    lotId: m['lot_id'] as int,
+    movementType: LotMovementType.values.firstWhere(
+      (t) => t.name == (m['movement_type'] as String?),
+      orElse: () => LotMovementType.adjustment,
+    ),
+    qty: (m['qty'] as num).toDouble(),
+    lotQtyAfter: (m['lot_qty_after'] as num).toDouble(),
+    referenceType: m['reference_type'] as String?,
+    referenceId: m['reference_id'] as int?,
+    referenceLineId: m['reference_line_id'] as int?,
+    notes: m['notes'] as String?,
+    createdAt: DateTime.parse(m['created_at'] as String),
+  );
 
   @override
   List<Object?> get props => [id, lotId, movementType, qty, createdAt];

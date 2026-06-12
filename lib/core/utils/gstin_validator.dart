@@ -192,7 +192,9 @@ abstract class GstinValidator {
     final base = validate(value);
     if (base != null) return base;
     if (value == null || value.trim().isEmpty) return null;
-    if (!warnOnStateMismatch || selectedState == null || selectedState.isEmpty) {
+    if (!warnOnStateMismatch ||
+        selectedState == null ||
+        selectedState.isEmpty) {
       return null;
     }
     if (!stateMatches(value.trim().toUpperCase(), selectedState)) {

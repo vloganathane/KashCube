@@ -29,10 +29,7 @@ class LifecycleClassifier {
   //                    ↓ if past dueDate at any active stage
   //                  overdue
 
-  static LifecycleInfo forInvoice(
-    Invoice inv, {
-    DateTime? lastReminderAt,
-  }) {
+  static LifecycleInfo forInvoice(Invoice inv, {DateTime? lastReminderAt}) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -77,8 +74,9 @@ class LifecycleClassifier {
             stage: LifecycleStage.overdue,
             daysInStage: overdueDays.clamp(0, 9999),
             lastActionAt: lastReminderAt ?? inv.updatedAt,
-            lastActionLabel:
-                lastReminderAt != null ? 'Reminder sent' : 'Invoice sent',
+            lastActionLabel: lastReminderAt != null
+                ? 'Reminder sent'
+                : 'Invoice sent',
             nextActionHint: 'Collect payment now',
           );
         }
@@ -109,10 +107,9 @@ class LifecycleClassifier {
           daysInStage: today.difference(_date(sentRef)).inDays.abs(),
           lastActionAt: sentRef,
           lastActionLabel: 'Invoice sent',
-          nextActionHint:
-              today.difference(_date(sentRef)).inDays > 7
-                  ? 'Send a reminder'
-                  : null,
+          nextActionHint: today.difference(_date(sentRef)).inDays > 7
+              ? 'Send a reminder'
+              : null,
         );
 
       case InvoiceStatus.draft:
@@ -151,10 +148,7 @@ class LifecycleClassifier {
   //              ↓ if past dueDate
   //            overdue
 
-  static LifecycleInfo forCredit(
-    Credit c, {
-    DateTime? lastReminderAt,
-  }) {
+  static LifecycleInfo forCredit(Credit c, {DateTime? lastReminderAt}) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
@@ -169,8 +163,7 @@ class LifecycleClassifier {
       );
     }
 
-    if (c.isOverdue ||
-        (c.dueDate != null && c.dueDate!.isBefore(today))) {
+    if (c.isOverdue || (c.dueDate != null && c.dueDate!.isBefore(today))) {
       final dueDay = c.dueDate != null ? _date(c.dueDate!) : today;
       final overdueDays = today.difference(dueDay).inDays;
       return LifecycleInfo(
@@ -178,7 +171,9 @@ class LifecycleClassifier {
         daysInStage: overdueDays.clamp(0, 9999),
         lastActionAt: lastReminderAt ?? c.updatedAt,
         lastActionLabel: lastReminderAt != null ? 'Reminder sent' : null,
-        nextActionHint: c.isGiven ? 'Collect outstanding amount' : 'Pay outstanding amount',
+        nextActionHint: c.isGiven
+            ? 'Collect outstanding amount'
+            : 'Pay outstanding amount',
       );
     }
 
@@ -210,7 +205,9 @@ class LifecycleClassifier {
       daysInStage: today.difference(_date(ref)).inDays.abs(),
       lastActionAt: ref,
       lastActionLabel: null,
-      nextActionHint: c.dueDate != null ? 'Due ${_formatDate(c.dueDate!)}' : null,
+      nextActionHint: c.dueDate != null
+          ? 'Due ${_formatDate(c.dueDate!)}'
+          : null,
     );
   }
 
@@ -300,8 +297,9 @@ class LifecycleClassifier {
         stage: LifecycleStage.overdue,
         daysInStage: (-diff).clamp(0, 9999),
         lastActionAt: p.lastPaidDate,
-        lastActionLabel:
-            p.lastPaidDate != null ? 'Last paid ${_formatDate(p.lastPaidDate!)}' : null,
+        lastActionLabel: p.lastPaidDate != null
+            ? 'Last paid ${_formatDate(p.lastPaidDate!)}'
+            : null,
         nextActionHint: 'Pay now',
       );
     }
@@ -311,9 +309,12 @@ class LifecycleClassifier {
         stage: LifecycleStage.active,
         daysInStage: diff,
         lastActionAt: p.lastPaidDate,
-        lastActionLabel:
-            p.lastPaidDate != null ? 'Last paid ${_formatDate(p.lastPaidDate!)}' : null,
-        nextActionHint: diff == 0 ? 'Due today' : 'Due in $diff day${diff == 1 ? '' : 's'}',
+        lastActionLabel: p.lastPaidDate != null
+            ? 'Last paid ${_formatDate(p.lastPaidDate!)}'
+            : null,
+        nextActionHint: diff == 0
+            ? 'Due today'
+            : 'Due in $diff day${diff == 1 ? '' : 's'}',
       );
     }
 
@@ -396,8 +397,19 @@ class LifecycleClassifier {
 
   static String _formatDate(DateTime dt) {
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month]}';
   }

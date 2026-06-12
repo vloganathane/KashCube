@@ -41,8 +41,8 @@ class P2pClient {
   final Uint8List _sharedSecret;
 
   final _httpClient = HttpClient()
-    ..connectionTimeout  = const Duration(seconds: 5)
-    ..idleTimeout        = const Duration(seconds: 10);
+    ..connectionTimeout = const Duration(seconds: 5)
+    ..idleTimeout = const Duration(seconds: 10);
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -116,19 +116,19 @@ class P2pClient {
     required String myDisplayName,
   }) async {
     final proof = P2pAuthService.instance.signPairProof(
-      sharedSecret:     _sharedSecret,
+      sharedSecret: _sharedSecret,
       senderIdentityId: myIdentityId,
     );
     try {
-      final uri     = Uri.parse('$baseUrl/pair');
+      final uri = Uri.parse('$baseUrl/pair');
       final bodyMap = {
-        'identity_id':  myIdentityId,
-        'public_key':   myPublicKeyBase64,
+        'identity_id': myIdentityId,
+        'public_key': myPublicKeyBase64,
         'display_name': myDisplayName,
-        'proof':        proof,
+        'proof': proof,
       };
-      final bodyBytes   = utf8.encode(jsonEncode(bodyMap));
-      final req         = await _httpClient.postUrl(uri);
+      final bodyBytes = utf8.encode(jsonEncode(bodyMap));
+      final req = await _httpClient.postUrl(uri);
       req.headers.contentType = ContentType.json;
       req.add(bodyBytes);
       final resp = await req.close();
@@ -156,8 +156,8 @@ class P2pClient {
     required Map<String, dynamic> body,
   }) async {
     final bodyBytes = utf8.encode(jsonEncode(body));
-    final uri       = Uri.parse('$baseUrl$path');
-    final request   = await _httpClient.postUrl(uri);
+    final uri = Uri.parse('$baseUrl$path');
+    final request = await _httpClient.postUrl(uri);
     request.headers.contentType = ContentType.json;
     _attachAuthHeaders(request, 'POST', path, bodyBytes);
     request.add(bodyBytes);
@@ -172,21 +172,21 @@ class P2pClient {
   ) {
     final ts = DateTime.now().toUtc().toIso8601String();
     final sig = P2pAuthService.instance.signRequest(
-      method:       method,
-      path:         path,
-      timestamp:    ts,
-      body:         body,
+      method: method,
+      path: path,
+      timestamp: ts,
+      body: body,
       sharedSecret: _sharedSecret,
     );
     request.headers
-      ..set('x-kash-id',  identityId)
-      ..set('x-kash-ts',  ts)
+      ..set('x-kash-id', identityId)
+      ..set('x-kash-ts', ts)
       ..set('x-kash-sig', sig);
   }
 
   Future<Map<String, dynamic>> _readJson(HttpClientResponse response) async {
     final bytes = await response.expand((b) => b).toList();
-    final str   = utf8.decode(bytes);
+    final str = utf8.decode(bytes);
     return (jsonDecode(str) as Map<String, dynamic>?) ?? {};
   }
 }

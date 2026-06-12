@@ -10,10 +10,7 @@ import 'staff_pin_screen.dart';
 /// Lets the device holder choose to continue as the owner (full access)
 /// or switch to a staff profile (restricted access).
 class UserSelectionScreen extends ConsumerWidget {
-  const UserSelectionScreen({
-    super.key,
-    required this.onOwnerSelected,
-  });
+  const UserSelectionScreen({super.key, required this.onOwnerSelected});
 
   /// Called when the owner tile is tapped (user continues as owner).
   final VoidCallback onOwnerSelected;
@@ -29,23 +26,20 @@ class UserSelectionScreen extends ConsumerWidget {
         child: Column(
           children: [
             const SizedBox(height: AppSpacing.xxl),
-            Image.asset(
-              'assets/logo-white.png',
-              height: 48,
-            ),
+            Image.asset('assets/logo-white.png', height: 48),
             const SizedBox(height: AppSpacing.xl),
             Text(
               'Who\'s using Kash Cube?',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'Choose a profile to continue',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
             ),
             const SizedBox(height: AppSpacing.xxl),
             Expanded(
@@ -66,11 +60,9 @@ class UserSelectionScreen extends ConsumerWidget {
   }
 
   void _openStaffPin(BuildContext context, WidgetRef ref, AppUser user) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => StaffPinScreen(user: user),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => StaffPinScreen(user: user)));
   }
 }
 
@@ -164,9 +156,9 @@ class _ProfileTile extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -182,8 +174,8 @@ class _ProfileTile extends StatelessWidget {
                 child: Text(
                   sublabel,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: cs.onSecondaryContainer,
-                      ),
+                    color: cs.onSecondaryContainer,
+                  ),
                 ),
               ),
             ],

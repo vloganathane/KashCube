@@ -10,14 +10,16 @@ import '../../data/services/fiscal_year_service.dart';
 ///
 /// Returns a record when either condition is true.
 final yearEndWarningProvider =
-    FutureProvider<({String fyLabel, DateTime fyEnd, bool isResetDue})?>((ref) async {
-  final isApproaching =
-      await FiscalYearService.instance.isApproachingYearEnd(daysBeforeEnd: 7);
-  final isResetDue = await FiscalYearService.instance.isResetDue();
+    FutureProvider<({String fyLabel, DateTime fyEnd, bool isResetDue})?>((
+      ref,
+    ) async {
+      final isApproaching = await FiscalYearService.instance
+          .isApproachingYearEnd(daysBeforeEnd: 7);
+      final isResetDue = await FiscalYearService.instance.isResetDue();
 
-  if (!isApproaching && !isResetDue) return null;
+      if (!isApproaching && !isResetDue) return null;
 
-  final fy = await FiscalYearService.instance.currentFiscalYear;
-  final label = await FiscalYearService.instance.getFYLabel(fy);
-  return (fyLabel: label, fyEnd: fy.end, isResetDue: isResetDue);
-});
+      final fy = await FiscalYearService.instance.currentFiscalYear;
+      final label = await FiscalYearService.instance.getFYLabel(fy);
+      return (fyLabel: label, fyEnd: fy.end, isResetDue: isResetDue);
+    });

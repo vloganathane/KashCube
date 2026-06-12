@@ -10,19 +10,21 @@ class ProductReviewRepositoryImpl implements ProductReviewRepository {
   /// The active context for data isolation.
   final int? contextId;
 
-  String get _ctx => contextId == null
-      ? 'context_id IS NULL'
-      : 'context_id = $contextId';
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<ProductReview>> getAllForProduct(int productId) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM product_reviews
       WHERE product_id = ? AND deleted_at IS NULL AND $_ctx
       ORDER BY created_at DESC
-    ''', [productId]);
+    ''',
+      [productId],
+    );
 
     return rows.map(ProductReview.fromMap).toList();
   }
@@ -31,10 +33,13 @@ class ProductReviewRepositoryImpl implements ProductReviewRepository {
   Future<ProductReview?> getById(int id) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM product_reviews
       WHERE id = ? AND $_ctx
-    ''', [id]);
+    ''',
+      [id],
+    );
 
     return rows.isEmpty ? null : ProductReview.fromMap(rows.first);
   }
@@ -63,13 +68,16 @@ class ProductReviewRepositoryImpl implements ProductReviewRepository {
   Future<Map<String, dynamic>> getAggregateRating(int productId) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT
         AVG(rating) as average_rating,
         COUNT(*) as review_count
       FROM product_reviews
       WHERE product_id = ? AND deleted_at IS NULL AND $_ctx
-    ''', [productId]);
+    ''',
+      [productId],
+    );
 
     if (rows.isEmpty || rows.first['review_count'] == 0) {
       return {'averageRating': 0.0, 'reviewCount': 0};

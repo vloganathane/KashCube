@@ -83,7 +83,10 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
   }
 
   @override
-  KashCubeColors lerp(covariant ThemeExtension<KashCubeColors>? other, double t) {
+  KashCubeColors lerp(
+    covariant ThemeExtension<KashCubeColors>? other,
+    double t,
+  ) {
     if (other is! KashCubeColors) return this;
     return KashCubeColors(
       income: Color.lerp(income, other.income, t)!,
@@ -91,11 +94,31 @@ class KashCubeColors extends ThemeExtension<KashCubeColors> {
       credit: Color.lerp(credit, other.credit, t)!,
       overdue: Color.lerp(overdue, other.overdue, t)!,
       investment: Color.lerp(investment, other.investment, t)!,
-      incomeBackground: Color.lerp(incomeBackground, other.incomeBackground, t)!,
-      expenseBackground: Color.lerp(expenseBackground, other.expenseBackground, t)!,
-      creditBackground: Color.lerp(creditBackground, other.creditBackground, t)!,
-      overdueBackground: Color.lerp(overdueBackground, other.overdueBackground, t)!,
-      investmentBackground: Color.lerp(investmentBackground, other.investmentBackground, t)!,
+      incomeBackground: Color.lerp(
+        incomeBackground,
+        other.incomeBackground,
+        t,
+      )!,
+      expenseBackground: Color.lerp(
+        expenseBackground,
+        other.expenseBackground,
+        t,
+      )!,
+      creditBackground: Color.lerp(
+        creditBackground,
+        other.creditBackground,
+        t,
+      )!,
+      overdueBackground: Color.lerp(
+        overdueBackground,
+        other.overdueBackground,
+        t,
+      )!,
+      investmentBackground: Color.lerp(
+        investmentBackground,
+        other.investmentBackground,
+        t,
+      )!,
     );
   }
 }

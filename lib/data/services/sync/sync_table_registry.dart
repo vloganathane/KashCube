@@ -3,11 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../../core/constants/app_tables.dart';
 
 /// Generic sync mode selected from table schema.
-enum SyncMode {
-  deltaTs,
-  deltaVersion,
-  snapshot,
-}
+enum SyncMode { deltaTs, deltaVersion, snapshot }
 
 /// Controls which sync channels a table participates in.
 enum SyncScope {
@@ -118,9 +114,7 @@ class SyncTableRegistry {
   /// [hsn_master] is already embedded on every phone (seeded from assets),
   /// so P2P would just duplicate it — but the browser needs a copy to render
   /// HSN code pickers for invoice creation.
-  static const Set<String> _webOnlyTables = {
-    AppTables.hsnMaster,
-  };
+  static const Set<String> _webOnlyTables = {AppTables.hsnMaster};
 
   // Tables previously in the blanket denylist that are now fully syncable:
   //   app_users, user_permissions — RBAC; browser enforces the same rules.
@@ -171,11 +165,11 @@ class SyncTableRegistry {
 
     // Detect single-column primary key (pk > 0 marks PK columns).
     // Composite PKs are excluded (pkRows.length > 1) since no reliable generic merge.
-    final pkRows = rows
-        .where((r) => ((r['pk'] as num?)?.toInt() ?? 0) > 0)
-        .toList()
-      ..sort((a, b) =>
-          ((a['pk'] as num).toInt()).compareTo((b['pk'] as num).toInt()));
+    final pkRows =
+        rows.where((r) => ((r['pk'] as num?)?.toInt() ?? 0) > 0).toList()..sort(
+          (a, b) =>
+              ((a['pk'] as num).toInt()).compareTo((b['pk'] as num).toInt()),
+        );
     _pkColumnCache[tableName] = pkRows.length == 1
         ? (pkRows.first['name'] as String?)?.toLowerCase()
         : null;
@@ -188,7 +182,11 @@ class SyncTableRegistry {
   /// or null if the table has a composite PK or the cache is cold.
   String? _getPkColumn(String tableName) => _pkColumnCache[tableName];
 
-  SyncTablePlan _buildPlan(String tableName, Set<String> columns, String? sqlitePkColumn) {
+  SyncTablePlan _buildPlan(
+    String tableName,
+    Set<String> columns,
+    String? sqlitePkColumn,
+  ) {
     final hasUpdatedAt = columns.contains('updated_at');
     final hasCreatedAt = columns.contains('created_at');
     final hasDeletedAt = columns.contains('deleted_at');
@@ -198,20 +196,20 @@ class SyncTableRegistry {
     final keyColumn = columns.contains('sync_id')
         ? 'sync_id'
         : columns.contains('id')
-            ? 'id'
-            : sqlitePkColumn;
+        ? 'id'
+        : sqlitePkColumn;
 
     final mode = (hasUpdatedAt || hasCreatedAt)
         ? SyncMode.deltaTs
         : hasVersion
-            ? SyncMode.deltaVersion
-            : SyncMode.snapshot;
+        ? SyncMode.deltaVersion
+        : SyncMode.snapshot;
 
     final scope = _phoneOnlyTables.contains(tableName)
         ? SyncScope.phoneOnly
         : _webOnlyTables.contains(tableName)
-            ? SyncScope.webOnly
-            : SyncScope.all;
+        ? SyncScope.webOnly
+        : SyncScope.all;
 
     final schemaFingerprint = _schemaFingerprint(tableName, columns);
 

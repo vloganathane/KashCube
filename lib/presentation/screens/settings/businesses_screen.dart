@@ -29,9 +29,7 @@ class BusinessesScreen extends ConsumerWidget {
     final businessesAsync = ref.watch(businessesProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Business Profiles'),
-      ),
+      appBar: AppBar(title: const Text('Business Profiles')),
       floatingActionButton: FloatingActionButton(
         heroTag: 'businesses_fab',
         onPressed: () => _showForm(context, ref),
@@ -45,27 +43,31 @@ class BusinessesScreen extends ConsumerWidget {
             ? _EmptyState(onAdd: () => _showForm(context, ref))
             : ListView.builder(
                 padding: const EdgeInsets.only(
-                    top: AppSpacing.sm,
-                    left: AppSpacing.base,
-                    right: AppSpacing.base,
-                    bottom: 80),
+                  top: AppSpacing.sm,
+                  left: AppSpacing.base,
+                  right: AppSpacing.base,
+                  bottom: 80,
+                ),
                 itemCount: businesses.length,
                 itemBuilder: (_, i) => _BusinessTile(
                   business: businesses[i],
                   onActivate: () => ref
                       .read(businessesProvider.notifier)
                       .activate(businesses[i].id!),
-                  onEdit: () => _showForm(context, ref, business: businesses[i]),
-                  onDelete: () =>
-                      _confirmDelete(context, ref, businesses[i]),
+                  onEdit: () =>
+                      _showForm(context, ref, business: businesses[i]),
+                  onDelete: () => _confirmDelete(context, ref, businesses[i]),
                 ),
               ),
       ),
     );
   }
 
-  Future<void> _showForm(BuildContext context, WidgetRef ref,
-      {Business? business}) async {
+  Future<void> _showForm(
+    BuildContext context,
+    WidgetRef ref, {
+    Business? business,
+  }) async {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -86,21 +88,25 @@ class BusinessesScreen extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Business b) async {
+    BuildContext context,
+    WidgetRef ref,
+    Business b,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete Business?'),
-        content: Text(
-            '"${b.name}" will be permanently removed.'),
+        content: Text('"${b.name}" will be permanently removed.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
         ],
       ),
     );
@@ -139,7 +145,9 @@ class _BusinessTile extends StatelessWidget {
       child: ListTile(
         onTap: onActivate,
         contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.xs,
+        ),
         leading: _LogoAvatar(logoPath: business.logoPath, name: business.name),
         title: Row(
           children: [
@@ -159,9 +167,10 @@ class _BusinessTile extends StatelessWidget {
                 child: Text(
                   'Active',
                   style: TextStyle(
-                      color: cs.primary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700),
+                    color: cs.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
           ],
@@ -170,22 +179,33 @@ class _BusinessTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (business.formattedAddress.isNotEmpty)
-              Text(business.formattedAddress,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12)),
+              Text(
+                business.formattedAddress,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
             Wrap(
               spacing: AppSpacing.sm,
               children: [
-                for (final p in (business.phones ?? (business.phone == null ? [] : [business.phone!])))
+                for (final p
+                    in (business.phones ??
+                        (business.phone == null ? [] : [business.phone!])))
                   if (p.isNotEmpty)
                     _Badge(
-                        icon: Icons.phone_outlined,
-                        label: PhoneUtils.formatDisplay(p, dialCode: business.dialCode ?? '91') ?? p),
+                      icon: Icons.phone_outlined,
+                      label:
+                          PhoneUtils.formatDisplay(
+                            p,
+                            dialCode: business.dialCode ?? '91',
+                          ) ??
+                          p,
+                    ),
                 if (business.gstNo != null && business.gstNo!.isNotEmpty)
                   _Badge(
-                      icon: Icons.receipt_outlined,
-                      label: 'GST: ${business.gstNo}'),
+                    icon: Icons.receipt_outlined,
+                    label: 'GST: ${business.gstNo}',
+                  ),
               ],
             ),
           ],
@@ -197,17 +217,19 @@ class _BusinessTile extends StatelessWidget {
               icon: const Icon(Icons.qr_code_2_outlined),
               tooltip: 'Show QR',
               onPressed: () => showVCardQrDialog(
-              context,
-              vcard: vCardFromBusiness(business),
-              displayName:
-                (business.ownerName?.isNotEmpty ?? false)
-                  ? business.ownerName!
-                  : business.name,
-              subtitle: PhoneUtils.formatDisplay(
-                  (business.phones != null && business.phones!.isNotEmpty)
-                    ? business.phones!.first
-                    : business.phone,
-                  dialCode: business.dialCode ?? '91') ?? business.email,
+                context,
+                vcard: vCardFromBusiness(business),
+                displayName: (business.ownerName?.isNotEmpty ?? false)
+                    ? business.ownerName!
+                    : business.name,
+                subtitle:
+                    PhoneUtils.formatDisplay(
+                      (business.phones != null && business.phones!.isNotEmpty)
+                          ? business.phones!.first
+                          : business.phone,
+                      dialCode: business.dialCode ?? '91',
+                    ) ??
+                    business.email,
               ),
             ),
             PopupMenuButton<String>(
@@ -242,8 +264,7 @@ class _LogoAvatar extends StatelessWidget {
     }
     return CircleAvatar(
       radius: 24,
-      backgroundColor:
-          Theme.of(context).colorScheme.primaryContainer,
+      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       child: Text(
         name.isNotEmpty ? name[0].toUpperCase() : 'B',
         style: TextStyle(
@@ -266,13 +287,15 @@ class _Badge extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 11,
-            color: Theme.of(context).colorScheme.outline),
+        Icon(icon, size: 11, color: Theme.of(context).colorScheme.outline),
         const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: Theme.of(context).colorScheme.outline)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.outline,
+          ),
+        ),
       ],
     );
   }
@@ -318,12 +341,12 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   void initState() {
     super.initState();
     final b = widget.business;
-    _name      = TextEditingController(text: b?.name ?? '');
+    _name = TextEditingController(text: b?.name ?? '');
     _ownerName = TextEditingController(text: b?.ownerName ?? '');
-    _address   = TextEditingController(text: b?.address ?? '');
-    _city      = TextEditingController(text: b?.city ?? '');
-    _state     = TextEditingController(text: b?.state ?? '');
-    _pincode   = TextEditingController(text: b?.pincode ?? '');
+    _address = TextEditingController(text: b?.address ?? '');
+    _city = TextEditingController(text: b?.city ?? '');
+    _state = TextEditingController(text: b?.state ?? '');
+    _pincode = TextEditingController(text: b?.pincode ?? '');
     // Initialize dynamic phone controllers. Prefer `phones` list if present,
     // otherwise fall back to legacy `phone` column.
     final phoneList = <String>[];
@@ -333,14 +356,16 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       phoneList.add(b.phone!);
     }
     if (phoneList.isEmpty) phoneList.add('');
-    _phoneControllers = phoneList.map((p) => TextEditingController(text: p)).toList();
-    _email     = TextEditingController(text: b?.email ?? '');
-    _gst       = TextEditingController(text: b?.gstNo ?? '');
-    _website   = TextEditingController(text: b?.website ?? '');
-    _whatsapp  = TextEditingController(text: b?.whatsapp ?? '');
-    _linkedin  = TextEditingController(text: b?.linkedin ?? '');
+    _phoneControllers = phoneList
+        .map((p) => TextEditingController(text: p))
+        .toList();
+    _email = TextEditingController(text: b?.email ?? '');
+    _gst = TextEditingController(text: b?.gstNo ?? '');
+    _website = TextEditingController(text: b?.website ?? '');
+    _whatsapp = TextEditingController(text: b?.whatsapp ?? '');
+    _linkedin = TextEditingController(text: b?.linkedin ?? '');
     _instagram = TextEditingController(text: b?.instagram ?? '');
-    _upiId     = TextEditingController(text: b?.upiId ?? '');
+    _upiId = TextEditingController(text: b?.upiId ?? '');
     _logoPath = b?.logoPath;
     _logoMediaId = b?.logoMediaId;
     _setActive = b?.isActive ?? false;
@@ -348,7 +373,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
     if (b?.country != null) _selectedCountry = countryByName(b!.country);
     _dialCode = b?.dialCode ?? '91';
     // Expand online presence if any field is pre-populated
-    _onlineExpanded = (b?.website ?? '').isNotEmpty ||
+    _onlineExpanded =
+        (b?.website ?? '').isNotEmpty ||
         (b?.whatsapp ?? '').isNotEmpty ||
         (b?.linkedin ?? '').isNotEmpty ||
         (b?.instagram ?? '').isNotEmpty;
@@ -360,9 +386,19 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   void dispose() {
     _pincode.removeListener(_onPincodeChanged);
     for (final c in [
-      _name, _ownerName, _address, _city, _state,
-      _pincode, _email, _gst,
-      _website, _whatsapp, _linkedin, _instagram, _upiId,
+      _name,
+      _ownerName,
+      _address,
+      _city,
+      _state,
+      _pincode,
+      _email,
+      _gst,
+      _website,
+      _whatsapp,
+      _linkedin,
+      _instagram,
+      _upiId,
     ]) {
       c.dispose();
     }
@@ -374,7 +410,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
 
   void _onPincodeChanged() {
     final pin = _pincode.text.trim();
-    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    final isIndia =
+        _selectedCountry == null || _selectedCountry!.name.common == 'India';
     if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
       if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
       return;
@@ -403,7 +440,9 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       if (kIsWeb) {
         try {
           final bytes = await xfile.readAsBytes();
-          final mediaId = await ref.read(webSyncProvider.notifier).uploadMediaBytes(
+          final mediaId = await ref
+              .read(webSyncProvider.notifier)
+              .uploadMediaBytes(
                 bytes: bytes,
                 fileName: xfile.name,
                 mimeType: xfile.mimeType ?? 'image/jpeg',
@@ -418,9 +457,9 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
           return;
         } catch (e) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Logo upload failed: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Logo upload failed: $e')));
           return;
         }
       }
@@ -454,13 +493,22 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       dialCode: _selectedCountry != null ? _dialCode : null,
       // Collect phones from controllers. First non-empty is primary.
       phones: (() {
-        final parts = _phoneControllers.map((c) => c.text.trim()).where((s) => s.isNotEmpty).toList();
+        final parts = _phoneControllers
+            .map((c) => c.text.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
         if (parts.isEmpty) return null;
-        return parts.map((p) => PhoneUtils.normalize(p, dialCode: _dialCode) ?? p).toList();
+        return parts
+            .map((p) => PhoneUtils.normalize(p, dialCode: _dialCode) ?? p)
+            .toList();
       })(),
       phone: (() {
-        final first = _phoneControllers.map((c) => c.text.trim()).firstWhere((s) => s.isNotEmpty, orElse: () => '');
-        return first.isEmpty ? null : PhoneUtils.normalize(first, dialCode: _dialCode);
+        final first = _phoneControllers
+            .map((c) => c.text.trim())
+            .firstWhere((s) => s.isNotEmpty, orElse: () => '');
+        return first.isEmpty
+            ? null
+            : PhoneUtils.normalize(first, dialCode: _dialCode);
       })(),
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
@@ -483,11 +531,16 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   Widget build(BuildContext context) {
     final isEdit = widget.business != null;
     return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.base, AppSpacing.base, AppSpacing.xl),
+          AppSpacing.base,
+          AppSpacing.base,
+          AppSpacing.base,
+          AppSpacing.xl,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -508,8 +561,9 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
               ),
               Text(
                 isEdit ? 'Edit Business' : 'New Business Profile',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.base),
 
@@ -591,9 +645,13 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                           Expanded(
                             child: TextFormField(
                               controller: _phoneControllers[i],
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
                               decoration: InputDecoration(
-                                labelText: i == 0 ? 'Phone (primary)' : 'Additional phone',
+                                labelText: i == 0
+                                    ? 'Phone (primary)'
+                                    : 'Additional phone',
                                 border: const OutlineInputBorder(),
                                 prefixIcon: const Icon(Icons.phone_outlined),
                                 prefixText: '+$_dialCode ',
@@ -613,7 +671,7 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                                 });
                               },
                             ),
-                          ]
+                          ],
                         ],
                       ),
                     ),
@@ -673,7 +731,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                 children: [
                   Expanded(
                     flex: 3,
-                    child: (_selectedCountry == null ||
+                    child:
+                        (_selectedCountry == null ||
                             _selectedCountry!.name.common == 'India')
                         ? IndianStateDropdown(controller: _state)
                         : TextFormField(
@@ -694,8 +753,11 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                         labelText: 'Postcode',
                         border: const OutlineInputBorder(),
                         suffixIcon: _pincodeAutoFilled
-                            ? const Icon(Icons.check_circle_outline,
-                                color: Colors.green, size: 18)
+                            ? const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 18,
+                              )
                             : null,
                       ),
                       keyboardType: TextInputType.number,
@@ -721,8 +783,9 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
               // Online Presence (collapsible)
               const SizedBox(height: AppSpacing.sm),
               Theme(
-                data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent),
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   initiallyExpanded: _onlineExpanded,
                   leading: const Icon(Icons.language_outlined),
@@ -787,8 +850,7 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Set as active business'),
-                  subtitle:
-                      const Text('Use for all new invoices & quotes'),
+                  subtitle: const Text('Use for all new invoices & quotes'),
                   value: _setActive,
                   onChanged: (v) => setState(() => _setActive = v),
                 ),
@@ -800,7 +862,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : Text(isEdit ? 'Save Changes' : 'Add Business'),
               ),
             ],
@@ -814,10 +877,11 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
 // ── Logo Picker ───────────────────────────────────────────────────────────────
 
 class _LogoPicker extends StatelessWidget {
-  const _LogoPicker(
-      {required this.logoPath,
-      required this.onPick,
-      required this.onRemove});
+  const _LogoPicker({
+    required this.logoPath,
+    required this.onPick,
+    required this.onRemove,
+  });
   final String? logoPath;
   final VoidCallback onPick;
   final VoidCallback onRemove;
@@ -847,8 +911,11 @@ class _LogoPicker extends StatelessWidget {
             ),
             child: hasLogo
                 ? null
-                : Icon(Icons.add_photo_alternate_outlined,
-                    size: 32, color: cs.outline),
+                : Icon(
+                    Icons.add_photo_alternate_outlined,
+                    size: 32,
+                    color: cs.outline,
+                  ),
           ),
         ),
         const SizedBox(width: AppSpacing.base),
@@ -856,8 +923,10 @@ class _LogoPicker extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Business Logo',
-                  style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Business Logo',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Appears on invoices and quotes.',
@@ -869,10 +938,13 @@ class _LogoPicker extends StatelessWidget {
                 children: [
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.sm, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm,
+                        vertical: 4,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     icon: const Icon(Icons.image_outlined, size: 14),
                     label: const Text('Choose', style: TextStyle(fontSize: 12)),
                     onPressed: onPick,
@@ -880,14 +952,19 @@ class _LogoPicker extends StatelessWidget {
                   if (hasLogo)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.error),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 4,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                      ),
                       icon: const Icon(Icons.delete_outline, size: 14),
-                      label: const Text('Remove', style: TextStyle(fontSize: 12)),
+                      label: const Text(
+                        'Remove',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       onPressed: onRemove,
                     ),
                 ],
@@ -914,12 +991,16 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.business_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.outlineVariant),
+            Icon(
+              Icons.business_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             const SizedBox(height: AppSpacing.base),
-            Text('No business profiles yet',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'No business profiles yet',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Add your business details to print them on invoices & quotes.',

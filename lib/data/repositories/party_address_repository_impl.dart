@@ -4,7 +4,7 @@ import '../../domain/repositories/party_address_repository.dart';
 
 class PartyAddressRepositoryImpl implements PartyAddressRepository {
   PartyAddressRepositoryImpl([DatabaseHelper? helper])
-      : _db = helper ?? DatabaseHelper.instance;
+    : _db = helper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -60,7 +60,8 @@ class PartyAddressRepositoryImpl implements PartyAddressRepository {
       whereArgs: [id],
       limit: 1,
     );
-    final wasDefault = rows.isNotEmpty && (rows.first['is_default'] as int?) == 1;
+    final wasDefault =
+        rows.isNotEmpty && (rows.first['is_default'] as int?) == 1;
     final partyId = rows.isNotEmpty ? rows.first['party_id'] as int? : null;
 
     await db.delete('party_addresses', where: 'id = ?', whereArgs: [id]);

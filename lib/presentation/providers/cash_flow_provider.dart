@@ -33,7 +33,9 @@ import 'transaction_provider.dart';
 // Sort order: ascending date; ties broken by CashFlowEvent.sortPriority
 // (overdue → recorded → upcoming → projected).
 
-final cashFlowTimelineProvider = FutureProvider<List<CashFlowEvent>>((ref) async {
+final cashFlowTimelineProvider = FutureProvider<List<CashFlowEvent>>((
+  ref,
+) async {
   // Re-evaluate whenever the active context switches.
   ref.watch(activeContextProvider);
   final now = DateTime.now();
@@ -41,13 +43,15 @@ final cashFlowTimelineProvider = FutureProvider<List<CashFlowEvent>>((ref) async
 
   // Parallel reads from all repos ──────────────────────────────────────────
   final results = await Future.wait([
-    ref.read(transactionRepositoryProvider).getByDateRange(cutoffPast, now),  // 0
-    ref.read(invoiceRepositoryProvider).getAll(),                              // 1
-    ref.read(creditRepositoryProvider).getActive(),                            // 2
-    ref.read(loanRepositoryProvider).getActive(),                              // 3
-    ref.read(scheduledPaymentRepositoryProvider).getOverdue(),                 // 4
-    ref.read(scheduledPaymentRepositoryProvider).getUpcoming(days: 7),        // 5
-    ref.read(bookingRepositoryProvider).getUpcoming(limit: 20),               // 6
+    ref
+        .read(transactionRepositoryProvider)
+        .getByDateRange(cutoffPast, now), // 0
+    ref.read(invoiceRepositoryProvider).getAll(), // 1
+    ref.read(creditRepositoryProvider).getActive(), // 2
+    ref.read(loanRepositoryProvider).getActive(), // 3
+    ref.read(scheduledPaymentRepositoryProvider).getOverdue(), // 4
+    ref.read(scheduledPaymentRepositoryProvider).getUpcoming(days: 7), // 5
+    ref.read(bookingRepositoryProvider).getUpcoming(limit: 20), // 6
   ]);
 
   final events = <CashFlowEvent>[];

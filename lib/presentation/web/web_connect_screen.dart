@@ -58,17 +58,18 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
 
     // 1. Try session token from sessionStorage (survives page refresh).
     final savedSession = url_reader.getSavedSessionId();
-    final savedWsUrl   = url_reader.getSavedWsUrl();
+    final savedWsUrl = url_reader.getSavedWsUrl();
     if (savedSession != null && savedWsUrl != null) {
       trackEvent(ref, AnalyticsEvents.webBrowserSessionRestored);
-      ref.read(webSyncProvider.notifier)
+      ref
+          .read(webSyncProvider.notifier)
           .connect(savedWsUrl, savedSession, isSession: true);
       return;
     }
 
     // 2. Fall back to QR token from the URL (legacy flow) or start a new
     // browser-auth challenge on plain LAN URLs.
-    final token  = url_reader.getInitialToken();
+    final token = url_reader.getInitialToken();
     final origin = url_reader.getOrigin(); // 'http://192.168.1.8:60567'
     if (token != null) {
       if (origin == null) {
@@ -98,15 +99,14 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
       trackEvent(ref, AnalyticsEvents.webBrowserManualConnect);
       final wsUri = uri.replace(scheme: 'ws', path: '/ws', query: '');
       if (token != null) {
-        await ref.read(webSyncProvider.notifier).connect(
-              wsUri.toString(),
-              token,
-            );
+        await ref
+            .read(webSyncProvider.notifier)
+            .connect(wsUri.toString(), token);
         return;
       }
-      await ref.read(webSyncProvider.notifier).beginBrowserAuth(
-            wsUri.toString(),
-          );
+      await ref
+          .read(webSyncProvider.notifier)
+          .beginBrowserAuth(wsUri.toString());
     } catch (e) {
       _showError('Invalid URL: $e');
     }
@@ -114,8 +114,7 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
@@ -197,10 +196,10 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                   )
                 else ...[
                   TextField(
-                    controller:  _urlController,
+                    controller: _urlController,
                     decoration: InputDecoration(
-                      labelText:  'Or paste phone URL',
-                      hintText:   'http://192.168.x.x:PORT',
+                      labelText: 'Or paste phone URL',
+                      hintText: 'http://192.168.x.x:PORT',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.arrow_forward),
@@ -222,9 +221,11 @@ class _WebConnectScreenState extends ConsumerState<WebConnectScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.lock_outline,
-                        size: 14,
-                        color: context.colorScheme.onSurfaceVariant),
+                    Icon(
+                      Icons.lock_outline,
+                      size: 14,
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
                     const SizedBox(width: AppSpacing.xs),
                     Flexible(
                       child: Text(
@@ -255,14 +256,19 @@ class _AuthProgressTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final steps = <(String, bool)>[
-      ('Phone server reachable',
-          sync.authPhase.index >= WebAuthPhase.serverReachable.index),
-      ('WebSocket connected',
-          sync.authPhase.index >= WebAuthPhase.wsReachable.index),
-      ('Auth challenge ready',
-          sync.authPhase.index >= WebAuthPhase.challengeReceived.index),
-      ('Browser approved',
-          sync.authPhase.index >= WebAuthPhase.approved.index),
+      (
+        'Phone server reachable',
+        sync.authPhase.index >= WebAuthPhase.serverReachable.index,
+      ),
+      (
+        'WebSocket connected',
+        sync.authPhase.index >= WebAuthPhase.wsReachable.index,
+      ),
+      (
+        'Auth challenge ready',
+        sync.authPhase.index >= WebAuthPhase.challengeReceived.index,
+      ),
+      ('Browser approved', sync.authPhase.index >= WebAuthPhase.approved.index),
     ];
 
     return Container(
@@ -270,7 +276,9 @@ class _AuthProgressTimeline extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        color: context.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        color: context.colorScheme.surfaceContainerHighest.withValues(
+          alpha: 0.35,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,9 +346,7 @@ class _WebQrCard extends StatelessWidget {
                 ? const SizedBox(
                     width: 180,
                     height: 180,
-                    child: Center(
-                      child: Text('Waiting for challenge...'),
-                    ),
+                    child: Center(child: Text('Waiting for challenge...')),
                   )
                 : QrImageView(
                     data: payload,
@@ -373,9 +379,9 @@ class _WebQrCard extends StatelessWidget {
             payload.isEmpty
                 ? 'Awaiting AUTH_CHALLENGE payload'
                 : 'Challenge ready (${payload.length} chars)',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
           ),
         ],
       ),

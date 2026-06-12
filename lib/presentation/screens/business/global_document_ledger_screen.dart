@@ -25,10 +25,10 @@ enum _LedgerSort {
   alphabetical;
 
   String get label => switch (this) {
-        recent => 'Recent',
-        highestBalance => 'Highest Balance',
-        alphabetical => 'A–Z',
-      };
+    recent => 'Recent',
+    highestBalance => 'Highest Balance',
+    alphabetical => 'A–Z',
+  };
 }
 
 enum _LedgerFilter {
@@ -36,9 +36,9 @@ enum _LedgerFilter {
   hasBalance;
 
   String get label => switch (this) {
-        all => 'All',
-        hasBalance => 'Has Balance',
-      };
+    all => 'All',
+    hasBalance => 'Has Balance',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -70,10 +70,12 @@ class _PartySummary {
   double get overdue {
     final now = DateTime.now();
     return invoices
-        .where((i) =>
-            i.status != InvoiceStatus.paid &&
-            i.dueDate != null &&
-            i.dueDate!.isBefore(now))
+        .where(
+          (i) =>
+              i.status != InvoiceStatus.paid &&
+              i.dueDate != null &&
+              i.dueDate!.isBefore(now),
+        )
         .fold(0.0, (s, i) => s + i.balanceDue);
   }
 
@@ -117,7 +119,8 @@ class _GlobalDocumentLedgerScreenState
     final challansAsync = ref.watch(challansProvider);
     final bookingsAsync = ref.watch(bookingsProvider);
 
-    final isLoading = partiesAsync.isLoading ||
+    final isLoading =
+        partiesAsync.isLoading ||
         invoicesAsync.isLoading ||
         quotesAsync.isLoading ||
         challansAsync.isLoading ||
@@ -164,15 +167,15 @@ class _GlobalDocumentLedgerScreenState
     }
 
     // Header stats
-    final totalOutstanding =
-        sorted.fold(0.0, (s, p) => s + p.outstanding);
-    final partiesWithBalance =
-        sorted.where((p) => p.outstanding > 0).length;
+    final totalOutstanding = sorted.fold(0.0, (s, p) => s + p.outstanding);
+    final partiesWithBalance = sorted.where((p) => p.outstanding > 0).length;
     final openInvoices = invoices
-        .where((i) =>
-            i.status == InvoiceStatus.sent ||
-            i.status == InvoiceStatus.overdue ||
-            i.status == InvoiceStatus.partiallyPaid)
+        .where(
+          (i) =>
+              i.status == InvoiceStatus.sent ||
+              i.status == InvoiceStatus.overdue ||
+              i.status == InvoiceStatus.partiallyPaid,
+        )
         .length;
 
     return Scaffold(
@@ -185,7 +188,8 @@ class _GlobalDocumentLedgerScreenState
             tooltip: 'Search parties',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties),
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.parties),
               ),
             ),
           ),
@@ -194,19 +198,21 @@ class _GlobalDocumentLedgerScreenState
             tooltip: 'Sort',
             onSelected: (s) => setState(() => _sort = s),
             itemBuilder: (_) => _LedgerSort.values
-                .map((s) => PopupMenuItem(
-                      value: s,
-                      child: Row(
-                        children: [
-                          if (_sort == s)
-                            const Icon(Icons.check, size: 16)
-                          else
-                            const SizedBox(width: 16),
-                          const SizedBox(width: AppSpacing.sm),
-                          Text(s.label),
-                        ],
-                      ),
-                    ))
+                .map(
+                  (s) => PopupMenuItem(
+                    value: s,
+                    child: Row(
+                      children: [
+                        if (_sort == s)
+                          const Icon(Icons.check, size: 16)
+                        else
+                          const SizedBox(width: 16),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(s.label),
+                      ],
+                    ),
+                  ),
+                )
                 .toList(),
           ),
         ],
@@ -228,18 +234,17 @@ class _GlobalDocumentLedgerScreenState
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.base,
-                      vertical: AppSpacing.sm),
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.sm,
+                  ),
                   child: Row(
                     children: _LedgerFilter.values.map((f) {
                       return Padding(
-                        padding:
-                            const EdgeInsets.only(right: AppSpacing.sm),
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: FilterChip(
                           label: Text(f.label),
                           selected: _filter == f,
-                          onSelected: (_) =>
-                              setState(() => _filter = f),
+                          onSelected: (_) => setState(() => _filter = f),
                           visualDensity: VisualDensity.compact,
                         ),
                       );
@@ -257,13 +262,13 @@ class _GlobalDocumentLedgerScreenState
                             _filter == _LedgerFilter.hasBalance
                                 ? 'No parties with outstanding balance.'
                                 : 'No parties with documents yet.',
-                            style:
-                                Theme.of(context).textTheme.bodySmall,
+                            style: Theme.of(context).textTheme.bodySmall,
                           ),
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.only(
-                              bottom: AppSpacing.xxxl),
+                            bottom: AppSpacing.xxxl,
+                          ),
                           itemCount: sorted.length,
                           separatorBuilder: (context, index) =>
                               const Divider(height: 1),
@@ -286,9 +291,7 @@ class _GlobalDocumentLedgerScreenState
     required List<Booking> bookings,
   }) {
     // Build a name → party map for quick lookup
-    final partyMap = <String, Party>{
-      for (final p in parties) p.name: p,
-    };
+    final partyMap = <String, Party>{for (final p in parties) p.name: p};
 
     // Collect all unique customer names that appear in any document
     final allNames = <String>{
@@ -303,13 +306,15 @@ class _GlobalDocumentLedgerScreenState
       final party = partyMap[name];
       if (party == null) continue; // skip orphaned doc names
 
-      results.add(_PartySummary(
-        party: party,
-        invoices: invoices.where((i) => i.customerName == name).toList(),
-        quotes: quotes.where((q) => q.customerName == name).toList(),
-        challans: challans.where((c) => c.customerName == name).toList(),
-        bookings: bookings.where((b) => b.customerName == name).toList(),
-      ));
+      results.add(
+        _PartySummary(
+          party: party,
+          invoices: invoices.where((i) => i.customerName == name).toList(),
+          quotes: quotes.where((q) => q.customerName == name).toList(),
+          challans: challans.where((c) => c.customerName == name).toList(),
+          bookings: bookings.where((b) => b.customerName == name).toList(),
+        ),
+      );
     }
     return results;
   }
@@ -397,18 +402,20 @@ class _HeaderStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: color)),
-          Text(label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(
-                      color:
-                          Theme.of(context).colorScheme.outline)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.outline,
+            ),
+          ),
         ],
       ),
     );
@@ -420,10 +427,7 @@ class _HeaderStat extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _PartySummaryTile extends StatelessWidget {
-  const _PartySummaryTile({
-    required this.summary,
-    required this.colors,
-  });
+  const _PartySummaryTile({required this.summary, required this.colors});
 
   final _PartySummary summary;
   final KashCubeColors colors;
@@ -437,25 +441,28 @@ class _PartySummaryTile extends StatelessWidget {
     final balanceColor = overdue > 0
         ? colors.overdue
         : hasBalance
-            ? colors.expense
-            : colors.income;
+        ? colors.expense
+        : colors.income;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       leading: CircleAvatar(
-        backgroundColor: Theme.of(context)
-            .colorScheme
-            .primaryContainer,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
         child: Text(
           party.name.isNotEmpty ? party.name[0].toUpperCase() : '?',
           style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onPrimaryContainer),
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
         ),
       ),
-      title: Text(party.name,
-          style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        party.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: _DocCountRow(summary: summary),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -465,31 +472,31 @@ class _PartySummaryTile extends StatelessWidget {
             Text(
               _fmt(outstanding),
               style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: balanceColor),
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: balanceColor,
+              ),
             )
           else
-            Text('All settled',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelSmall
-                    ?.copyWith(color: colors.income)),
+            Text(
+              'All settled',
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: colors.income),
+            ),
           if (overdue > 0)
             Text(
               '${_fmt(overdue)} overdue',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(color: colors.overdue),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: colors.overdue),
             ),
         ],
       ),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              Party360Screen(party: party, initialTab: 2),
+          builder: (_) => Party360Screen(party: party, initialTab: 2),
         ),
       ),
     );
@@ -518,18 +525,21 @@ class _DocCountRow extends StatelessWidget {
     final parts = <String>[];
     if (summary.invoices.isNotEmpty) {
       parts.add(
-          '${summary.invoices.length} Invoice${summary.invoices.length == 1 ? '' : 's'}');
+        '${summary.invoices.length} Invoice${summary.invoices.length == 1 ? '' : 's'}',
+      );
     }
     if (summary.quotes.isNotEmpty) {
       parts.add(
-          '${summary.quotes.length} Quote${summary.quotes.length == 1 ? '' : 's'}');
+        '${summary.quotes.length} Quote${summary.quotes.length == 1 ? '' : 's'}',
+      );
     }
     if (summary.challans.isNotEmpty) {
       parts.add('${summary.challans.length} DC');
     }
     if (summary.bookings.isNotEmpty) {
       parts.add(
-          '${summary.bookings.length} Booking${summary.bookings.length == 1 ? '' : 's'}');
+        '${summary.bookings.length} Booking${summary.bookings.length == 1 ? '' : 's'}',
+      );
     }
     return Text(
       parts.isEmpty ? 'No documents' : parts.join(' · '),

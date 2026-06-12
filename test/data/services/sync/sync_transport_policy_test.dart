@@ -56,26 +56,28 @@ void main() {
       expect(channel, isA<WebSocketSyncTransportChannel>());
     });
 
-    test('passes TURN relay mode into cloud signaling channel options', () async {
-      final adapter = _CapturingCloudAdapter();
-      final channel = SyncTransportPolicy.createSignaling(
-        SyncSignalingMode.cloudRelay,
-        transportKind: SyncTransportKind.webSocket,
-        turnRelayMode: SyncTurnRelayMode.required,
-        relayServerHints: const <String>['turn:relay.example.invalid:3478'],
-        cloudAdapterFactory: () => adapter,
-      );
+    test(
+      'passes TURN relay mode into cloud signaling channel options',
+      () async {
+        final adapter = _CapturingCloudAdapter();
+        final channel = SyncTransportPolicy.createSignaling(
+          SyncSignalingMode.cloudRelay,
+          transportKind: SyncTransportKind.webSocket,
+          turnRelayMode: SyncTurnRelayMode.required,
+          relayServerHints: const <String>['turn:relay.example.invalid:3478'],
+          cloudAdapterFactory: () => adapter,
+        );
 
-      await channel.connect(Uri.parse('wss://example.invalid/signal'));
+        await channel.connect(Uri.parse('wss://example.invalid/signal'));
 
-      expect(adapter.lastOptions, isNotNull);
-      expect(adapter.lastOptions!.turnRelayMode, CloudTurnRelayMode.required);
-      expect(
-        adapter.lastOptions!.relayServerHints,
-        const <String>['turn:relay.example.invalid:3478'],
-      );
+        expect(adapter.lastOptions, isNotNull);
+        expect(adapter.lastOptions!.turnRelayMode, CloudTurnRelayMode.required);
+        expect(adapter.lastOptions!.relayServerHints, const <String>[
+          'turn:relay.example.invalid:3478',
+        ]);
 
-      await channel.close();
-    });
+        await channel.close();
+      },
+    );
   });
 }

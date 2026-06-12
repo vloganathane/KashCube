@@ -69,18 +69,25 @@ class Party extends Equatable {
   final String name;
   final String? phoneNumber;
   final String? email;
+
   /// GST Identification Number — stored locally, never validated via network.
   final String? gstin;
+
   /// Physical address (street) — stored locally, never transmitted.
   final String? address;
+
   /// City — stored locally, never transmitted.
   final String? city;
+
   /// State — stored locally, never transmitted.
   final String? state;
+
   /// Pincode — stored locally, never transmitted.
   final String? pincode;
+
   /// Country name (e.g. 'India', 'United Arab Emirates'). Null means India.
   final String? country;
+
   /// Dial code digits without '+' (e.g. '91', '971'). Null means '91' (India).
   final String? dialCode;
   final PartyType partyType;
@@ -99,8 +106,10 @@ class Party extends Equatable {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
+
   /// Local file-system path to a business card photo/scan. Never transmitted.
   final String? businessCardImagePath;
+
   /// Stable media identifier shared across devices/web for the card image.
   final String? businessCardMediaId;
   final String? website;
@@ -111,10 +120,13 @@ class Party extends Equatable {
   // Staff-specific fields (populated only when partyType == staff)
   /// Role / designation e.g. "Manager", "Driver", "Accountant".
   final String? staffRole;
+
   /// Base salary amount.
   final double? staffSalary;
+
   /// Salary frequency: 'monthly', 'daily', or 'hourly'.
   final String? staffSalaryType;
+
   /// Join date stored as ISO-8601 date string (YYYY-MM-DD).
   final String? staffJoinDate;
 
@@ -129,7 +141,8 @@ class Party extends Equatable {
       if (state != null && state!.isNotEmpty) state!,
       if (pincode != null && pincode!.isNotEmpty) pincode!,
       // Show country only when explicitly set (non-India customers/vendors)
-      if (country != null && country!.isNotEmpty && country != 'India') country!,
+      if (country != null && country!.isNotEmpty && country != 'India')
+        country!,
     ];
     return parts.isEmpty ? null : parts.join(', ');
   }
@@ -183,7 +196,8 @@ class Party extends Equatable {
       partyType: partyType ?? this.partyType,
       partyContext: partyContext ?? this.partyContext,
       totalTransactions: totalTransactions ?? this.totalTransactions,
-      totalTransactionAmount: totalTransactionAmount ?? this.totalTransactionAmount,
+      totalTransactionAmount:
+          totalTransactionAmount ?? this.totalTransactionAmount,
       totalCreditGiven: totalCreditGiven ?? this.totalCreditGiven,
       totalCreditReceived: totalCreditReceived ?? this.totalCreditReceived,
       notes: notes ?? this.notes,
@@ -191,7 +205,8 @@ class Party extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
-      businessCardImagePath: businessCardImagePath ?? this.businessCardImagePath,
+      businessCardImagePath:
+          businessCardImagePath ?? this.businessCardImagePath,
       businessCardMediaId: businessCardMediaId ?? this.businessCardMediaId,
       website: website ?? this.website,
       whatsapp: whatsapp ?? this.whatsapp,
@@ -260,14 +275,25 @@ class Party extends Equatable {
       ),
       partyContext: map['party_context'] as String? ?? 'personal',
       totalTransactions: (map['total_transactions'] as int?) ?? 0,
-      totalTransactionAmount: (map['total_transaction_amount'] as num? ?? 0).toDouble(),
+      totalTransactionAmount: (map['total_transaction_amount'] as num? ?? 0)
+          .toDouble(),
       totalCreditGiven: (map['total_credit_given'] as num? ?? 0).toDouble(),
-      totalCreditReceived: (map['total_credit_received'] as num? ?? 0).toDouble(),
+      totalCreditReceived: (map['total_credit_received'] as num? ?? 0)
+          .toDouble(),
       notes: map['notes'] as String?,
-      tags: (map['tags'] as String?)?.split(',').where((t) => t.isNotEmpty).toList(),
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
-      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'] as String) : null,
-      deletedAt: map['deleted_at'] != null ? DateTime.parse(map['deleted_at'] as String) : null,
+      tags: (map['tags'] as String?)
+          ?.split(',')
+          .where((t) => t.isNotEmpty)
+          .toList(),
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : null,
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
+          : null,
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
       businessCardImagePath: map['business_card_image_path'] as String?,
       businessCardMediaId: map['business_card_media_id'] as String?,
       website: map['website'] as String?,
@@ -283,11 +309,11 @@ class Party extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        partyType,
-        partyContext,
-        businessCardImagePath,
-        businessCardMediaId,
-      ];
+    id,
+    name,
+    partyType,
+    partyContext,
+    businessCardImagePath,
+    businessCardMediaId,
+  ];
 }

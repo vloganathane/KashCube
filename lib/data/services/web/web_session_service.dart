@@ -30,7 +30,7 @@ class WebSessionService {
   // Called whenever a browser session is live.
   WebBrowserSession? activeSession;
 
-  static const _tokenTtl   = Duration(minutes: 5);
+  static const _tokenTtl = Duration(minutes: 5);
   static const _sessionTtl = Duration(minutes: 30);
 
   static final Random _rng = Random.secure();
@@ -40,7 +40,7 @@ class WebSessionService {
   String generateToken() {
     final bytes = List<int>.generate(32, (_) => _rng.nextInt(256));
     _activeToken = base64Url.encode(bytes).replaceAll('=', '');
-    _expiresAt   = DateTime.now().add(_tokenTtl);
+    _expiresAt = DateTime.now().add(_tokenTtl);
     debugPrint('[WebSession] QR token generated, expires at $_expiresAt');
     return _activeToken!;
   }
@@ -49,14 +49,14 @@ class WebSessionService {
   /// cannot be reused for a second browser. On success also generates a
   /// fresh session token valid for 30 minutes (returned via [sessionToken]).
   bool validateAndConsume(String token) {
-    final stored  = _activeToken;
+    final stored = _activeToken;
     final expires = _expiresAt;
     if (stored == null || expires == null) return false;
-    if (DateTime.now().isAfter(expires))  return false;
+    if (DateTime.now().isAfter(expires)) return false;
     if (!_constantTimeEquals(token, stored)) return false;
     // Consume QR token — single use.
     _activeToken = null;
-    _expiresAt   = null;
+    _expiresAt = null;
     // Issue a session token for refresh re-auth.
     _issueSessionToken();
     return true;
@@ -65,10 +65,10 @@ class WebSessionService {
   /// Validates a session token (used on page refresh when the QR token is gone).
   /// Re-extends the TTL on each successful validation (rolling window).
   bool validateSession(String token) {
-    final stored  = _sessionToken;
+    final stored = _sessionToken;
     final expires = _sessionExpiry;
     if (stored == null || expires == null) return false;
-    if (DateTime.now().isAfter(expires))  return false;
+    if (DateTime.now().isAfter(expires)) return false;
     if (!_constantTimeEquals(token, stored)) return false;
     // Roll the 30-minute window forward.
     _sessionExpiry = DateTime.now().add(_sessionTtl);
@@ -95,15 +95,15 @@ class WebSessionService {
 
   /// Clears both tokens (e.g., on coordinator stop or user revoke).
   void clearToken() {
-    _activeToken   = null;
-    _expiresAt     = null;
-    _sessionToken  = null;
+    _activeToken = null;
+    _expiresAt = null;
+    _sessionToken = null;
     _sessionExpiry = null;
   }
 
   void _issueSessionToken() {
     final bytes = List<int>.generate(32, (_) => _rng.nextInt(256));
-    _sessionToken  = base64Url.encode(bytes).replaceAll('=', '');
+    _sessionToken = base64Url.encode(bytes).replaceAll('=', '');
     _sessionExpiry = DateTime.now().add(_sessionTtl);
     debugPrint('[WebSession] Session token issued, expires at $_sessionExpiry');
   }
@@ -117,5 +117,4 @@ class WebSessionService {
     }
     return result == 0;
   }
-
 }

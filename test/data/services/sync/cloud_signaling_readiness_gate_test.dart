@@ -7,19 +7,21 @@ CloudSignalingReadinessGate _gate({
   SyncSignalingMode signalingMode = SyncSignalingMode.cloudRelay,
   bool adapterInjected = true,
   SyncTurnConfig turnConfig = const SyncTurnConfig(),
-}) =>
-    CloudSignalingReadinessGate(
-      signalingMode: signalingMode,
-      adapterInjected: adapterInjected,
-      turnConfigSource: StaticSyncTurnConfigSource(turnConfig),
-    );
+}) => CloudSignalingReadinessGate(
+  signalingMode: signalingMode,
+  adapterInjected: adapterInjected,
+  turnConfigSource: StaticSyncTurnConfigSource(turnConfig),
+);
 
 void main() {
   group('CloudSignalingReadinessGate — ready', () {
-    test('returns CloudSignalingReady when all preconditions are satisfied', () {
-      final result = _gate().check();
-      expect(result, isA<CloudSignalingReady>());
-    });
+    test(
+      'returns CloudSignalingReady when all preconditions are satisfied',
+      () {
+        final result = _gate().check();
+        expect(result, isA<CloudSignalingReady>());
+      },
+    );
 
     test('ready with TURN preferred and empty hints', () {
       final result = _gate(
@@ -44,9 +46,7 @@ void main() {
 
   group('CloudSignalingReadinessGate — not ready', () {
     test('returns not-ready when cloud mode not selected', () {
-      final result = _gate(
-        signalingMode: SyncSignalingMode.localLan,
-      ).check();
+      final result = _gate(signalingMode: SyncSignalingMode.localLan).check();
       expect(result, isA<CloudSignalingNotReady>());
       final notReady = result as CloudSignalingNotReady;
       expect(
@@ -114,13 +114,16 @@ void main() {
   });
 
   group('CloudSignalingReadinessResult sealed type exhaustion', () {
-    test('CloudSignalingReady is distinguishable from CloudSignalingNotReady', () {
-      final ready = _gate().check();
-      final notReady = _gate(adapterInjected: false).check();
-      expect(ready is CloudSignalingReady, isTrue);
-      expect(notReady is CloudSignalingNotReady, isTrue);
-      expect(ready is CloudSignalingNotReady, isFalse);
-      expect(notReady is CloudSignalingReady, isFalse);
-    });
+    test(
+      'CloudSignalingReady is distinguishable from CloudSignalingNotReady',
+      () {
+        final ready = _gate().check();
+        final notReady = _gate(adapterInjected: false).check();
+        expect(ready is CloudSignalingReady, isTrue);
+        expect(notReady is CloudSignalingNotReady, isTrue);
+        expect(ready is CloudSignalingNotReady, isFalse);
+        expect(notReady is CloudSignalingReady, isFalse);
+      },
+    );
   });
 }

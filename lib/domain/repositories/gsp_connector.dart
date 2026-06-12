@@ -46,7 +46,11 @@ abstract class GspConnector {
   ///
   /// [cancelReason]: 1=Duplicate, 2=Order Cancelled, 3=Data Entry Mistake,
   ///                 4=Others.
-  Future<void> cancelEwb(String ewbNo, int cancelReason, {String? cancelRemark});
+  Future<void> cancelEwb(
+    String ewbNo,
+    int cancelReason, {
+    String? cancelRemark,
+  });
 
   /// Updates the vehicle number for an existing EWB (Part B update).
   Future<void> updateVehicle(
@@ -68,6 +72,7 @@ class GspException implements Exception {
   final String? code;
 
   @override
-  String toString() =>
-      code != null ? 'GspException [$code]: $message' : 'GspException: $message';
+  String toString() => code != null
+      ? 'GspException [$code]: $message'
+      : 'GspException: $message';
 }

@@ -29,9 +29,7 @@ String dialCodeFor(WorldCountry country) {
 WorldCountry? countryByName(String? name) {
   if (name == null || name.isEmpty) return null;
   try {
-    return WorldCountry.list.firstWhere(
-      (c) => c.name.common == name,
-    );
+    return WorldCountry.list.firstWhere((c) => c.name.common == name);
   } catch (e) {
     AppLogger.instance.debug(
       'Country lookup failed',
@@ -92,7 +90,9 @@ class CountryPickerField extends StatelessWidget {
             border: const OutlineInputBorder(),
             prefixIcon: Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
               child: Text(
                 display.emoji,
                 style: const TextStyle(fontSize: 20),
@@ -101,8 +101,7 @@ class CountryPickerField extends StatelessWidget {
             ),
             suffixIcon: const Icon(Icons.arrow_drop_down),
           ),
-          controller:
-              TextEditingController(text: display.name.common),
+          controller: TextEditingController(text: display.name.common),
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       ),

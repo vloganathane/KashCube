@@ -20,8 +20,9 @@ import 'gstr_period_picker.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
 
-final _gstr3bWorkbookProvider =
-    StateProvider<AsyncValue<Gstr3bWorkbook>?>((ref) => null);
+final _gstr3bWorkbookProvider = StateProvider<AsyncValue<Gstr3bWorkbook>?>(
+  (ref) => null,
+);
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -58,8 +59,7 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
     _range = GstrDateRange(
       from: DateTime(last.year, last.month, 1),
       to: DateTime(last.year, last.month + 1, 0),
-      returnPeriodLabel:
-          '${last.month.toString().padLeft(2, '0')}${last.year}',
+      returnPeriodLabel: '${last.month.toString().padLeft(2, '0')}${last.year}',
       displayLabel: DateFormat('MMMM yyyy').format(last),
     );
   }
@@ -79,8 +79,9 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
 
   Future<void> _generate() async {
     final businesses = ref.read(businessesProvider).valueOrNull ?? [];
-    final business =
-        businesses.where((b) => b.id == _selectedBusinessId).firstOrNull;
+    final business = businesses
+        .where((b) => b.id == _selectedBusinessId)
+        .firstOrNull;
     if (business == null) {
       _showError('No active business. Configure a business first.');
       return;
@@ -108,13 +109,16 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
         ),
       );
       if (mounted) {
-        ref.read(_gstr3bWorkbookProvider.notifier).state =
-            AsyncValue.data(workbook);
+        ref.read(_gstr3bWorkbookProvider.notifier).state = AsyncValue.data(
+          workbook,
+        );
       }
     } catch (e, st) {
       if (mounted) {
-        ref.read(_gstr3bWorkbookProvider.notifier).state =
-            AsyncValue.error(e, st);
+        ref.read(_gstr3bWorkbookProvider.notifier).state = AsyncValue.error(
+          e,
+          st,
+        );
       }
     } finally {
       if (mounted) setState(() => _generating = false);
@@ -124,10 +128,9 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
   Future<void> _exportPdf(Gstr3bWorkbook wb) async {
     try {
       final file = await Gstr3bPdfService.instance.generate(wb);
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        text: 'GSTR-3B Offset Summary — ${wb.period}',
-      );
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'application/pdf'),
+      ], text: 'GSTR-3B Offset Summary — ${wb.period}');
     } catch (e) {
       _showError('PDF export failed: $e');
     }
@@ -136,16 +139,13 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
   Future<void> _exportXls(Gstr3bWorkbook wb) async {
     try {
       final file = await Gstr3bXlsService.instance.generate(wb);
-      await Share.shareXFiles(
-        [
-          XFile(
-            file.path,
-            mimeType:
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          )
-        ],
-        text: 'GSTR-3B Offset Summary — ${wb.period}',
-      );
+      await Share.shareXFiles([
+        XFile(
+          file.path,
+          mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ),
+      ], text: 'GSTR-3B Offset Summary — ${wb.period}');
     } catch (e) {
       _showError('XLS export failed: $e');
     }
@@ -153,8 +153,7 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Gstr3bTaxAmounts _parseManual({
@@ -175,26 +174,26 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
   Widget build(BuildContext context) {
     final workbookAsync = ref.watch(_gstr3bWorkbookProvider);
     final allBusinesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final business =
-        allBusinesses.where((b) => b.id == _selectedBusinessId).firstOrNull;
+    final business = allBusinesses
+        .where((b) => b.id == _selectedBusinessId)
+        .firstOrNull;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('GSTR-3B Offset Summary'),
         actions: [
-          if (workbookAsync?.hasValue == true) ...
-            [
-              IconButton(
-                icon: const Icon(Icons.table_chart_outlined),
-                tooltip: 'Export XLS',
-                onPressed: () => _exportXls(workbookAsync!.value!),
-              ),
-              IconButton(
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                tooltip: 'Export PDF',
-                onPressed: () => _exportPdf(workbookAsync!.value!),
-              ),
-            ],
+          if (workbookAsync?.hasValue == true) ...[
+            IconButton(
+              icon: const Icon(Icons.table_chart_outlined),
+              tooltip: 'Export XLS',
+              onPressed: () => _exportXls(workbookAsync!.value!),
+            ),
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: 'Export PDF',
+              onPressed: () => _exportPdf(workbookAsync!.value!),
+            ),
+          ],
         ],
       ),
       body: ListView(
@@ -216,16 +215,18 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(biz.name,
-                          style:
-                              const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        biz.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       if (biz.gstNo != null)
                         Text(
                           'GST: ${biz.gstNo}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: context.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                            color: context.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                     ],
@@ -276,7 +277,10 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
                 ? const SizedBox.square(
                     dimension: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.calculate_outlined),
             label: Text(_generating ? 'Computing…' : 'Compute Offset'),
           ),
@@ -285,15 +289,17 @@ class _Gstr3bOffsetScreenState extends ConsumerState<Gstr3bOffsetScreen> {
           // ── Result ───────────────────────────────────────────────────────
           if (workbookAsync != null)
             workbookAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Card(
                 color: context.colorScheme.errorContainer,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.base),
-                  child: Text('Error: $e',
-                      style: TextStyle(
-                          color: context.colorScheme.onErrorContainer)),
+                  child: Text(
+                    'Error: $e',
+                    style: TextStyle(
+                      color: context.colorScheme.onErrorContainer,
+                    ),
+                  ),
                 ),
               ),
               data: (wb) => _WorkbookView(
@@ -397,8 +403,7 @@ class _AmtField extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType:
-          const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: label,
         isDense: true,
@@ -450,11 +455,26 @@ class _WorkbookView extends StatelessWidget {
           icon: Icons.arrow_upward_rounded,
           headers: const ['Category', 'IGST', 'CGST', 'SGST'],
           rows: [
-            ['Regular Supply', _a(wb.outwardRegular.igst), _a(wb.outwardRegular.cgst), _a(wb.outwardRegular.sgst)],
+            [
+              'Regular Supply',
+              _a(wb.outwardRegular.igst),
+              _a(wb.outwardRegular.cgst),
+              _a(wb.outwardRegular.sgst),
+            ],
             ['Zero-rated / Exports', _a(wb.outwardZeroRated.igst), '—', '—'],
-            ['Nil-rated / Exempt', '—', _a(wb.outwardNilExempted.cgst), _a(wb.outwardNilExempted.sgst)],
+            [
+              'Nil-rated / Exempt',
+              '—',
+              _a(wb.outwardNilExempted.cgst),
+              _a(wb.outwardNilExempted.sgst),
+            ],
           ],
-          totalRow: ['TOTAL', _a(wb.totalLiability.igst), _a(wb.totalLiability.cgst), _a(wb.totalLiability.sgst)],
+          totalRow: [
+            'TOTAL',
+            _a(wb.totalLiability.igst),
+            _a(wb.totalLiability.cgst),
+            _a(wb.totalLiability.sgst),
+          ],
         ),
         const SizedBox(height: AppSpacing.sm),
 
@@ -464,10 +484,25 @@ class _WorkbookView extends StatelessWidget {
           icon: Icons.arrow_downward_rounded,
           headers: const ['Category', 'IGST', 'CGST', 'SGST'],
           rows: [
-            ['RCM — Registered', _a(wb.rcmLiability.igst), _a(wb.rcmLiability.cgst), _a(wb.rcmLiability.sgst)],
-            ['Interest / Late Fees', _a(wb.interestLateFee.igst), _a(wb.interestLateFee.cgst), _a(wb.interestLateFee.sgst)],
+            [
+              'RCM — Registered',
+              _a(wb.rcmLiability.igst),
+              _a(wb.rcmLiability.cgst),
+              _a(wb.rcmLiability.sgst),
+            ],
+            [
+              'Interest / Late Fees',
+              _a(wb.interestLateFee.igst),
+              _a(wb.interestLateFee.cgst),
+              _a(wb.interestLateFee.sgst),
+            ],
           ],
-          totalRow: ['TOTAL RCM', _a(wb.rcmLiability.igst + wb.interestLateFee.igst), _a(wb.rcmLiability.cgst + wb.interestLateFee.cgst), _a(wb.rcmLiability.sgst + wb.interestLateFee.sgst)],
+          totalRow: [
+            'TOTAL RCM',
+            _a(wb.rcmLiability.igst + wb.interestLateFee.igst),
+            _a(wb.rcmLiability.cgst + wb.interestLateFee.cgst),
+            _a(wb.rcmLiability.sgst + wb.interestLateFee.sgst),
+          ],
         ),
         const SizedBox(height: AppSpacing.sm),
 
@@ -477,11 +512,31 @@ class _WorkbookView extends StatelessWidget {
           icon: Icons.account_balance_outlined,
           headers: const ['Category', 'IGST', 'CGST', 'SGST'],
           rows: [
-            ['Eligible ITC', _a(wb.itcEligible.igst), _a(wb.itcEligible.cgst), _a(wb.itcEligible.sgst)],
-            ['Reversed (Rule 42/43)', _a(wb.itcReversed.igst), _a(wb.itcReversed.cgst), _a(wb.itcReversed.sgst)],
-            ['Blocked (Sec. 17(5))', _a(wb.itcBlocked.igst), _a(wb.itcBlocked.cgst), _a(wb.itcBlocked.sgst)],
+            [
+              'Eligible ITC',
+              _a(wb.itcEligible.igst),
+              _a(wb.itcEligible.cgst),
+              _a(wb.itcEligible.sgst),
+            ],
+            [
+              'Reversed (Rule 42/43)',
+              _a(wb.itcReversed.igst),
+              _a(wb.itcReversed.cgst),
+              _a(wb.itcReversed.sgst),
+            ],
+            [
+              'Blocked (Sec. 17(5))',
+              _a(wb.itcBlocked.igst),
+              _a(wb.itcBlocked.cgst),
+              _a(wb.itcBlocked.sgst),
+            ],
           ],
-          totalRow: ['NET ITC', _a(wb.netItc.igst), _a(wb.netItc.cgst), _a(wb.netItc.sgst)],
+          totalRow: [
+            'NET ITC',
+            _a(wb.netItc.igst),
+            _a(wb.netItc.cgst),
+            _a(wb.netItc.sgst),
+          ],
         ),
         const SizedBox(height: AppSpacing.base),
 
@@ -550,9 +605,12 @@ class _SectionCard extends StatelessWidget {
                     children: [
                       Text(title, style: context.textTheme.titleSmall),
                       if (subtitle.isNotEmpty)
-                        Text(subtitle,
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(color: context.colorScheme.outline)),
+                        Text(
+                          subtitle,
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: context.colorScheme.outline,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -605,18 +663,23 @@ class _ExpandableTableState extends State<_ExpandableTable> {
           InkWell(
             onTap: () => setState(() => _expanded = !_expanded),
             borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(12),
-                bottom: Radius.circular(12)),
+              top: Radius.circular(12),
+              bottom: Radius.circular(12),
+            ),
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.base, vertical: AppSpacing.md),
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.md,
+              ),
               child: Row(
                 children: [
                   Icon(widget.icon, size: 18, color: primary),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
-                    child: Text(widget.title,
-                        style: context.textTheme.titleSmall),
+                    child: Text(
+                      widget.title,
+                      style: context.textTheme.titleSmall,
+                    ),
                   ),
                   Icon(
                     _expanded
@@ -631,7 +694,11 @@ class _ExpandableTableState extends State<_ExpandableTable> {
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.sm, 0, AppSpacing.sm, AppSpacing.sm),
+                AppSpacing.sm,
+                0,
+                AppSpacing.sm,
+                AppSpacing.sm,
+              ),
               child: Table(
                 border: TableBorder.all(
                   color: context.colorScheme.outlineVariant,
@@ -647,8 +714,13 @@ class _ExpandableTableState extends State<_ExpandableTable> {
                   TableRow(
                     decoration: BoxDecoration(color: surfaceVariant),
                     children: widget.headers
-                        .map((h) => _TableCell(
-                            text: h, isBold: true, isRight: h != widget.headers[0]))
+                        .map(
+                          (h) => _TableCell(
+                            text: h,
+                            isBold: true,
+                            isRight: h != widget.headers[0],
+                          ),
+                        )
                         .toList(),
                   ),
                   // Data rows
@@ -663,15 +735,16 @@ class _ExpandableTableState extends State<_ExpandableTable> {
                   // Total row
                   TableRow(
                     decoration: BoxDecoration(
-                        color: context.colorScheme.primaryContainer),
+                      color: context.colorScheme.primaryContainer,
+                    ),
                     children: [
-                      _TableCell(
-                          text: widget.totalRow[0], isBold: true),
+                      _TableCell(text: widget.totalRow[0], isBold: true),
                       for (int i = 1; i < widget.totalRow.length; i++)
                         _TableCell(
-                            text: widget.totalRow[i],
-                            isBold: true,
-                            isRight: true),
+                          text: widget.totalRow[i],
+                          isBold: true,
+                          isRight: true,
+                        ),
                     ],
                   ),
                 ],
@@ -698,7 +771,9 @@ class _TableCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       child: Text(
         text,
         textAlign: isRight ? TextAlign.right : TextAlign.left,
@@ -757,37 +832,45 @@ class _OffsetCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             _OffsetRow(
-                label: 'IGST — by Credit',
-                value: '₹${_a(offset.igstByCredit)}'),
+              label: 'IGST — by Credit',
+              value: '₹${_a(offset.igstByCredit)}',
+            ),
             _OffsetRow(
-                label: 'CGST — by Credit',
-                value: '₹${_a(offset.cgstByCredit)}'),
+              label: 'CGST — by Credit',
+              value: '₹${_a(offset.cgstByCredit)}',
+            ),
             _OffsetRow(
-                label: 'SGST — by Credit',
-                value: '₹${_a(offset.sgstByCredit)}'),
+              label: 'SGST — by Credit',
+              value: '₹${_a(offset.sgstByCredit)}',
+            ),
             const Divider(height: AppSpacing.base),
             _OffsetRow(
-                label: 'IGST — Cash Required',
-                value: '₹${_a(offset.igstByCash)}',
-                highlight: offset.igstByCash > 0),
+              label: 'IGST — Cash Required',
+              value: '₹${_a(offset.igstByCash)}',
+              highlight: offset.igstByCash > 0,
+            ),
             _OffsetRow(
-                label: 'CGST — Cash Required',
-                value: '₹${_a(offset.cgstByCash)}',
-                highlight: offset.cgstByCash > 0),
+              label: 'CGST — Cash Required',
+              value: '₹${_a(offset.cgstByCash)}',
+              highlight: offset.cgstByCash > 0,
+            ),
             _OffsetRow(
-                label: 'SGST — Cash Required',
-                value: '₹${_a(offset.sgstByCash)}',
-                highlight: offset.sgstByCash > 0),
+              label: 'SGST — Cash Required',
+              value: '₹${_a(offset.sgstByCash)}',
+              highlight: offset.sgstByCash > 0,
+            ),
             const Divider(height: AppSpacing.base),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('TOTAL CASH TO PAY',
-                    style: context.textTheme.titleSmall?.copyWith(
-                      color: isNoCash
-                          ? context.colorScheme.onSecondaryContainer
-                          : context.colorScheme.onErrorContainer,
-                    )),
+                Text(
+                  'TOTAL CASH TO PAY',
+                  style: context.textTheme.titleSmall?.copyWith(
+                    color: isNoCash
+                        ? context.colorScheme.onSecondaryContainer
+                        : context.colorScheme.onErrorContainer,
+                  ),
+                ),
                 Text(
                   '₹${_a(offset.totalCash)}',
                   style: context.textTheme.headlineSmall?.copyWith(

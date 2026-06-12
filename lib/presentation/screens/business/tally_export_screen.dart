@@ -26,7 +26,10 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
   final _dateFormat = DateFormat('dd MMM yyyy');
 
   DateTime _from = DateTime(
-      DateTime.now().year, DateTime.now().month - 2 < 1 ? 1 : DateTime.now().month - 2, 1);
+    DateTime.now().year,
+    DateTime.now().month - 2 < 1 ? 1 : DateTime.now().month - 2,
+    1,
+  );
   DateTime _to = DateTime.now();
   bool _exporting = false;
 
@@ -62,7 +65,8 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
       if (transactions.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('No transactions found for the selected period.')),
+            content: Text('No transactions found for the selected period.'),
+          ),
         );
         return;
       }
@@ -83,9 +87,9 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -99,10 +103,7 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tally XML Export'),
-        centerTitle: false,
-      ),
+      appBar: AppBar(title: const Text('Tally XML Export'), centerTitle: false),
       body: Padding(
         padding: const EdgeInsets.all(AppSpacing.base),
         child: Column(
@@ -114,8 +115,10 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
                 padding: const EdgeInsets.all(AppSpacing.base),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline,
-                        color: context.colorScheme.primary),
+                    Icon(
+                      Icons.info_outline,
+                      color: context.colorScheme.primary,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
@@ -129,10 +132,7 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            Text(
-              'Select Date Range',
-              style: context.textTheme.labelLarge,
-            ),
+            Text('Select Date Range', style: context.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -171,8 +171,9 @@ class _TallyExportScreenState extends ConsumerState<TallyExportScreen> {
             Text(
               "The generated XML file will be shared via your device's standard share sheet.",
               textAlign: TextAlign.center,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: context.colorScheme.outline),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: context.colorScheme.outline,
+              ),
             ),
           ],
         ),
@@ -197,8 +198,11 @@ class _GatedPlaceholder extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.import_export_outlined,
-                  size: 64, color: context.colorScheme.outline),
+              Icon(
+                Icons.import_export_outlined,
+                size: 64,
+                color: context.colorScheme.outline,
+              ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Tally XML export is a\nBusiness tier feature',
@@ -207,8 +211,10 @@ class _GatedPlaceholder extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xl),
               FilledButton.icon(
-                onPressed: () =>
-                    showUpgradePromptSheet(context, featureName: 'Tally Export'),
+                onPressed: () => showUpgradePromptSheet(
+                  context,
+                  featureName: 'Tally Export',
+                ),
                 icon: const Icon(Icons.star_outline),
                 label: const Text('Upgrade to Business'),
               ),
@@ -241,7 +247,9 @@ class _DatePickerButton extends StatelessWidget {
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(
-            vertical: AppSpacing.md, horizontal: AppSpacing.base),
+          vertical: AppSpacing.md,
+          horizontal: AppSpacing.base,
+        ),
         alignment: Alignment.centerLeft,
       ),
       child: Column(
@@ -250,13 +258,15 @@ class _DatePickerButton extends StatelessWidget {
         children: [
           Text(
             label,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: context.colorScheme.outline),
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.colorScheme.outline,
+            ),
           ),
           Text(
             dateFormat.format(date),
-            style: context.textTheme.bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w500),
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),

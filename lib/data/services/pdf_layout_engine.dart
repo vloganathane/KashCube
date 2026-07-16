@@ -148,6 +148,10 @@ class PdfLayoutEngine {
     DocumentTemplate template,
     NumberFormat fmt,
   ) {
+    if (template.id == 'industrial') {
+      return _buildIndustrialContent(data, template);
+    }
+
     final sections = <pw.Widget>[];
     for (final section in template.config.sectionOrder) {
       if (!template.config.shows(section)) continue;
@@ -169,6 +173,530 @@ class PdfLayoutEngine {
       sections.add(widget);
     }
     return sections;
+  }
+
+  // ── Industrial grid layout ───────────────────────────────────────────────
+
+  List<pw.Widget> _buildIndustrialContent(
+    PdfDocumentData data,
+    DocumentTemplate template,
+  ) {
+    final seller = data.seller;
+    final buyer = data.buyer;
+    final plainMoney = NumberFormat('#,##0.00', 'en_IN');
+    final dateFmt = DateFormat('dd-MM-yyyy');
+    final items = data.lineItems;
+    const minRows = 28;
+    final rowCount = items.length > minRows ? items.length : minRows;
+
+    final totalCgst = data.totals.gstRows.fold<double>(0, (s, r) => s + r.cgst);
+    final totalSgst = data.totals.gstRows.fold<double>(0, (s, r) => s + r.sgst);
+    final totalIgst = data.totals.gstRows.fold<double>(0, (s, r) => s + r.igst);
+
+    String fmtQty(double value) => value == value.truncateToDouble()
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(2);
+
+    String lineMoney(double value) => plainMoney.format(value.abs());
+
+    final topBand = pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'INVOICE',
+            style: pw.TextStyle(
+              fontSize: 24,
+              fontWeight: pw.FontWeight.bold,
+              letterSpacing: 0.4,
+            ),
+          ),
+          pw.Text(
+            '(ORIGINAL FOR RECIPIENT)',
+            style: pw.TextStyle(fontSize: 7, fontWeight: pw.FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+
+    final headerBody = pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.black, width: 0.8),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          pw.Container(
+            width: 170,
+            decoration: const pw.BoxDecoration(
+              border: pw.Border(
+                right: pw.BorderSide(color: PdfColors.black, width: 0.8),
+              ),
+            ),
+            child: pw.Table(
+              border: const pw.TableBorder(
+                horizontalInside: pw.BorderSide(
+                  color: PdfColors.black,
+                  width: 0.8,
+                ),
+                verticalInside: pw.BorderSide(
+                  color: PdfColors.black,
+                  width: 0.8,
+                ),
+              ),
+              children: [
+                pw.TableRow(
+                  children: [
+                    _industrialInfoCell('Invoice No:'),
+                    _industrialInfoCell(data.docNumber, bold: true),
+                  ],
+                ),
+                pw.TableRow(
+                  children: [
+                    _industrialInfoCell('Date:'),
+                    _industrialInfoCell(
+                      dateFmt.format(data.issueDate),
+                      bold: true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Padding(
+              padding: const pw.EdgeInsets.all(6),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.end,
+                    children: [
+                      if (template.showLogo && seller.logoImage != null)
+                        pw.Container(
+                          width: seller.logoIsWide ? 74 : 44,
+                          height: 30,
+                          margin: const pw.EdgeInsets.only(right: 8),
+                          child: pw.Image(
+                            seller.logoImage!,
+                            fit: pw.BoxFit.contain,
+                          ),
+                        ),
+                      pw.Expanded(
+                        child: pw.Text(
+                          seller.name.toUpperCase(),
+                          textAlign: pw.TextAlign.right,
+                          style: pw.TextStyle(
+                            fontSize: 14,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (seller.address != null && seller.address!.isNotEmpty)
+                    pw.Text(
+                      seller.address!,
+                      textAlign: pw.TextAlign.right,
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final toAndDetails = pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.black, width: 0.8),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Container(
+            color: PdfColors.black,
+            padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    'To.',
+                    style: pw.TextStyle(
+                      color: PdfColors.white,
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ),
+                pw.Text(
+                  'Our Details',
+                  style: pw.TextStyle(
+                    color: PdfColors.white,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                flex: 73,
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(6),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      right: pw.BorderSide(color: PdfColors.black, width: 0.8),
+                    ),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        buyer.name.toUpperCase(),
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      if (buyer.address != null && buyer.address!.isNotEmpty)
+                        pw.Text(
+                          buyer.address!,
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      if (buyer.state != null && buyer.state!.isNotEmpty)
+                        pw.Text(
+                          '${buyer.state}, India.',
+                          style: pw.TextStyle(
+                            fontSize: 9,
+                            fontStyle: pw.FontStyle.italic,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              pw.Expanded(
+                flex: 27,
+                child: pw.Padding(
+                  padding: const pw.EdgeInsets.all(6),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      if (seller.gstin != null && seller.gstin!.isNotEmpty)
+                        _industrialKvp('GSTIN', seller.gstin!),
+                      if (seller.phone != null && seller.phone!.isNotEmpty)
+                        _industrialKvp('PHONE', seller.phone!),
+                      if (seller.email != null && seller.email!.isNotEmpty)
+                        _industrialKvp('EMAIL', seller.email!),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    final itemTable = pw.Table(
+      border: pw.TableBorder.all(color: PdfColors.black, width: 0.8),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(6),
+        1: pw.FlexColumnWidth(10),
+        2: pw.FlexColumnWidth(46),
+        3: pw.FlexColumnWidth(11),
+        4: pw.FlexColumnWidth(13),
+        5: pw.FlexColumnWidth(14),
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: PdfColors.black),
+          children: [
+            _industrialHeadCell('SL. No.'),
+            _industrialHeadCell('HSN Code'),
+            _industrialHeadCell('Product Name / Description'),
+            _industrialHeadCell('Qty.'),
+            _industrialHeadCell('Unit Price'),
+            _industrialHeadCell('Total'),
+          ],
+        ),
+        for (var i = 0; i < rowCount; i++)
+          pw.TableRow(
+            children: [
+              _industrialBodyCell(
+                i < items.length ? '${i + 1}' : '',
+                align: pw.TextAlign.center,
+              ),
+              _industrialBodyCell(
+                i < items.length ? (items[i].hsnCode ?? '') : '',
+              ),
+              _industrialBodyCell(i < items.length ? items[i].name : ''),
+              _industrialBodyCell(
+                i < items.length ? fmtQty(items[i].qty) : '',
+                align: pw.TextAlign.center,
+              ),
+              _industrialBodyCell(
+                i < items.length ? lineMoney(items[i].unitPrice) : '',
+                align: pw.TextAlign.right,
+              ),
+              _industrialBodyCell(
+                i < items.length ? lineMoney(items[i].lineTotal) : '',
+                align: pw.TextAlign.right,
+                bold: i < items.length,
+              ),
+            ],
+          ),
+      ],
+    );
+
+    final bottomBlock = pw.Container(
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.black, width: 0.8),
+      ),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          pw.Expanded(
+            flex: 62,
+            child: pw.Container(
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  right: pw.BorderSide(color: PdfColors.black, width: 0.8),
+                ),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  _industrialLeftLine('Party GST No', buyer.gstin ?? '—'),
+                  _industrialLeftLine('Ref. Dc', data.subTypeLabel ?? '—'),
+                  _industrialLeftLine(
+                    'Ref. Dc Date',
+                    data.validUntil != null
+                        ? dateFmt.format(data.validUntil!)
+                        : '—',
+                  ),
+                  _industrialLeftLine('P.O. No.', '—'),
+                  _industrialLeftLine(
+                    'Date',
+                    data.dueDate != null ? dateFmt.format(data.dueDate!) : '—',
+                  ),
+                  _industrialLeftLine('Vehicle No.', '—'),
+                  pw.Container(
+                    width: double.infinity,
+                    color: PdfColors.black,
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    child: pw.Text(
+                      'OUR BANK DETAILS',
+                      style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  _industrialLeftLine('Bank Name', '—'),
+                  _industrialLeftLine('A/C No', '—'),
+                  _industrialLeftLine('A/C Name', seller.name),
+                  _industrialLeftLine('IFSC code', '—'),
+                  _industrialLeftLine('Branch', '—'),
+                ],
+              ),
+            ),
+          ),
+          pw.Expanded(
+            flex: 38,
+            child: pw.Column(
+              children: [
+                _industrialRightTotal(
+                  'Sub Total',
+                  lineMoney(data.totals.subtotal),
+                  bold: true,
+                ),
+                _industrialRightTotal('SGST', lineMoney(totalSgst)),
+                _industrialRightTotal('CGST', lineMoney(totalCgst)),
+                if (totalIgst > 0)
+                  _industrialRightTotal('IGST', lineMoney(totalIgst)),
+                _industrialRightTotal(
+                  'Round off / Freight',
+                  lineMoney(
+                    data.totals.freight +
+                        data.totals.insurance +
+                        data.totals.packing,
+                  ),
+                ),
+                _industrialRightTotal(
+                  'Grand Total',
+                  lineMoney(data.totals.grandTotal),
+                  bold: true,
+                ),
+                pw.Expanded(
+                  child: pw.Center(
+                    child: pw.Text(
+                      'For ${seller.name}',
+                      textAlign: pw.TextAlign.center,
+                      style: pw.TextStyle(
+                        fontSize: 11,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final footer = pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(
+          left: pw.BorderSide(color: PdfColors.black, width: 0.8),
+          right: pw.BorderSide(color: PdfColors.black, width: 0.8),
+          bottom: pw.BorderSide(color: PdfColors.black, width: 0.8),
+        ),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            seller.phone != null && seller.phone!.isNotEmpty
+                ? 'Ph. ${seller.phone}'
+                : '',
+            style: const pw.TextStyle(fontSize: 8),
+          ),
+          pw.Text(seller.email ?? '', style: const pw.TextStyle(fontSize: 8)),
+        ],
+      ),
+    );
+
+    return [topBand, headerBody, toAndDetails, itemTable, bottomBlock, footer];
+  }
+
+  pw.Widget _industrialInfoCell(String text, {bool bold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          fontSize: 8.5,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _industrialKvp(String key, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 2),
+      child: pw.Text(
+        '$key : $value',
+        style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+      ),
+    );
+  }
+
+  pw.Widget _industrialHeadCell(String text) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: pw.Text(
+        text,
+        textAlign: pw.TextAlign.center,
+        style: pw.TextStyle(
+          fontSize: 8.5,
+          color: PdfColors.white,
+          fontWeight: pw.FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _industrialBodyCell(
+    String text, {
+    pw.TextAlign align = pw.TextAlign.left,
+    bool bold = false,
+  }) {
+    return pw.Container(
+      height: 16,
+      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: pw.Text(
+        text,
+        textAlign: align,
+        style: pw.TextStyle(
+          fontSize: 8.4,
+          fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  pw.Widget _industrialLeftLine(String label, String value) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(
+          bottom: pw.BorderSide(color: PdfColors.black, width: 0.5),
+        ),
+      ),
+      child: pw.Row(
+        children: [
+          pw.SizedBox(
+            width: 92,
+            child: pw.Text(
+              '$label:',
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(value, style: const pw.TextStyle(fontSize: 8.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _industrialRightTotal(
+    String label,
+    String value, {
+    bool bold = false,
+  }) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: const pw.BoxDecoration(
+        border: pw.Border(
+          bottom: pw.BorderSide(color: PdfColors.black, width: 0.5),
+        ),
+      ),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            '$label:',
+            style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              fontSize: 8.5,
+              fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Header + document title ───────────────────────────────────────────────
@@ -600,10 +1128,7 @@ class PdfLayoutEngine {
             padding: const pw.EdgeInsets.only(right: 4),
             child: pw.Text(
               data.copyLabel!,
-              style: pw.TextStyle(
-                fontSize: 11,
-                fontWeight: pw.FontWeight.bold,
-              ),
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
             ),
           ),
         ),

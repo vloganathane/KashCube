@@ -34,7 +34,7 @@ class DocumentTemplateRecord {
   /// User-visible template name, e.g. 'Modern' or 'My Custom Template'.
   final String name;
 
-  /// Preset basis: 'classic' | 'modern' | 'plain' | 'receipt'.
+  /// Preset basis (examples): 'classic' | 'ledger' | 'modern' | 'plain'.
   final String basedOn;
 
   /// Hex colour string for the accent, e.g. '#1B5E20'.
@@ -85,30 +85,55 @@ class DocumentTemplateRecord {
   // ─── Conversions ───────────────────────────────────────────────────────────
 
   /// Build a [DocumentTemplate] suitable for passing to [PdfLayoutEngine].
-  DocumentTemplate toDocumentTemplate() => DocumentTemplate(
-    // Presets keep their well-known id so DocumentTemplate.fromId() works.
-    // User-created templates use 'tpl_<db_id>'.
-    id: isPreset ? basedOn : 'tpl_$id',
-    name: name,
-    accentColor: accentColor,
-    headerStyle: headerStyle,
-    showLogo: showLogo,
-    amountDecimalDigits: amountDecimalDigits,
-    pageSize: pageSize,
-    fontFamily: PdfFontFamily.values.firstWhere(
-      (f) => f.name == fontFamilyName,
-      orElse: () => PdfFontFamily.helvetica,
-    ),
-    bodyFontSize: bodyFontSize,
-    titleFontSize: titleFontSize,
-    pageMargin: pageMargin,
-    sectionSpacing: sectionSpacing,
-    itemColumnWidthPct: itemColumnWidthPct,
-    headerAlignment: headerAlignmentName == 'right'
-        ? PdfHeaderAlignment.right
-        : PdfHeaderAlignment.left,
-    config: builderConfig,
-  );
+  DocumentTemplate toDocumentTemplate() {
+    // Built-in presets should always use the strongly-typed preset definition
+    // (fonts, columns, spacing, builder config). DB rows only decide
+    // selection/activation and display name.
+    if (isPreset) {
+      final preset = DocumentTemplate.fromId(basedOn);
+      return DocumentTemplate(
+        id: preset.id,
+        name: name,
+        accentColor: preset.accentColor,
+        headerStyle: preset.headerStyle,
+        showLogo: preset.showLogo,
+        amountDecimalDigits: preset.amountDecimalDigits,
+        pageSize: preset.pageSize,
+        fontFamily: preset.fontFamily,
+        bodyFontSize: preset.bodyFontSize,
+        titleFontSize: preset.titleFontSize,
+        pageMargin: preset.pageMargin,
+        sectionSpacing: preset.sectionSpacing,
+        itemColumnWidthPct: preset.itemColumnWidthPct,
+        headerAlignment: preset.headerAlignment,
+        config: preset.config,
+      );
+    }
+
+    return DocumentTemplate(
+      // User-created templates use 'tpl_<db_id>'.
+      id: 'tpl_$id',
+      name: name,
+      accentColor: accentColor,
+      headerStyle: headerStyle,
+      showLogo: showLogo,
+      amountDecimalDigits: amountDecimalDigits,
+      pageSize: pageSize,
+      fontFamily: PdfFontFamily.values.firstWhere(
+        (f) => f.name == fontFamilyName,
+        orElse: () => PdfFontFamily.helvetica,
+      ),
+      bodyFontSize: bodyFontSize,
+      titleFontSize: titleFontSize,
+      pageMargin: pageMargin,
+      sectionSpacing: sectionSpacing,
+      itemColumnWidthPct: itemColumnWidthPct,
+      headerAlignment: headerAlignmentName == 'right'
+          ? PdfHeaderAlignment.right
+          : PdfHeaderAlignment.left,
+      config: builderConfig,
+    );
+  }
 
   Map<String, Object?> toMap() => {
     'name': name,

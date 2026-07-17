@@ -48,18 +48,32 @@ class PdfLayoutEngine {
       decimalDigits: template.amountDecimalDigits,
     );
     final pdf = pw.Document();
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: template.pageFormat,
-        theme: _themeFor(template),
-        margin: template.isThermal
-            ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
-            : pw.EdgeInsets.all(template.pageMargin),
-        build: (ctx) => template.isThermal
-            ? _buildThermalContent(data, fmt)
-            : _buildContent(data, template, fmt),
-      ),
-    );
+    if (template.id == 'industrial') {
+      pdf.addPage(
+        pw.Page(
+          pageFormat: template.pageFormat,
+          theme: _themeFor(template),
+          margin: pw.EdgeInsets.all(template.pageMargin),
+          build: (ctx) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: _buildIndustrialContent(data, template),
+          ),
+        ),
+      );
+    } else {
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: template.pageFormat,
+          theme: _themeFor(template),
+          margin: template.isThermal
+              ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
+              : pw.EdgeInsets.all(template.pageMargin),
+          build: (ctx) => template.isThermal
+              ? _buildThermalContent(data, fmt)
+              : _buildContent(data, template, fmt),
+        ),
+      );
+    }
     return pdf.save();
   }
 
@@ -77,18 +91,32 @@ class PdfLayoutEngine {
     );
 
     final pdf = pw.Document();
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: template.pageFormat,
-        theme: _themeFor(template),
-        margin: template.isThermal
-            ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
-            : pw.EdgeInsets.all(template.pageMargin),
-        build: (ctx) => template.isThermal
-            ? _buildThermalContent(data, fmt)
-            : _buildContent(data, template, fmt),
-      ),
-    );
+    if (template.id == 'industrial') {
+      pdf.addPage(
+        pw.Page(
+          pageFormat: template.pageFormat,
+          theme: _themeFor(template),
+          margin: pw.EdgeInsets.all(template.pageMargin),
+          build: (ctx) => pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: _buildIndustrialContent(data, template),
+          ),
+        ),
+      );
+    } else {
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: template.pageFormat,
+          theme: _themeFor(template),
+          margin: template.isThermal
+              ? pw.EdgeInsets.all(4 * PdfPageFormat.mm)
+              : pw.EdgeInsets.all(template.pageMargin),
+          build: (ctx) => template.isThermal
+              ? _buildThermalContent(data, fmt)
+              : _buildContent(data, template, fmt),
+        ),
+      );
+    }
 
     final path = await PdfCacheManager.instance.tempPath(filename);
     final file = File(path);
@@ -186,8 +214,13 @@ class PdfLayoutEngine {
     final plainMoney = NumberFormat('#,##0.00', 'en_IN');
     final dateFmt = DateFormat('dd-MM-yyyy');
     final items = data.lineItems;
-    const minRows = 28;
-    final rowCount = items.length > minRows ? items.length : minRows;
+    const minRows = 18;
+    const maxRows = 20;
+    final visibleItems = items.take(maxRows).toList();
+    final rowCount = visibleItems.length > minRows
+        ? visibleItems.length
+        : minRows;
+    final hasOverflowItems = items.length > maxRows;
 
     final totalCgst = data.totals.gstRows.fold<double>(0, (s, r) => s + r.cgst);
     final totalSgst = data.totals.gstRows.fold<double>(0, (s, r) => s + r.sgst);
@@ -226,7 +259,7 @@ class PdfLayoutEngine {
         border: pw.Border.all(color: PdfColors.black, width: 0.8),
       ),
       child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Container(
             width: 170,
@@ -237,6 +270,7 @@ class PdfLayoutEngine {
             ),
             child: pw.Table(
               border: const pw.TableBorder(
+                bottom: pw.BorderSide(color: PdfColors.black, width: 0.8),
                 horizontalInside: pw.BorderSide(
                   color: PdfColors.black,
                   width: 0.8,
@@ -271,30 +305,23 @@ class PdfLayoutEngine {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.end,
-                    children: [
-                      if (template.showLogo && seller.logoImage != null)
-                        pw.Container(
-                          width: seller.logoIsWide ? 74 : 44,
-                          height: 30,
-                          margin: const pw.EdgeInsets.only(right: 8),
-                          child: pw.Image(
-                            seller.logoImage!,
-                            fit: pw.BoxFit.contain,
-                          ),
-                        ),
-                      pw.Expanded(
-                        child: pw.Text(
-                          seller.name.toUpperCase(),
-                          textAlign: pw.TextAlign.right,
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
+                  if (template.showLogo && seller.logoImage != null)
+                    pw.Container(
+                      width: seller.logoIsWide ? 74 : 44,
+                      height: 30,
+                      margin: const pw.EdgeInsets.only(bottom: 6),
+                      child: pw.Image(
+                        seller.logoImage!,
+                        fit: pw.BoxFit.contain,
                       ),
-                    ],
+                    ),
+                  pw.Text(
+                    seller.name.toUpperCase(),
+                    textAlign: pw.TextAlign.right,
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                   if (seller.address != null && seller.address!.isNotEmpty)
                     pw.Text(
@@ -302,6 +329,24 @@ class PdfLayoutEngine {
                       textAlign: pw.TextAlign.right,
                       style: const pw.TextStyle(fontSize: 9),
                     ),
+                  // if (seller.gstin != null && seller.gstin!.isNotEmpty)
+                  //   pw.Text(
+                  //     'GSTIN: ${seller.gstin}',
+                  //     textAlign: pw.TextAlign.right,
+                  //     style: const pw.TextStyle(fontSize: 9),
+                  //   ),
+                  // if (seller.panNo != null && seller.panNo!.isNotEmpty)
+                  //   pw.Text(
+                  //     'PAN: ${seller.panNo}',
+                  //     textAlign: pw.TextAlign.right,
+                  //     style: const pw.TextStyle(fontSize: 9),
+                  //   ),
+                  // if (seller.tinNo != null && seller.tinNo!.isNotEmpty)
+                  //   pw.Text(
+                  //     'TIN: ${seller.tinNo}',
+                  //     textAlign: pw.TextAlign.right,
+                  //     style: const pw.TextStyle(fontSize: 9),
+                  //   ),
                 ],
               ),
             ),
@@ -390,10 +435,14 @@ class PdfLayoutEngine {
                     children: [
                       if (seller.gstin != null && seller.gstin!.isNotEmpty)
                         _industrialKvp('GSTIN', seller.gstin!),
-                      if (seller.phone != null && seller.phone!.isNotEmpty)
-                        _industrialKvp('PHONE', seller.phone!),
-                      if (seller.email != null && seller.email!.isNotEmpty)
-                        _industrialKvp('EMAIL', seller.email!),
+                      if (seller.panNo != null && seller.panNo!.isNotEmpty)
+                        _industrialKvp('PAN', seller.panNo!),
+                      if (seller.tinNo != null && seller.tinNo!.isNotEmpty)
+                        _industrialKvp('TIN', seller.tinNo!),
+                      // if (seller.phone != null && seller.phone!.isNotEmpty)
+                      //   _industrialKvp('PHONE', seller.phone!),
+                      // if (seller.email != null && seller.email!.isNotEmpty)
+                      //   _industrialKvp('EMAIL', seller.email!),
                     ],
                   ),
                 ),
@@ -430,25 +479,31 @@ class PdfLayoutEngine {
           pw.TableRow(
             children: [
               _industrialBodyCell(
-                i < items.length ? '${i + 1}' : '',
+                i < visibleItems.length ? '${i + 1}' : '',
                 align: pw.TextAlign.center,
               ),
               _industrialBodyCell(
-                i < items.length ? (items[i].hsnCode ?? '') : '',
+                i < visibleItems.length ? (visibleItems[i].hsnCode ?? '') : '',
               ),
-              _industrialBodyCell(i < items.length ? items[i].name : ''),
               _industrialBodyCell(
-                i < items.length ? fmtQty(items[i].qty) : '',
+                i < visibleItems.length ? visibleItems[i].name : '',
+              ),
+              _industrialBodyCell(
+                i < visibleItems.length ? fmtQty(visibleItems[i].qty) : '',
                 align: pw.TextAlign.center,
               ),
               _industrialBodyCell(
-                i < items.length ? lineMoney(items[i].unitPrice) : '',
-                align: pw.TextAlign.right,
+                i < visibleItems.length
+                    ? lineMoney(visibleItems[i].unitPrice)
+                    : '',
+                align: pw.TextAlign.center,
               ),
               _industrialBodyCell(
-                i < items.length ? lineMoney(items[i].lineTotal) : '',
-                align: pw.TextAlign.right,
-                bold: i < items.length,
+                i < visibleItems.length
+                    ? lineMoney(visibleItems[i].lineTotal)
+                    : '',
+                align: pw.TextAlign.center,
+                bold: i < visibleItems.length,
               ),
             ],
           ),
@@ -460,7 +515,7 @@ class PdfLayoutEngine {
         border: pw.Border.all(color: PdfColors.black, width: 0.8),
       ),
       child: pw.Row(
-        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Expanded(
             flex: 62,
@@ -473,20 +528,18 @@ class PdfLayoutEngine {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  _industrialLeftLine('Party GST No', buyer.gstin ?? '—'),
-                  _industrialLeftLine('Ref. Dc', data.subTypeLabel ?? '—'),
+                  _industrialLeftLine('Party GST No', buyer.gstin ?? ''),
+                  _industrialLeftLine('Ref. Dc', data.referenceDocNo ?? ''),
                   _industrialLeftLine(
                     'Ref. Dc Date',
-                    data.validUntil != null
-                        ? dateFmt.format(data.validUntil!)
-                        : '—',
+                    data.referenceDocDate ?? '',
                   ),
-                  _industrialLeftLine('P.O. No.', '—'),
+                  _industrialLeftLine('P.O. No.', data.poNumber ?? ''),
                   _industrialLeftLine(
                     'Date',
-                    data.dueDate != null ? dateFmt.format(data.dueDate!) : '—',
+                    data.dueDate != null ? dateFmt.format(data.dueDate!) : '',
                   ),
-                  _industrialLeftLine('Vehicle No.', '—'),
+                  _industrialLeftLine('Vehicle No.', data.vehicleNo ?? ''),
                   pw.Container(
                     width: double.infinity,
                     color: PdfColors.black,
@@ -503,11 +556,14 @@ class PdfLayoutEngine {
                       ),
                     ),
                   ),
-                  _industrialLeftLine('Bank Name', '—'),
-                  _industrialLeftLine('A/C No', '—'),
-                  _industrialLeftLine('A/C Name', seller.name),
-                  _industrialLeftLine('IFSC code', '—'),
-                  _industrialLeftLine('Branch', '—'),
+                  _industrialLeftLine('Bank Name', data.bankName ?? ''),
+                  _industrialLeftLine('A/C No', data.bankAccountNo ?? ''),
+                  _industrialLeftLine(
+                    'A/C Name',
+                    data.bankAccountName ?? seller.name,
+                  ),
+                  _industrialLeftLine('IFSC code', data.bankIfsc ?? ''),
+                  _industrialLeftLine('Branch', data.bankBranch ?? ''),
                 ],
               ),
             ),
@@ -538,7 +594,8 @@ class PdfLayoutEngine {
                   lineMoney(data.totals.grandTotal),
                   bold: true,
                 ),
-                pw.Expanded(
+                pw.SizedBox(
+                  height: 58,
                   child: pw.Center(
                     child: pw.Text(
                       'For ${seller.name}',
@@ -580,7 +637,22 @@ class PdfLayoutEngine {
       ),
     );
 
-    return [topBand, headerBody, toAndDetails, itemTable, bottomBlock, footer];
+    return [
+      topBand,
+      headerBody,
+      toAndDetails,
+      itemTable,
+      if (hasOverflowItems)
+        pw.Padding(
+          padding: const pw.EdgeInsets.only(top: 4, left: 2),
+          child: pw.Text(
+            'Showing first $maxRows items (${items.length - maxRows} more not shown in this style).',
+            style: const pw.TextStyle(fontSize: 7),
+          ),
+        ),
+      bottomBlock,
+      footer,
+    ];
   }
 
   pw.Widget _industrialInfoCell(String text, {bool bold = false}) {

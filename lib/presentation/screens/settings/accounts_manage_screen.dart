@@ -171,7 +171,7 @@ class AccountsManageScreen extends ConsumerWidget {
 /// - Account Type (required)
 /// - Opening Balance (optional, ₹ prefix)
 /// - Credit Limit (optional, only for creditCard type)
-/// - Account Number Last 4 (optional, for bank/card types)
+/// - Account Number (optional, full number for bank/card types)
 /// - Bank Name (optional, for bank/card types)
 /// - Linked Bank Account (optional, for debitCard/upiWallet types)
 /// - Set as primary (checkbox)
@@ -192,6 +192,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
   final _creditLimitCtrl = TextEditingController();
   final _acctNumberCtrl = TextEditingController();
   final _bankNameCtrl = TextEditingController();
+  final _ifscCtrl = TextEditingController();
+  final _branchCtrl = TextEditingController();
 
   late AccountType _type;
   int? _linkedBankAccountId;
@@ -220,6 +222,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     _linkedBankAccountId = a?.linkedBankAccountId;
     _acctNumberCtrl.text = a?.accountNumberLast4 ?? '';
     _bankNameCtrl.text = a?.bankName ?? '';
+    _ifscCtrl.text = a?.ifscCode ?? '';
+    _branchCtrl.text = a?.branch ?? '';
 
     if (a?.openingBalance != null && a!.openingBalance! != 0) {
       _openingBalCtrl.text = _formatBalance(a.openingBalance!);
@@ -236,6 +240,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     _creditLimitCtrl.dispose();
     _acctNumberCtrl.dispose();
     _bankNameCtrl.dispose();
+    _ifscCtrl.dispose();
+    _branchCtrl.dispose();
     super.dispose();
   }
 
@@ -247,6 +253,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     final creditLimit = double.tryParse(_creditLimitCtrl.text.trim());
     final acctNum = _acctNumberCtrl.text.trim();
     final bankName = _bankNameCtrl.text.trim();
+    final ifscCode = _ifscCtrl.text.trim();
+    final branch = _branchCtrl.text.trim();
 
     widget.onSave(
       (widget.account ??
@@ -259,6 +267,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             linkedBankAccountId: _linkedBankAccountId,
             accountNumberLast4: acctNum.isEmpty ? null : acctNum,
             bankName: bankName.isEmpty ? null : bankName,
+            ifscCode: ifscCode.isEmpty ? null : ifscCode.toUpperCase(),
+            branch: branch.isEmpty ? null : branch,
             isPrimary: _isPrimary,
             isActive: true,
           ),
@@ -390,13 +400,31 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
               TextField(
                 controller: _acctNumberCtrl,
                 keyboardType: TextInputType.number,
-                maxLength: 4,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: const InputDecoration(
-                  labelText: 'Last 4 digits of account / card number',
-                  hintText: '1234',
+                  labelText: 'Account / card number',
+                  hintText: 'Enter full account number',
                   prefixIcon: Icon(Icons.dialpad_outlined),
-                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextField(
+                controller: _ifscCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'IFSC Code',
+                  hintText: 'HDFC0001234',
+                  prefixIcon: Icon(Icons.code_outlined),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              TextField(
+                controller: _branchCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Branch',
+                  hintText: 'Main Branch',
+                  prefixIcon: Icon(Icons.apartment_outlined),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),

@@ -975,6 +975,8 @@ class DatabaseHelper {
           phone TEXT,
           email TEXT,
           gst_no TEXT,
+          pan_no TEXT,
+          tin_no TEXT,
           logo_path TEXT,
           is_active INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -4104,6 +4106,26 @@ class DatabaseHelper {
         'version': 96,
         'description':
             'Seed Industrial Grid and re-sync built-in PDF template presets',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 97) {
+      await db.execute('ALTER TABLE invoices ADD COLUMN po_number TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN ifsc_code TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN branch TEXT');
+      await db.insert('schema_version', {
+        'version': 97,
+        'description':
+            'Add purchase order number to invoices plus IFSC code and branch to accounts',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 98) {
+      await db.execute('ALTER TABLE businesses ADD COLUMN pan_no TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN tin_no TEXT');
+      await db.insert('schema_version', {
+        'version': 98,
+        'description': 'Add PAN and TIN fields to businesses',
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 

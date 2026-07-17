@@ -93,6 +93,8 @@ class Account extends Equatable {
     required this.accountName,
     this.bankName,
     this.accountNumberLast4,
+    this.ifscCode,
+    this.branch,
     this.openingBalance,
     this.creditLimit,
     this.linkedBankAccountId,
@@ -112,6 +114,8 @@ class Account extends Equatable {
   final String accountName;
   final String? bankName;
   final String? accountNumberLast4;
+  final String? ifscCode;
+  final String? branch;
 
   /// The seed balance at the time the account was set up.
   final double? openingBalance;
@@ -137,6 +141,8 @@ class Account extends Equatable {
     String? accountName,
     String? bankName,
     String? accountNumberLast4,
+    String? ifscCode,
+    String? branch,
     double? openingBalance,
     double? creditLimit,
     int? linkedBankAccountId,
@@ -156,6 +162,8 @@ class Account extends Equatable {
       accountName: accountName ?? this.accountName,
       bankName: bankName ?? this.bankName,
       accountNumberLast4: accountNumberLast4 ?? this.accountNumberLast4,
+      ifscCode: ifscCode ?? this.ifscCode,
+      branch: branch ?? this.branch,
       openingBalance: openingBalance ?? this.openingBalance,
       creditLimit: creditLimit ?? this.creditLimit,
       linkedBankAccountId: linkedBankAccountId ?? this.linkedBankAccountId,
@@ -178,6 +186,8 @@ class Account extends Equatable {
       'account_name': accountName,
       'bank_name': bankName,
       'account_number_last4': accountNumberLast4,
+      'ifsc_code': ifscCode,
+      'branch': branch,
       'opening_balance': openingBalance,
       'credit_limit': creditLimit,
       'linked_bank_account_id': linkedBankAccountId,
@@ -200,6 +210,8 @@ class Account extends Equatable {
       accountName: map['account_name'] as String,
       bankName: map['bank_name'] as String?,
       accountNumberLast4: map['account_number_last4'] as String?,
+      ifscCode: map['ifsc_code'] as String?,
+      branch: map['branch'] as String?,
       // Prefer opening_balance (v78+); fall back to current_balance for old rows.
       openingBalance:
           (map['opening_balance'] as num?)?.toDouble() ??
@@ -228,5 +240,14 @@ class Account extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, accountName, accountType, openingBalance];
+  List<Object?> get props => [
+    id,
+    accountName,
+    accountType,
+    openingBalance,
+    bankName,
+    accountNumberLast4,
+    ifscCode,
+    branch,
+  ];
 }

@@ -733,13 +733,13 @@ class DocumentTemplate {
           id: 'rate',
           label: 'Unit Price',
           widthPct: 13,
-          alignment: PdfTextAlign.right,
+          alignment: PdfTextAlign.center,
         ),
         PdfTemplateColumn(
           id: 'amount',
           label: 'Total',
           widthPct: 14,
-          alignment: PdfTextAlign.right,
+          alignment: PdfTextAlign.center,
         ),
       ],
       rowDensity: 'compact',
@@ -804,6 +804,8 @@ class PdfPartyInfo {
   const PdfPartyInfo({
     required this.name,
     this.gstin,
+    this.panNo,
+    this.tinNo,
     this.address,
     this.phone,
     this.phones,
@@ -815,6 +817,8 @@ class PdfPartyInfo {
 
   final String name;
   final String? gstin;
+  final String? panNo;
+  final String? tinNo;
   final String? address;
   final String? phone;
   final List<String>? phones;
@@ -992,6 +996,15 @@ class PdfDocumentData {
     this.placeOfSupply,
     this.reverseCharge = false,
     this.notes,
+    this.referenceDocNo,
+    this.referenceDocDate,
+    this.poNumber,
+    this.vehicleNo,
+    this.bankName,
+    this.bankAccountNo,
+    this.bankIfsc,
+    this.bankBranch,
+    this.bankAccountName,
     required this.lineItems,
     required this.totals,
     this.transport,
@@ -1034,6 +1047,17 @@ class PdfDocumentData {
   final String? placeOfSupply;
   final bool reverseCharge;
   final String? notes;
+
+  // ── Optional invoice metadata used by industrial grid layout ─────────────
+  final String? referenceDocNo;
+  final String? referenceDocDate;
+  final String? poNumber;
+  final String? vehicleNo;
+  final String? bankName;
+  final String? bankAccountNo;
+  final String? bankIfsc;
+  final String? bankBranch;
+  final String? bankAccountName;
 
   final List<PdfLineItem> lineItems;
   final PdfTotals totals;

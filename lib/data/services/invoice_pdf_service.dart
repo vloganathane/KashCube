@@ -14,6 +14,7 @@ import '../models/invoice.dart';
 import '../models/party.dart';
 import '../models/quote.dart';
 import 'app_logger.dart';
+import 'database_helper.dart';
 import 'document_template_service.dart';
 import 'gst_calculator.dart';
 import 'pdf_copy_info.dart';
@@ -24,6 +25,20 @@ class _LogoInfo {
   _LogoInfo({this.image, this.isWide = false});
   final pw.MemoryImage? image;
   final bool isWide;
+}
+
+class _PrimaryBankDetails {
+  const _PrimaryBankDetails({
+    this.bankName,
+    this.accountNo,
+    this.ifscCode,
+    this.branch,
+  });
+
+  final String? bankName;
+  final String? accountNo;
+  final String? ifscCode;
+  final String? branch;
 }
 
 /// Thin adapter that serialises [Invoice] / [Quote] domain objects into
@@ -47,6 +62,7 @@ class InvoicePdfService {
     String? copyLabel,
   }) async {
     final logoInfo = business != null ? await _loadLogo(business) : null;
+    final bankDetails = await _loadPrimaryBankDetails();
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
         ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
@@ -61,6 +77,7 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
       copyLabel: copyLabel,
+      bankDetails: bankDetails,
     );
     final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
@@ -80,6 +97,7 @@ class InvoicePdfService {
     String? copyLabel,
   }) async {
     final logoInfo = business != null ? await _loadLogo(business) : null;
+    final bankDetails = await _loadPrimaryBankDetails();
     final upiQrBytes =
         (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
         ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
@@ -94,6 +112,7 @@ class InvoicePdfService {
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
       copyLabel: copyLabel,
+      bankDetails: bankDetails,
     );
     final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateBytes(data, template);
@@ -173,6 +192,7 @@ class InvoicePdfService {
     bool showFreeWatermark = false,
     Uint8List? upiQrBytes,
     String? copyLabel,
+    _PrimaryBankDetails? bankDetails,
   }) {
     final sellerState = business?.state;
     final buyerState = customerParty?.state;
@@ -215,6 +235,17 @@ class InvoicePdfService {
       placeOfSupply: invoice.placeOfSupply,
       reverseCharge: invoice.reverseCharge,
       notes: invoice.notes,
+      poNumber: invoice.poNumber,
+      referenceDocNo: invoice.challanId != null
+          ? 'DC/${invoice.challanId}'
+          : invoice.originalInvoiceNo,
+      referenceDocDate: invoice.originalInvoiceDate,
+      vehicleNo: invoice.vehicleNo,
+      bankName: bankDetails?.bankName,
+      bankAccountNo: bankDetails?.accountNo,
+      bankIfsc: bankDetails?.ifscCode,
+      bankBranch: bankDetails?.branch,
+      bankAccountName: business?.name,
       lineItems: invoice.items
           .map(
             (item) => PdfLineItem(
@@ -381,6 +412,8 @@ class InvoicePdfService {
     return PdfPartyInfo(
       name: business.name,
       gstin: business.gstNo,
+      panNo: business.panNo,
+      tinNo: business.tinNo,
       address: addressParts.isEmpty ? null : addressParts.join(', '),
       phone: business.phone,
       phones: business.phones,
@@ -467,6 +500,48 @@ class InvoicePdfService {
         return PdfColors.grey600;
       case QuoteStatus.pendingNumber:
         return PdfColors.grey600;
+    }
+  }
+
+  Future<_PrimaryBankDetails?> _loadPrimaryBankDetails() async {
+    try {
+      final db = await DatabaseHelper.instance.database;
+      final rows = await db.query(
+        'accounts',
+        columns: const [
+          'bank_name',
+          'account_number_last4',
+          'ifsc_code',
+          'branch',
+        ],
+        where: 'deleted_at IS NULL AND is_active = 1',
+        orderBy: 'is_primary DESC, id ASC',
+        limit: 1,
+      );
+      if (rows.isEmpty) return null;
+
+      final row = rows.first;
+      final bankName = (row['bank_name'] as String?)?.trim();
+      final bankNameValue = (bankName != null && bankName.isNotEmpty)
+          ? bankName
+          : null;
+      final accountNo = (row['account_number_last4'] as String?)?.trim();
+      final ifscCode = (row['ifsc_code'] as String?)?.trim();
+      final branch = (row['branch'] as String?)?.trim();
+
+      return _PrimaryBankDetails(
+        bankName: bankNameValue,
+        accountNo: accountNo,
+        ifscCode: ifscCode != null && ifscCode.isNotEmpty ? ifscCode : null,
+        branch: branch != null && branch.isNotEmpty ? branch : null,
+      );
+    } catch (e) {
+      AppLogger.instance.debug(
+        'Unable to load primary account details for invoice PDF',
+        category: 'invoice_pdf',
+        error: e,
+      );
+      return null;
     }
   }
 

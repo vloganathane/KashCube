@@ -89,6 +89,7 @@ enum AccountType {
 class Account extends Equatable {
   const Account({
     this.id,
+    this.businessId,
     required this.accountType,
     required this.accountName,
     this.bankName,
@@ -110,6 +111,7 @@ class Account extends Equatable {
   });
 
   final int? id;
+  final int? businessId;
   final AccountType accountType;
   final String accountName;
   final String? bankName;
@@ -137,6 +139,7 @@ class Account extends Equatable {
 
   Account copyWith({
     int? id,
+    int? businessId,
     AccountType? accountType,
     String? accountName,
     String? bankName,
@@ -158,6 +161,7 @@ class Account extends Equatable {
   }) {
     return Account(
       id: id ?? this.id,
+      businessId: businessId ?? this.businessId,
       accountType: accountType ?? this.accountType,
       accountName: accountName ?? this.accountName,
       bankName: bankName ?? this.bankName,
@@ -182,6 +186,7 @@ class Account extends Equatable {
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
+      'business_id': businessId,
       'account_type': accountType.dbValue,
       'account_name': accountName,
       'bank_name': bankName,
@@ -206,6 +211,7 @@ class Account extends Equatable {
   factory Account.fromMap(Map<String, dynamic> map) {
     return Account(
       id: map['id'] as int?,
+      businessId: map['business_id'] as int?,
       accountType: AccountType.fromDb(map['account_type'] as String),
       accountName: map['account_name'] as String,
       bankName: map['bank_name'] as String?,
@@ -242,6 +248,7 @@ class Account extends Equatable {
   @override
   List<Object?> get props => [
     id,
+    businessId,
     accountName,
     accountType,
     openingBalance,

@@ -506,18 +506,46 @@ class InvoicePdfService {
   Future<_PrimaryBankDetails?> _loadPrimaryBankDetails() async {
     try {
       final db = await DatabaseHelper.instance.database;
-      final rows = await db.query(
-        'accounts',
-        columns: const [
-          'bank_name',
-          'account_number_last4',
-          'ifsc_code',
-          'branch',
-        ],
+      final activeBusinessRows = await db.query(
+        'businesses',
+        columns: const ['id'],
         where: 'deleted_at IS NULL AND is_active = 1',
-        orderBy: 'is_primary DESC, id ASC',
+        orderBy: 'id ASC',
         limit: 1,
       );
+      final activeBusinessId = activeBusinessRows.isNotEmpty
+          ? activeBusinessRows.first['id'] as int?
+          : null;
+
+      final rows = activeBusinessId == null
+          ? await db.query(
+              'accounts',
+              columns: const [
+                'bank_name',
+                'account_number_last4',
+                'ifsc_code',
+                'branch',
+              ],
+              where:
+                  'deleted_at IS NULL AND is_active = 1 AND business_id IS NULL',
+              orderBy: 'is_primary DESC, id ASC',
+              limit: 1,
+            )
+          : await db.rawQuery(
+              '''
+              SELECT bank_name, account_number_last4, ifsc_code, branch
+              FROM accounts
+              WHERE deleted_at IS NULL
+                AND is_active = 1
+                AND (business_id = ? OR business_id IS NULL)
+              ORDER BY
+                CASE WHEN business_id = ? THEN 0 ELSE 1 END,
+                is_primary DESC,
+                id ASC
+              LIMIT 1
+              ''',
+              [activeBusinessId, activeBusinessId],
+            );
       if (rows.isEmpty) return null;
 
       final row = rows.first;

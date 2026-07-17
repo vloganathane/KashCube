@@ -6,6 +6,7 @@ import '../../../core/constants/app_spacing.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/account.dart';
 import '../../providers/account_provider.dart';
+import '../../providers/business_provider.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 
@@ -196,6 +197,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
   final _branchCtrl = TextEditingController();
 
   late AccountType _type;
+  int? _businessId;
+  bool _businessSelectionInitialized = false;
   int? _linkedBankAccountId;
   bool _isPrimary = false;
 
@@ -218,6 +221,8 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     final a = widget.account;
     _nameController.text = a?.accountName ?? '';
     _type = a?.accountType ?? AccountType.savings;
+    _businessId = a?.businessId;
+    _businessSelectionInitialized = _isEditing;
     _isPrimary = a?.isPrimary ?? false;
     _linkedBankAccountId = a?.linkedBankAccountId;
     _acctNumberCtrl.text = a?.accountNumberLast4 ?? '';
@@ -264,6 +269,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             accountType: _type,
             openingBalance: openingBal,
             creditLimit: creditLimit,
+            businessId: _businessId,
             linkedBankAccountId: _linkedBankAccountId,
             accountNumberLast4: acctNum.isEmpty ? null : acctNum,
             bankName: bankName.isEmpty ? null : bankName,
@@ -280,6 +286,12 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
   Widget build(BuildContext context) {
     final tt = Theme.of(context).textTheme;
     final allAccounts = ref.watch(accountsProvider).valueOrNull ?? [];
+    final businesses = ref.watch(businessesProvider).valueOrNull ?? const [];
+    if (!_businessSelectionInitialized) {
+      final activeBusiness = ref.watch(activeBusinessProvider);
+      _businessId = activeBusiness?.id;
+      _businessSelectionInitialized = true;
+    }
     // Potential linked bank accounts: savings/current only, excluding self.
     final bankAccounts = allAccounts
         .where(
@@ -342,6 +354,32 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
               },
             ),
             const SizedBox(height: AppSpacing.lg),
+
+            if (businesses.isNotEmpty) ...[
+              DropdownButtonFormField<int?>(
+                initialValue: _businessId,
+                decoration: const InputDecoration(
+                  labelText: 'Business',
+                  prefixIcon: Icon(Icons.business_outlined),
+                  helperText:
+                      'Bank details from this account are used for that business\'s invoices',
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('All businesses'),
+                  ),
+                  ...businesses.map(
+                    (b) => DropdownMenuItem<int?>(
+                      value: b.id,
+                      child: Text(b.name),
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _businessId = v),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
 
             // ── Opening Balance ───────────────────────────────────────
             TextField(

@@ -627,9 +627,7 @@ class PdfLayoutEngine {
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
-            seller.phone != null && seller.phone!.isNotEmpty
-                ? 'Ph. ${seller.phone}'
-                : '',
+            _phoneList(seller) != null ? 'Ph. ${_phoneList(seller)}' : '',
             style: const pw.TextStyle(fontSize: 8),
           ),
           pw.Text(seller.email ?? '', style: const pw.TextStyle(fontSize: 8)),
@@ -832,8 +830,8 @@ class PdfLayoutEngine {
             textAlign: pw.TextAlign.center,
           ),
         ),
-      if (seller.phone != null && seller.phone!.isNotEmpty)
-        pw.Center(child: pw.Text('Ph: ${seller.phone}', style: ts8)),
+      if (_phoneList(seller) != null)
+        pw.Center(child: pw.Text('Ph: ${_phoneList(seller)}', style: ts8)),
       if (seller.gstin != null && seller.gstin!.isNotEmpty)
         pw.Center(child: pw.Text('GSTIN: ${seller.gstin}', style: ts8)),
       pw.SizedBox(height: 4),
@@ -1259,14 +1257,26 @@ class PdfLayoutEngine {
   }
 
   String? _contactLine(PdfPartyInfo p) {
-    final phonePart = (p.phones != null && p.phones!.isNotEmpty)
-        ? p.phones!.join(', ')
-        : p.phone;
+    final phonePart = _phoneList(p);
     final parts = [
       if (phonePart != null && phonePart.isNotEmpty) 'Ph: $phonePart',
       p.email,
     ].where((e) => e != null && e.isNotEmpty);
     return parts.isEmpty ? null : parts.join(' | ');
+  }
+
+  String? _phoneList(PdfPartyInfo p) {
+    final values = <String>{};
+    if (p.phones != null) {
+      for (final value in p.phones!) {
+        final trimmed = value.trim();
+        if (trimmed.isNotEmpty) values.add(trimmed);
+      }
+    }
+    final primary = p.phone?.trim();
+    if (primary != null && primary.isNotEmpty) values.add(primary);
+    if (values.isEmpty) return null;
+    return values.join(', ');
   }
 
   // ── Parties section ───────────────────────────────────────────────────────

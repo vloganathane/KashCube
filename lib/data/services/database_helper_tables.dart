@@ -324,6 +324,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('''
       CREATE TABLE accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER REFERENCES businesses(id),
         account_type TEXT NOT NULL,
         account_name TEXT NOT NULL,
         bank_name TEXT,
@@ -356,6 +357,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_accounts_active ON accounts(is_active)');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_accounts_business ON accounts(business_id)',
     );
 
     await db.execute('''

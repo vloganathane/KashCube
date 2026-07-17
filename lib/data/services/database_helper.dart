@@ -4129,6 +4129,18 @@ class DatabaseHelper {
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
+    if (oldVersion < 99) {
+      await db.execute('ALTER TABLE accounts ADD COLUMN business_id INTEGER');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_accounts_business ON accounts(business_id)',
+      );
+      await db.insert('schema_version', {
+        'version': 99,
+        'description':
+            'Add business link to accounts for multi-business bank details',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
     sw.stop();
     debugPrint(
       '[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms',

@@ -23,7 +23,7 @@ class SmsService {
   /// the service can be replaced with a mock in unit tests. When omitted a
   /// default [SmsParserService] instance is used.
   SmsService({SmsParserService? parser})
-      : _parser = parser ?? const SmsParserService();
+    : _parser = parser ?? const SmsParserService();
 
   final SmsParserService _parser;
   final Telephony _telephony = Telephony.instance;
@@ -47,7 +47,9 @@ class SmsService {
   /// Start listening for incoming SMS messages.
   ///
   /// [onTransactionDetected] is called when a financial SMS is parsed.
-  void startListening({required OnTransactionSmsDetected onTransactionDetected}) {
+  void startListening({
+    required OnTransactionSmsDetected onTransactionDetected,
+  }) {
     if (_smsUnsupported) return;
     if (_isListening) return;
 
@@ -78,14 +80,8 @@ class SmsService {
     if (_smsUnsupported) return [];
     try {
       final messages = await _telephony.getInboxSms(
-        columns: [
-          SmsColumn.ADDRESS,
-          SmsColumn.BODY,
-          SmsColumn.DATE,
-        ],
-        sortOrder: [
-          OrderBy(SmsColumn.DATE, sort: Sort.DESC),
-        ],
+        columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
+        sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
       );
 
       final parsedList = <ParsedSms>[];
@@ -107,7 +103,9 @@ class SmsService {
         }
       }
 
-      debugPrint('SmsService: Parsed ${parsedList.length} financial SMS from ${messages.length} total');
+      debugPrint(
+        'SmsService: Parsed ${parsedList.length} financial SMS from ${messages.length} total',
+      );
       return parsedList;
     } catch (e) {
       debugPrint('SmsService: Error reading SMS: $e');
@@ -128,7 +126,9 @@ class SmsService {
 
     final parsed = _parser.parse(body, sender);
     if (parsed != null && parsed.confidence >= 0.40) {
-      debugPrint('SmsService: Detected transaction - ${parsed.amount} ${parsed.direction.label}');
+      debugPrint(
+        'SmsService: Detected transaction - ${parsed.amount} ${parsed.direction.label}',
+      );
       _onTransactionDetected?.call(parsed);
     }
   }

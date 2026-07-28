@@ -22,12 +22,12 @@ enum _CreditsFilter { all, pendingGiven, pendingReceived, overdue, cleared }
 
 extension _CreditsFilterLabel on _CreditsFilter {
   String get label => switch (this) {
-        _CreditsFilter.all => 'All',
-        _CreditsFilter.pendingGiven => 'I Lent',
-        _CreditsFilter.pendingReceived => 'I Owe',
-        _CreditsFilter.overdue => 'Overdue',
-        _CreditsFilter.cleared => 'Cleared',
-      };
+    _CreditsFilter.all => 'All',
+    _CreditsFilter.pendingGiven => 'I Lent',
+    _CreditsFilter.pendingReceived => 'I Owe',
+    _CreditsFilter.overdue => 'Overdue',
+    _CreditsFilter.cleared => 'Cleared',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -48,8 +48,8 @@ class CreditsScreen extends ConsumerStatefulWidget {
 class _CreditsScreenState extends ConsumerState<CreditsScreen>
     with TutorialMixin<CreditsScreen> {
   // Keys for tutorial spotlights
-  final _fabKey        = GlobalKey();
-  final _filterKey     = GlobalKey();
+  final _fabKey = GlobalKey();
+  final _filterKey = GlobalKey();
   final _newestCardKey = GlobalKey();
 
   _CreditsFilter _filter = _CreditsFilter.all;
@@ -67,53 +67,50 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
 
   @override
   List<TargetFocus> buildTargets() => [
-        TargetFocus(
-          identify: 'credit_fab',
-          keyTarget: _fabKey,
-          shape: ShapeLightFocus.Circle,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Track who owes you',
-                message:
-                    'Tap + to record money you lent or borrowed\n'
-                    '\u2014 no paperwork, just a quick entry.',
-              ),
-            ),
-          ],
+    TargetFocus(
+      identify: 'credit_fab',
+      keyTarget: _fabKey,
+      shape: ShapeLightFocus.Circle,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.top,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Track who owes you',
+            message:
+                'Tap + to record money you lent or borrowed\n'
+                '\u2014 no paperwork, just a quick entry.',
+          ),
         ),
-        TargetFocus(
-          identify: 'credit_filter',
-          keyTarget: _filterKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 8,
-          enableOverlayTab: true,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              child: tutorialContentCard(
-                title: 'Filter by direction',
-                message:
-                    '"I Lent" shows what others owe you.\n'
-                    '"I Owe" shows what you need to pay back.',
-              ),
-            ),
-          ],
+      ],
+    ),
+    TargetFocus(
+      identify: 'credit_filter',
+      keyTarget: _filterKey,
+      shape: ShapeLightFocus.RRect,
+      radius: 8,
+      enableOverlayTab: true,
+      contents: [
+        TargetContent(
+          align: ContentAlign.bottom,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          child: tutorialContentCard(
+            title: 'Filter by direction',
+            message:
+                '"I Lent" shows what others owe you.\n'
+                '"I Owe" shows what you need to pay back.',
+          ),
         ),
-      ];
+      ],
+    ),
+  ];
 
   @override
   List<TutorialMenuItem> get tutorialMenuItems => [
-        TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
-        TutorialMenuItem(
-          label: 'How to record a due',
-          onTap: _replayCreditFlow,
-        ),
-      ];
+    TutorialMenuItem(label: 'Orientation tour', onTap: replayTutorial),
+    TutorialMenuItem(label: 'How to record a due', onTap: _replayCreditFlow),
+  ];
 
   @override
   void initState() {
@@ -127,16 +124,19 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
     if (await settings.get(SettingsKeys.tutorialCreditFlowDone) != 'true') {
       if (!mounted) return;
       ref.read(tutorialFlowProvider.notifier).abandon();
-      ref.read(tutorialFlowProvider.notifier)
+      ref
+          .read(tutorialFlowProvider.notifier)
           .advance(TutorialFlowStep.newCreditFab);
     }
   }
 
   void _replayCreditFlow() {
-    ref.read(settingsRepositoryProvider)
+    ref
+        .read(settingsRepositoryProvider)
         .set(SettingsKeys.tutorialCreditFlowDone, 'false');
     ref.read(tutorialFlowProvider.notifier).abandon();
-    ref.read(tutorialFlowProvider.notifier)
+    ref
+        .read(tutorialFlowProvider.notifier)
         .advance(TutorialFlowStep.newCreditFab);
   }
 
@@ -154,7 +154,8 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: "Let's record your first due",
-                message: 'Tap the + button to get started. '
+                message:
+                    'Tap the + button to get started. '
                     "We'll guide you through the form step by step.",
               ),
             ),
@@ -176,7 +177,8 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
       onFinish: () {},
       onSkip: () {
         ref.read(tutorialFlowProvider.notifier).abandon();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialCreditFlowDone, 'true');
         return true;
       },
@@ -220,12 +222,14 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
       pulseEnable: false,
       onFinish: () {
         ref.read(tutorialFlowProvider.notifier).finish();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialCreditFlowDone, 'true');
       },
       onSkip: () {
         ref.read(tutorialFlowProvider.notifier).finish();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialCreditFlowDone, 'true');
         return true;
       },
@@ -337,32 +341,34 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
   }
 
   List<Credit> _applyFilter(List<Credit> all) => switch (_filter) {
-        _CreditsFilter.all => all,
-        _CreditsFilter.pendingGiven => all
-            .where((c) => c.isGiven && !c.isCleared)
-            .toList(),
-        _CreditsFilter.pendingReceived => all
-            .where((c) => c.isReceived && !c.isCleared)
-            .toList(),
-        _CreditsFilter.overdue => all
-            .where((c) =>
+    _CreditsFilter.all => all,
+    _CreditsFilter.pendingGiven =>
+      all.where((c) => c.isGiven && !c.isCleared).toList(),
+    _CreditsFilter.pendingReceived =>
+      all.where((c) => c.isReceived && !c.isCleared).toList(),
+    _CreditsFilter.overdue =>
+      all
+          .where(
+            (c) =>
                 !c.isCleared &&
                 c.dueDate != null &&
-                c.dueDate!.isBefore(DateTime.now()))
-            .toList(),
-        _CreditsFilter.cleared => all.where((c) => c.isCleared).toList(),
-      };
+                c.dueDate!.isBefore(DateTime.now()),
+          )
+          .toList(),
+    _CreditsFilter.cleared => all.where((c) => c.isCleared).toList(),
+  };
 
   Future<void> _openAdd(BuildContext context) async {
     // Advance flow BEFORE push so AddCreditScreen.initState sees newCreditAmount.
     final step = ref.read(tutorialFlowProvider);
     if (step == TutorialFlowStep.newCreditFab) {
-      ref.read(tutorialFlowProvider.notifier)
+      ref
+          .read(tutorialFlowProvider.notifier)
           .advance(TutorialFlowStep.newCreditAmount);
     }
-    final added = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddCreditScreen()),
-    );
+    final added = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const AddCreditScreen()));
     if (added == true && mounted) {
       ref.read(activeCreditsProvider.notifier).loadActive();
     }
@@ -398,11 +404,13 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
@@ -423,25 +431,26 @@ class _CreditsScreenState extends ConsumerState<CreditsScreen>
       useRootNavigator: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Entry?'),
-        content:
-            Text('Remove dues entry for ${credit.customerName}? This cannot be undone.'),
+        content: Text(
+          'Remove dues entry for ${credit.customerName}? This cannot be undone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-                backgroundColor: ctx.colorScheme.error),
+              backgroundColor: ctx.colorScheme.error,
+            ),
             child: const Text('Delete'),
           ),
         ],
       ),
     );
     if (ok == true && mounted) {
-      await ref
-          .read(activeCreditsProvider.notifier)
-          .deleteCredit(credit.id!);
+      await ref.read(activeCreditsProvider.notifier).deleteCredit(credit.id!);
     }
   }
 }
@@ -464,7 +473,9 @@ class _SummaryStrip extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.all(AppSpacing.base),
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.md),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: context.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(12),
@@ -480,9 +491,10 @@ class _SummaryStrip extends ConsumerWidget {
             ),
           ),
           Container(
-              width: 1,
-              height: 36,
-              color: context.colorScheme.outlineVariant),
+            width: 1,
+            height: 36,
+            color: context.colorScheme.outlineVariant,
+          ),
           Expanded(
             child: _Stat(
               label: 'To Pay',
@@ -492,9 +504,10 @@ class _SummaryStrip extends ConsumerWidget {
             ),
           ),
           Container(
-              width: 1,
-              height: 36,
-              color: context.colorScheme.outlineVariant),
+            width: 1,
+            height: 36,
+            color: context.colorScheme.outlineVariant,
+          ),
           Expanded(
             child: _Stat(
               label: 'Net',
@@ -532,17 +545,23 @@ class _Stat extends StatelessWidget {
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
-            Text(value,
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: color)),
+            Text(
+              value,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                color: color,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 2),
-        Text(label,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: context.colorScheme.outline)),
+        Text(
+          label,
+          style: context.textTheme.labelSmall?.copyWith(
+            color: context.colorScheme.outline,
+          ),
+        ),
       ],
     );
   }
@@ -572,24 +591,27 @@ class _CreditTile extends StatelessWidget {
     final isGiven = credit.isGiven;
     final dirColor = isGiven ? colors.credit : colors.expense;
     final now = DateTime.now();
-    final isOverdue = !credit.isCleared &&
+    final isOverdue =
+        !credit.isCleared &&
         credit.dueDate != null &&
         credit.dueDate!.isBefore(now);
 
     final statusLabel = credit.isCleared
         ? 'Cleared'
         : isOverdue
-            ? 'Overdue'
-            : 'Pending';
+        ? 'Overdue'
+        : 'Pending';
     final statusColor = credit.isCleared
         ? colors.income
         : isOverdue
-            ? colors.overdue
-            : colors.credit;
+        ? colors.overdue
+        : colors.credit;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.xs,
+      ),
       leading: CircleAvatar(
         radius: 22,
         backgroundColor: dirColor.withValues(alpha: 0.12),
@@ -600,21 +622,25 @@ class _CreditTile extends StatelessWidget {
           style: TextStyle(fontWeight: FontWeight.bold, color: dirColor),
         ),
       ),
-      title: Text(credit.customerName,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      title: Text(
+        credit.customerName,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '${isGiven ? 'You lent' : 'You owe'} · ${DateFormatter.format(credit.creditDate)}',
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
           ),
           if (credit.dueDate != null)
             Text(
               'Due ${DateFormatter.format(credit.dueDate!)}',
               style: context.textTheme.labelSmall?.copyWith(
-                  color: isOverdue ? colors.overdue : context.colorScheme.outline),
+                color: isOverdue ? colors.overdue : context.colorScheme.outline,
+              ),
             ),
         ],
       ),
@@ -623,13 +649,16 @@ class _CreditTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            CurrencyFormatter.format(credit.pendingAmount > 0
-                ? credit.pendingAmount
-                : credit.totalAmount),
+            CurrencyFormatter.format(
+              credit.pendingAmount > 0
+                  ? credit.pendingAmount
+                  : credit.totalAmount,
+            ),
             style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: dirColor),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: dirColor,
+            ),
           ),
           const SizedBox(height: 2),
           Container(
@@ -641,9 +670,10 @@ class _CreditTile extends StatelessWidget {
             child: Text(
               statusLabel,
               style: TextStyle(
-                  fontSize: 10,
-                  color: statusColor,
-                  fontWeight: FontWeight.w600),
+                fontSize: 10,
+                color: statusColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -653,43 +683,44 @@ class _CreditTile extends StatelessWidget {
   }
 
   VoidCallback _buildContextMenu(BuildContext context) => () {
-        showModalBottomSheet<void>(
-          context: context,
-          builder: (ctx) => SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.payments_outlined),
-                  title: const Text('Record Payment'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onRecordPayment();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.edit_outlined),
-                  title: const Text('Edit'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onEdit();
-                  },
-                ),
-                ListTile(
-                  leading: Icon(Icons.delete_outline,
-                      color: ctx.colorScheme.error),
-                  title: Text('Delete',
-                      style: TextStyle(color: ctx.colorScheme.error)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onDelete();
-                  },
-                ),
-              ],
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: const Text('Record Payment'),
+              onTap: () {
+                Navigator.pop(ctx);
+                onRecordPayment();
+              },
             ),
-          ),
-        );
-      };
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit'),
+              onTap: () {
+                Navigator.pop(ctx);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: ctx.colorScheme.error),
+              title: Text(
+                'Delete',
+                style: TextStyle(color: ctx.colorScheme.error),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                onDelete();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -721,15 +752,21 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.currency_rupee_outlined,
-                size: 48,
-                color: context.colorScheme.onSurfaceVariant
-                    .withValues(alpha: 0.4)),
+            Icon(
+              Icons.currency_rupee_outlined,
+              size: 48,
+              color: context.colorScheme.onSurfaceVariant.withValues(
+                alpha: 0.4,
+              ),
+            ),
             const SizedBox(height: AppSpacing.base),
-            Text(msg,
-                textAlign: TextAlign.center,
-                style: context.textTheme.bodyMedium?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant)),
+            Text(
+              msg,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
@@ -760,8 +797,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
 
   // Keys used by the guided New Credit tutorial flow.
   final _amountFieldKey = GlobalKey();
-  final _partyFieldKey  = GlobalKey();
-  final _saveButtonKey  = GlobalKey();
+  final _partyFieldKey = GlobalKey();
+  final _saveButtonKey = GlobalKey();
 
   CreditDirection _direction = CreditDirection.given;
   DateTime _creditDate = DateTime.now();
@@ -821,7 +858,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Enter the amount',
-                message: 'How much was lent or borrowed?\n'
+                message:
+                    'How much was lent or borrowed?\n'
                     'Type the rupee amount here.',
               ),
             ),
@@ -838,7 +876,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Who is involved?',
-                message: 'Enter the name of the person\n'
+                message:
+                    'Enter the name of the person\n'
                     'who owes you or whom you owe.',
               ),
             ),
@@ -855,7 +894,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               child: tutorialContentCard(
                 title: 'Save your due',
-                message: "Tap to record the due.\n"
+                message:
+                    "Tap to record the due.\n"
                     "You can always edit or settle it later.",
               ),
             ),
@@ -877,7 +917,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
       onFinish: () {},
       onSkip: () {
         ref.read(tutorialFlowProvider.notifier).abandon();
-        ref.read(settingsRepositoryProvider)
+        ref
+            .read(settingsRepositoryProvider)
             .set(SettingsKeys.tutorialCreditFlowDone, 'true');
         return true;
       },
@@ -894,249 +935,262 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           final step = ref.read(tutorialFlowProvider);
           if (step.isNewCreditFlow) {
             ref.read(tutorialFlowProvider.notifier).abandon();
-            ref.read(settingsRepositoryProvider)
+            ref
+                .read(settingsRepositoryProvider)
                 .set(SettingsKeys.tutorialCreditFlowDone, 'true');
           }
         }
       },
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Due' : 'New Due'),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
-          child: FilledButton(
-            key: _saveButtonKey,
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(_isEditing ? 'Update Due' : 'Save Due'),
+        appBar: AppBar(title: Text(_isEditing ? 'Edit Due' : 'New Due')),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.base,
+              AppSpacing.base,
+            ),
+            child: FilledButton(
+              key: _saveButtonKey,
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(_isEditing ? 'Update Due' : 'Save Due'),
+            ),
           ),
         ),
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            // ── Direction selector ───────────────────────────────────────
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Type',
-                        style: context.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children:
-                          CreditDirection.values.map((d) {
-                        final selected = _direction == d;
-                        final isGiven = d == CreditDirection.given;
-                        final color =
-                            isGiven ? colors.credit : colors.expense;
-                        return Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(
-                                right: isGiven ? AppSpacing.sm : 0),
-                            child: InkWell(
-                              onTap: () =>
-                                  setState(() => _direction = d),
-                              borderRadius:
-                                  BorderRadius.circular(AppSpacing.radiusMd),
-                              child: AnimatedContainer(
-                                duration:
-                                    const Duration(milliseconds: 180),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: AppSpacing.md),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? color.withValues(alpha: 0.10)
-                                      : null,
-                                  border: Border.all(
-                                    color: selected
-                                        ? color
-                                        : context
-                                            .colorScheme.outlineVariant,
-                                    width: selected ? 2 : 1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(
-                                      AppSpacing.radiusMd),
+        body: Form(
+          key: _formKey,
+          child: ListView(
+            padding: const EdgeInsets.all(AppSpacing.base),
+            children: [
+              // ── Direction selector ───────────────────────────────────────
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Type',
+                        style: context.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Row(
+                        children: CreditDirection.values.map((d) {
+                          final selected = _direction == d;
+                          final isGiven = d == CreditDirection.given;
+                          final color = isGiven
+                              ? colors.credit
+                              : colors.expense;
+                          return Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                right: isGiven ? AppSpacing.sm : 0,
+                              ),
+                              child: InkWell(
+                                onTap: () => setState(() => _direction = d),
+                                borderRadius: BorderRadius.circular(
+                                  AppSpacing.radiusMd,
                                 ),
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      isGiven
-                                          ? Icons.arrow_upward_rounded
-                                          : Icons.arrow_downward_rounded,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppSpacing.md,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? color.withValues(alpha: 0.10)
+                                        : null,
+                                    border: Border.all(
                                       color: selected
                                           ? color
-                                          : context.colorScheme
-                                              .onSurfaceVariant,
+                                          : context.colorScheme.outlineVariant,
+                                      width: selected ? 2 : 1,
                                     ),
-                                    const SizedBox(height: AppSpacing.xs),
-                                    Text(
-                                      isGiven
-                                          ? 'I Lent (Diya)'
-                                          : 'I Owe (Liya)',
-                                      style: context.textTheme.bodyMedium
-                                          ?.copyWith(
+                                    borderRadius: BorderRadius.circular(
+                                      AppSpacing.radiusMd,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        isGiven
+                                            ? Icons.arrow_upward_rounded
+                                            : Icons.arrow_downward_rounded,
                                         color: selected
                                             ? color
-                                            : context.colorScheme
-                                                .onSurfaceVariant,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
+                                            : context
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
                                       ),
-                                    ),
-                                    Text(
-                                      isGiven
-                                          ? 'They owe you'
-                                          : 'You owe them',
-                                      style: context.textTheme.bodySmall
-                                          ?.copyWith(
-                                        color: context.colorScheme
-                                            .onSurfaceVariant,
+                                      const SizedBox(height: AppSpacing.xs),
+                                      Text(
+                                        isGiven
+                                            ? 'I Lent (Diya)'
+                                            : 'I Owe (Liya)',
+                                        style: context.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              color: selected
+                                                  ? color
+                                                  : context
+                                                        .colorScheme
+                                                        .onSurfaceVariant,
+                                              fontWeight: selected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.normal,
+                                            ),
                                       ),
-                                    ),
-                                  ],
+                                      Text(
+                                        isGiven
+                                            ? 'They owe you'
+                                            : 'You owe them',
+                                        style: context.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: context
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.base),
+              const SizedBox(height: AppSpacing.base),
 
-            // ── Amount ───────────────────────────────────────────────────
-            TextFormField(
-              key: _amountFieldKey,
-              controller: _amountCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Amount *',
-                border: OutlineInputBorder(),
-                prefixText: '₹ ',
-              ),
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Required';
-                final a = double.tryParse(v);
-                if (a == null || a <= 0) return 'Invalid amount';
-                return null;
-              },
-            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // ── Party name ────────────────────────────────────────────────
-            PartyPickerField(
-              key: _partyFieldKey,
-              controller: _nameCtrl,
-              labelText: _direction == CreditDirection.given
-                  ? 'Borrower Name *'
-                  : 'Lender Name *',
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Required' : null,              onPartySelected: (party) =>
-                  setState(() => _selectedCustomerId = party.id),            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // ── Phone ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _phoneCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // ── Credit date ───────────────────────────────────────────────
-            InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Date',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.calendar_today_outlined),
-              ),
-              child: InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _creditDate,
-                    firstDate: DateTime(2015),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) setState(() => _creditDate = picked);
+              // ── Amount ───────────────────────────────────────────────────
+              TextFormField(
+                key: _amountFieldKey,
+                controller: _amountCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Amount *',
+                  border: OutlineInputBorder(),
+                  prefixText: '₹ ',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Required';
+                  final a = double.tryParse(v);
+                  if (a == null || a <= 0) return 'Invalid amount';
+                  return null;
                 },
-                child: Text(DateFormatter.format(_creditDate)),
               ),
-            ),
-            const SizedBox(height: AppSpacing.base),
+              const SizedBox(height: AppSpacing.base),
 
-            // ── Due date ──────────────────────────────────────────────────
-            InputDecorator(
-              decoration: InputDecoration(
-                labelText: 'Due Date (optional)',
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.event_outlined),
-                suffixIcon: _dueDate != null
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(() => _dueDate = null),
-                      )
-                    : null,
+              // ── Party name ────────────────────────────────────────────────
+              PartyPickerField(
+                key: _partyFieldKey,
+                controller: _nameCtrl,
+                labelText: _direction == CreditDirection.given
+                    ? 'Borrower Name *'
+                    : 'Lender Name *',
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+                onPartySelected: (party) =>
+                    setState(() => _selectedCustomerId = party.id),
               ),
-              child: InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate:
-                        _dueDate ?? DateTime.now().add(const Duration(days: 30)),
-                    firstDate: DateTime(2015),
-                    lastDate: DateTime.now().add(const Duration(days: 3650)),
-                  );
-                  if (picked != null) setState(() => _dueDate = picked);
-                },
-                child: Text(
-                  _dueDate != null
-                      ? DateFormatter.format(_dueDate!)
-                      : 'Not set',
-                  style: _dueDate == null
-                      ? TextStyle(
-                          color: context.colorScheme.onSurfaceVariant)
+              const SizedBox(height: AppSpacing.base),
+
+              // ── Phone ─────────────────────────────────────────────────────
+              TextFormField(
+                controller: _phoneCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Phone Number (optional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              // ── Credit date ───────────────────────────────────────────────
+              InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Date',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.calendar_today_outlined),
+                ),
+                child: InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _creditDate,
+                      firstDate: DateTime(2015),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) setState(() => _creditDate = picked);
+                  },
+                  child: Text(DateFormatter.format(_creditDate)),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+
+              // ── Due date ──────────────────────────────────────────────────
+              InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Due Date (optional)',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.event_outlined),
+                  suffixIcon: _dueDate != null
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _dueDate = null),
+                        )
                       : null,
                 ),
+                child: InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate:
+                          _dueDate ??
+                          DateTime.now().add(const Duration(days: 30)),
+                      firstDate: DateTime(2015),
+                      lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    );
+                    if (picked != null) setState(() => _dueDate = picked);
+                  },
+                  child: Text(
+                    _dueDate != null
+                        ? DateFormatter.format(_dueDate!)
+                        : 'Not set',
+                    style: _dueDate == null
+                        ? TextStyle(color: context.colorScheme.onSurfaceVariant)
+                        : null,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.base),
+              const SizedBox(height: AppSpacing.base),
 
-            // ── Notes ─────────────────────────────────────────────────────
-            TextFormField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Notes (optional)',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.notes_outlined),
+              // ── Notes ─────────────────────────────────────────────────────
+              TextFormField(
+                controller: _notesCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (optional)',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+                maxLines: 2,
               ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: AppSpacing.base),
-          ],
+              const SizedBox(height: AppSpacing.base),
+            ],
+          ),
         ),
-      ),
       ), // PopScope
     );
   }
@@ -1147,9 +1201,12 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
 
     final amount = double.parse(_amountCtrl.text.trim());
     final name = _nameCtrl.text.trim();
-    final phone =
-        _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim();
-    final notes = _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim().isEmpty
+        ? null
+        : _phoneCtrl.text.trim();
+    final notes = _notesCtrl.text.trim().isEmpty
+        ? null
+        : _notesCtrl.text.trim();
 
     try {
       if (_isEditing) {
@@ -1177,7 +1234,8 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
           dueDate: _dueDate,
           notes: notes,
           customerId: _selectedCustomerId,
-          businessId: null, // personal by default; business context set elsewhere
+          businessId:
+              null, // personal by default; business context set elsewhere
         );
         await ref.read(activeCreditsProvider.notifier).addCredit(credit);
       }
@@ -1185,16 +1243,17 @@ class _AddCreditScreenState extends ConsumerState<AddCreditScreen> {
         // Advance flow before pop so CreditsScreen's ref.listen fires.
         final step = ref.read(tutorialFlowProvider);
         if (!_isEditing && step.isNewCreditFlow) {
-          ref.read(tutorialFlowProvider.notifier)
+          ref
+              .read(tutorialFlowProvider.notifier)
               .advance(TutorialFlowStep.newCreditResult);
         }
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

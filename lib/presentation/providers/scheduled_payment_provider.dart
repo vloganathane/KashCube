@@ -12,8 +12,7 @@ import 'transaction_provider.dart';
 // Repository
 // ---------------------------------------------------------------------------
 
-final scheduledPaymentRepositoryProvider =
-    Provider<ScheduledPaymentRepository>(
+final scheduledPaymentRepositoryProvider = Provider<ScheduledPaymentRepository>(
   (ref) {
     final contextId = ref.watch(activeContextProvider);
     return ScheduledPaymentRepositoryImpl(null, contextId);
@@ -24,13 +23,15 @@ final scheduledPaymentRepositoryProvider =
 // Main list — CRUD
 // ---------------------------------------------------------------------------
 
-final scheduledPaymentsProvider = StateNotifierProvider<
-    ScheduledPaymentsNotifier,
-    AsyncValue<List<ScheduledPayment>>>(
-  (ref) => ScheduledPaymentsNotifier(
-    ref.read(scheduledPaymentRepositoryProvider),
-  ),
-);
+final scheduledPaymentsProvider =
+    StateNotifierProvider<
+      ScheduledPaymentsNotifier,
+      AsyncValue<List<ScheduledPayment>>
+    >(
+      (ref) => ScheduledPaymentsNotifier(
+        ref.read(scheduledPaymentRepositoryProvider),
+      ),
+    );
 
 class ScheduledPaymentsNotifier
     extends StateNotifier<AsyncValue<List<ScheduledPayment>>> {
@@ -91,7 +92,8 @@ class ScheduledPaymentsNotifier
         updatedAt: now,
       );
     } else {
-      final nextDate = payment.frequency?.nextOccurrence(payment.nextDate) ??
+      final nextDate =
+          payment.frequency?.nextOccurrence(payment.nextDate) ??
           payment.nextDate;
       updated = payment.copyWith(
         lastPaidDate: now,
@@ -103,7 +105,9 @@ class ScheduledPaymentsNotifier
   }
 
   Future<void> markUnpaid(ScheduledPayment payment) async {
-    await update(payment.copyWith(lastPaidDate: null, updatedAt: DateTime.now()));
+    await update(
+      payment.copyWith(lastPaidDate: null, updatedAt: DateTime.now()),
+    );
   }
 }
 
@@ -120,109 +124,109 @@ final totalMonthlyScheduledExpenseProvider = FutureProvider<double>((ref) {
 /// Monthly income + expense summary from recurring scheduled payments.
 final scheduledMonthlySummaryProvider =
     Provider<({double income, double expense})>((ref) {
-  final asyncList = ref.watch(scheduledPaymentsProvider);
-  return asyncList.when(
-    data: (items) {
-      double income = 0;
-      double expense = 0;
-      for (final p in items) {
-        if (p.isOneTime || p.frequency == null) continue;
-        final monthly = p.frequency!.toMonthly(p.amount);
-        if (p.type == 'income') {
-          income += monthly;
-        } else {
-          expense += monthly;
-        }
-      }
-      return (income: income, expense: expense);
-    },
-    loading: () => (income: 0.0, expense: 0.0),
-    error: (_, _) => (income: 0.0, expense: 0.0),
-  );
-});
+      final asyncList = ref.watch(scheduledPaymentsProvider);
+      return asyncList.when(
+        data: (items) {
+          double income = 0;
+          double expense = 0;
+          for (final p in items) {
+            if (p.isOneTime || p.frequency == null) continue;
+            final monthly = p.frequency!.toMonthly(p.amount);
+            if (p.type == 'income') {
+              income += monthly;
+            } else {
+              expense += monthly;
+            }
+          }
+          return (income: income, expense: expense);
+        },
+        loading: () => (income: 0.0, expense: 0.0),
+        error: (_, _) => (income: 0.0, expense: 0.0),
+      );
+    });
 
 // ---------------------------------------------------------------------------
 // Context-filtered lists (personal vs business)
 // ---------------------------------------------------------------------------
 
 /// Personal Bills Payable — utilities, subscriptions, rent, etc.
-final personalBillsProvider =
-    Provider<AsyncValue<List<ScheduledPayment>>>((ref) {
-  return ref.watch(scheduledPaymentsProvider).whenData(
-        (items) =>
-            items.where((p) => p.billContext == 'personal').toList(),
+final personalBillsProvider = Provider<AsyncValue<List<ScheduledPayment>>>((
+  ref,
+) {
+  return ref
+      .watch(scheduledPaymentsProvider)
+      .whenData(
+        (items) => items.where((p) => p.billContext == 'personal').toList(),
       );
 });
 
 /// Business Payables — supplier / vendor dues, office expenses, etc.
-final businessPayablesProvider =
-    Provider<AsyncValue<List<ScheduledPayment>>>((ref) {
-  return ref.watch(scheduledPaymentsProvider).whenData(
-        (items) =>
-            items.where((p) => p.billContext == 'business').toList(),
+final businessPayablesProvider = Provider<AsyncValue<List<ScheduledPayment>>>((
+  ref,
+) {
+  return ref
+      .watch(scheduledPaymentsProvider)
+      .whenData(
+        (items) => items.where((p) => p.billContext == 'business').toList(),
       );
 });
 
 /// Monthly summary for personal bills only.
 final personalMonthlySummaryProvider =
     Provider<({double income, double expense})>((ref) {
-  final asyncList = ref.watch(personalBillsProvider);
-  return asyncList.when(
-    data: (items) {
-      double income = 0;
-      double expense = 0;
-      for (final p in items) {
-        if (p.isOneTime || p.frequency == null) continue;
-        final monthly = p.frequency!.toMonthly(p.amount);
-        if (p.type == 'income') {
-          income += monthly;
-        } else {
-          expense += monthly;
-        }
-      }
-      return (income: income, expense: expense);
-    },
-    loading: () => (income: 0.0, expense: 0.0),
-    error: (_, _) => (income: 0.0, expense: 0.0),
-  );
-});
+      final asyncList = ref.watch(personalBillsProvider);
+      return asyncList.when(
+        data: (items) {
+          double income = 0;
+          double expense = 0;
+          for (final p in items) {
+            if (p.isOneTime || p.frequency == null) continue;
+            final monthly = p.frequency!.toMonthly(p.amount);
+            if (p.type == 'income') {
+              income += monthly;
+            } else {
+              expense += monthly;
+            }
+          }
+          return (income: income, expense: expense);
+        },
+        loading: () => (income: 0.0, expense: 0.0),
+        error: (_, _) => (income: 0.0, expense: 0.0),
+      );
+    });
 
 /// Monthly summary for business payables only.
 final businessMonthlySummaryProvider =
     Provider<({double income, double expense})>((ref) {
-  final asyncList = ref.watch(businessPayablesProvider);
-  return asyncList.when(
-    data: (items) {
-      double income = 0;
-      double expense = 0;
-      for (final p in items) {
-        if (p.isOneTime || p.frequency == null) continue;
-        final monthly = p.frequency!.toMonthly(p.amount);
-        if (p.type == 'income') {
-          income += monthly;
-        } else {
-          expense += monthly;
-        }
-      }
-      return (income: income, expense: expense);
-    },
-    loading: () => (income: 0.0, expense: 0.0),
-    error: (_, _) => (income: 0.0, expense: 0.0),
-  );
-});
+      final asyncList = ref.watch(businessPayablesProvider);
+      return asyncList.when(
+        data: (items) {
+          double income = 0;
+          double expense = 0;
+          for (final p in items) {
+            if (p.isOneTime || p.frequency == null) continue;
+            final monthly = p.frequency!.toMonthly(p.amount);
+            if (p.type == 'income') {
+              income += monthly;
+            } else {
+              expense += monthly;
+            }
+          }
+          return (income: income, expense: expense);
+        },
+        loading: () => (income: 0.0, expense: 0.0),
+        error: (_, _) => (income: 0.0, expense: 0.0),
+      );
+    });
 
 /// Overdue scheduled payments (unpaid + past due date).
-final overdueScheduledProvider =
-    FutureProvider<List<ScheduledPayment>>((ref) {
+final overdueScheduledProvider = FutureProvider<List<ScheduledPayment>>((ref) {
   return ref.read(scheduledPaymentRepositoryProvider).getOverdue();
 });
 
 /// Upcoming scheduled payments (next 7 days).
-final upcomingScheduledProvider =
-    FutureProvider<List<ScheduledPayment>>((ref) {
-  return ref
-      .read(scheduledPaymentRepositoryProvider)
-      .getUpcoming(days: 7);
+final upcomingScheduledProvider = FutureProvider<List<ScheduledPayment>>((ref) {
+  return ref.read(scheduledPaymentRepositoryProvider).getUpcoming(days: 7);
 });
 
 // ---------------------------------------------------------------------------
@@ -278,7 +282,8 @@ Future<int> processScheduledAutoCreations(WidgetRef ref) async {
           await repo.update(updated);
           current = updated; // isActive = false → loop exits
         } else {
-          final next = current.frequency?.nextOccurrence(current.nextDate) ??
+          final next =
+              current.frequency?.nextOccurrence(current.nextDate) ??
               current.nextDate;
           final updated = current.copyWith(
             nextDate: next,
@@ -290,7 +295,8 @@ Future<int> processScheduledAutoCreations(WidgetRef ref) async {
         }
       } catch (e) {
         debugPrint(
-            'Failed to auto-create txn for scheduled payment ${current.id}: $e');
+          'Failed to auto-create txn for scheduled payment ${current.id}: $e',
+        );
         break; // avoid infinite loop on persistent error
       }
     }

@@ -133,7 +133,7 @@ class PlanGate {
         for (final row in featureRows) {
           features[row['feature'] as String] = {
             'enabled': (row['enabled'] as int?) == 1,
-            'limit':   row['limit_value'] as int? ?? 0,
+            'limit': row['limit_value'] as int? ?? 0,
           };
         }
         return features;
@@ -166,5 +166,6 @@ final planGateProvider = Provider<PlanGate>((_) => const PlanGate());
 ///   if (ref.read(planGateProvider).canDoSync('lan_sync', f)) { ... }
 /// });
 /// ```
-final localPlanFeaturesProvider =
-    FutureProvider<Map<String, dynamic>>((ref) => PlanGate.loadLocalFeatures());
+final localPlanFeaturesProvider = FutureProvider<Map<String, dynamic>>(
+  (ref) => PlanGate.loadLocalFeatures(),
+);

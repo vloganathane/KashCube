@@ -8,22 +8,23 @@ import '../../providers/settings_provider.dart';
 
 /// Loads all four terms strings from settings in one shot.
 final _termsProvider =
-    FutureProvider<({String invoice, String quote, String booking, String challan})>(
-        (ref) async {
-  final repo = ref.read(settingsRepositoryProvider);
-  final results = await Future.wait([
-    repo.get(SettingsKeys.invoiceTerms),
-    repo.get(SettingsKeys.quoteTerms),
-    repo.get(SettingsKeys.bookingTerms),
-    repo.get(SettingsKeys.challanTerms),
-  ]);
-  return (
-    invoice: results[0] ?? '',
-    quote: results[1] ?? '',
-    booking: results[2] ?? '',
-    challan: results[3] ?? '',
-  );
-});
+    FutureProvider<
+      ({String invoice, String quote, String booking, String challan})
+    >((ref) async {
+      final repo = ref.read(settingsRepositoryProvider);
+      final results = await Future.wait([
+        repo.get(SettingsKeys.invoiceTerms),
+        repo.get(SettingsKeys.quoteTerms),
+        repo.get(SettingsKeys.bookingTerms),
+        repo.get(SettingsKeys.challanTerms),
+      ]);
+      return (
+        invoice: results[0] ?? '',
+        quote: results[1] ?? '',
+        booking: results[2] ?? '',
+        challan: results[3] ?? '',
+      );
+    });
 
 /// Screen to edit the default terms & conditions that appear in generated PDFs.
 /// Changes are saved on tapping "Save".
@@ -36,10 +37,10 @@ class DocumentTermsScreen extends ConsumerStatefulWidget {
 }
 
 class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
-  final _invoiceCtrl  = TextEditingController();
-  final _quoteCtrl    = TextEditingController();
-  final _bookingCtrl  = TextEditingController();
-  final _challanCtrl  = TextEditingController();
+  final _invoiceCtrl = TextEditingController();
+  final _quoteCtrl = TextEditingController();
+  final _bookingCtrl = TextEditingController();
+  final _challanCtrl = TextEditingController();
   bool _loaded = false;
   bool _saving = false;
 
@@ -53,17 +54,27 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
   }
 
   void _populate(
-      ({String invoice, String quote, String booking, String challan}) data) {
+    ({String invoice, String quote, String booking, String challan}) data,
+  ) {
     if (_loaded) return;
-    final isFirstTime = data.invoice.isEmpty &&
+    final isFirstTime =
+        data.invoice.isEmpty &&
         data.quote.isEmpty &&
         data.booking.isEmpty &&
         data.challan.isEmpty;
 
-    _invoiceCtrl.text = data.invoice.isEmpty ? SettingsKeys.defaultInvoiceTerms : data.invoice;
-    _quoteCtrl.text   = data.quote.isEmpty   ? SettingsKeys.defaultQuoteTerms   : data.quote;
-    _bookingCtrl.text = data.booking.isEmpty ? SettingsKeys.defaultBookingTerms : data.booking;
-    _challanCtrl.text = data.challan.isEmpty ? SettingsKeys.defaultChallanTerms : data.challan;
+    _invoiceCtrl.text = data.invoice.isEmpty
+        ? SettingsKeys.defaultInvoiceTerms
+        : data.invoice;
+    _quoteCtrl.text = data.quote.isEmpty
+        ? SettingsKeys.defaultQuoteTerms
+        : data.quote;
+    _bookingCtrl.text = data.booking.isEmpty
+        ? SettingsKeys.defaultBookingTerms
+        : data.booking;
+    _challanCtrl.text = data.challan.isEmpty
+        ? SettingsKeys.defaultChallanTerms
+        : data.challan;
     _loaded = true;
 
     // Persist defaults to DB immediately so PDF generation can read them
@@ -78,10 +89,10 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
     try {
       final repo = ref.read(settingsRepositoryProvider);
       await Future.wait([
-        repo.set(SettingsKeys.invoiceTerms,  _invoiceCtrl.text.trim()),
-        repo.set(SettingsKeys.quoteTerms,    _quoteCtrl.text.trim()),
-        repo.set(SettingsKeys.bookingTerms,  _bookingCtrl.text.trim()),
-        repo.set(SettingsKeys.challanTerms,  _challanCtrl.text.trim()),
+        repo.set(SettingsKeys.invoiceTerms, _invoiceCtrl.text.trim()),
+        repo.set(SettingsKeys.quoteTerms, _quoteCtrl.text.trim()),
+        repo.set(SettingsKeys.bookingTerms, _bookingCtrl.text.trim()),
+        repo.set(SettingsKeys.challanTerms, _challanCtrl.text.trim()),
       ]);
       if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,9 +110,7 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
     termsAsync.whenData(_populate);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Default Terms & Conditions'),
-      ),
+      appBar: AppBar(title: const Text('Default Terms & Conditions')),
       body: termsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -112,8 +121,9 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest
-                    .withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppSpacing.sm),
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outlineVariant,
@@ -164,7 +174,8 @@ class _DocumentTermsScreenState extends ConsumerState<DocumentTermsScreen> {
               icon: Icons.event_note_outlined,
               controller: _bookingCtrl,
               hint: 'e.g. Cancellations require 48 hours notice…',
-            ),            const SizedBox(height: AppSpacing.xl),
+            ),
+            const SizedBox(height: AppSpacing.xl),
 
             // ── Delivery Challan ─────────────────────────────────────────
             _TermsField(
@@ -217,9 +228,9 @@ class _TermsField extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Text(
               label,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
           ],
         ),
@@ -232,8 +243,8 @@ class _TermsField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+              color: Theme.of(context).colorScheme.outline,
+            ),
             alignLabelWithHint: true,
             border: const OutlineInputBorder(),
             contentPadding: const EdgeInsets.all(AppSpacing.md),

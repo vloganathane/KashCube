@@ -24,9 +24,12 @@ class BusinessFlowChainBuilder {
   BusinessFlowChainBuilder._();
 
   // Leakage thresholds
-  static const int _quoteLockDays = 3;     // accepted quote → no invoice after N days
-  static const int _challanLockDays = 2;   // dispatched challan → no invoice after N days
-  static const int _bookingLockDays = 1;   // completed/confirmed booking past service date
+  static const int _quoteLockDays =
+      3; // accepted quote → no invoice after N days
+  static const int _challanLockDays =
+      2; // dispatched challan → no invoice after N days
+  static const int _bookingLockDays =
+      1; // completed/confirmed booking past service date
 
   /// Assemble chains for a single party given parallel-loaded lists.
   static List<BusinessFlowChain> build({
@@ -48,16 +51,13 @@ class BusinessFlowChainBuilder {
       if (q.id == null) continue;
 
       // Find matching invoice(s) via invoice.quoteId
-      final linkedInvoices =
-          invoices.where((i) => i.quoteId == q.id).toList();
+      final linkedInvoices = invoices.where((i) => i.quoteId == q.id).toList();
       final inv = linkedInvoices.isNotEmpty ? linkedInvoices.first : null;
       if (inv?.id != null) usedInvoiceIds.add(inv!.id!);
 
       // Find transactions linked to that invoice
       final linkedTxns = inv != null
-          ? transactions
-              .where((t) => t.linkedInvoiceId == inv.id)
-              .toList()
+          ? transactions.where((t) => t.linkedInvoiceId == inv.id).toList()
           : <Transaction>[];
 
       final ChainStatus status;
@@ -74,28 +74,32 @@ class BusinessFlowChainBuilder {
       }
 
       final totalValue = inv?.total ?? q.total;
-      final received =
-          linkedTxns.fold<double>(0, (s, t) => s + t.amount);
+      final received = linkedTxns.fold<double>(0, (s, t) => s + t.amount);
       final outstanding = (totalValue - received).clamp(0.0, double.infinity);
       final age = now.difference(q.createdAt).inDays;
 
       final chainReminders = _remindersInWindow(
-          reminders, q.createdAt, inv?.dueDate ?? now);
+        reminders,
+        q.createdAt,
+        inv?.dueDate ?? now,
+      );
 
-      chains.add(BusinessFlowChain(
-        origin: ChainOrigin.quote,
-        status: status,
-        partyId: partyId,
-        partyName: partyName,
-        quote: q,
-        invoice: inv,
-        transactions: linkedTxns,
-        reminders: chainReminders,
-        totalValue: totalValue,
-        receivedAmount: received,
-        outstandingAmount: outstanding,
-        daysSinceOrigin: age,
-      ));
+      chains.add(
+        BusinessFlowChain(
+          origin: ChainOrigin.quote,
+          status: status,
+          partyId: partyId,
+          partyName: partyName,
+          quote: q,
+          invoice: inv,
+          transactions: linkedTxns,
+          reminders: chainReminders,
+          totalValue: totalValue,
+          receivedAmount: received,
+          outstandingAmount: outstanding,
+          daysSinceOrigin: age,
+        ),
+      );
     }
 
     // ── TYPE 2: Delivery Challan chains ─────────────────────────────────────
@@ -106,16 +110,16 @@ class BusinessFlowChainBuilder {
       Invoice? inv = dc.convertedInvoiceId != null
           ? invoices.cast<Invoice?>().firstWhere(
               (i) => i?.id == dc.convertedInvoiceId,
-              orElse: () => null)
+              orElse: () => null,
+            )
           : invoices.cast<Invoice?>().firstWhere(
               (i) => i?.challanId == dc.id,
-              orElse: () => null);
+              orElse: () => null,
+            );
       if (inv?.id != null) usedInvoiceIds.add(inv!.id!);
 
       final linkedTxns = inv != null
-          ? transactions
-              .where((t) => t.linkedInvoiceId == inv.id)
-              .toList()
+          ? transactions.where((t) => t.linkedInvoiceId == inv.id).toList()
           : <Transaction>[];
 
       final ChainStatus status;
@@ -130,26 +134,30 @@ class BusinessFlowChainBuilder {
       }
 
       final totalValue = inv?.total ?? 0.0;
-      final received =
-          linkedTxns.fold<double>(0, (s, t) => s + t.amount);
+      final received = linkedTxns.fold<double>(0, (s, t) => s + t.amount);
       final outstanding = (totalValue - received).clamp(0.0, double.infinity);
       final age = now.difference(dc.challanDate).inDays;
 
-      chains.add(BusinessFlowChain(
-        origin: ChainOrigin.challan,
-        status: status,
-        partyId: partyId,
-        partyName: partyName,
-        challan: dc,
-        invoice: inv,
-        transactions: linkedTxns,
-        reminders:
-            _remindersInWindow(reminders, dc.challanDate, inv?.dueDate ?? now),
-        totalValue: totalValue,
-        receivedAmount: received,
-        outstandingAmount: outstanding,
-        daysSinceOrigin: age,
-      ));
+      chains.add(
+        BusinessFlowChain(
+          origin: ChainOrigin.challan,
+          status: status,
+          partyId: partyId,
+          partyName: partyName,
+          challan: dc,
+          invoice: inv,
+          transactions: linkedTxns,
+          reminders: _remindersInWindow(
+            reminders,
+            dc.challanDate,
+            inv?.dueDate ?? now,
+          ),
+          totalValue: totalValue,
+          receivedAmount: received,
+          outstandingAmount: outstanding,
+          daysSinceOrigin: age,
+        ),
+      );
     }
 
     // ── TYPE 3: Booking chains ───────────────────────────────────────────────
@@ -160,15 +168,18 @@ class BusinessFlowChainBuilder {
       Invoice? inv = b.invoiceId != null
           ? invoices.cast<Invoice?>().firstWhere(
               (i) => i?.id == b.invoiceId,
-              orElse: () => null)
+              orElse: () => null,
+            )
           : null;
       if (inv?.id != null) usedInvoiceIds.add(inv!.id!);
 
       // Transactions: either linked to the invoice or directly to the booking
       final linkedTxns = transactions
-          .where((t) =>
-              (inv != null && t.linkedInvoiceId == inv.id) ||
-              t.linkedBookingId == b.id)
+          .where(
+            (t) =>
+                (inv != null && t.linkedInvoiceId == inv.id) ||
+                t.linkedBookingId == b.id,
+          )
           .toList();
 
       final ChainStatus status;
@@ -190,21 +201,26 @@ class BusinessFlowChainBuilder {
       final outstanding = (totalValue - received).clamp(0.0, double.infinity);
       final age = now.difference(b.startDatetime).inDays.abs();
 
-      chains.add(BusinessFlowChain(
-        origin: ChainOrigin.booking,
-        status: status,
-        partyId: partyId,
-        partyName: partyName,
-        booking: b,
-        invoice: inv,
-        transactions: linkedTxns,
-        reminders:
-            _remindersInWindow(reminders, b.startDatetime, inv?.dueDate ?? now),
-        totalValue: totalValue,
-        receivedAmount: received,
-        outstandingAmount: outstanding,
-        daysSinceOrigin: age,
-      ));
+      chains.add(
+        BusinessFlowChain(
+          origin: ChainOrigin.booking,
+          status: status,
+          partyId: partyId,
+          partyName: partyName,
+          booking: b,
+          invoice: inv,
+          transactions: linkedTxns,
+          reminders: _remindersInWindow(
+            reminders,
+            b.startDatetime,
+            inv?.dueDate ?? now,
+          ),
+          totalValue: totalValue,
+          receivedAmount: received,
+          outstandingAmount: outstanding,
+          daysSinceOrigin: age,
+        ),
+      );
     }
 
     // ── TYPE 4: Direct Invoice chains ────────────────────────────────────────
@@ -222,20 +238,25 @@ class BusinessFlowChainBuilder {
       final outstanding = (inv.total - received).clamp(0.0, double.infinity);
       final age = now.difference(inv.issueDate).inDays;
 
-      chains.add(BusinessFlowChain(
-        origin: ChainOrigin.directInvoice,
-        status: status,
-        partyId: partyId,
-        partyName: partyName,
-        invoice: inv,
-        transactions: linkedTxns,
-        reminders:
-            _remindersInWindow(reminders, inv.issueDate, inv.dueDate ?? now),
-        totalValue: inv.total,
-        receivedAmount: received,
-        outstandingAmount: outstanding,
-        daysSinceOrigin: age,
-      ));
+      chains.add(
+        BusinessFlowChain(
+          origin: ChainOrigin.directInvoice,
+          status: status,
+          partyId: partyId,
+          partyName: partyName,
+          invoice: inv,
+          transactions: linkedTxns,
+          reminders: _remindersInWindow(
+            reminders,
+            inv.issueDate,
+            inv.dueDate ?? now,
+          ),
+          totalValue: inv.total,
+          receivedAmount: received,
+          outstandingAmount: outstanding,
+          daysSinceOrigin: age,
+        ),
+      );
     }
 
     // Sort: leaking first → needs action → complete → cancelled
@@ -259,10 +280,8 @@ class BusinessFlowChainBuilder {
     return chains.where((c) {
       if (!c.isLeaking) return false;
       return switch (c.origin) {
-        ChainOrigin.quote =>
-          c.daysSinceOrigin >= _quoteLockDays,
-        ChainOrigin.challan =>
-          c.daysSinceOrigin >= _challanLockDays,
+        ChainOrigin.quote => c.daysSinceOrigin >= _quoteLockDays,
+        ChainOrigin.challan => c.daysSinceOrigin >= _challanLockDays,
         ChainOrigin.booking =>
           c.booking != null &&
               c.booking!.startDatetime.isBefore(now) &&
@@ -274,8 +293,7 @@ class BusinessFlowChainBuilder {
 
   // ── Private helpers ──────────────────────────────────────────────────────────
 
-  static ChainStatus _invoiceChainStatus(
-      Invoice inv, List<Transaction> txns) {
+  static ChainStatus _invoiceChainStatus(Invoice inv, List<Transaction> txns) {
     if (inv.status == InvoiceStatus.paid && txns.isNotEmpty) {
       return ChainStatus.complete;
     }
@@ -286,12 +304,12 @@ class BusinessFlowChainBuilder {
   }
 
   static int _chainSortScore(BusinessFlowChain c) => switch (c.status) {
-        ChainStatus.awaitingInvoice => 100,
-        ChainStatus.awaitingPayment => 80,
-        ChainStatus.invoicedPartially => 60,
-        ChainStatus.complete => 10,
-        ChainStatus.cancelled => 0,
-      };
+    ChainStatus.awaitingInvoice => 100,
+    ChainStatus.awaitingPayment => 80,
+    ChainStatus.invoicedPartially => 60,
+    ChainStatus.complete => 10,
+    ChainStatus.cancelled => 0,
+  };
 
   /// Returns reminders whose `sentAt` falls within [from, to].
   static List<PartyReminder> _remindersInWindow(
@@ -301,9 +319,11 @@ class BusinessFlowChainBuilder {
   ) {
     final end = to.isAfter(from) ? to : from.add(const Duration(days: 90));
     return all
-        .where((r) =>
-            r.sentAt.isAfter(from.subtract(const Duration(days: 1))) &&
-            r.sentAt.isBefore(end.add(const Duration(days: 1))))
+        .where(
+          (r) =>
+              r.sentAt.isAfter(from.subtract(const Duration(days: 1))) &&
+              r.sentAt.isBefore(end.add(const Duration(days: 1))),
+        )
         .toList();
   }
 }

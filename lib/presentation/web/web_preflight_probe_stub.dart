@@ -9,8 +9,5 @@ class WebPreflightProbeResult {
 }
 
 Future<WebPreflightProbeResult> probePhoneHealth(String wsUrl) async {
-  return const WebPreflightProbeResult(
-    reachable: true,
-    errorMessage: '',
-  );
+  return const WebPreflightProbeResult(reachable: true, errorMessage: '');
 }

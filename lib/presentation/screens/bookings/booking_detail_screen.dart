@@ -38,12 +38,15 @@ class BookingDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
-          appBar: AppBar(), body: Center(child: Text('Error: $e'))),
+        appBar: AppBar(),
+        body: Center(child: Text('Error: $e')),
+      ),
       data: (booking) {
         if (booking == null) {
           return Scaffold(
-              appBar: AppBar(),
-              body: const Center(child: Text('Booking not found')));
+            appBar: AppBar(),
+            body: const Center(child: Text('Booking not found')),
+          );
         }
         return _BookingDetailView(booking: booking);
       },
@@ -62,7 +65,7 @@ class _BookingDetailView extends ConsumerWidget {
         title: Text(booking.serviceName),
         actions: [
           // View / Share PDF — business bookings only
-          if (booking.bookingType == BookingType.business) ...[  
+          if (booking.bookingType == BookingType.business) ...[
             IconButton(
               icon: const Icon(Icons.visibility_outlined),
               tooltip: 'Preview PDF',
@@ -116,9 +119,11 @@ class _BookingDetailView extends ConsumerWidget {
                     children: [
                       const Icon(Icons.cancel_outlined),
                       const SizedBox(width: 12),
-                      Text(booking.bookingType == BookingType.personal
-                          ? 'Cancel Schedule'
-                          : 'Cancel Booking'),
+                      Text(
+                        booking.bookingType == BookingType.personal
+                            ? 'Cancel Schedule'
+                            : 'Cancel Booking',
+                      ),
                     ],
                   ),
                 ),
@@ -144,7 +149,7 @@ class _BookingDetailView extends ConsumerWidget {
         children: [
           _HeaderCard(booking: booking),
           const SizedBox(height: AppSpacing.base),
-          if (booking.bookingType == BookingType.business) ...[    
+          if (booking.bookingType == BookingType.business) ...[
             _CustomerCard(booking: booking),
             const SizedBox(height: AppSpacing.base),
           ],
@@ -182,11 +187,13 @@ class _BookingDetailView extends ConsumerWidget {
             icon: const Icon(Icons.check_circle_outline),
             label: const Text('Mark Done'),
             onPressed: () async {
-              await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+              await ref
+                  .read(bookingsProvider.notifier)
+                  .markAsCompleted(booking.id!);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Marked as done')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Marked as done')));
               }
             },
           ),
@@ -207,13 +214,15 @@ class _BookingDetailView extends ConsumerWidget {
           icon: const Icon(Icons.check_circle_outline),
           label: const Text('Confirm Booking'),
           onPressed: () async {
-            await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
+            await ref
+                .read(bookingsProvider.notifier)
+                .markAsConfirmed(booking.id!);
             if (!context.mounted) return;
             await _sendWhatsAppConfirmation(ref);
             if (!context.mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Booking confirmed')),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Booking confirmed')));
           },
         ),
       );
@@ -254,8 +263,8 @@ class _BookingDetailView extends ConsumerWidget {
                     .read(bookingsProvider.notifier)
                     .markAsCompleted(booking.id!);
 
-                final invoiceNo =
-                    await InvoiceNumberService.instance.nextInvoiceNo();
+                final invoiceNo = await InvoiceNumberService.instance
+                    .nextInvoiceNo();
                 final now = DateTime.now();
 
                 // Load booking line items (multi-service support)
@@ -296,8 +305,9 @@ class _BookingDetailView extends ConsumerWidget {
                 // Map items 1:1 — preserves SAC code, taxPct, discountPct
                 final List<InvoiceItem> invoiceItems;
                 if (bookingItems.isNotEmpty) {
-                  invoiceItems =
-                      bookingItems.map((bi) => bi.toInvoiceItem(0)).toList();
+                  invoiceItems = bookingItems
+                      .map((bi) => bi.toInvoiceItem(0))
+                      .toList();
                 } else {
                   // Legacy fallback for bookings with no line items
                   invoiceItems = [
@@ -349,7 +359,8 @@ class _BookingDetailView extends ConsumerWidget {
           onPressed: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => InvoiceDetailScreen(invoiceId: booking.invoiceId!),
+                builder: (_) =>
+                    InvoiceDetailScreen(invoiceId: booking.invoiceId!),
               ),
             );
           },
@@ -362,21 +373,29 @@ class _BookingDetailView extends ConsumerWidget {
   Future<void> _viewBookingPdf(BuildContext context, WidgetRef ref) async {
     try {
       final business = booking.businessId != null
-          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+          ? await ref
+                .read(businessRepositoryProvider)
+                .getById(booking.businessId!)
           : ref.read(activeBusinessProvider);
       final customerParty = booking.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+          ? await ref
+                .read(partyRepositoryProvider)
+                .getById(booking.customerPartyId!)
           : null;
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
-      final bookingItems =
-          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
-      final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
-        booking,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
-        items: bookingItems.isNotEmpty ? bookingItems : null,
-      );
+      final terms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.bookingTerms);
+      final bookingItems = await ref
+          .read(bookingRepositoryProvider)
+          .getItems(booking.id!);
+      final file = await BookingConfirmationPdfService.instance
+          .generateBookingPdf(
+            booking,
+            business: business,
+            customerParty: customerParty,
+            termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+            items: bookingItems.isNotEmpty ? bookingItems : null,
+          );
       final result = await OpenFile.open(file.path);
       if (result.type != ResultType.done && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -385,9 +404,9 @@ class _BookingDetailView extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to generate PDF: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to generate PDF: $e')));
       }
     }
   }
@@ -397,10 +416,16 @@ class _BookingDetailView extends ConsumerWidget {
     final tier = ref.read(subscriptionTierProvider);
     bool showWatermark = false;
     if (tier.isFree) {
-      final action = await showUpgradePromptSheet(context, featureName: 'booking confirmation');
+      final action = await showUpgradePromptSheet(
+        context,
+        featureName: 'booking confirmation',
+      );
       if (!context.mounted) return;
       if (action == UpgradePromptAction.upgrade) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => const UpgradeScreen()));
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const UpgradeScreen()),
+        );
         return;
       } else if (action == UpgradePromptAction.shareWithWatermark) {
         showWatermark = true;
@@ -411,31 +436,40 @@ class _BookingDetailView extends ConsumerWidget {
 
     try {
       final business = booking.businessId != null
-          ? await ref.read(businessRepositoryProvider).getById(booking.businessId!)
+          ? await ref
+                .read(businessRepositoryProvider)
+                .getById(booking.businessId!)
           : ref.read(activeBusinessProvider);
       final customerParty = booking.customerPartyId != null
-          ? await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!)
+          ? await ref
+                .read(partyRepositoryProvider)
+                .getById(booking.customerPartyId!)
           : null;
-      final terms = await ref.read(settingsRepositoryProvider).get(SettingsKeys.bookingTerms);
-      final bookingItems =
-          await ref.read(bookingRepositoryProvider).getItems(booking.id!);
-      final file = await BookingConfirmationPdfService.instance.generateBookingPdf(
-        booking,
-        business: business,
-        customerParty: customerParty,
-        termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
-        items: bookingItems.isNotEmpty ? bookingItems : null,
-        showFreeWatermark: showWatermark,
-      );
+      final terms = await ref
+          .read(settingsRepositoryProvider)
+          .get(SettingsKeys.bookingTerms);
+      final bookingItems = await ref
+          .read(bookingRepositoryProvider)
+          .getItems(booking.id!);
+      final file = await BookingConfirmationPdfService.instance
+          .generateBookingPdf(
+            booking,
+            business: business,
+            customerParty: customerParty,
+            termsAndConditions: terms ?? SettingsKeys.defaultBookingTerms,
+            items: bookingItems.isNotEmpty ? bookingItems : null,
+            showFreeWatermark: showWatermark,
+          );
       await Share.shareXFiles(
         [XFile(file.path)],
-        subject: 'Booking Confirmation - ${booking.bookingRef ?? booking.serviceName}',
+        subject:
+            'Booking Confirmation - ${booking.bookingRef ?? booking.serviceName}',
       );
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share PDF: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to share PDF: $e')));
       }
     }
   }
@@ -459,7 +493,11 @@ class _BookingDetailView extends ConsumerWidget {
     if (phone == null || phone.isEmpty) return; // No phone — skip silently
 
     final message = _buildConfirmationMessage();
-    final uri = PhoneUtils.waUri(phone, dialCode: party?.dialCode ?? '91', message: message);
+    final uri = PhoneUtils.waUri(
+      phone,
+      dialCode: party?.dialCode ?? '91',
+      message: message,
+    );
     if (uri == null) return;
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -478,8 +516,9 @@ class _BookingDetailView extends ConsumerWidget {
       String? phone;
       String? email;
       if (booking.customerPartyId != null) {
-        final party =
-            await ref.read(partyRepositoryProvider).getById(booking.customerPartyId!);
+        final party = await ref
+            .read(partyRepositoryProvider)
+            .getById(booking.customerPartyId!);
         phone = party?.phoneNumber;
         email = party?.email;
       }
@@ -514,9 +553,11 @@ class _BookingDetailView extends ConsumerWidget {
       useRootNavigator: false,
       builder: (context) => AlertDialog(
         title: Text(isSchedule ? 'Cancel Schedule?' : 'Cancel Booking?'),
-        content: Text(isSchedule
-            ? 'Are you sure you want to cancel this schedule?'
-            : 'Are you sure you want to cancel this booking?'),
+        content: Text(
+          isSchedule
+              ? 'Are you sure you want to cancel this schedule?'
+              : 'Are you sure you want to cancel this booking?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -533,7 +574,11 @@ class _BookingDetailView extends ConsumerWidget {
       await ref.read(bookingsProvider.notifier).markAsCancelled(booking.id!);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(isSchedule ? 'Schedule cancelled' : 'Booking cancelled')),
+          SnackBar(
+            content: Text(
+              isSchedule ? 'Schedule cancelled' : 'Booking cancelled',
+            ),
+          ),
         );
       }
     }
@@ -561,19 +606,19 @@ class _BookingDetailView extends ConsumerWidget {
     if (confirmed == true) {
       await ref.read(bookingsProvider.notifier).markAsNoShow(booking.id!);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Marked as no-show')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Marked as no-show')));
       }
     }
   }
 
   Future<void> _showRecordPaymentDialog(
-      BuildContext context, WidgetRef ref) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final amountCtrl = TextEditingController(
-      text: booking.balanceDue > 0
-          ? booking.balanceDue.toStringAsFixed(0)
-          : '',
+      text: booking.balanceDue > 0 ? booking.balanceDue.toStringAsFixed(0) : '',
     );
     final result = await showDialog<double>(
       context: context,
@@ -607,14 +652,15 @@ class _BookingDetailView extends ConsumerWidget {
     );
     amountCtrl.dispose();
     if (result == null || result <= 0 || !context.mounted) return;
-    await ref.read(bookingsProvider.notifier).recordPayment(
-          bookingId: booking.id!,
-          amount: result,
-        );
+    await ref
+        .read(bookingsProvider.notifier)
+        .recordPayment(bookingId: booking.id!, amount: result);
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Payment of ${CurrencyFormatter.format(result)} recorded'),
+        content: Text(
+          'Payment of ${CurrencyFormatter.format(result)} recorded',
+        ),
       ),
     );
   }
@@ -658,9 +704,9 @@ class _HeaderCard extends StatelessWidget {
                   booking.bookingType == BookingType.personal
                       ? booking.serviceName
                       : (booking.bookingRef ?? 'No ref'),
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -683,29 +729,29 @@ class _HeaderCard extends StatelessWidget {
               ],
             ),
             if (booking.bookingType == BookingType.personal &&
-                booking.bookingRef != null) ...[  
+                booking.bookingRef != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
                 booking.bookingRef!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
             const SizedBox(height: AppSpacing.sm),
             Text(
               _formatDateTime(),
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
             ),
             if (booking.durationMinutes != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Duration: ${booking.durationLabel}',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ],
@@ -750,7 +796,7 @@ class _CustomerCard extends ConsumerWidget {
     } else {
       party = null;
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.base),
@@ -760,16 +806,17 @@ class _CustomerCard extends ConsumerWidget {
             Text(
               'Customer',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: Text(
                     booking.customerName[0].toUpperCase(),
                     style: TextStyle(
@@ -786,8 +833,8 @@ class _CustomerCard extends ConsumerWidget {
                       Text(
                         booking.customerName,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       if (party?.phoneNumber != null) ...[
                         const SizedBox(height: 4),
@@ -801,7 +848,8 @@ class _CustomerCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (party?.phoneNumber != null && party!.phoneNumber!.isNotEmpty) ...[
+            if (party?.phoneNumber != null &&
+                party!.phoneNumber!.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
@@ -824,7 +872,7 @@ class _CustomerCard extends ConsumerWidget {
       ),
     );
   }
-  
+
   void _makePhoneCall(String? phone) async {
     if (phone == null || phone.isEmpty) return;
     final uri = Uri(scheme: 'tel', path: phone);
@@ -832,18 +880,21 @@ class _CustomerCard extends ConsumerWidget {
       await launchUrl(uri);
     }
   }
-  
+
   void _openWhatsApp(String? phone, Booking booking) async {
     if (phone == null || phone.isEmpty) return;
     // Format message for WhatsApp
     final dateStr = DateFormat('d MMM').format(booking.startDatetime);
     final timeStr = DateFormat('h:mm a').format(booking.startDatetime);
-    final message = "Hi ${booking.customerName}, regarding your ${booking.serviceName} booking on $dateStr at $timeStr.";
-    
+    final message =
+        "Hi ${booking.customerName}, regarding your ${booking.serviceName} booking on $dateStr at $timeStr.";
+
     // Clean phone number (remove spaces, dashes, etc.)
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9+]'), '');
-    final uri = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
-    
+    final uri = Uri.parse(
+      'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}',
+    );
+
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -868,14 +919,13 @@ class _ServiceItemsCard extends ConsumerWidget {
             Text(
               'Services',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             itemsAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, _) => Text(
                 booking.serviceName,
                 style: Theme.of(context).textTheme.bodyLarge,
@@ -884,10 +934,9 @@ class _ServiceItemsCard extends ConsumerWidget {
                 if (items.isEmpty) {
                   return Text(
                     booking.serviceName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyLarge
-                        ?.copyWith(fontWeight: FontWeight.w500),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   );
                 }
                 return Column(
@@ -910,8 +959,7 @@ class _ServiceItemsCard extends ConsumerWidget {
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
-                                        ?.copyWith(
-                                            fontWeight: FontWeight.w500),
+                                        ?.copyWith(fontWeight: FontWeight.w500),
                                   ),
                                   if (item.sacCode != null &&
                                       item.sacCode!.isNotEmpty) ...[
@@ -922,9 +970,9 @@ class _ServiceItemsCard extends ConsumerWidget {
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onSurfaceVariant,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                           ),
                                     ),
                                   ],
@@ -937,33 +985,26 @@ class _ServiceItemsCard extends ConsumerWidget {
                               children: [
                                 Text(
                                   CurrencyFormatter.format(item.lineTotal),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                          fontWeight: FontWeight.w600),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontWeight: FontWeight.w600),
                                 ),
                                 Text(
                                   '${_fmtQty(item.qty)} ${item.unit} × ${CurrencyFormatter.format(item.unitPrice)}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
+                                  style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurfaceVariant,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                       ),
                                 ),
                                 if (item.taxPct > 0)
                                   Text(
                                     'GST ${item.taxPct.toStringAsFixed(0)}%',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
+                                    style: Theme.of(context).textTheme.bodySmall
                                         ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
                                         ),
                                   ),
                               ],
@@ -1004,16 +1045,16 @@ class _ServiceCard extends StatelessWidget {
             Text(
               booking.bookingType == BookingType.personal ? 'Event' : 'Service',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
               booking.serviceName,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -1041,9 +1082,9 @@ class _AmountCard extends StatelessWidget {
             Text(
               'Payment',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
             _AmountRow(
@@ -1103,15 +1144,15 @@ class _AmountRow extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: isBold ? FontWeight.bold : null,
-              ),
+            fontWeight: isBold ? FontWeight.bold : null,
+          ),
         ),
         Text(
           CurrencyFormatter.format(amount),
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: color,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              ),
+            color: color,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+          ),
         ),
       ],
     );
@@ -1135,10 +1176,7 @@ class _LinkedInvoiceRow extends ConsumerWidget {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Invoice',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text('Invoice', style: Theme.of(context).textTheme.bodyMedium),
             GestureDetector(
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -1151,9 +1189,9 @@ class _LinkedInvoiceRow extends ConsumerWidget {
                   Text(
                     invoice.invoiceNo,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Icon(
@@ -1188,15 +1226,12 @@ class _NotesCard extends StatelessWidget {
             Text(
               'Notes',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(
-              notes,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(notes, style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
       ),

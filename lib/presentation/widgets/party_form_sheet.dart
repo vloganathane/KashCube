@@ -33,11 +33,7 @@ import 'indian_state_dropdown.dart';
 /// [onSave] is called with the resulting [Party] — caller decides
 /// whether to add or update in the repository.
 class PartyFormSheet extends ConsumerStatefulWidget {
-  const PartyFormSheet({
-    super.key,
-    this.existing,
-    required this.onSave,
-  });
+  const PartyFormSheet({super.key, this.existing, required this.onSave});
 
   final Party? existing;
   final void Function(Party) onSave;
@@ -74,6 +70,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   WorldCountry? _selectedCountry; // null = India (default)
   String _dialCode = '91';
   bool _pincodeAutoFilled = false;
+
   /// Addresses staged while adding a new contact (flushed to DB after insert).
   final List<PartyAddress> _pendingAddresses = [];
 
@@ -89,10 +86,10 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     _city = TextEditingController(text: p?.city ?? '');
     _state = TextEditingController(text: p?.state ?? '');
     _pincode = TextEditingController(text: p?.pincode ?? '');
-    _notes     = TextEditingController(text: p?.notes ?? '');
-    _website   = TextEditingController(text: p?.website ?? '');
-    _whatsapp  = TextEditingController(text: p?.whatsapp ?? '');
-    _linkedin  = TextEditingController(text: p?.linkedin ?? '');
+    _notes = TextEditingController(text: p?.notes ?? '');
+    _website = TextEditingController(text: p?.website ?? '');
+    _whatsapp = TextEditingController(text: p?.whatsapp ?? '');
+    _linkedin = TextEditingController(text: p?.linkedin ?? '');
     _instagram = TextEditingController(text: p?.instagram ?? '');
     _type = p?.partyType ?? PartyType.personal;
     _partyContext = p?.partyContext ?? 'personal';
@@ -120,7 +117,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       _selectedCountry = countryByName(p!.country);
     }
     _dialCode = p?.dialCode ?? '91';
-    _onlineExpanded = (p?.website ?? '').isNotEmpty ||
+    _onlineExpanded =
+        (p?.website ?? '').isNotEmpty ||
         (p?.whatsapp ?? '').isNotEmpty ||
         (p?.linkedin ?? '').isNotEmpty ||
         (p?.instagram ?? '').isNotEmpty;
@@ -162,7 +160,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
   void _onPincodeChanged() {
     final pin = _pincode.text.trim();
     // Only auto-fill for India and exactly 6 digits
-    final isIndia = _selectedCountry == null || _selectedCountry!.name.common == 'India';
+    final isIndia =
+        _selectedCountry == null || _selectedCountry!.name.common == 'India';
     if (!isIndia || pin.length != 6 || !RegExp(r'^\d{6}$').hasMatch(pin)) {
       if (_pincodeAutoFilled) setState(() => _pincodeAutoFilled = false);
       return;
@@ -184,11 +183,14 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
     final isEdit = widget.existing != null;
 
     return Padding(
-      padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xl),
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.base,
+          AppSpacing.xl,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -213,10 +215,9 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                 children: [
                   Text(
                     isEdit ? 'Edit Contact' : 'Add Contact',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const Spacer(),
                   IconButton(
@@ -252,8 +253,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       _type = t;
                       if (t == PartyType.vendor || t == PartyType.customer) {
                         _partyContext = 'business';
-                      } else if (t == PartyType.staff || t != PartyType.lender &&
-                          t != PartyType.borrower) {
+                      } else if (t == PartyType.staff ||
+                          t != PartyType.lender && t != PartyType.borrower) {
                         _partyContext = 'personal';
                       }
                     }),
@@ -306,9 +307,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                     child: TextFormField(
                       controller: _phone,
                       keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                       decoration: InputDecoration(
                         labelText: 'Phone',
                         border: const OutlineInputBorder(),
@@ -318,7 +317,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                       validator: (v) {
                         if (v == null || v.isEmpty) return null;
                         // India requires exactly 10 digits; allow 7-15 for other countries
-                        final isIndia = _selectedCountry == null ||
+                        final isIndia =
+                            _selectedCountry == null ||
                             _selectedCountry!.name.common == 'India';
                         if (isIndia && v.length != 10) {
                           return 'Enter 10-digit number';
@@ -397,7 +397,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                   Expanded(
                     flex: 3,
                     // Show IndianStateDropdown only for India; plain text for other countries
-                    child: (_selectedCountry == null ||
+                    child:
+                        (_selectedCountry == null ||
                             _selectedCountry!.name.common == 'India')
                         ? IndianStateDropdown(controller: _state)
                         : TextFormField(
@@ -421,8 +422,11 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                         border: const OutlineInputBorder(),
                         counterText: '',
                         suffixIcon: _pincodeAutoFilled
-                            ? const Icon(Icons.check_circle_outline,
-                                color: Colors.green, size: 18)
+                            ? const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 18,
+                              )
                             : null,
                       ),
                     ),
@@ -464,17 +468,16 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
 
               // ── Saved Addresses ───────────────────────────────────────
               if (widget.existing?.id != null)
-                _PartyAddressesSection(
-                  partyId: widget.existing!.id!,
-                )
+                _PartyAddressesSection(partyId: widget.existing!.id!)
               else
                 _buildPendingAddressesSection(),
               const SizedBox(height: AppSpacing.sm),
 
               // ── Online Presence ───────────────────────────────────────
               Theme(
-                data: Theme.of(context).copyWith(
-                    dividerColor: Colors.transparent),
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   initiallyExpanded: _onlineExpanded,
                   leading: const Icon(Icons.language_outlined),
@@ -552,9 +555,9 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                   isEdit
                       ? 'Save Changes'
                       : (_type == PartyType.lender ||
-                              _type == PartyType.borrower)
-                          ? 'Add ${_partyContext == 'business' ? 'Business' : 'Personal'} ${_type.label}'
-                          : 'Add ${_type.label}',
+                            _type == PartyType.borrower)
+                      ? 'Add ${_partyContext == 'business' ? 'Business' : 'Personal'} ${_type.label}'
+                      : 'Add ${_type.label}',
                 ),
               ),
             ],
@@ -612,7 +615,8 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
                 DropdownMenuItem(value: 'daily', child: Text('Day')),
                 DropdownMenuItem(value: 'hourly', child: Text('Hour')),
               ],
-              onChanged: (v) => setState(() => _staffSalaryType = v ?? 'monthly'),
+              onChanged: (v) =>
+                  setState(() => _staffSalaryType = v ?? 'monthly'),
             ),
           ),
         ],
@@ -682,7 +686,9 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       if (kIsWeb) {
         try {
           final bytes = await picked.readAsBytes();
-          final mediaId = await ref.read(webSyncProvider.notifier).uploadMediaBytes(
+          final mediaId = await ref
+              .read(webSyncProvider.notifier)
+              .uploadMediaBytes(
                 bytes: bytes,
                 fileName: picked.name,
                 mimeType: picked.mimeType ?? 'image/jpeg',
@@ -740,13 +746,15 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
           _name.text = contact.displayName;
         }
         if (contact.phones.isNotEmpty) {
-          final raw =
-              contact.phones.first.number.replaceAll(RegExp(r'[^\d]'), '');
+          final raw = contact.phones.first.number.replaceAll(
+            RegExp(r'[^\d]'),
+            '',
+          );
           final phone = raw.length == 12 && raw.startsWith('91')
               ? raw.substring(2)
               : raw.length > 10
-                  ? raw.substring(raw.length - 10)
-                  : raw;
+              ? raw.substring(raw.length - 10)
+              : raw;
           _phone.text = phone;
         }
         if (contact.emails.isNotEmpty) {
@@ -798,7 +806,7 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
           _pendingAddresses.isEmpty
               ? 'Add delivery / branch addresses'
               : '${_pendingAddresses.length} '
-                  'address${_pendingAddresses.length == 1 ? '' : 'es'}',
+                    'address${_pendingAddresses.length == 1 ? '' : 'es'}',
           style: const TextStyle(fontSize: 11),
         ),
         tilePadding: EdgeInsets.zero,
@@ -807,10 +815,13 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
           ...List.generate(_pendingAddresses.length, (i) {
             final addr = _pendingAddresses[i];
             return ListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-              leading: Icon(Icons.location_on_outlined,
-                  color: cs.onSurfaceVariant),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+              ),
+              leading: Icon(
+                Icons.location_on_outlined,
+                color: cs.onSurfaceVariant,
+              ),
               title: Text(addr.label),
               subtitle: Text(
                 addr.displayLine,
@@ -834,12 +845,11 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
             );
           }),
           ListTile(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-            leading: Icon(Icons.add_location_alt_outlined,
-                color: cs.primary),
-            title: Text('Add Address',
-                style: TextStyle(color: cs.primary)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+            ),
+            leading: Icon(Icons.add_location_alt_outlined, color: cs.primary),
+            title: Text('Add Address', style: TextStyle(color: cs.primary)),
             onTap: _showPendingAddressDialog,
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -871,10 +881,9 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       website: _website.text.trim().isEmpty ? null : _website.text.trim(),
       whatsapp: _whatsapp.text.trim().isEmpty ? null : _whatsapp.text.trim(),
       linkedin: _linkedin.text.trim().isEmpty ? null : _linkedin.text.trim(),
-      instagram:
-          _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
+      instagram: _instagram.text.trim().isEmpty ? null : _instagram.text.trim(),
       businessCardImagePath: _businessCardImagePath,
-        businessCardMediaId: _businessCardMediaId,
+      businessCardMediaId: _businessCardMediaId,
       totalTransactions: existing?.totalTransactions ?? 0,
       totalTransactionAmount: existing?.totalTransactionAmount ?? 0,
       totalCreditGiven: existing?.totalCreditGiven ?? 0,
@@ -885,10 +894,13 @@ class _PartyFormSheetState extends ConsumerState<PartyFormSheet> {
       staffRole: _type == PartyType.staff && _staffRole.text.trim().isNotEmpty
           ? _staffRole.text.trim()
           : existing?.staffRole,
-      staffSalary: _type == PartyType.staff && _staffSalary.text.trim().isNotEmpty
+      staffSalary:
+          _type == PartyType.staff && _staffSalary.text.trim().isNotEmpty
           ? double.tryParse(_staffSalary.text.trim())
           : existing?.staffSalary,
-      staffSalaryType: _type == PartyType.staff ? _staffSalaryType : existing?.staffSalaryType,
+      staffSalaryType: _type == PartyType.staff
+          ? _staffSalaryType
+          : existing?.staffSalaryType,
       staffJoinDate: _type == PartyType.staff && _staffJoinDate != null
           ? DateFormat('yyyy-MM-dd').format(_staffJoinDate!)
           : existing?.staffJoinDate,
@@ -931,10 +943,12 @@ Future<PartyAddress?> showAddressDialog(
   final pincodeCtrl = TextEditingController(text: editing?.pincode ?? '');
   final gstinCtrl = TextEditingController(text: editing?.gstin ?? '');
 
-  WorldCountry? selectedCountry = WorldCountry.list.cast<WorldCountry?>().firstWhere(
-    (c) => c?.name.common == (editing?.country ?? 'India'),
-    orElse: () => null,
-  );
+  WorldCountry? selectedCountry = WorldCountry.list
+      .cast<WorldCountry?>()
+      .firstWhere(
+        (c) => c?.name.common == (editing?.country ?? 'India'),
+        orElse: () => null,
+      );
 
   final pincodeAutoFilled = ValueNotifier<bool>(false);
   void onPincodeChanged() {
@@ -954,6 +968,7 @@ Future<PartyAddress?> showAddressDialog(
     stateCtrl.text = result.state;
     pincodeAutoFilled.value = true;
   }
+
   pincodeCtrl.addListener(onPincodeChanged);
 
   PartyAddress? result;
@@ -1141,15 +1156,17 @@ class _PartyAddressesSectionState
     if (editing == null) {
       await repo.insert(addr);
     } else {
-      await repo.update(editing.copyWith(
-        label: addr.label,
-        address: addr.address,
-        city: addr.city,
-        state: addr.state,
-        pincode: addr.pincode,
-        country: addr.country,
-        gstin: addr.gstin,
-      ));
+      await repo.update(
+        editing.copyWith(
+          label: addr.label,
+          address: addr.address,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+          country: addr.country,
+          gstin: addr.gstin,
+        ),
+      );
     }
     ref.invalidate(partyAddressesProvider(widget.partyId));
   }
@@ -1219,7 +1236,9 @@ class _PartyAddressesSectionState
                   if (addr.isDefault)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primaryContainer,
                         borderRadius: BorderRadius.circular(6),
@@ -1250,8 +1269,7 @@ class _PartyAddressesSectionState
                         await ref
                             .read(partyAddressRepositoryProvider)
                             .setDefault(widget.partyId, addr.id!);
-                        ref.invalidate(
-                            partyAddressesProvider(widget.partyId));
+                        ref.invalidate(partyAddressesProvider(widget.partyId));
                       },
                     ),
                   IconButton(
@@ -1260,8 +1278,7 @@ class _PartyAddressesSectionState
                     onPressed: () => _showAddressDialog(editing: addr),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete_outline,
-                        size: 20, color: cs.error),
+                    icon: Icon(Icons.delete_outline, size: 20, color: cs.error),
                     tooltip: 'Delete',
                     onPressed: () => _deleteAddress(addr),
                   ),
@@ -1310,10 +1327,9 @@ class _BusinessCardPicker extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Business Card',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: cs.outline),
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(color: cs.outline),
             ),
             const Spacer(),
             if (imagePath != null)
@@ -1353,18 +1369,21 @@ class _BusinessCardPicker extends StatelessWidget {
               height: 120,
               decoration: BoxDecoration(
                 border: Border.all(
-                    color: cs.outlineVariant, style: BorderStyle.solid),
+                  color: cs.outlineVariant,
+                  style: BorderStyle.solid,
+                ),
                 borderRadius: BorderRadius.circular(12),
                 color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.add_a_photo_outlined,
-                      size: 32, color: cs.primary),
+                  Icon(Icons.add_a_photo_outlined, size: 32, color: cs.primary),
                   const SizedBox(height: 6),
-                  Text('Tap to add business card',
-                      style: TextStyle(color: cs.primary, fontSize: 13)),
+                  Text(
+                    'Tap to add business card',
+                    style: TextStyle(color: cs.primary, fontSize: 13),
+                  ),
                 ],
               ),
             ),
@@ -1374,13 +1393,11 @@ class _BusinessCardPicker extends StatelessWidget {
   }
 
   Widget _placeholder(BuildContext context, ColorScheme cs) => Container(
-        height: 100,
-        decoration: BoxDecoration(
-          color: cs.errorContainer,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Icon(Icons.broken_image_outlined, color: cs.error),
-        ),
-      );
+    height: 100,
+    decoration: BoxDecoration(
+      color: cs.errorContainer,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Center(child: Icon(Icons.broken_image_outlined, color: cs.error)),
+  );
 }

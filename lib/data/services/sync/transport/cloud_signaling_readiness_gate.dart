@@ -31,8 +31,7 @@ final class CloudSignalingReady extends CloudSignalingReadinessResult {
 /// [reasons] is a non-empty list of the specific conditions that must be
 /// resolved before cloud mode can be safely activated.
 final class CloudSignalingNotReady extends CloudSignalingReadinessResult {
-  const CloudSignalingNotReady(this.reasons)
-      : assert(reasons.length > 0);
+  const CloudSignalingNotReady(this.reasons) : assert(reasons.length > 0);
 
   final List<CloudSignalingNotReadyReason> reasons;
 }
@@ -51,9 +50,9 @@ class CloudSignalingReadinessGate {
     required SyncSignalingMode signalingMode,
     required bool adapterInjected,
     required SyncTurnConfigSource turnConfigSource,
-  })  : _signalingMode = signalingMode,
-        _adapterInjected = adapterInjected,
-        _turnConfigSource = turnConfigSource;
+  }) : _signalingMode = signalingMode,
+       _adapterInjected = adapterInjected,
+       _turnConfigSource = turnConfigSource;
 
   final SyncSignalingMode _signalingMode;
   final bool _adapterInjected;

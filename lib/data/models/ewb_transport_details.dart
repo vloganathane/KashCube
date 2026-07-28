@@ -37,12 +37,8 @@ class EwbTransportDetails {
   final String? transDocDate;
 
   /// Human-readable label for [mode].
-  String get modeLabel => const {
-        '1': 'Road',
-        '2': 'Rail',
-        '3': 'Air',
-        '4': 'Ship / Water',
-      }[mode] ??
+  String get modeLabel =>
+      const {'1': 'Road', '2': 'Rail', '3': 'Air', '4': 'Ship / Water'}[mode] ??
       'Road';
 
   /// Validity in days: 1 day per 100 km, minimum 1 day.

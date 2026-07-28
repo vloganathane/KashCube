@@ -4,7 +4,7 @@ import '../../domain/repositories/business_repository.dart';
 
 class BusinessRepositoryImpl implements BusinessRepository {
   BusinessRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
-      : _db = dbHelper ?? DatabaseHelper.instance;
+    : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -17,10 +17,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   @override
   Future<List<Business>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query(
-      'businesses',
-      where: _ctx,
-    );
+    final rows = await db.query('businesses', where: _ctx);
     return rows.map(Business.fromMap).toList();
   }
 
@@ -38,8 +35,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   @override
   Future<Business?> getById(int id) async {
     final db = await _db.database;
-    final rows =
-        await db.query('businesses', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('businesses', where: 'id = ?', whereArgs: [id]);
     return rows.isEmpty ? null : Business.fromMap(rows.first);
   }
 
@@ -49,8 +45,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final now = DateTime.now().toIso8601String();
     final id = await db.transaction((txn) async {
       if (setActive) {
-        await txn.update('businesses', {'is_active': 0},
-            where: _ctx);
+        await txn.update('businesses', {'is_active': 0}, where: _ctx);
       }
       return txn.insert('businesses', {
         ...business.toMap(),
@@ -69,10 +64,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
     final db = await _db.database;
     await db.update(
       'businesses',
-      {
-        ...business.toMap(),
-        'updated_at': DateTime.now().toIso8601String(),
-      },
+      {...business.toMap(), 'updated_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [business.id],
     );
@@ -90,8 +82,7 @@ class BusinessRepositoryImpl implements BusinessRepository {
   Future<void> setActive(int id) async {
     final db = await _db.database;
     await db.transaction((txn) async {
-      await txn.update('businesses', {'is_active': 0},
-          where: _ctx);
+      await txn.update('businesses', {'is_active': 0}, where: _ctx);
       await txn.update(
         'businesses',
         {'is_active': 1, 'updated_at': DateTime.now().toIso8601String()},

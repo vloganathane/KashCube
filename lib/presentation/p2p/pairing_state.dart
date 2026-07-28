@@ -21,11 +21,7 @@ enum PairingPhase {
 
 /// Immutable snapshot of the pairing flow state.
 class PairingState {
-  const PairingState({
-    required this.phase,
-    this.peerName,
-    this.errorMessage,
-  });
+  const PairingState({required this.phase, this.peerName, this.errorMessage});
 
   final PairingPhase phase;
 
@@ -39,12 +35,11 @@ class PairingState {
     PairingPhase? phase,
     String? peerName,
     String? errorMessage,
-  }) =>
-      PairingState(
-        phase:        phase        ?? this.phase,
-        peerName:     peerName     ?? this.peerName,
-        errorMessage: errorMessage ?? this.errorMessage,
-      );
+  }) => PairingState(
+    phase: phase ?? this.phase,
+    peerName: peerName ?? this.peerName,
+    errorMessage: errorMessage ?? this.errorMessage,
+  );
 
   @override
   String toString() => 'PairingState($phase, peer=$peerName)';

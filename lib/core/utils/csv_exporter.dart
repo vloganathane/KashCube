@@ -21,10 +21,7 @@ class CsvExporter {
   ///
   /// Cell values are automatically quoted when they contain a comma, a
   /// double-quote, or a newline. Null values are written as empty strings.
-  static Uint8List encode(
-    List<String> headers,
-    List<List<dynamic>> rows,
-  ) {
+  static Uint8List encode(List<String> headers, List<List<dynamic>> rows) {
     final sb = StringBuffer();
     sb.writeln(_csvRow(headers));
     for (final row in rows) {

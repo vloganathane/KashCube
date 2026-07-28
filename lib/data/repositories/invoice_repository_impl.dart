@@ -26,8 +26,11 @@ class QuoteRepositoryImpl implements QuoteRepository {
   @override
   Future<List<Quote>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query('quotes',
-        where: _ctx, orderBy: 'created_at DESC');
+    final rows = await db.query(
+      'quotes',
+      where: _ctx,
+      orderBy: 'created_at DESC',
+    );
     final List<Quote> result = [];
     for (final row in rows) {
       final id = row['id'] as int;
@@ -40,16 +43,18 @@ class QuoteRepositoryImpl implements QuoteRepository {
   @override
   Future<Quote?> getById(int id) async {
     final db = await _db.database;
-    final rows =
-        await db.query('quotes', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('quotes', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return null;
     final items = await _itemsForQuote(db, id);
     return Quote.fromMap(rows.first, items: items);
   }
 
   Future<List<QuoteItem>> _itemsForQuote(dynamic db, int quoteId) async {
-    final rows = await db.query('quote_items',
-        where: 'quote_id = ?', whereArgs: [quoteId]);
+    final rows = await db.query(
+      'quote_items',
+      where: 'quote_id = ?',
+      whereArgs: [quoteId],
+    );
     return rows.map<QuoteItem>(QuoteItem.fromMap).toList();
   }
 
@@ -61,8 +66,7 @@ class QuoteRepositoryImpl implements QuoteRepository {
       map['context_id'] = contextId;
       final id = await txn.insert('quotes', map);
       for (final item in items) {
-        await txn.insert(
-            'quote_items', item.copyWith(quoteId: id).toMap());
+        await txn.insert('quote_items', item.copyWith(quoteId: id).toMap());
       }
       return id;
     });
@@ -74,17 +78,28 @@ class QuoteRepositoryImpl implements QuoteRepository {
   Future<void> update(Quote quote, List<QuoteItem> items) async {
     final db = await _db.database;
     await db.transaction((txn) async {
-      await txn.update('quotes', quote.copyWith(updatedAt: DateTime.now()).toMap(),
-          where: 'id = ?', whereArgs: [quote.id]);
+      await txn.update(
+        'quotes',
+        quote.copyWith(updatedAt: DateTime.now()).toMap(),
+        where: 'id = ?',
+        whereArgs: [quote.id],
+      );
       if (items.isEmpty) {
-        debugPrint('QuoteRepositoryImpl.update: items list empty — preserving existing rows');
+        debugPrint(
+          'QuoteRepositoryImpl.update: items list empty — preserving existing rows',
+        );
         return;
       }
-      await txn
-          .delete('quote_items', where: 'quote_id = ?', whereArgs: [quote.id]);
+      await txn.delete(
+        'quote_items',
+        where: 'quote_id = ?',
+        whereArgs: [quote.id],
+      );
       for (final item in items) {
         await txn.insert(
-            'quote_items', item.copyWith(quoteId: quote.id!).toMap());
+          'quote_items',
+          item.copyWith(quoteId: quote.id!).toMap(),
+        );
       }
     });
     _db.notifyChange('quotes');
@@ -126,14 +141,16 @@ class QuoteRepositoryImpl implements QuoteRepository {
       whereArgs: [id, QuoteStatus.draft.dbValue],
     );
     _db.notifyChange('quotes');
-    await ActivityLogRepositoryImpl().log(ActivityLog(
-      entityType: 'quote',
-      entityId: id,
-      type: ActivityLogType.statusChange,
-      message: 'Quote sent to customer',
-      meta: '{"from":"draft","to":"sent"}',
-      createdAt: DateTime.now(),
-    ));
+    await ActivityLogRepositoryImpl().log(
+      ActivityLog(
+        entityType: 'quote',
+        entityId: id,
+        type: ActivityLogType.statusChange,
+        message: 'Quote sent to customer',
+        meta: '{"from":"draft","to":"sent"}',
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -149,14 +166,16 @@ class QuoteRepositoryImpl implements QuoteRepository {
     final message = reason != null && reason.isNotEmpty
         ? 'Quote rejected — $reason'
         : 'Quote marked as rejected';
-    await ActivityLogRepositoryImpl().log(ActivityLog(
-      entityType: 'quote',
-      entityId: id,
-      type: ActivityLogType.statusChange,
-      message: message,
-      meta: '{"from":"sent","to":"rejected"}',
-      createdAt: DateTime.now(),
-    ));
+    await ActivityLogRepositoryImpl().log(
+      ActivityLog(
+        entityType: 'quote',
+        entityId: id,
+        type: ActivityLogType.statusChange,
+        message: message,
+        meta: '{"from":"sent","to":"rejected"}',
+        createdAt: DateTime.now(),
+      ),
+    );
   }
 
   @override
@@ -208,22 +227,28 @@ class QuoteRepositoryImpl implements QuoteRepository {
         await txn.insert('invoice_items', ii.toMap());
       }
       // Mark quote as accepted
-      await txn.update('quotes', {'status': QuoteStatus.accepted.dbValue},
-          where: 'id = ?', whereArgs: [quoteId]);
+      await txn.update(
+        'quotes',
+        {'status': QuoteStatus.accepted.dbValue},
+        where: 'id = ?',
+        whereArgs: [quoteId],
+      );
       return id;
     });
 
     _db.notifyChange('quotes');
     _db.notifyChange('invoices');
 
-    await ActivityLogRepositoryImpl().log(ActivityLog(
-      entityType: 'quote',
-      entityId: quoteId,
-      type: ActivityLogType.statusChange,
-      message: 'Converted to invoice $invoiceNo',
-      meta: '{"from":"sent","to":"accepted","invoice_id":$invoiceId}',
-      createdAt: DateTime.now(),
-    ));
+    await ActivityLogRepositoryImpl().log(
+      ActivityLog(
+        entityType: 'quote',
+        entityId: quoteId,
+        type: ActivityLogType.statusChange,
+        message: 'Converted to invoice $invoiceNo',
+        meta: '{"from":"sent","to":"accepted","invoice_id":$invoiceId}',
+        createdAt: DateTime.now(),
+      ),
+    );
 
     return invoice.copyWith(id: invoiceId);
   }
@@ -265,39 +290,50 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   @override
   Future<List<Invoice>> getAll() async {
     final db = await _db.database;
-    final rows = await db.query('invoices',
-        where: _ctx,
-        orderBy: 'created_at DESC');
+    final rows = await db.query(
+      'invoices',
+      where: _ctx,
+      orderBy: 'created_at DESC',
+    );
     return _withItems(db, rows);
   }
 
   @override
   Future<List<Invoice>> getByStatus(InvoiceStatus status) async {
     final db = await _db.database;
-    final rows = await db.query('invoices',
-        where: '$_ctx AND status = ?',
-        whereArgs: [status.dbValue],
-        orderBy: 'created_at DESC');
+    final rows = await db.query(
+      'invoices',
+      where: '$_ctx AND status = ?',
+      whereArgs: [status.dbValue],
+      orderBy: 'created_at DESC',
+    );
     return _withItems(db, rows);
   }
 
   @override
   Future<List<Invoice>> getByCustomer(String customerName) async {
     final db = await _db.database;
-    final rows = await db.query('invoices',
-        where: '$_ctx AND customer_name = ?',
-        whereArgs: [customerName],
-        orderBy: 'issue_date DESC');
+    final rows = await db.query(
+      'invoices',
+      where: '$_ctx AND customer_name = ?',
+      whereArgs: [customerName],
+      orderBy: 'issue_date DESC',
+    );
     return _withItems(db, rows);
   }
 
   Future<List<Invoice>> _withItems(
-      dynamic db, List<Map<String, dynamic>> rows) async {
+    dynamic db,
+    List<Map<String, dynamic>> rows,
+  ) async {
     final List<Invoice> result = [];
     for (final row in rows) {
       final id = row['id'] as int;
-      final itemRows = await db.query('invoice_items',
-          where: 'invoice_id = ?', whereArgs: [id]);
+      final itemRows = await db.query(
+        'invoice_items',
+        where: 'invoice_id = ?',
+        whereArgs: [id],
+      );
       final items = itemRows.map<InvoiceItem>(InvoiceItem.fromMap).toList();
       result.add(Invoice.fromMap(row, items: items));
     }
@@ -307,11 +343,13 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
   @override
   Future<Invoice?> getById(int id) async {
     final db = await _db.database;
-    final rows =
-        await db.query('invoices', where: 'id = ?', whereArgs: [id]);
+    final rows = await db.query('invoices', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return null;
-    final itemRows = await db.query('invoice_items',
-        where: 'invoice_id = ?', whereArgs: [id]);
+    final itemRows = await db.query(
+      'invoice_items',
+      where: 'invoice_id = ?',
+      whereArgs: [id],
+    );
     final items = itemRows.map<InvoiceItem>(InvoiceItem.fromMap).toList();
     return Invoice.fromMap(rows.first, items: items);
   }
@@ -324,8 +362,7 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
       map['context_id'] = contextId;
       final id = await txn.insert('invoices', map);
       for (final item in items) {
-        await txn.insert(
-            'invoice_items', item.copyWith(invoiceId: id).toMap());
+        await txn.insert('invoice_items', item.copyWith(invoiceId: id).toMap());
       }
       return id;
     });
@@ -338,24 +375,31 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final db = await _db.database;
     await db.transaction((txn) async {
       await txn.update(
-          'invoices',
-          invoice.copyWith(updatedAt: DateTime.now()).toMap(),
-          where: 'id = ?',
-          whereArgs: [invoice.id]);
+        'invoices',
+        invoice.copyWith(updatedAt: DateTime.now()).toMap(),
+        where: 'id = ?',
+        whereArgs: [invoice.id],
+      );
       // Guard: never wipe all items via an empty list — this prevents silent
       // data loss where totals survive on the invoices row but the detail
       // view goes blank. An invoice with zero items is never valid.
       if (items.isNotEmpty) {
-        await txn.delete('invoice_items',
-            where: 'invoice_id = ?', whereArgs: [invoice.id]);
+        await txn.delete(
+          'invoice_items',
+          where: 'invoice_id = ?',
+          whereArgs: [invoice.id],
+        );
         for (final item in items) {
           await txn.insert(
-              'invoice_items', item.copyWith(invoiceId: invoice.id!).toMap());
+            'invoice_items',
+            item.copyWith(invoiceId: invoice.id!).toMap(),
+          );
         }
       } else {
         debugPrint(
-            '[InvoiceRepo] update() called with empty items for invoice '
-            '${invoice.id} — skipping item delete/insert to preserve data.');
+          '[InvoiceRepo] update() called with empty items for invoice '
+          '${invoice.id} — skipping item delete/insert to preserve data.',
+        );
       }
     });
     _db.notifyChange('invoices');
@@ -403,7 +447,9 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
         {
           'status': newStatus.dbValue,
           'paid_amount': newPaidAmount,
-          'paid_at': isFullyPaid ? paidDate.toIso8601String() : invoice.paidAt?.toIso8601String(),
+          'paid_at': isFullyPaid
+              ? paidDate.toIso8601String()
+              : invoice.paidAt?.toIso8601String(),
           'payment_method': paymentMethod.name,
           'updated_at': DateTime.now().toIso8601String(),
         },
@@ -431,10 +477,13 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
         updatedAt: DateTime.now(),
       );
 
-      final transactionId = await txn.insert('transactions', transaction.toMap());
+      final transactionId = await txn.insert(
+        'transactions',
+        transaction.toMap(),
+      );
 
       // Note: Booking remains in 'completed' status - invoice payment tracked separately
-      
+
       return transactionId;
     });
     _db.notifyChange('invoices');
@@ -479,8 +528,11 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final result = <Invoice>[];
     for (final row in rows) {
       final id = row['id'] as int;
-      final itemRows = await db.query('invoice_items',
-          where: 'invoice_id = ?', whereArgs: [id]);
+      final itemRows = await db.query(
+        'invoice_items',
+        where: 'invoice_id = ?',
+        whereArgs: [id],
+      );
       final items = itemRows.map(InvoiceItem.fromMap).toList();
       result.add(Invoice.fromMap(row, items: items));
     }
@@ -498,7 +550,8 @@ class InvoiceRepositoryImpl implements InvoiceRepository {
     final toStr = to.toIso8601String().substring(0, 10);
     final rows = await db.query(
       'invoices',
-      where: 'business_id = ? AND $_ctx AND issue_date >= ? AND issue_date <= ?',
+      where:
+          'business_id = ? AND $_ctx AND issue_date >= ? AND issue_date <= ?',
       whereArgs: [businessId, fromStr, toStr],
       orderBy: 'issue_date ASC',
     );

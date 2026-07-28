@@ -14,13 +14,13 @@ enum ScheduledFrequency {
   yearly;
 
   String get label => switch (this) {
-        ScheduledFrequency.daily => 'Daily',
-        ScheduledFrequency.weekly => 'Weekly',
-        ScheduledFrequency.biweekly => 'Bi-weekly',
-        ScheduledFrequency.monthly => 'Monthly',
-        ScheduledFrequency.quarterly => 'Quarterly',
-        ScheduledFrequency.yearly => 'Yearly',
-      };
+    ScheduledFrequency.daily => 'Daily',
+    ScheduledFrequency.weekly => 'Weekly',
+    ScheduledFrequency.biweekly => 'Bi-weekly',
+    ScheduledFrequency.monthly => 'Monthly',
+    ScheduledFrequency.quarterly => 'Quarterly',
+    ScheduledFrequency.yearly => 'Yearly',
+  };
 
   String get dbValue => name;
 
@@ -32,26 +32,27 @@ enum ScheduledFrequency {
 
   /// Next occurrence after [from].
   DateTime nextOccurrence(DateTime from) => switch (this) {
-        ScheduledFrequency.daily => from.add(const Duration(days: 1)),
-        ScheduledFrequency.weekly => from.add(const Duration(days: 7)),
-        ScheduledFrequency.biweekly => from.add(const Duration(days: 14)),
-        ScheduledFrequency.monthly =>
-          DateTime(from.year, from.month + 1, from.day),
-        ScheduledFrequency.quarterly =>
-          DateTime(from.year, from.month + 3, from.day),
-        ScheduledFrequency.yearly =>
-          DateTime(from.year + 1, from.month, from.day),
-      };
+    ScheduledFrequency.daily => from.add(const Duration(days: 1)),
+    ScheduledFrequency.weekly => from.add(const Duration(days: 7)),
+    ScheduledFrequency.biweekly => from.add(const Duration(days: 14)),
+    ScheduledFrequency.monthly => DateTime(from.year, from.month + 1, from.day),
+    ScheduledFrequency.quarterly => DateTime(
+      from.year,
+      from.month + 3,
+      from.day,
+    ),
+    ScheduledFrequency.yearly => DateTime(from.year + 1, from.month, from.day),
+  };
 
   /// Normalise [amount] to a monthly equivalent for budget summaries.
   double toMonthly(double amount) => switch (this) {
-        ScheduledFrequency.daily => amount * 30,
-        ScheduledFrequency.weekly => amount * 4,
-        ScheduledFrequency.biweekly => amount * 2,
-        ScheduledFrequency.monthly => amount,
-        ScheduledFrequency.quarterly => amount / 3,
-        ScheduledFrequency.yearly => amount / 12,
-      };
+    ScheduledFrequency.daily => amount * 30,
+    ScheduledFrequency.weekly => amount * 4,
+    ScheduledFrequency.biweekly => amount * 2,
+    ScheduledFrequency.monthly => amount,
+    ScheduledFrequency.quarterly => amount / 3,
+    ScheduledFrequency.yearly => amount / 12,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -156,34 +157,42 @@ class ScheduledPayment extends Equatable {
     final now = DateTime.now();
     final paid = lastPaidDate!;
     return switch (frequency ?? ScheduledFrequency.monthly) {
-      ScheduledFrequency.daily => paid.year == now.year &&
-          paid.month == now.month &&
-          paid.day == now.day,
+      ScheduledFrequency.daily =>
+        paid.year == now.year && paid.month == now.month && paid.day == now.day,
       ScheduledFrequency.weekly => now.difference(paid).inDays < 7,
       ScheduledFrequency.biweekly => now.difference(paid).inDays < 14,
       ScheduledFrequency.monthly =>
         paid.year == now.year && paid.month == now.month,
       ScheduledFrequency.quarterly => () {
-          final paidQ = (paid.month - 1) ~/ 3;
-          final nowQ = (now.month - 1) ~/ 3;
-          return paid.year == now.year && paidQ == nowQ;
-        }(),
+        final paidQ = (paid.month - 1) ~/ 3;
+        final nowQ = (now.month - 1) ~/ 3;
+        return paid.year == now.year && paidQ == nowQ;
+      }(),
       ScheduledFrequency.yearly => paid.year == now.year,
     };
   }
 
   bool get isOverdue {
     if (!isActive || isPaidThisPeriod) return false;
-    final today =
-        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    return DateTime(nextDate.year, nextDate.month, nextDate.day)
-        .isBefore(today);
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
+    return DateTime(
+      nextDate.year,
+      nextDate.month,
+      nextDate.day,
+    ).isBefore(today);
   }
 
   /// Days until next due date. Negative = overdue.
   int get daysUntilDue {
-    final today =
-        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    final today = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+      DateTime.now().day,
+    );
     final due = DateTime(nextDate.year, nextDate.month, nextDate.day);
     return due.difference(today).inDays;
   }
@@ -191,29 +200,29 @@ class ScheduledPayment extends Equatable {
   // ── Serialization ─────────────────────────────────────────────────────────
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'name': name,
-        'amount': amount,
-        'type': type,
-        'category': category,
-        'is_one_time': isOneTime ? 1 : 0,
-        'frequency': frequency?.dbValue,
-        'due_day': dueDay,
-        'auto_create': autoCreate ? 1 : 0,
-        'is_auto_pay': isAutoPay ? 1 : 0,
-        'is_active': isActive ? 1 : 0,
-        'next_date': nextDate.toIso8601String(),
-        'last_paid_date': lastPaidDate?.toIso8601String(),
-        'last_generated': lastGenerated?.toIso8601String(),
-        'party_name': partyName,
-        if (partyId != null) 'party_id': partyId,
-        'payment_method': paymentMethod,
-        'notes': notes,
-        'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
-        'updated_at': updatedAt?.toIso8601String(),
-        'deleted_at': deletedAt?.toIso8601String(),
-        'bill_context': billContext,
-      };
+    if (id != null) 'id': id,
+    'name': name,
+    'amount': amount,
+    'type': type,
+    'category': category,
+    'is_one_time': isOneTime ? 1 : 0,
+    'frequency': frequency?.dbValue,
+    'due_day': dueDay,
+    'auto_create': autoCreate ? 1 : 0,
+    'is_auto_pay': isAutoPay ? 1 : 0,
+    'is_active': isActive ? 1 : 0,
+    'next_date': nextDate.toIso8601String(),
+    'last_paid_date': lastPaidDate?.toIso8601String(),
+    'last_generated': lastGenerated?.toIso8601String(),
+    'party_name': partyName,
+    if (partyId != null) 'party_id': partyId,
+    'payment_method': paymentMethod,
+    'notes': notes,
+    'created_at': (createdAt ?? DateTime.now()).toIso8601String(),
+    'updated_at': updatedAt?.toIso8601String(),
+    'deleted_at': deletedAt?.toIso8601String(),
+    'bill_context': billContext,
+  };
 
   factory ScheduledPayment.fromMap(Map<String, dynamic> map) =>
       ScheduledPayment(
@@ -276,48 +285,47 @@ class ScheduledPayment extends Equatable {
     DateTime? updatedAt,
     DateTime? deletedAt,
     String? billContext,
-  }) =>
-      ScheduledPayment(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        amount: amount ?? this.amount,
-        type: type ?? this.type,
-        category: category ?? this.category,
-        isOneTime: isOneTime ?? this.isOneTime,
-        frequency: frequency ?? this.frequency,
-        dueDay: dueDay ?? this.dueDay,
-        autoCreate: autoCreate ?? this.autoCreate,
-        isAutoPay: isAutoPay ?? this.isAutoPay,
-        isActive: isActive ?? this.isActive,
-        nextDate: nextDate ?? this.nextDate,
-        lastPaidDate: lastPaidDate ?? this.lastPaidDate,
-        lastGenerated: lastGenerated ?? this.lastGenerated,
-        partyName: partyName ?? this.partyName,
-        partyId: partyId ?? this.partyId,
-        paymentMethod: paymentMethod ?? this.paymentMethod,
-        notes: notes ?? this.notes,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-        deletedAt: deletedAt ?? this.deletedAt,
-        billContext: billContext ?? this.billContext,
-      );
+  }) => ScheduledPayment(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    amount: amount ?? this.amount,
+    type: type ?? this.type,
+    category: category ?? this.category,
+    isOneTime: isOneTime ?? this.isOneTime,
+    frequency: frequency ?? this.frequency,
+    dueDay: dueDay ?? this.dueDay,
+    autoCreate: autoCreate ?? this.autoCreate,
+    isAutoPay: isAutoPay ?? this.isAutoPay,
+    isActive: isActive ?? this.isActive,
+    nextDate: nextDate ?? this.nextDate,
+    lastPaidDate: lastPaidDate ?? this.lastPaidDate,
+    lastGenerated: lastGenerated ?? this.lastGenerated,
+    partyName: partyName ?? this.partyName,
+    partyId: partyId ?? this.partyId,
+    paymentMethod: paymentMethod ?? this.paymentMethod,
+    notes: notes ?? this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt ?? this.deletedAt,
+    billContext: billContext ?? this.billContext,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        amount,
-        type,
-        category,
-        isOneTime,
-        frequency,
-        dueDay,
-        autoCreate,
-        isAutoPay,
-        isActive,
-        nextDate,
-        lastPaidDate,
-        lastGenerated,
-        billContext,
-      ];
+    id,
+    name,
+    amount,
+    type,
+    category,
+    isOneTime,
+    frequency,
+    dueDay,
+    autoCreate,
+    isAutoPay,
+    isActive,
+    nextDate,
+    lastPaidDate,
+    lastGenerated,
+    billContext,
+  ];
 }

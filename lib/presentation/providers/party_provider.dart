@@ -11,12 +11,10 @@ import 'context_provider.dart';
 // Repository
 // ---------------------------------------------------------------------------
 
-final partyRepositoryProvider = Provider<PartyRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return PartyRepositoryImpl(null, contextId);
-  },
-);
+final partyRepositoryProvider = Provider<PartyRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return PartyRepositoryImpl(null, contextId);
+});
 
 // ---------------------------------------------------------------------------
 // Party list — CRUD
@@ -24,8 +22,8 @@ final partyRepositoryProvider = Provider<PartyRepository>(
 
 final partiesProvider =
     StateNotifierProvider<PartiesNotifier, AsyncValue<List<Party>>>(
-  (ref) => PartiesNotifier(ref.watch(partyRepositoryProvider)),
-);
+      (ref) => PartiesNotifier(ref.watch(partyRepositoryProvider)),
+    );
 
 class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {
   PartiesNotifier(this._repo) : super(const AsyncValue.loading()) {
@@ -47,8 +45,9 @@ class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {
     try {
       final id = await _repo.insert(party);
       final created = party.copyWith(id: id, createdAt: DateTime.now());
-      state = state.whenData((list) => [...list, created]
-        ..sort((a, b) => a.name.compareTo(b.name)));
+      state = state.whenData(
+        (list) => [...list, created]..sort((a, b) => a.name.compareTo(b.name)),
+      );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -57,15 +56,17 @@ class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {
   /// Adds a [party] that was already inserted to the DB to the in-memory list.
   /// Used when the form handles the insert itself (add mode with pending addresses).
   void addToState(Party party) {
-    state = state.whenData((list) => [...list, party]
-      ..sort((a, b) => a.name.compareTo(b.name)));
+    state = state.whenData(
+      (list) => [...list, party]..sort((a, b) => a.name.compareTo(b.name)),
+    );
   }
 
   Future<void> update(Party party) async {
     try {
       await _repo.update(party);
-      state = state.whenData((list) =>
-          list.map((p) => p.id == party.id ? party : p).toList());
+      state = state.whenData(
+        (list) => list.map((p) => p.id == party.id ? party : p).toList(),
+      );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -74,8 +75,7 @@ class PartiesNotifier extends StateNotifier<AsyncValue<List<Party>>> {
   Future<void> remove(int id) async {
     try {
       await _repo.delete(id);
-      state = state.whenData(
-          (list) => list.where((p) => p.id != id).toList());
+      state = state.whenData((list) => list.where((p) => p.id != id).toList());
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -99,9 +99,11 @@ final filteredPartiesProvider = Provider<AsyncValue<List<Party>>>((ref) {
   return parties.whenData((list) {
     final q = query.toLowerCase();
     return list
-        .where((p) =>
-            p.name.toLowerCase().contains(q) ||
-            (p.phoneNumber?.contains(q) ?? false))
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(q) ||
+              (p.phoneNumber?.contains(q) ?? false),
+        )
         .toList();
   });
 });
@@ -112,11 +114,11 @@ final filteredPartiesProvider = Provider<AsyncValue<List<Party>>>((ref) {
 
 final partyNameSuggestionsProvider =
     FutureProvider.family<List<String>, String>((ref, query) async {
-  if (query.trim().length < 2) return [];
-  final repo = ref.read(partyRepositoryProvider);
-  final results = await repo.search(query);
-  return results.map((p) => p.name).toList();
-});
+      if (query.trim().length < 2) return [];
+      final repo = ref.read(partyRepositoryProvider);
+      final results = await repo.search(query);
+      return results.map((p) => p.name).toList();
+    });
 
 // ---------------------------------------------------------------------------
 // Staff — HRMS Phase S1
@@ -133,13 +135,14 @@ final staffMembersProvider = FutureProvider<List<Party>>((ref) async {
 /// Pass a record of `(partyId, month, year)` where month/year are the
 /// pay period (1-based month). Set month = 0 to load all history.
 final staffPayrollProvider =
-    FutureProvider.family<List<Transaction>, ({int partyId, int month, int year})>(
-  (ref, args) async {
-    final repo = TransactionRepositoryImpl();
-    return repo.getPayrollHistory(
-      staffPartyId: args.partyId,
-      month: args.month > 0 ? args.month : null,
-      year: args.year > 0 ? args.year : null,
-    );
-  },
-);
+    FutureProvider.family<
+      List<Transaction>,
+      ({int partyId, int month, int year})
+    >((ref, args) async {
+      final repo = TransactionRepositoryImpl();
+      return repo.getPayrollHistory(
+        staffPartyId: args.partyId,
+        month: args.month > 0 ? args.month : null,
+        year: args.year > 0 ? args.year : null,
+      );
+    });

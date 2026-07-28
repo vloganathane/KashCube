@@ -41,7 +41,9 @@ class ContextSwitcherWidget extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              activeId == null ? Icons.person_outline : Icons.storefront_outlined,
+              activeId == null
+                  ? Icons.person_outline
+                  : Icons.storefront_outlined,
               size: 18,
               color: activeId == null
                   ? theme.colorScheme.onSurface
@@ -79,8 +81,7 @@ class ContextSwitcherWidget extends ConsumerWidget {
               const Icon(Icons.person_outline, size: 18),
               const SizedBox(width: 8),
               const Expanded(child: Text('Personal')),
-              if (activeId == null)
-                const Icon(Icons.check, size: 16),
+              if (activeId == null) const Icon(Icons.check, size: 16),
             ],
           ),
         ),
@@ -91,9 +92,7 @@ class ContextSwitcherWidget extends ConsumerWidget {
             child: Row(
               children: [
                 Icon(
-                  s.isReadOnly
-                      ? Icons.storefront_outlined
-                      : Icons.storefront,
+                  s.isReadOnly ? Icons.storefront_outlined : Icons.storefront,
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -110,15 +109,15 @@ class ContextSwitcherWidget extends ConsumerWidget {
                       if (s.isReadOnly)
                         Text(
                           'Read-only',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
                                 color: Theme.of(context).colorScheme.tertiary,
                               ),
                         ),
                     ],
                   ),
                 ),
-                if (activeId == s.id)
-                  const Icon(Icons.check, size: 16),
+                if (activeId == s.id) const Icon(Icons.check, size: 16),
               ],
             ),
           ),

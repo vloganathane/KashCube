@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kash_cube/data/models/document_template_record.dart';
+import 'package:kash_cube/data/services/pdf_copy_info.dart';
 import 'package:kash_cube/data/services/pdf_document_data.dart';
 import 'package:kash_cube/data/services/pdf_layout_engine.dart';
 import 'package:pdf/pdf.dart';
@@ -62,6 +63,32 @@ void main() {
       PdfTemplateConfig.decode('{"logoPosition":"right"}').logoPosition,
       'besideRight',
     );
+  });
+
+  test('builds GST copy notes with exact recipient labels', () {
+    final goods = buildGoodsCopyInfo();
+    expect(goods.copyCount, 3);
+    expect(goods.copyLabels, [
+      '(ORGINAL FOR RECIPIENT)',
+      '(Duplicate for Transporter)',
+      '(Triplicate for Supplier)',
+    ]);
+    expect(goods.copyLines, [
+      'Original: Issued to the recipient (buyer).',
+      'Duplicate: For the transporter (or to accompany the goods during transit).',
+      'Triplicate: Retained by the supplier for their own records.',
+    ]);
+
+    final services = buildServicesCopyInfo();
+    expect(services.copyCount, 2);
+    expect(services.copyLabels, [
+      '(ORGINAL FOR RECIPIENT)',
+      '(Duplicate for Supplier)',
+    ]);
+    expect(services.copyLines, [
+      'Original: Issued to the recipient (customer).',
+      'Duplicate: Retained by the supplier for their own records.',
+    ]);
   });
 
   test(

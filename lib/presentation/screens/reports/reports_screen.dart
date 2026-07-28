@@ -81,7 +81,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       ),
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(
-            AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.xl),
+          AppSpacing.base,
+          AppSpacing.sm,
+          AppSpacing.base,
+          AppSpacing.xl,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -94,8 +98,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const Text('Export Report',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text(
+              'Export Report',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: AppSpacing.lg),
             ListTile(
               leading: const Icon(Icons.picture_as_pdf_outlined),
@@ -129,8 +135,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     DateTime month,
   ) async {
     try {
-      final pnlAsync =
-          isFYPeriod ? ref.read(fyPnLProvider) : ref.read(monthlyPnLProvider);
+      final pnlAsync = isFYPeriod
+          ? ref.read(fyPnLProvider)
+          : ref.read(monthlyPnLProvider);
       final pnl = pnlAsync.valueOrNull;
       if (pnl == null) {
         if (!context.mounted) return;
@@ -143,15 +150,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ref.read(reportPeriodLabelProvider).valueOrNull ?? 'Report';
       final file = await ReportPdfService.instance.generate(pnl, periodLabel);
       if (!context.mounted) return;
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        subject: 'KashCube P&L Report — $periodLabel',
-      );
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'application/pdf'),
+      ], subject: 'KashCube P&L Report — $periodLabel');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF export failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('PDF export failed: $e')));
     }
   }
 
@@ -169,14 +175,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
       if (isFYPeriod) {
         final range = await ref.read(reportActiveDateRangeProvider.future);
-        transactions =
-            await repo.getByDateRange(range.start, range.end);
-        final label = ref.read(reportPeriodLabelProvider).valueOrNull ?? 'report';
+        transactions = await repo.getByDateRange(range.start, range.end);
+        final label =
+            ref.read(reportPeriodLabelProvider).valueOrNull ?? 'report';
         fileName = 'kashcube_${label.replaceAll(' ', '_').toLowerCase()}.csv';
       } else {
         final start = DateTime(month.year, month.month);
-        final end = DateTime(month.year, month.month + 1)
-            .subtract(const Duration(seconds: 1));
+        final end = DateTime(
+          month.year,
+          month.month + 1,
+        ).subtract(const Duration(seconds: 1));
         transactions = await repo.getByDateRange(start, end);
         final fmt = DateFormat('MMM_yyyy');
         fileName = 'kashcube_${fmt.format(month)}.csv';
@@ -196,15 +204,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         fileName: fileName,
       );
       if (!context.mounted) return;
-      await Share.shareXFiles(
-        [XFile(path)],
-        subject: 'KashCube Report Export',
-      );
+      await Share.shareXFiles([XFile(path)], subject: 'KashCube Report Export');
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
     }
   }
 
@@ -215,8 +220,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     final periodMode = ref.watch(reportPeriodModeProvider);
     final isFYPeriod = periodMode != 'month';
     // Use FY P&L when a full-year period is active, monthly P&L otherwise.
-    final pnlAsync =
-        isFYPeriod ? ref.watch(fyPnLProvider) : ref.watch(monthlyPnLProvider);
+    final pnlAsync = isFYPeriod
+        ? ref.watch(fyPnLProvider)
+        : ref.watch(monthlyPnLProvider);
     final periodLabel =
         ref.watch(reportPeriodLabelProvider).valueOrNull ?? 'Reports';
 
@@ -262,7 +268,11 @@ class _FYPeriodSelector extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        0,
+      ),
       child: Row(
         children: [
           _PeriodChip(
@@ -328,7 +338,8 @@ class _ModeFilter extends ConsumerWidget {
           _ModeChip(
             label: 'All',
             selected: selectedMode == null,
-            onSelected: () => ref.read(reportModeProvider.notifier).state = null,
+            onSelected: () =>
+                ref.read(reportModeProvider.notifier).state = null,
           ),
           const SizedBox(width: AppSpacing.sm),
           _ModeChip(
@@ -395,8 +406,10 @@ class _MonthSelector extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: () {
-              ref.read(reportMonthProvider.notifier).state =
-                  DateTime(month.year, month.month - 1);
+              ref.read(reportMonthProvider.notifier).state = DateTime(
+                month.year,
+                month.month - 1,
+              );
             },
           ),
           Text(
@@ -410,8 +423,10 @@ class _MonthSelector extends ConsumerWidget {
             onPressed: isCurrentMonth
                 ? null
                 : () {
-                    ref.read(reportMonthProvider.notifier).state =
-                        DateTime(month.year, month.month + 1);
+                    ref.read(reportMonthProvider.notifier).state = DateTime(
+                      month.year,
+                      month.month + 1,
+                    );
                   },
           ),
         ],
@@ -449,8 +464,7 @@ class _ReportsBody extends ConsumerWidget {
 
     // Days elapsed in the selected month (for avg daily spend)
     final now = DateTime.now();
-    final isCurrentMonth =
-        now.year == month.year && now.month == month.month;
+    final isCurrentMonth = now.year == month.year && now.month == month.month;
     final daysElapsed = isCurrentMonth
         ? now.day.toDouble()
         : DateTime(month.year, month.month + 1, 0).day.toDouble();
@@ -460,8 +474,7 @@ class _ReportsBody extends ConsumerWidget {
         ref.watch(paymentMethodSplitProvider(month)).valueOrNull ?? const {};
 
     // All-time investment totals for investment summary card
-    final allTimeInv =
-        ref.watch(allTimeInvestmentProvider).valueOrNull;
+    final allTimeInv = ref.watch(allTimeInvestmentProvider).valueOrNull;
 
     // Report mode filter ('personal', 'business', or null = All)
     final reportMode = ref.watch(reportModeProvider);
@@ -508,8 +521,7 @@ class _ReportsBody extends ConsumerWidget {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(AppSpacing.base),
       children: [
-        if (ytd != null &&
-            (ytd.totalIncome > 0 || ytd.totalExpense > 0)) ...[  
+        if (ytd != null && (ytd.totalIncome > 0 || ytd.totalExpense > 0)) ...[
           _YtdSummaryRow(ytd: ytd, month: month),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -558,7 +570,7 @@ class _ReportsBody extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.base),
         ],
-        if (pnl.totalIncome > 0 && pnl.expenseByCat.isNotEmpty) ...[  
+        if (pnl.totalIncome > 0 && pnl.expenseByCat.isNotEmpty) ...[
           _CashflowWaterfallCard(pnl: pnl),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -570,7 +582,7 @@ class _ReportsBody extends ConsumerWidget {
           _PaymentMethodCard(data: payMethodData),
           const SizedBox(height: AppSpacing.base),
         ],
-        if (pnl.largestTransactions.isNotEmpty) ...[  
+        if (pnl.largestTransactions.isNotEmpty) ...[
           _LargestTransactionsCard(transactions: pnl.largestTransactions),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -584,7 +596,7 @@ class _ReportsBody extends ConsumerWidget {
         ],
         const _CashFlowTimelineCard(),
         const SizedBox(height: AppSpacing.base),
-        if (isBusiness) ...[  
+        if (isBusiness) ...[
           const _GstReturnsCard(),
           const SizedBox(height: AppSpacing.sm),
           const _PurchaseBillsCard(),
@@ -596,7 +608,7 @@ class _ReportsBody extends ConsumerWidget {
           _GstSummaryCard(pnl: pnl),
           const SizedBox(height: AppSpacing.base),
         ],
-        if (pnl.topParties.isNotEmpty) ...[  
+        if (pnl.topParties.isNotEmpty) ...[
           _TopPartiesCard(parties: pnl.topParties),
           const SizedBox(height: AppSpacing.base),
         ],
@@ -759,15 +771,14 @@ class _PnLItem extends StatelessWidget {
             color: color,
           ),
         ),
-        if (prevAmount != null && prevAmount! > 0) ...
-          [
-            const SizedBox(height: 2),
-            _DeltaTag(
-              current: amount,
-              prev: prevAmount!,
-              isGoodWhenUp: isGoodWhenUp,
-            ),
-          ],
+        if (prevAmount != null && prevAmount! > 0) ...[
+          const SizedBox(height: 2),
+          _DeltaTag(
+            current: amount,
+            prev: prevAmount!,
+            isGoodWhenUp: isGoodWhenUp,
+          ),
+        ],
       ],
     );
   }
@@ -790,8 +801,9 @@ class _DeltaTag extends StatelessWidget {
     final delta = (current - prev) / prev;
     final isUp = delta >= 0;
     final isGood = isGoodWhenUp ? isUp : !isUp;
-    final color =
-        isGood ? context.kashColors.income : context.kashColors.expense;
+    final color = isGood
+        ? context.kashColors.income
+        : context.kashColors.expense;
     final sign = isUp ? '+' : '';
     final pct = '$sign${(delta * 100).toStringAsFixed(1)}%';
 
@@ -878,9 +890,7 @@ class _CategoryPieCard extends StatelessWidget {
                             value: e.value,
                             color: CategoryHelper.getColor(e.key),
                             radius: 50,
-                            title: pct >= 8
-                                ? '${pct.toStringAsFixed(0)}%'
-                                : '',
+                            title: pct >= 8 ? '${pct.toStringAsFixed(0)}%' : '',
                             titleStyle: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -897,19 +907,16 @@ class _CategoryPieCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: display.map((e) {
-                        final pct =
-                            (e.value / total * 100).toStringAsFixed(1);
+                        final pct = (e.value / total * 100).toStringAsFixed(1);
                         return Padding(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Row(
                             children: [
                               Container(
                                 width: 10,
                                 height: 10,
                                 decoration: BoxDecoration(
-                                  color:
-                                      CategoryHelper.getColor(e.key),
+                                  color: CategoryHelper.getColor(e.key),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -923,8 +930,7 @@ class _CategoryPieCard extends StatelessWidget {
                               ),
                               Text(
                                 '$pct%',
-                                style: context.textTheme.bodySmall
-                                    ?.copyWith(
+                                style: context.textTheme.bodySmall?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   fontFamily: 'RobotoMono',
                                 ),
@@ -941,27 +947,24 @@ class _CategoryPieCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             // Category amounts list — tap to drill down
             ...display.map((e) {
-              final pct =
-                  (e.value / total * 100).toStringAsFixed(1);
+              final pct = (e.value / total * 100).toStringAsFixed(1);
               final tappable = e.key != 'Other';
               return InkWell(
-                borderRadius:
-                    BorderRadius.circular(AppSpacing.radiusSm),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                 onTap: tappable
                     ? () => showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          useSafeArea: true,
-                          builder: (_) => _CategoryDrillDownSheet(
-                            category: e.key,
-                            month: month,
-                            categoryTotal: e.value,
-                          ),
-                        )
+                        context: context,
+                        isScrollControlled: true,
+                        useSafeArea: true,
+                        builder: (_) => _CategoryDrillDownSheet(
+                          category: e.key,
+                          month: month,
+                          categoryTotal: e.value,
+                        ),
+                      )
                     : null,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                   child: Row(
                     children: [
                       Icon(
@@ -972,47 +975,38 @@ class _CategoryPieCard extends StatelessWidget {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              e.key,
-                              style: context.textTheme.bodyMedium,
-                            ),
+                            Text(e.key, style: context.textTheme.bodyMedium),
                             const SizedBox(height: 2),
                             LinearProgressIndicator(
                               value: e.value / total,
-                              backgroundColor: context.colorScheme
-                                  .surfaceContainerHighest,
-                              color:
-                                  CategoryHelper.getColor(e.key),
+                              backgroundColor:
+                                  context.colorScheme.surfaceContainerHighest,
+                              color: CategoryHelper.getColor(e.key),
                               minHeight: 4,
                               borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusSm),
+                                AppSpacing.radiusSm,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            CurrencyFormatter.formatCompact(
-                                e.value),
-                            style: context.textTheme.bodyMedium
-                                ?.copyWith(
+                            CurrencyFormatter.formatCompact(e.value),
+                            style: context.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               fontFamily: 'RobotoMono',
                             ),
                           ),
                           Text(
                             '$pct%',
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(
-                              color: context
-                                  .colorScheme.onSurfaceVariant,
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: context.colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -1061,10 +1055,16 @@ class _MonthlyTrendCardState extends ConsumerState<_MonthlyTrendCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.show_chart, size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.show_chart,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('Monthly Trend',
-                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  'Monthly Trend',
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
                 const Spacer(),
                 _CountToggle(
                   count: _count,
@@ -1135,7 +1135,9 @@ class _CountToggle extends StatelessWidget {
           onTap: () => onChanged(c),
           child: Container(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
+            ),
             decoration: BoxDecoration(
               color: selected ? cs.primaryContainer : Colors.transparent,
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -1143,11 +1145,8 @@ class _CountToggle extends StatelessWidget {
             child: Text(
               '${c}M',
               style: tt.labelSmall?.copyWith(
-                color: selected
-                    ? cs.onPrimaryContainer
-                    : cs.onSurfaceVariant,
-                fontWeight:
-                    selected ? FontWeight.w600 : FontWeight.normal,
+                color: selected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ),
@@ -1158,8 +1157,11 @@ class _CountToggle extends StatelessWidget {
 }
 
 class _TrendLegendDot extends StatelessWidget {
-  const _TrendLegendDot(
-      {required this.color, required this.label, this.dashed = false});
+  const _TrendLegendDot({
+    required this.color,
+    required this.label,
+    this.dashed = false,
+  });
 
   final Color color;
   final String label;
@@ -1181,9 +1183,12 @@ class _TrendLegendDot extends StatelessWidget {
         else
           Container(width: 12, height: 2, color: color),
         const SizedBox(width: 4),
-        Text(label,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: context.textTheme.labelSmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -1251,8 +1256,10 @@ class _CashflowWaterfallCard extends StatelessWidget {
       color: net >= 0 ? colors.income : colors.expense,
     ));
 
-    final interval =
-        (pnl.totalIncome / 3).ceilToDouble().clamp(1.0, double.infinity);
+    final interval = (pnl.totalIncome / 3).ceilToDouble().clamp(
+      1.0,
+      double.infinity,
+    );
 
     return Card(
       child: Padding(
@@ -1262,18 +1269,27 @@ class _CashflowWaterfallCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.waterfall_chart,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.waterfall_chart,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Cashflow Waterfall',
-                        style: tt.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    Text('Income  →  Expenses  →  Savings',
-                        style: tt.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      'Cashflow Waterfall',
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Income  →  Expenses  →  Savings',
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1336,9 +1352,11 @@ class _CashflowWaterfallCard extends StatelessWidget {
                       ),
                     ),
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   gridData: FlGridData(
                     show: true,
@@ -1362,11 +1380,12 @@ class _CashflowWaterfallCard extends StatelessWidget {
                           width: 18,
                           borderRadius: s.fromY == 0
                               ? const BorderRadius.vertical(
-                                  top: Radius.circular(AppSpacing.radiusSm))
+                                  top: Radius.circular(AppSpacing.radiusSm),
+                                )
                               : const BorderRadius.vertical(
                                   top: Radius.circular(AppSpacing.radiusSm),
-                                  bottom:
-                                      Radius.circular(AppSpacing.radiusSm)),
+                                  bottom: Radius.circular(AppSpacing.radiusSm),
+                                ),
                         ),
                       ],
                     );
@@ -1378,8 +1397,10 @@ class _CashflowWaterfallCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text('Net: ',
-                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant)),
+                Text(
+                  'Net: ',
+                  style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+                ),
                 Text(
                   net >= 0
                       ? '+${CurrencyFormatter.formatCompact(net)}'
@@ -1429,19 +1450,28 @@ class _GstSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.receipt_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.receipt_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('GST Estimator',
-                          style: tt.titleSmall
-                              ?.copyWith(fontWeight: FontWeight.w600)),
-                      Text('Business mode  •  Estimated values',
-                          style: tt.labelSmall
-                              ?.copyWith(color: cs.onSurfaceVariant)),
+                      Text(
+                        'GST Estimator',
+                        style: tt.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Business mode  •  Estimated values',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1450,8 +1480,11 @@ class _GstSummaryCard extends StatelessWidget {
                       'Estimates based on total income & expense.\n'
                       'Actual rates depend on HSN/SAC codes.\n'
                       'Consult your CA for accurate returns.',
-                  child: Icon(Icons.info_outline,
-                      size: AppSpacing.iconSm, color: cs.onSurfaceVariant),
+                  child: Icon(
+                    Icons.info_outline,
+                    size: AppSpacing.iconSm,
+                    color: cs.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -1460,32 +1493,48 @@ class _GstSummaryCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    flex: 2,
-                    child: Text('Slab',
-                        style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600))),
+                  flex: 2,
+                  child: Text(
+                    'Slab',
+                    style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 Expanded(
-                    flex: 3,
-                    child: Text('Output\n(on income)',
-                        style: tt.labelSmall?.copyWith(
-                            color: colors.expense,
-                            fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.end)),
+                  flex: 3,
+                  child: Text(
+                    'Output\n(on income)',
+                    style: tt.labelSmall?.copyWith(
+                      color: colors.expense,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
                 Expanded(
-                    flex: 3,
-                    child: Text('Input ITC\n(on expense)',
-                        style: tt.labelSmall?.copyWith(
-                            color: colors.income,
-                            fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.end)),
+                  flex: 3,
+                  child: Text(
+                    'Input ITC\n(on expense)',
+                    style: tt.labelSmall?.copyWith(
+                      color: colors.income,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
                 Expanded(
-                    flex: 3,
-                    child: Text('Net\nLiability',
-                        style: tt.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                            fontWeight: FontWeight.w600),
-                        textAlign: TextAlign.end)),
+                  flex: 3,
+                  child: Text(
+                    'Net\nLiability',
+                    style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.end,
+                  ),
+                ),
               ],
             ),
             const Divider(height: AppSpacing.md),
@@ -1493,22 +1542,25 @@ class _GstSummaryCard extends StatelessWidget {
               final output = pnl.totalIncome * slab.rate;
               final input = pnl.totalExpense * slab.rate;
               final netLiability = output - input;
-              final netColor =
-                  netLiability > 0 ? colors.expense : colors.income;
+              final netColor = netLiability > 0
+                  ? colors.expense
+                  : colors.income;
               return Padding(
-                padding:
-                    const EdgeInsets.only(bottom: AppSpacing.sm),
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                 child: Row(
                   children: [
                     Expanded(
                       flex: 2,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs, vertical: 2),
+                          horizontal: AppSpacing.xs,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: cs.primaryContainer,
                           borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusSm),
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: Text(
                           slab.label,
@@ -1567,8 +1619,9 @@ class _GstSummaryCard extends StatelessWidget {
                 '* Estimates only. Actual liability depends on HSN/SAC '
                 'classification. Consult your CA for filing.',
                 style: tt.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontStyle: FontStyle.italic),
+                  color: cs.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
               ),
             ),
           ],
@@ -1588,9 +1641,10 @@ class _TrendLineChart extends StatelessWidget {
     final colors = context.kashColors;
     final cs = context.colorScheme;
     final maxVal = totals.fold<double>(
-        0, (m, t) => math.max(m, math.max(t.income, t.expense)));
-    final minNet =
-        totals.fold<double>(0, (m, t) => math.min(m, t.net));
+      0,
+      (m, t) => math.max(m, math.max(t.income, t.expense)),
+    );
+    final minNet = totals.fold<double>(0, (m, t) => math.min(m, t.net));
     final interval = maxVal > 0 ? (maxVal / 3).ceilToDouble() : 1.0;
     final minY = minNet < 0 ? (minNet * 1.2).floorToDouble() : 0.0;
     final maxY = maxVal > 0 ? maxVal * 1.15 : 100.0;
@@ -1610,11 +1664,8 @@ class _TrendLineChart extends StatelessWidget {
         isStrokeCapRound: true,
         dotData: FlDotData(
           show: true,
-          getDotPainter: (s, _, _, _) => FlDotCirclePainter(
-            radius: 3,
-            color: color,
-            strokeWidth: 0,
-          ),
+          getDotPainter: (s, _, _, _) =>
+              FlDotCirclePainter(radius: 3, color: color, strokeWidth: 0),
         ),
         belowBarData: BarAreaData(show: false),
         dashArray: dashArray,
@@ -1658,8 +1709,7 @@ class _TrendLineChart extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       totals[idx].label,
-                      style: context.textTheme.bodySmall
-                          ?.copyWith(fontSize: 9),
+                      style: context.textTheme.bodySmall?.copyWith(fontSize: 9),
                     ),
                   );
                 },
@@ -1677,16 +1727,17 @@ class _TrendLineChart extends StatelessWidget {
                   }
                   return Text(
                     CurrencyFormatter.formatCompact(value),
-                    style:
-                        context.textTheme.bodySmall?.copyWith(fontSize: 9),
+                    style: context.textTheme.bodySmall?.copyWith(fontSize: 9),
                   );
                 },
               ),
             ),
             topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false)),
+              sideTitles: SideTitles(showTitles: false),
+            ),
             rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false)),
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           gridData: FlGridData(
             show: true,
@@ -1702,21 +1753,21 @@ class _TrendLineChart extends StatelessWidget {
             makeLine(
               spots: [
                 for (int i = 0; i < totals.length; i++)
-                  FlSpot(i.toDouble(), totals[i].income)
+                  FlSpot(i.toDouble(), totals[i].income),
               ],
               color: colors.income,
             ),
             makeLine(
               spots: [
                 for (int i = 0; i < totals.length; i++)
-                  FlSpot(i.toDouble(), totals[i].expense)
+                  FlSpot(i.toDouble(), totals[i].expense),
               ],
               color: colors.expense,
             ),
             makeLine(
               spots: [
                 for (int i = 0; i < totals.length; i++)
-                  FlSpot(i.toDouble(), totals[i].net)
+                  FlSpot(i.toDouble(), totals[i].net),
               ],
               color: cs.primary,
               width: 2.0,
@@ -1750,18 +1801,27 @@ class _WeeklyPatternCard extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.calendar_view_week_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.calendar_view_week_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Weekly Pattern',
-                        style: tt.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600)),
-                    Text('Avg spend by day',
-                        style: tt.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      'Weekly Pattern',
+                      style: tt.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      'Avg spend by day',
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1769,9 +1829,13 @@ class _WeeklyPatternCard extends ConsumerWidget {
             const SizedBox(height: AppSpacing.md),
             dailyAsync.when(
               loading: () => const SizedBox(
-                  height: 160, child: Center(child: CircularProgressIndicator())),
-              error: (e, _) =>
-                  SizedBox(height: 160, child: Center(child: Text('Error: $e'))),
+                height: 160,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, _) => SizedBox(
+                height: 160,
+                child: Center(child: Text('Error: $e')),
+              ),
               data: (days) {
                 if (days.isEmpty) {
                   return SizedBox(
@@ -1779,8 +1843,9 @@ class _WeeklyPatternCard extends ConsumerWidget {
                     child: Center(
                       child: Text(
                         'No data for this month',
-                        style: tt.bodyMedium
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   );
@@ -1797,7 +1862,7 @@ class _WeeklyPatternCard extends ConsumerWidget {
                 }
                 final avgs = [
                   for (int i = 0; i < 7; i++)
-                    counts[i] > 0 ? sums[i] / counts[i] : 0.0
+                    counts[i] > 0 ? sums[i] / counts[i] : 0.0,
                 ];
                 final maxAvg = avgs.fold<double>(0.0, math.max);
                 if (maxAvg == 0) {
@@ -1806,8 +1871,9 @@ class _WeeklyPatternCard extends ConsumerWidget {
                     child: Center(
                       child: Text(
                         'No expense data',
-                        style: tt.bodyMedium
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   );
@@ -1828,9 +1894,7 @@ class _WeeklyBarChart extends StatelessWidget {
   final List<double> avgs;
   final double maxAvg;
 
-  static const _dayLabels = [
-    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
-  ];
+  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   Widget build(BuildContext context) {
@@ -1892,9 +1956,11 @@ class _WeeklyBarChart extends StatelessWidget {
               ),
             ),
             topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false)),
+              sideTitles: SideTitles(showTitles: false),
+            ),
             rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false)),
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           gridData: FlGridData(
             show: true,
@@ -1939,7 +2005,9 @@ class _TopPartiesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxAmount = parties.fold<double>(
-        0, (prev, p) => math.max(prev, p.totalAmount));
+      0,
+      (prev, p) => math.max(prev, p.totalAmount),
+    );
     final colors = context.kashColors;
     final cs = context.colorScheme;
 
@@ -1961,16 +2029,14 @@ class _TopPartiesCard extends StatelessWidget {
               final p = entry.value;
               final hasInEx = p.income > 0 || p.expense > 0;
               return Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.xs),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
                     SizedBox(
                       width: 24,
                       child: Text(
                         '${i + 1}',
-                        style:
-                            context.textTheme.bodySmall?.copyWith(
+                        style: context.textTheme.bodySmall?.copyWith(
                           color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1978,8 +2044,7 @@ class _TopPartiesCard extends StatelessWidget {
                     ),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             p.partyName,
@@ -1998,26 +2063,24 @@ class _TopPartiesCard extends StatelessWidget {
                               value: maxAmount > 0
                                   ? p.totalAmount / maxAmount
                                   : 0,
-                              backgroundColor:
-                                  cs.surfaceContainerHighest,
+                              backgroundColor: cs.surfaceContainerHighest,
                               color: cs.primary,
                               minHeight: 4,
                               borderRadius: BorderRadius.circular(
-                                  AppSpacing.radiusSm),
+                                AppSpacing.radiusSm,
+                              ),
                             ),
                         ],
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         if (p.income > 0)
                           Text(
                             '+${CurrencyFormatter.formatCompact(p.income)}',
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(
+                            style: context.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               fontFamily: 'RobotoMono',
                               color: colors.income,
@@ -2026,8 +2089,7 @@ class _TopPartiesCard extends StatelessWidget {
                         if (p.expense > 0)
                           Text(
                             '-${CurrencyFormatter.formatCompact(p.expense)}',
-                            style: context.textTheme.bodySmall
-                                ?.copyWith(
+                            style: context.textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w600,
                               fontFamily: 'RobotoMono',
                               color: colors.expense,
@@ -2035,18 +2097,15 @@ class _TopPartiesCard extends StatelessWidget {
                           ),
                         if (!hasInEx)
                           Text(
-                            CurrencyFormatter.formatCompact(
-                                p.totalAmount),
-                            style: context.textTheme.bodyMedium
-                                ?.copyWith(
+                            CurrencyFormatter.formatCompact(p.totalAmount),
+                            style: context.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                               fontFamily: 'RobotoMono',
                             ),
                           ),
                         Text(
                           '${p.transactionCount} txns',
-                          style: context.textTheme.bodySmall
-                              ?.copyWith(
+                          style: context.textTheme.bodySmall?.copyWith(
                             color: cs.onSurfaceVariant,
                           ),
                         ),
@@ -2100,12 +2159,10 @@ class _StackedPartyBar extends StatelessWidget {
               ),
             Flexible(
               flex: math.max(
-                  0,
-                  ((1 - incomeW - expenseW) * 1000)
-                      .round()
-                      .clamp(0, 1000)),
-              child:
-                  Container(color: cs.surfaceContainerHighest),
+                0,
+                ((1 - incomeW - expenseW) * 1000).round().clamp(0, 1000),
+              ),
+              child: Container(color: cs.surfaceContainerHighest),
             ),
           ],
         ),
@@ -2144,8 +2201,9 @@ class _BookingsOverviewCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               Center(
                 child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: AppSpacing.base),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppSpacing.base,
+                  ),
                   child: Text(
                     'No bookings this month',
                     style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
@@ -2174,7 +2232,9 @@ class _BookingsOverviewCard extends StatelessWidget {
                   child: _BookingStat(
                     label: 'Completed',
                     value: '${stats.completedCount}',
-                    sub: CurrencyFormatter.formatCompact(stats.completedRevenue),
+                    sub: CurrencyFormatter.formatCompact(
+                      stats.completedRevenue,
+                    ),
                     icon: Icons.check_circle_outline,
                     color: colors.income,
                     tt: tt,
@@ -2208,8 +2268,11 @@ class _BookingsOverviewCard extends StatelessWidget {
               const Divider(height: AppSpacing.xl),
               Row(
                 children: [
-                  Icon(Icons.star_outline,
-                      size: AppSpacing.iconSm, color: cs.primary),
+                  Icon(
+                    Icons.star_outline,
+                    size: AppSpacing.iconSm,
+                    color: cs.primary,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     'Top service: ',
@@ -2218,8 +2281,9 @@ class _BookingsOverviewCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       stats.topService!,
-                      style:
-                          tt.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                      style: tt.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -2242,8 +2306,11 @@ class _BookingsCardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Icon(Icons.calendar_month_outlined,
-            size: AppSpacing.iconSm, color: cs.primary),
+        Icon(
+          Icons.calendar_month_outlined,
+          size: AppSpacing.iconSm,
+          color: cs.primary,
+        ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
@@ -2257,9 +2324,9 @@ class _BookingsCardHeader extends StatelessWidget {
             minimumSize: Size.zero,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BookingsScreen()),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const BookingsScreen())),
           child: const Text('View All'),
         ),
       ],
@@ -2306,8 +2373,10 @@ class _BookingStat extends StatelessWidget {
         ),
         Text(
           sub,
-          style: tt.bodySmall
-              ?.copyWith(fontSize: 10, color: context.colorScheme.outline),
+          style: tt.bodySmall?.copyWith(
+            fontSize: 10,
+            color: context.colorScheme.outline,
+          ),
         ),
       ],
     );
@@ -2331,9 +2400,9 @@ class _BudgetOverviewCard extends StatelessWidget {
 
     return Card(
       child: InkWell(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const BudgetScreen()),
-        ),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.base),
@@ -2346,15 +2415,17 @@ class _BudgetOverviewCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     'Monthly Budgets',
-                    style: context.textTheme.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: context.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const Spacer(),
                   Text(
                     'Manage →',
                     style: context.textTheme.labelSmall?.copyWith(
-                        color: context.colorScheme.primary,
-                        fontWeight: FontWeight.w600),
+                      color: context.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -2362,14 +2433,17 @@ class _BudgetOverviewCard extends StatelessWidget {
                 const SizedBox(height: AppSpacing.base),
                 Row(
                   children: [
-                    Icon(Icons.add_circle_outline,
-                        size: AppSpacing.iconSm,
-                        color: context.colorScheme.outline),
+                    Icon(
+                      Icons.add_circle_outline,
+                      size: AppSpacing.iconSm,
+                      color: context.colorScheme.outline,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Set spending limits for each category',
-                      style: context.textTheme.bodySmall
-                          ?.copyWith(color: context.colorScheme.outline),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      ),
                     ),
                   ],
                 ),
@@ -2383,8 +2457,9 @@ class _BudgetOverviewCard extends StatelessWidget {
                     padding: const EdgeInsets.only(top: AppSpacing.xs),
                     child: Text(
                       '+ ${typedBudgets.length - 3} more categories',
-                      style: context.textTheme.labelSmall
-                          ?.copyWith(color: context.colorScheme.outline),
+                      style: context.textTheme.labelSmall?.copyWith(
+                        color: context.colorScheme.outline,
+                      ),
                     ),
                   ),
               ],
@@ -2407,7 +2482,9 @@ class _MiniBudgetRow extends StatelessWidget {
     final isOver = budget.isOverBudget;
     final barColor = isOver
         ? colors.expense
-        : budget.isNearLimit ? Colors.orange : colors.income;
+        : budget.isNearLimit
+        ? Colors.orange
+        : colors.income;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -2485,8 +2562,11 @@ class _YtdSummaryRow extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.calendar_today_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   'YTD  Jan\u2013$monthName ${month.year}',
@@ -2567,8 +2647,9 @@ class _YtdStat extends StatelessWidget {
         children: [
           Text(
             label,
-            style: tt.labelSmall
-                ?.copyWith(color: context.colorScheme.onSurfaceVariant),
+            style: tt.labelSmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -2665,8 +2746,7 @@ class _SavingsRateCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     'Target: 20%',
-                    style: tt.labelSmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -2710,10 +2790,8 @@ class _AvgDailySpendCard extends StatelessWidget {
     final colors = context.kashColors;
     final cs = context.colorScheme;
     final tt = context.textTheme;
-    final totalDays =
-        DateTime(month.year, month.month + 1, 0).day.toDouble();
-    final avgSpend =
-        daysElapsed > 0 ? pnl.totalExpense / daysElapsed : 0.0;
+    final totalDays = DateTime(month.year, month.month + 1, 0).day.toDouble();
+    final avgSpend = daysElapsed > 0 ? pnl.totalExpense / daysElapsed : 0.0;
     final prevMonthDays = prevPnl != null
         ? DateTime(month.year, month.month, 0).day.toDouble()
         : 30.0;
@@ -2743,16 +2821,11 @@ class _AvgDailySpendCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xs),
             Text(
               '${daysElapsed.toInt()} / ${totalDays.toInt()} days',
-              style:
-                  tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
             if (prevAvg != null && prevAvg > 0) ...[
               const SizedBox(height: AppSpacing.xs),
-              _DeltaTag(
-                current: avgSpend,
-                prev: prevAvg,
-                isGoodWhenUp: false,
-              ),
+              _DeltaTag(current: avgSpend, prev: prevAvg, isGoodWhenUp: false),
             ],
           ],
         ),
@@ -2784,13 +2857,15 @@ class _LargestTransactionsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.format_list_numbered_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.format_list_numbered_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Largest Transactions',
-                  style:
-                      tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -2825,8 +2900,7 @@ class _LargestTransactionsCard extends StatelessWidget {
                   ? t.partyName!
                   : t.category;
               return Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
                     Container(
@@ -2836,7 +2910,8 @@ class _LargestTransactionsCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: typeColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusSm),
+                          AppSpacing.radiusSm,
+                        ),
                       ),
                       child: Icon(typeIcon, size: 16, color: typeColor),
                     ),
@@ -2853,7 +2928,8 @@ class _LargestTransactionsCard extends StatelessWidget {
                           Text(
                             DateFormat('d MMM').format(t.date),
                             style: tt.bodySmall?.copyWith(
-                                color: cs.onSurfaceVariant),
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
                         ],
                       ),
@@ -2912,16 +2988,19 @@ class _PaymentMethodCard extends StatelessWidget {
     final cs = context.colorScheme;
     final tt = context.textTheme;
 
-    final entries = data.entries
-        .map((e) => (
-              key: e.key,
-              income: e.value.income,
-              expense: e.value.expense,
-              total: e.value.income + e.value.expense,
-            ))
-        .where((e) => e.total > 0)
-        .toList()
-      ..sort((a, b) => b.total.compareTo(a.total));
+    final entries =
+        data.entries
+            .map(
+              (e) => (
+                key: e.key,
+                income: e.value.income,
+                expense: e.value.expense,
+                total: e.value.income + e.value.expense,
+              ),
+            )
+            .where((e) => e.total > 0)
+            .toList()
+          ..sort((a, b) => b.total.compareTo(a.total));
 
     if (entries.isEmpty) return const SizedBox.shrink();
 
@@ -2935,8 +3014,11 @@ class _PaymentMethodCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.credit_score_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.credit_score_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
                   'Payment Methods',
@@ -2959,8 +3041,9 @@ class _PaymentMethodCard extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: cs.primaryContainer,
-                        borderRadius:
-                            BorderRadius.circular(AppSpacing.radiusSm),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusSm,
+                        ),
                       ),
                       child: Icon(_iconFor(e.key), size: 16, color: cs.primary),
                     ),
@@ -2971,13 +3054,15 @@ class _PaymentMethodCard extends StatelessWidget {
                         children: [
                           Text(
                             method.label,
-                            style: tt.bodySmall
-                                ?.copyWith(fontWeight: FontWeight.w500),
+                            style: tt.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(AppSpacing.radiusSm),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusSm,
+                            ),
                             child: SizedBox(
                               height: 6,
                               child: Row(
@@ -2994,12 +3079,14 @@ class _PaymentMethodCard extends StatelessWidget {
                                     ),
                                   Flexible(
                                     flex: math.max(
-                                        0,
-                                        ((1 - incomeW - expenseW) * 1000)
-                                            .round()
-                                            .clamp(0, 1000)),
+                                      0,
+                                      ((1 - incomeW - expenseW) * 1000)
+                                          .round()
+                                          .clamp(0, 1000),
+                                    ),
                                     child: Container(
-                                        color: cs.surfaceContainerHighest),
+                                      color: cs.surfaceContainerHighest,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -3059,11 +3146,7 @@ class _CategoryDrillDownSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final key = (
-      category: category,
-      year: month.year,
-      month: month.month,
-    );
+    final key = (category: category, year: month.year, month: month.month);
     final txAsync = ref.watch(categoryTransactionsProvider(key));
     final colors = context.kashColors;
     final cs = context.colorScheme;
@@ -3092,24 +3175,32 @@ class _CategoryDrillDownSheet extends ConsumerWidget {
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.base, vertical: AppSpacing.xs),
+                horizontal: AppSpacing.base,
+                vertical: AppSpacing.xs,
+              ),
               child: Row(
                 children: [
-                  Icon(CategoryHelper.getIcon(category),
-                      size: AppSpacing.iconMd,
-                      color: CategoryHelper.getColor(category)),
+                  Icon(
+                    CategoryHelper.getIcon(category),
+                    size: AppSpacing.iconMd,
+                    color: CategoryHelper.getColor(category),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(category,
-                            style: tt.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        Text(
+                          category,
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         Text(
                           DateFormat('MMMM yyyy').format(month),
-                          style: tt.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
@@ -3129,57 +3220,62 @@ class _CategoryDrillDownSheet extends ConsumerWidget {
             // Transaction list
             Expanded(
               child: txAsync.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
-                error: (e, _) =>
-                    Center(child: Text('Error: $e')),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
                 data: (txList) {
                   if (txList.isEmpty) {
                     return Center(
                       child: Text(
                         'No transactions in this category',
-                        style: tt.bodyMedium
-                            ?.copyWith(color: cs.onSurfaceVariant),
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
                     );
                   }
                   return ListView.separated(
                     controller: scrollController,
                     padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.sm),
+                      vertical: AppSpacing.sm,
+                    ),
                     itemCount: txList.length,
                     separatorBuilder: (_, _) =>
                         const Divider(height: 1, indent: 56, endIndent: 16),
                     itemBuilder: (context, i) {
                       final tx = txList[i];
-                      final isIncome = tx.type == TransactionType.income ||
+                      final isIncome =
+                          tx.type == TransactionType.income ||
                           tx.type == TransactionType.receivedBack ||
                           tx.type == TransactionType.redeemed;
-                      final amtColor =
-                          isIncome ? colors.income : colors.expense;
-                      final label = (tx.partyName != null &&
-                              tx.partyName!.isNotEmpty)
+                      final amtColor = isIncome
+                          ? colors.income
+                          : colors.expense;
+                      final label =
+                          (tx.partyName != null && tx.partyName!.isNotEmpty)
                           ? tx.partyName!
                           : tx.category;
                       return ListTile(
                         leading: CircleAvatar(
                           radius: 18,
-                          backgroundColor:
-                              CategoryHelper.getColor(tx.category)
-                                  .withValues(alpha: 0.15),
+                          backgroundColor: CategoryHelper.getColor(
+                            tx.category,
+                          ).withValues(alpha: 0.15),
                           child: Icon(
                             CategoryHelper.getIcon(tx.category),
                             size: 16,
                             color: CategoryHelper.getColor(tx.category),
                           ),
                         ),
-                        title: Text(label,
-                            style: tt.bodyMedium,
-                            overflow: TextOverflow.ellipsis),
+                        title: Text(
+                          label,
+                          style: tt.bodyMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         subtitle: Text(
                           DateFormat('d MMM, h:mm a').format(tx.date),
-                          style: tt.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
+                          style: tt.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
                         ),
                         trailing: Text(
                           CurrencyFormatter.format(tx.amount),
@@ -3227,12 +3323,16 @@ class _InvestmentSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.savings_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.savings_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('Investments',
-                    style: tt.titleSmall
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  'Investments',
+                  style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -3274,14 +3374,15 @@ class _InvestmentSummaryCard extends StatelessWidget {
               const Divider(height: AppSpacing.xl),
               Row(
                 children: [
-                  Icon(Icons.account_balance_outlined,
-                      size: AppSpacing.iconSm,
-                      color: cs.onSurfaceVariant),
+                  Icon(
+                    Icons.account_balance_outlined,
+                    size: AppSpacing.iconSm,
+                    color: cs.onSurfaceVariant,
+                  ),
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Portfolio (all-time)',
-                    style: tt.labelSmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const Spacer(),
                   Text(
@@ -3333,9 +3434,12 @@ class _InvStat extends StatelessWidget {
             color: color,
           ),
         ),
-        Text(label,
-            style: tt.labelSmall?.copyWith(
-                color: context.colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: tt.labelSmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -3359,17 +3463,19 @@ class _BudgetVsActualCard extends StatelessWidget {
     if (budgets.isEmpty) {
       return Card(
         child: InkWell(
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const BudgetScreen()),
-          ),
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const BudgetScreen())),
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.base),
             child: Row(
               children: [
-                Icon(Icons.bar_chart_outlined,
-                    size: AppSpacing.iconMd,
-                    color: cs.onSurfaceVariant),
+                Icon(
+                  Icons.bar_chart_outlined,
+                  size: AppSpacing.iconMd,
+                  color: cs.onSurfaceVariant,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Text(
@@ -3377,9 +3483,13 @@ class _BudgetVsActualCard extends StatelessWidget {
                     style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ),
-                Text('Set up',
-                    style: tt.labelSmall?.copyWith(
-                        color: cs.primary, fontWeight: FontWeight.w600)),
+                Text(
+                  'Set up',
+                  style: tt.labelSmall?.copyWith(
+                    color: cs.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -3388,7 +3498,9 @@ class _BudgetVsActualCard extends StatelessWidget {
     }
 
     final maxBudget = budgets.fold<double>(
-        0, (m, b) => math.max(m, b.budgetAmount));
+      0,
+      (m, b) => math.max(m, b.budgetAmount),
+    );
 
     return Card(
       child: Padding(
@@ -3398,18 +3510,23 @@ class _BudgetVsActualCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.waterfall_chart_outlined,
-                    size: AppSpacing.iconSm, color: cs.primary),
+                Icon(
+                  Icons.waterfall_chart_outlined,
+                  size: AppSpacing.iconSm,
+                  color: cs.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: Text('Budget vs Actual',
-                      style:
-                          tt.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  child: Text(
+                    'Budget vs Actual',
+                    style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  ),
                 ),
                 TextButton(
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm),
+                      horizontal: AppSpacing.sm,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -3424,7 +3541,10 @@ class _BudgetVsActualCard extends StatelessWidget {
             // Legend
             Row(
               children: [
-                _BudgetLegend(color: cs.surfaceContainerHighest, label: 'Budget'),
+                _BudgetLegend(
+                  color: cs.surfaceContainerHighest,
+                  label: 'Budget',
+                ),
                 const SizedBox(width: AppSpacing.base),
                 _BudgetLegend(color: colors.income, label: 'Spent (ok)'),
                 const SizedBox(width: AppSpacing.base),
@@ -3442,23 +3562,31 @@ class _BudgetVsActualCard extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Icon(CategoryHelper.getIcon(b.category),
-                            size: AppSpacing.iconSm,
-                            color: CategoryHelper.getColor(b.category)),
+                        Icon(
+                          CategoryHelper.getIcon(b.category),
+                          size: AppSpacing.iconSm,
+                          color: CategoryHelper.getColor(b.category),
+                        ),
                         const SizedBox(width: AppSpacing.xs),
                         Expanded(
-                          child: Text(b.category,
-                              style: tt.bodySmall
-                                  ?.copyWith(fontWeight: FontWeight.w500),
-                              overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            b.category,
+                            style: tt.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Text(
                           '${CurrencyFormatter.formatCompact(b.spentAmount)} / ${CurrencyFormatter.formatCompact(b.budgetAmount)}',
                           style: tt.labelSmall?.copyWith(
                             fontFamily: 'RobotoMono',
-                            color: isOver ? colors.expense : cs.onSurfaceVariant,
-                            fontWeight:
-                                isOver ? FontWeight.w600 : FontWeight.normal,
+                            color: isOver
+                                ? colors.expense
+                                : cs.onSurfaceVariant,
+                            fontWeight: isOver
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                       ],
@@ -3467,12 +3595,10 @@ class _BudgetVsActualCard extends StatelessWidget {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final fullW = constraints.maxWidth;
-                        final budgetW =
-                            (b.budgetAmount / maxBudget * fullW)
-                                .clamp(0.0, fullW);
-                        final spentW =
-                            (b.spentAmount / maxBudget * fullW)
-                                .clamp(0.0, fullW);
+                        final budgetW = (b.budgetAmount / maxBudget * fullW)
+                            .clamp(0.0, fullW);
+                        final spentW = (b.spentAmount / maxBudget * fullW)
+                            .clamp(0.0, fullW);
                         return SizedBox(
                           height: 10,
                           child: Stack(
@@ -3486,7 +3612,8 @@ class _BudgetVsActualCard extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: cs.surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(
-                                        AppSpacing.radiusSm),
+                                      AppSpacing.radiusSm,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3499,7 +3626,8 @@ class _BudgetVsActualCard extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     color: barColor,
                                     borderRadius: BorderRadius.circular(
-                                        AppSpacing.radiusSm),
+                                      AppSpacing.radiusSm,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -3509,16 +3637,21 @@ class _BudgetVsActualCard extends StatelessWidget {
                                   left: budgetW,
                                   child: Container(
                                     width: (spentW - budgetW).clamp(
-                                        0.0, fullW - budgetW),
+                                      0.0,
+                                      fullW - budgetW,
+                                    ),
                                     height: 10,
                                     decoration: BoxDecoration(
-                                      color:
-                                          colors.expense.withValues(alpha: 0.7),
+                                      color: colors.expense.withValues(
+                                        alpha: 0.7,
+                                      ),
                                       borderRadius: const BorderRadius.only(
-                                        topRight:
-                                            Radius.circular(AppSpacing.radiusSm),
-                                        bottomRight:
-                                            Radius.circular(AppSpacing.radiusSm),
+                                        topRight: Radius.circular(
+                                          AppSpacing.radiusSm,
+                                        ),
+                                        bottomRight: Radius.circular(
+                                          AppSpacing.radiusSm,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -3559,9 +3692,12 @@ class _BudgetLegend extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 4),
-        Text(label,
-            style: context.textTheme.labelSmall
-                ?.copyWith(color: context.colorScheme.onSurfaceVariant)),
+        Text(
+          label,
+          style: context.textTheme.labelSmall?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -3606,19 +3742,24 @@ class _CashFlowTimelineCard extends StatelessWidget {
                   children: [
                     Text(
                       'Cash Flow Timeline',
-                      style: context.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       'Overdue, upcoming & projected money movement',
                       style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: context.colorScheme.outline),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: context.colorScheme.outline,
+              ),
             ],
           ),
         ),
@@ -3667,19 +3808,24 @@ class _GstReturnsCard extends StatelessWidget {
                   children: [
                     Text(
                       'GST Returns (GSTR-1)',
-                      style: context.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       'Generate workbook CSV + PDF summary for your CA',
                       style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: context.colorScheme.outline),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: context.colorScheme.outline,
+              ),
             ],
           ),
         ),
@@ -3727,19 +3873,24 @@ class _PurchaseBillsCard extends StatelessWidget {
                   children: [
                     Text(
                       'Purchase Bills & ITC',
-                      style: context.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       'Track vendor invoices, RCM bills, and input tax credit',
                       style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: context.colorScheme.outline),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: context.colorScheme.outline,
+              ),
             ],
           ),
         ),
@@ -3787,19 +3938,24 @@ class _Gstr3bOffsetCard extends StatelessWidget {
                   children: [
                     Text(
                       'GSTR-3B Offset Summary',
-                      style: context.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
+                      style: context.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     Text(
                       'Compute ITC offset and cash required to file GSTR-3B',
                       style: context.textTheme.bodySmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant),
+                        color: context.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 16, color: context.colorScheme.outline),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: context.colorScheme.outline,
+              ),
             ],
           ),
         ),

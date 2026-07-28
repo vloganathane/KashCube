@@ -7,17 +7,16 @@ import 'context_provider.dart';
 
 // ── Repository Provider ──────────────────────────────────────────────────────
 
-final productGroupRepositoryProvider = Provider<ProductGroupRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return ProductGroupRepositoryImpl(contextId: contextId);
-  },
-);
+final productGroupRepositoryProvider = Provider<ProductGroupRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return ProductGroupRepositoryImpl(contextId: contextId);
+});
 
 // ── State Notifier ───────────────────────────────────────────────────────────
 
 /// Manages all product groups in the catalog.
-class ProductGroupsNotifier extends StateNotifier<AsyncValue<List<ProductGroup>>> {
+class ProductGroupsNotifier
+    extends StateNotifier<AsyncValue<List<ProductGroup>>> {
   ProductGroupsNotifier(this._repo) : super(const AsyncValue.loading()) {
     load();
   }
@@ -53,9 +52,11 @@ class ProductGroupsNotifier extends StateNotifier<AsyncValue<List<ProductGroup>>
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-final productGroupsProvider = StateNotifierProvider<ProductGroupsNotifier, AsyncValue<List<ProductGroup>>>(
-  (ref) {
-    final repo = ref.watch(productGroupRepositoryProvider);
-    return ProductGroupsNotifier(repo);
-  },
-);
+final productGroupsProvider =
+    StateNotifierProvider<
+      ProductGroupsNotifier,
+      AsyncValue<List<ProductGroup>>
+    >((ref) {
+      final repo = ref.watch(productGroupRepositoryProvider);
+      return ProductGroupsNotifier(repo);
+    });

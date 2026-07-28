@@ -17,11 +17,7 @@ String buildWebCompanionAuthQr({
   return Uri(
     scheme: 'kashcube',
     host: 'web-auth',
-    queryParameters: {
-      'v': '1',
-      'sid': sessionId,
-      'ch': challenge,
-    },
+    queryParameters: {'v': '1', 'sid': sessionId, 'ch': challenge},
   ).toString();
 }
 

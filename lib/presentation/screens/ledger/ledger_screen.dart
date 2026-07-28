@@ -18,6 +18,7 @@ import '../search/search_screen.dart';
 // ---------------------------------------------------------------------------
 
 enum _ModeTab { all, personal, business }
+
 enum _LedgerFilter { all, outstanding, lent, borrowed, investments, cleared }
 
 // ---------------------------------------------------------------------------
@@ -41,12 +42,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
   _LedgerFilter _filter = _LedgerFilter.all;
   late final TabController _tabController;
   _ModeTab get _modeTab => _ModeTab.values[_tabController.index];
-  
+
   // Search and filter state
   String _searchQuery = '';
   bool _isSearching = false;
   final _searchController = TextEditingController();
-  
+
   // Advanced filters
   double? _minBalance;
   double? _maxBalance;
@@ -108,7 +109,10 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             icon: const Icon(Icons.search),
             tooltip: 'Global Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.parties)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.parties),
+              ),
             ),
           ),
           IconButton(
@@ -155,12 +159,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             child: Row(
               children: _LedgerFilter.values.map((f) {
                 final label = switch (f) {
-                  _LedgerFilter.all         => 'All Parties',
+                  _LedgerFilter.all => 'All Parties',
                   _LedgerFilter.outstanding => 'Outstanding',
-                  _LedgerFilter.lent        => 'Lent (Diya)',
-                  _LedgerFilter.borrowed    => 'Borrowed (Liya)',
+                  _LedgerFilter.lent => 'Lent (Diya)',
+                  _LedgerFilter.borrowed => 'Borrowed (Liya)',
                   _LedgerFilter.investments => 'Investments',
-                  _LedgerFilter.cleared     => 'Cleared',
+                  _LedgerFilter.cleared => 'Cleared',
                 };
                 return Padding(
                   padding: const EdgeInsets.only(right: AppSpacing.sm),
@@ -191,7 +195,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   Widget _buildList(List<LedgerPartyEntry> entries) {
     final modeFiltered = switch (_modeTab) {
-      _ModeTab.all      => entries,
+      _ModeTab.all => entries,
       _ModeTab.personal => entries.where((e) => e.personalCount > 0).toList(),
       _ModeTab.business => entries.where((e) => e.businessCount > 0).toList(),
     };
@@ -213,12 +217,15 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
 
   List<LedgerPartyEntry> _applyFilter(List<LedgerPartyEntry> all) {
     var filtered = switch (_filter) {
-      _LedgerFilter.all         => all,
+      _LedgerFilter.all => all,
       _LedgerFilter.outstanding => all.where((e) => e.hasOutstanding).toList(),
-      _LedgerFilter.lent        => all.where((e) => e.netLendingBalance > 0.01).toList(),
-      _LedgerFilter.borrowed    => all.where((e) => e.netBorrowingBalance > 0.01).toList(),
-      _LedgerFilter.investments => all.where((e) => e.netInvestment > 0.01).toList(),
-      _LedgerFilter.cleared     => all.where((e) => e.isCleared).toList(),
+      _LedgerFilter.lent =>
+        all.where((e) => e.netLendingBalance > 0.01).toList(),
+      _LedgerFilter.borrowed =>
+        all.where((e) => e.netBorrowingBalance > 0.01).toList(),
+      _LedgerFilter.investments =>
+        all.where((e) => e.netInvestment > 0.01).toList(),
+      _LedgerFilter.cleared => all.where((e) => e.isCleared).toList(),
     };
 
     // Apply search filter
@@ -232,18 +239,24 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     // Apply advanced filters
     if (_minBalance != null) {
       filtered = filtered.where((e) {
-        final balance = (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment).abs();
+        final balance =
+            (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment)
+                .abs();
         return balance >= _minBalance!;
       }).toList();
     }
     if (_maxBalance != null) {
       filtered = filtered.where((e) {
-        final balance = (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment).abs();
+        final balance =
+            (e.netLendingBalance + e.netBorrowingBalance + e.netInvestment)
+                .abs();
         return balance <= _maxBalance!;
       }).toList();
     }
     if (_minTransactionCount != null) {
-      filtered = filtered.where((e) => e.transactionCount >= _minTransactionCount!).toList();
+      filtered = filtered
+          .where((e) => e.transactionCount >= _minTransactionCount!)
+          .toList();
     }
     if (_onlyOutstanding == true) {
       filtered = filtered.where((e) => e.hasOutstanding).toList();
@@ -264,22 +277,28 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
               Icon(
                 Icons.search_off,
                 size: 64,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.25),
               ),
               const SizedBox(height: AppSpacing.base),
               Text(
                 'No matching parties',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Try a different search term or filter',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.4),
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -289,17 +308,17 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
     }
 
     final modeLabel = switch (_modeTab) {
-      _ModeTab.all      => '',
+      _ModeTab.all => '',
       _ModeTab.personal => 'personal ',
       _ModeTab.business => 'business ',
     };
     final message = switch (_filter) {
-      _LedgerFilter.all         => 'No ${modeLabel}ledger entries yet',
+      _LedgerFilter.all => 'No ${modeLabel}ledger entries yet',
       _LedgerFilter.outstanding => 'No ${modeLabel}outstanding balances',
-      _LedgerFilter.lent        => "You haven't lent anything ($modeLabel)",
-      _LedgerFilter.borrowed    => "You haven't borrowed anything ($modeLabel)",
+      _LedgerFilter.lent => "You haven't lent anything ($modeLabel)",
+      _LedgerFilter.borrowed => "You haven't borrowed anything ($modeLabel)",
       _LedgerFilter.investments => 'No ${modeLabel}investments tracked',
-      _LedgerFilter.cleared     => 'No ${modeLabel}cleared entries',
+      _LedgerFilter.cleared => 'No ${modeLabel}cleared entries',
     };
     return Center(
       child: Padding(
@@ -310,22 +329,28 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen>
             Icon(
               Icons.menu_book_outlined,
               size: 64,
-              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.25),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.25),
             ),
             const SizedBox(height: AppSpacing.base),
             Text(
               message,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               'Tap + to record a transaction with a party.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
-                  ),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.4),
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -453,10 +478,7 @@ class _LedgerAdvancedFilterSheetState
           const SizedBox(height: AppSpacing.lg),
 
           // Balance range
-          Text(
-            'Balance Range',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text('Balance Range', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -559,32 +581,33 @@ class _PartyTile extends ConsumerWidget {
 
     final net = entry.netBalance;
     final isOwedByThem = net > 0.01;
-    final isOwedByMe   = net < -0.01;
+    final isOwedByMe = net < -0.01;
 
     final balanceColor = isOwedByThem
         ? colors.income
         : isOwedByMe
-            ? colors.expense
-            : scheme.onSurface.withValues(alpha: 0.45);
+        ? colors.expense
+        : scheme.onSurface.withValues(alpha: 0.45);
 
     final statusLabel = isOwedByThem
         ? 'owes you'
         : isOwedByMe
-            ? 'you owe'
-            : 'settled';
+        ? 'you owe'
+        : 'settled';
 
     // Determine dominant activity type for avatar color
-    final hasLending = entry.netLendingBalance > 0.01 || entry.netBorrowingBalance > 0.01;
+    final hasLending =
+        entry.netLendingBalance > 0.01 || entry.netBorrowingBalance > 0.01;
     final avatarBg = hasLending
         ? colors.credit.withValues(alpha: 0.2)
         : entry.totalIncome >= entry.totalExpense
-            ? colors.income.withValues(alpha: 0.18)
-            : colors.expense.withValues(alpha: 0.18);
+        ? colors.income.withValues(alpha: 0.18)
+        : colors.expense.withValues(alpha: 0.18);
     final avatarFg = hasLending
         ? colors.credit
         : entry.totalIncome >= entry.totalExpense
-            ? colors.income
-            : colors.expense;
+        ? colors.income
+        : colors.expense;
 
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -630,9 +653,7 @@ class _PartyTile extends ConsumerWidget {
                       children: [
                         Text(
                           entry.partyName,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
+                          style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(fontWeight: FontWeight.w700),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -640,20 +661,28 @@ class _PartyTile extends ConsumerWidget {
                         if (entry.lastTransactionDate != null)
                           Text(
                             'Last: ${DateFormatter.format(entry.lastTransactionDate!)} · ${entry.transactionCount} txn${entry.transactionCount == 1 ? '' : 's'}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: scheme.onSurface.withValues(alpha: 0.45),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.45,
+                                  ),
                                 ),
                           ),
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right,
-                      color: scheme.onSurface.withValues(alpha: 0.3)),
+                  Icon(
+                    Icons.chevron_right,
+                    color: scheme.onSurface.withValues(alpha: 0.3),
+                  ),
                 ],
               ),
 
               const SizedBox(height: AppSpacing.md),
-              Divider(height: 1, color: scheme.outlineVariant.withValues(alpha: 0.5)),
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
               const SizedBox(height: AppSpacing.md),
 
               // ── Row 2: stat pills ────────────────────────────────────
@@ -714,7 +743,9 @@ class _PartyTile extends ConsumerWidget {
                   // Status badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: balanceColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -773,16 +804,18 @@ class _StatPill extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                    fontSize: 9,
-                    color: color.withValues(alpha: 0.8),
-                    fontWeight: FontWeight.w500),
+                  fontSize: 9,
+                  color: color.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 CurrencyFormatter.format(amount),
                 style: TextStyle(
-                    fontSize: 11,
-                    color: color,
-                    fontWeight: FontWeight.w700),
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -839,22 +872,22 @@ class KhataDetailScreen extends ConsumerWidget {
   /// Positive → I'm ahead (they owe me more / I received).
   /// Negative → I owe more / I paid out.
   static double _delta(Transaction tx) => switch (tx.type) {
-    TransactionType.lent         =>  tx.amount,
+    TransactionType.lent => tx.amount,
     TransactionType.receivedBack => -tx.amount,
-    TransactionType.borrowed     => -tx.amount,
-    TransactionType.paidBack     =>  tx.amount,
-    TransactionType.income       =>  tx.amount,
-    TransactionType.expense      => -tx.amount,
-    TransactionType.invested     => -tx.amount,
-    TransactionType.redeemed     =>  tx.amount,
-    _                            =>  0,
+    TransactionType.borrowed => -tx.amount,
+    TransactionType.paidBack => tx.amount,
+    TransactionType.income => tx.amount,
+    TransactionType.expense => -tx.amount,
+    TransactionType.invested => -tx.amount,
+    TransactionType.redeemed => tx.amount,
+    _ => 0,
   };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final txnsAsync = ref.watch(partyTransactionsProvider(partyName));
-    final colors    = Theme.of(context).extension<KashCubeColors>()!;
-    final scheme    = Theme.of(context).colorScheme;
+    final colors = Theme.of(context).extension<KashCubeColors>()!;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -896,13 +929,13 @@ class KhataDetailScreen extends ConsumerWidget {
           final finalColor = running > 0.01
               ? colors.income
               : running < -0.01
-                  ? colors.expense
-                  : scheme.onSurface.withValues(alpha: 0.5);
+              ? colors.expense
+              : scheme.onSurface.withValues(alpha: 0.5);
           final finalLabel = running > 0.01
               ? 'owes you'
               : running < -0.01
-                  ? 'you owe'
-                  : 'settled ✓';
+              ? 'you owe'
+              : 'settled ✓';
 
           return Column(
             children: [
@@ -926,13 +959,15 @@ class KhataDetailScreen extends ConsumerWidget {
                       children: [
                         Text(
                           'Net Balance',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: 0.6),
                               ),
                         ),
                         Text(
                           CurrencyFormatter.format(running.abs()),
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
                                 color: finalColor,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -963,15 +998,17 @@ class KhataDetailScreen extends ConsumerWidget {
 
               // ── Column headers ──────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
                         'Entry',
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: 0.45),
-                            ),
+                          color: scheme.onSurface.withValues(alpha: 0.45),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -980,8 +1017,8 @@ class KhataDetailScreen extends ConsumerWidget {
                         'Amount',
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: 0.45),
-                            ),
+                          color: scheme.onSurface.withValues(alpha: 0.45),
+                        ),
                       ),
                     ),
                     SizedBox(
@@ -990,15 +1027,19 @@ class KhataDetailScreen extends ConsumerWidget {
                         'Balance',
                         textAlign: TextAlign.right,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: scheme.onSurface.withValues(alpha: 0.45),
-                            ),
+                          color: scheme.onSurface.withValues(alpha: 0.45),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Divider(height: 1, indent: AppSpacing.base, endIndent: AppSpacing.base),
+              Divider(
+                height: 1,
+                indent: AppSpacing.base,
+                endIndent: AppSpacing.base,
+              ),
 
               // ── T-account timeline ──────────────────────────────────────
               Expanded(
@@ -1047,27 +1088,27 @@ class _KhataRow extends StatelessWidget {
   final double delta;
 
   static String _typeLabel(TransactionType t) => switch (t) {
-    TransactionType.lent         => 'Lent',
-    TransactionType.borrowed     => 'Borrowed',
+    TransactionType.lent => 'Lent',
+    TransactionType.borrowed => 'Borrowed',
     TransactionType.receivedBack => 'Received back',
-    TransactionType.paidBack     => 'Paid back',
-    TransactionType.income       => 'Income',
-    TransactionType.expense      => 'Expense',
-    TransactionType.invested     => 'Invested',
-    TransactionType.redeemed     => 'Redeemed',
-    _                            => t.label,
+    TransactionType.paidBack => 'Paid back',
+    TransactionType.income => 'Income',
+    TransactionType.expense => 'Expense',
+    TransactionType.invested => 'Invested',
+    TransactionType.redeemed => 'Redeemed',
+    _ => t.label,
   };
 
   static IconData _typeIcon(TransactionType t) => switch (t) {
-    TransactionType.lent         => Icons.arrow_outward,
-    TransactionType.borrowed     => Icons.call_received,
+    TransactionType.lent => Icons.arrow_outward,
+    TransactionType.borrowed => Icons.call_received,
     TransactionType.receivedBack => Icons.call_received,
-    TransactionType.paidBack     => Icons.arrow_outward,
-    TransactionType.income       => Icons.south_rounded,
-    TransactionType.expense      => Icons.north_rounded,
-    TransactionType.invested     => Icons.trending_up,
-    TransactionType.redeemed     => Icons.redeem,
-    _                            => Icons.swap_horiz,
+    TransactionType.paidBack => Icons.arrow_outward,
+    TransactionType.income => Icons.south_rounded,
+    TransactionType.expense => Icons.north_rounded,
+    TransactionType.invested => Icons.trending_up,
+    TransactionType.redeemed => Icons.redeem,
+    _ => Icons.swap_horiz,
   };
 
   @override
@@ -1075,12 +1116,12 @@ class _KhataRow extends StatelessWidget {
     final colors = Theme.of(context).extension<KashCubeColors>()!;
     final scheme = Theme.of(context).colorScheme;
 
-    final deltaColor  = delta > 0 ? colors.income : colors.expense;
-    final balColor    = runningBalance > 0.01
+    final deltaColor = delta > 0 ? colors.income : colors.expense;
+    final balColor = runningBalance > 0.01
         ? colors.income
         : runningBalance < -0.01
-            ? colors.expense
-            : scheme.onSurface.withValues(alpha: 0.4);
+        ? colors.expense
+        : scheme.onSurface.withValues(alpha: 0.4);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
@@ -1094,7 +1135,11 @@ class _KhataRow extends StatelessWidget {
               color: deltaColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(_typeIcon(transaction.type), size: 16, color: deltaColor),
+            child: Icon(
+              _typeIcon(transaction.type),
+              size: 16,
+              color: deltaColor,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
 
@@ -1105,17 +1150,16 @@ class _KhataRow extends StatelessWidget {
               children: [
                 Text(
                   _typeLabel(transaction.type),
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.w500),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),
                 Text(
                   '${DateFormatter.format(transaction.date)}'
                   '${transaction.notes != null && transaction.notes!.isNotEmpty ? ' · ${transaction.notes}' : ''}',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.5),
-                      ),
+                    color: scheme.onSurface.withValues(alpha: 0.5),
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1130,10 +1174,10 @@ class _KhataRow extends StatelessWidget {
               '${delta > 0 ? '+' : '−'}${CurrencyFormatter.format(transaction.amount)}',
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: deltaColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
+                color: deltaColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
 
@@ -1141,13 +1185,15 @@ class _KhataRow extends StatelessWidget {
           SizedBox(
             width: 80,
             child: Text(
-              CurrencyFormatter.format(math.max(runningBalance, -runningBalance)),
+              CurrencyFormatter.format(
+                math.max(runningBalance, -runningBalance),
+              ),
               textAlign: TextAlign.right,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: balColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
+                color: balColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
         ],

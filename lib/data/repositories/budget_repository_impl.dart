@@ -11,7 +11,7 @@ import '../services/database_helper.dart';
 /// `transactions` table so it always reflects real data.
 class BudgetRepositoryImpl implements BudgetRepository {
   BudgetRepositoryImpl([DatabaseHelper? db])
-      : _db = db ?? DatabaseHelper.instance;
+    : _db = db ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -85,8 +85,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       ''',
       [start, end, category],
     );
-    final spent =
-        (spendRows.first['total'] as num? ?? 0).toDouble();
+    final spent = (spendRows.first['total'] as num? ?? 0).toDouble();
     return b.copyWith(spentAmount: spent);
   }
 

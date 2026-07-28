@@ -7,27 +7,30 @@ import 'context_provider.dart';
 
 /// Provider for the transaction repository instance.
 /// Rebuilds automatically when [activeContextProvider] changes.
-final transactionRepositoryProvider = Provider<TransactionRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return TransactionRepositoryImpl(contextId: contextId);
-  },
-);
+final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return TransactionRepositoryImpl(contextId: contextId);
+});
 
 /// Provider for the transaction list state.
 final transactionsProvider =
     StateNotifierProvider<TransactionsNotifier, AsyncValue<List<Transaction>>>(
-  (ref) => TransactionsNotifier(ref.watch(transactionRepositoryProvider)),
-);
+      (ref) => TransactionsNotifier(ref.watch(transactionRepositoryProvider)),
+    );
 
 /// Provider for recent transactions (home screen).
 final recentTransactionsProvider =
-    StateNotifierProvider<RecentTransactionsNotifier, AsyncValue<List<Transaction>>>(
-  (ref) => RecentTransactionsNotifier(ref.watch(transactionRepositoryProvider)),
-);
+    StateNotifierProvider<
+      RecentTransactionsNotifier,
+      AsyncValue<List<Transaction>>
+    >(
+      (ref) =>
+          RecentTransactionsNotifier(ref.watch(transactionRepositoryProvider)),
+    );
 
 /// Manages the full transaction list state.
-class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> {
+class TransactionsNotifier
+    extends StateNotifier<AsyncValue<List<Transaction>>> {
   final TransactionRepository _repository;
 
   TransactionsNotifier(this._repository) : super(const AsyncValue.loading()) {
@@ -82,10 +85,12 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
 }
 
 /// Manages recent transactions for the home screen.
-class RecentTransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> {
+class RecentTransactionsNotifier
+    extends StateNotifier<AsyncValue<List<Transaction>>> {
   final TransactionRepository _repository;
 
-  RecentTransactionsNotifier(this._repository) : super(const AsyncValue.loading()) {
+  RecentTransactionsNotifier(this._repository)
+    : super(const AsyncValue.loading()) {
     loadRecent();
   }
 
@@ -105,9 +110,12 @@ class RecentTransactionsNotifier extends StateNotifier<AsyncValue<List<Transacti
 
 /// Party-level ledger summaries (lent / borrowed / invested grouped by party).
 final ledgerSummariesProvider =
-    StateNotifierProvider<LedgerSummariesNotifier, AsyncValue<List<LedgerPartyEntry>>>(
-  (ref) => LedgerSummariesNotifier(ref.read(transactionRepositoryProvider)),
-);
+    StateNotifierProvider<
+      LedgerSummariesNotifier,
+      AsyncValue<List<LedgerPartyEntry>>
+    >(
+      (ref) => LedgerSummariesNotifier(ref.read(transactionRepositoryProvider)),
+    );
 
 /// Total outstanding lent amount (lent - received_back).
 final totalOutstandingLentProvider = FutureProvider<double>((ref) async {
@@ -124,17 +132,23 @@ final totalOutstandingBorrowedProvider = FutureProvider<double>((ref) async {
 
 /// Transactions for a single party (detail drill-down).
 final partyTransactionsProvider =
-    StateNotifierProvider.family<PartyTransactionsNotifier, AsyncValue<List<Transaction>>, String>(
-  (ref, partyName) => PartyTransactionsNotifier(
-    ref.read(transactionRepositoryProvider),
-    partyName,
-  ),
-);
+    StateNotifierProvider.family<
+      PartyTransactionsNotifier,
+      AsyncValue<List<Transaction>>,
+      String
+    >(
+      (ref, partyName) => PartyTransactionsNotifier(
+        ref.read(transactionRepositoryProvider),
+        partyName,
+      ),
+    );
 
-class LedgerSummariesNotifier extends StateNotifier<AsyncValue<List<LedgerPartyEntry>>> {
+class LedgerSummariesNotifier
+    extends StateNotifier<AsyncValue<List<LedgerPartyEntry>>> {
   final TransactionRepository _repository;
 
-  LedgerSummariesNotifier(this._repository) : super(const AsyncValue.loading()) {
+  LedgerSummariesNotifier(this._repository)
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -151,12 +165,13 @@ class LedgerSummariesNotifier extends StateNotifier<AsyncValue<List<LedgerPartyE
   Future<void> refresh() => load();
 }
 
-class PartyTransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> {
+class PartyTransactionsNotifier
+    extends StateNotifier<AsyncValue<List<Transaction>>> {
   final TransactionRepository _repository;
   final String _partyName;
 
   PartyTransactionsNotifier(this._repository, this._partyName)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 

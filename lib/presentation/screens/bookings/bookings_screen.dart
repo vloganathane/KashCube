@@ -36,7 +36,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             icon: const Icon(Icons.search),
             tooltip: 'Search',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SearchScreen(initialFilter: SearchFilter.bookings)),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.bookings),
+              ),
             ),
           ),
         ],
@@ -50,11 +53,13 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             _showBookingTypeSheet(context);
           } else {
             // Business mode OFF → always personal
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => const CreateBookingScreen(
-                defaultBookingType: BookingType.personal,
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const CreateBookingScreen(
+                  defaultBookingType: BookingType.personal,
+                ),
               ),
-            ));
+            );
           }
         },
       ),
@@ -108,27 +113,29 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 subtitle: const Text('Customer appointment, invoice, payment'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const CreateBookingScreen(
-                      defaultBookingType: BookingType.business,
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CreateBookingScreen(
+                        defaultBookingType: BookingType.business,
+                      ),
                     ),
-                  ));
+                  );
                 },
               ),
               const Divider(),
               ListTile(
-                leading: const CircleAvatar(
-                  child: Icon(Icons.person_outline),
-                ),
+                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
                 title: const Text('Schedule'),
                 subtitle: const Text('Reminder, appointment, personal event'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const CreateBookingScreen(
-                      defaultBookingType: BookingType.personal,
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const CreateBookingScreen(
+                        defaultBookingType: BookingType.personal,
+                      ),
                     ),
-                  ));
+                  );
                 },
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -356,16 +363,13 @@ class _GroupHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.lg,
-        bottom: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.lg, bottom: AppSpacing.sm),
       child: Text(
         label,
         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }
@@ -404,8 +408,8 @@ class _BookingTile extends ConsumerWidget {
                   Text(
                     _formatTime(booking),
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const Spacer(),
                   _StatusBadge(status: booking.status),
@@ -429,9 +433,9 @@ class _BookingTile extends ConsumerWidget {
                     Text(
                       CurrencyFormatter.format(booking.totalAmount),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colors.income,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        color: colors.income,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                     if (booking.durationMinutes != null) ...[
                       Text(
@@ -447,8 +451,8 @@ class _BookingTile extends ConsumerWidget {
                 Text(
                   booking.durationLabel,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
 
               // Primary Action Button
@@ -542,7 +546,9 @@ class _ActionButton extends ConsumerWidget {
       child: ElevatedButton.icon(
         onPressed: () async {
           if (booking.status == BookingStatus.pending) {
-            await ref.read(bookingsProvider.notifier).markAsConfirmed(booking.id!);
+            await ref
+                .read(bookingsProvider.notifier)
+                .markAsConfirmed(booking.id!);
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Booking confirmed')),
@@ -550,10 +556,13 @@ class _ActionButton extends ConsumerWidget {
             }
           } else {
             // Mark booking as completed
-            await ref.read(bookingsProvider.notifier).markAsCompleted(booking.id!);
+            await ref
+                .read(bookingsProvider.notifier)
+                .markAsCompleted(booking.id!);
 
             // Generate invoice from booking
-            final invoiceNo = await InvoiceNumberService.instance.nextInvoiceNo();
+            final invoiceNo = await InvoiceNumberService.instance
+                .nextInvoiceNo();
             final now = DateTime.now();
             final amountToInvoice = booking.totalAmount - booking.advanceAmount;
 
@@ -581,7 +590,8 @@ class _ActionButton extends ConsumerWidget {
             final invoiceItem = InvoiceItem(
               invoiceId: 0,
               itemName: booking.serviceName,
-              description: 'Service completed on ${DateFormat('d MMM yyyy').format(booking.startDatetime)}'
+              description:
+                  'Service completed on ${DateFormat('d MMM yyyy').format(booking.startDatetime)}'
                   '${booking.advanceAmount > 0 ? ' (Advance paid: ${CurrencyFormatter.format(booking.advanceAmount)})' : ''}',
               qty: 1,
               unitPrice: amountToInvoice,
@@ -594,10 +604,9 @@ class _ActionButton extends ConsumerWidget {
               [invoiceItem],
             );
 
-            await ref.read(bookingsProvider.notifier).linkInvoice(
-              booking.id!,
-              invoiceId,
-            );
+            await ref
+                .read(bookingsProvider.notifier)
+                .linkInvoice(booking.id!, invoiceId);
 
             if (context.mounted) {
               Navigator.of(context).push(
@@ -646,8 +655,8 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Create your first booking to get started',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -656,4 +665,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-

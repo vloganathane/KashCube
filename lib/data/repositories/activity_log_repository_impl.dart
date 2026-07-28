@@ -15,7 +15,9 @@ class ActivityLogRepositoryImpl implements ActivityLogRepository {
 
   @override
   Future<List<ActivityLog>> getForEntity(
-      String entityType, int entityId) async {
+    String entityType,
+    int entityId,
+  ) async {
     final db = await _db.database;
     final rows = await db.query(
       'activity_log',

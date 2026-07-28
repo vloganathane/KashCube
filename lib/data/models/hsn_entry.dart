@@ -17,8 +17,8 @@ class HsnEntry {
   String get type => isSac ? 'SAC' : 'HSN';
 
   factory HsnEntry.fromMap(Map<String, dynamic> map) => HsnEntry(
-        code: map['code'] as String,
-        description: map['description'] as String,
-        isSac: (map['type'] as String?) == 'SAC',
-      );
+    code: map['code'] as String,
+    description: map['description'] as String,
+    isSac: (map['type'] as String?) == 'SAC',
+  );
 }

@@ -14,8 +14,9 @@ import 'gstr_period_picker.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
 
-final _gstr1WorkbookProvider =
-    StateProvider<AsyncValue<Gstr1Workbook>?>((ref) => null);
+final _gstr1WorkbookProvider = StateProvider<AsyncValue<Gstr1Workbook>?>(
+  (ref) => null,
+);
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -56,8 +57,7 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
       to: DateTime(lastMonth.year, lastMonth.month + 1, 0),
       returnPeriodLabel:
           '${lastMonth.month.toString().padLeft(2, '0')}${lastMonth.year}',
-      displayLabel:
-          DateFormat('MMMM yyyy').format(lastMonth),
+      displayLabel: DateFormat('MMMM yyyy').format(lastMonth),
     );
   }
 
@@ -69,8 +69,9 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
 
   Future<void> _generate() async {
     final businesses = ref.read(businessesProvider).valueOrNull ?? [];
-    final business =
-        businesses.where((b) => b.id == _selectedBusinessId).firstOrNull;
+    final business = businesses
+        .where((b) => b.id == _selectedBusinessId)
+        .firstOrNull;
     if (business == null) {
       _showError('No active business. Please configure a business first.');
       return;
@@ -89,11 +90,11 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
       );
       // Reset tab controller to the first tab for the new workbook.
       _tabController!.animateTo(0);
-      ref.read(_gstr1WorkbookProvider.notifier).state =
-          AsyncValue.data(workbook);
+      ref.read(_gstr1WorkbookProvider.notifier).state = AsyncValue.data(
+        workbook,
+      );
     } catch (e, st) {
-      ref.read(_gstr1WorkbookProvider.notifier).state =
-          AsyncValue.error(e, st);
+      ref.read(_gstr1WorkbookProvider.notifier).state = AsyncValue.error(e, st);
     } finally {
       setState(() => _generating = false);
     }
@@ -103,8 +104,9 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
     final service = ref.read(gstr1ServiceProvider);
     try {
       final xFile = await service.exportJson(wb);
-      await Share.shareXFiles([xFile],
-          text: 'GSTR-1 JSON ${wb.returnPeriodLabel}');
+      await Share.shareXFiles([
+        xFile,
+      ], text: 'GSTR-1 JSON ${wb.returnPeriodLabel}');
     } catch (e) {
       _showError('JSON export failed: $e');
     }
@@ -114,8 +116,9 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
     final service = ref.read(gstr1ServiceProvider);
     try {
       final xFile = await service.exportCsvZip(wb);
-      await Share.shareXFiles([xFile],
-          text: 'GSTR-1 Workbook ${wb.returnPeriodLabel}');
+      await Share.shareXFiles([
+        xFile,
+      ], text: 'GSTR-1 Workbook ${wb.returnPeriodLabel}');
     } catch (e) {
       _showError('CSV export failed: $e');
     }
@@ -124,9 +127,9 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
   Future<void> _exportPdf(Gstr1Workbook wb) async {
     try {
       final file = await Gstr1PdfService.instance.generate(wb);
-      await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/pdf')],
-          text: 'GSTR-1 Summary ${wb.returnPeriodLabel}');
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'application/pdf'),
+      ], text: 'GSTR-1 Summary ${wb.returnPeriodLabel}');
     } catch (e) {
       _showError('PDF export failed: $e');
     }
@@ -134,21 +137,19 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
 
   void _showError(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     final workbookAsync = ref.watch(_gstr1WorkbookProvider);
     final allBusinesses = ref.watch(businessesProvider).valueOrNull ?? [];
-    final business =
-        allBusinesses.where((b) => b.id == _selectedBusinessId).firstOrNull;
+    final business = allBusinesses
+        .where((b) => b.id == _selectedBusinessId)
+        .firstOrNull;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('GSTR-1 Workbook'),
-      ),
+      appBar: AppBar(title: const Text('GSTR-1 Workbook')),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.base),
         children: [
@@ -168,15 +169,18 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(biz.name,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        biz.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       if (biz.gstNo != null)
                         Text(
                           'GST: ${biz.gstNo}',
                           style: TextStyle(
                             fontSize: 11,
-                            color: context.colorScheme.onSurface
-                                .withValues(alpha: 0.6),
+                            color: context.colorScheme.onSurface.withValues(
+                              alpha: 0.6,
+                            ),
                           ),
                         ),
                     ],
@@ -210,7 +214,10 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
                 ? const SizedBox.square(
                     dimension: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.play_circle_outline_rounded),
             label: Text(_generating ? 'Generating…' : 'Generate Preview'),
           ),
@@ -219,15 +226,17 @@ class _Gstr1ScreenState extends ConsumerState<Gstr1Screen>
           // ── Result ───────────────────────────────────────────────────────
           if (workbookAsync != null)
             workbookAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Card(
                 color: context.colorScheme.errorContainer,
                 child: Padding(
                   padding: const EdgeInsets.all(AppSpacing.base),
-                  child: Text('Error: $e',
-                      style: TextStyle(
-                          color: context.colorScheme.onErrorContainer)),
+                  child: Text(
+                    'Error: $e',
+                    style: TextStyle(
+                      color: context.colorScheme.onErrorContainer,
+                    ),
+                  ),
                 ),
               ),
               data: (wb) => _WorkbookPreview(
@@ -265,14 +274,18 @@ class _NoGstinWarning extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Row(
             children: [
-              Icon(Icons.warning_amber_rounded,
-                  color: context.colorScheme.error, size: 18),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: context.colorScheme.error,
+                size: 18,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   'Business GSTIN not set. Go to Business Settings to add your GSTIN before generating GSTR-1.',
                   style: context.textTheme.bodySmall?.copyWith(
-                      color: context.colorScheme.onErrorContainer),
+                    color: context.colorScheme.onErrorContainer,
+                  ),
                 ),
               ),
             ],
@@ -334,7 +347,8 @@ class _WorkbookPreview extends StatelessWidget {
               ),
             ),
           ],
-        ),        const SizedBox(height: AppSpacing.sm),
+        ),
+        const SizedBox(height: AppSpacing.sm),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -349,7 +363,8 @@ class _WorkbookPreview extends StatelessWidget {
                   : 'Export JSON for GST Portal',
             ),
           ),
-        ),        const SizedBox(height: AppSpacing.base),
+        ),
+        const SizedBox(height: AppSpacing.base),
 
         // ── Table tabs ──────────────────────────────────────────────────────
         Card(
@@ -402,18 +417,30 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final items = [
-      _SummaryItem('T4 B2B', '${workbook.totalB2bInvoices} inv',
-          '₹${amtFmt.format(workbook.tableB2b.fold(0.0, (s, r) => s + r.taxableValue))}',
-          Icons.receipt_long_outlined),
-      _SummaryItem('T5 B2C Large', '${workbook.tableB2cLarge.length} rows',
-          '₹${amtFmt.format(workbook.tableB2cLarge.fold(0.0, (s, r) => s + r.taxableValue))}',
-          Icons.north_east_rounded),
-      _SummaryItem('T7 B2C Small', '${workbook.tableB2cSmall.length} rows',
-          '₹${amtFmt.format(workbook.tableB2cSmall.fold(0.0, (s, r) => s + r.taxableValue))}',
-          Icons.people_outline_rounded),
-      _SummaryItem('T9 CDN', '${workbook.tableCdn.length} notes',
-          '₹${amtFmt.format(workbook.tableCdn.fold(0.0, (s, r) => s + r.taxableValue))}',
-          Icons.undo_rounded),
+      _SummaryItem(
+        'T4 B2B',
+        '${workbook.totalB2bInvoices} inv',
+        '₹${amtFmt.format(workbook.tableB2b.fold(0.0, (s, r) => s + r.taxableValue))}',
+        Icons.receipt_long_outlined,
+      ),
+      _SummaryItem(
+        'T5 B2C Large',
+        '${workbook.tableB2cLarge.length} rows',
+        '₹${amtFmt.format(workbook.tableB2cLarge.fold(0.0, (s, r) => s + r.taxableValue))}',
+        Icons.north_east_rounded,
+      ),
+      _SummaryItem(
+        'T7 B2C Small',
+        '${workbook.tableB2cSmall.length} rows',
+        '₹${amtFmt.format(workbook.tableB2cSmall.fold(0.0, (s, r) => s + r.taxableValue))}',
+        Icons.people_outline_rounded,
+      ),
+      _SummaryItem(
+        'T9 CDN',
+        '${workbook.tableCdn.length} notes',
+        '₹${amtFmt.format(workbook.tableCdn.fold(0.0, (s, r) => s + r.taxableValue))}',
+        Icons.undo_rounded,
+      ),
     ];
     return GridView.count(
       crossAxisCount: 2,
@@ -445,26 +472,36 @@ class _SummaryTile extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
         child: Row(
           children: [
-            Icon(item.icon,
-                color: context.colorScheme.primary, size: 20),
+            Icon(item.icon, color: context.colorScheme.primary, size: 20),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(item.label,
-                      style: context.textTheme.labelSmall?.copyWith(
-                          color: context.colorScheme.onSurfaceVariant)),
-                  Text(item.count,
-                      style: context.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(item.value,
-                      style: context.textTheme.labelSmall?.copyWith(
-                          color: context.colorScheme.primary)),
+                  Text(
+                    item.label,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Text(
+                    item.count,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    item.value,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: context.colorScheme.primary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -478,8 +515,7 @@ class _SummaryTile extends StatelessWidget {
 // ─── Tax liability strip ──────────────────────────────────────────────────────
 
 class _TaxLiabilityStrip extends StatelessWidget {
-  const _TaxLiabilityStrip(
-      {required this.workbook, required this.amtFmt});
+  const _TaxLiabilityStrip({required this.workbook, required this.amtFmt});
 
   final Gstr1Workbook workbook;
   final NumberFormat amtFmt;
@@ -490,21 +526,23 @@ class _TaxLiabilityStrip extends StatelessWidget {
       color: context.colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+          horizontal: AppSpacing.base,
+          vertical: AppSpacing.sm,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            taxCell('Taxable',
-                '₹${amtFmt.format(workbook.totalTaxableValue)}', context),
-            _vDivider(context),
             taxCell(
-                'CGST', '₹${amtFmt.format(workbook.totalCgst)}', context),
+              'Taxable',
+              '₹${amtFmt.format(workbook.totalTaxableValue)}',
+              context,
+            ),
             _vDivider(context),
-            taxCell(
-                'SGST', '₹${amtFmt.format(workbook.totalSgst)}', context),
+            taxCell('CGST', '₹${amtFmt.format(workbook.totalCgst)}', context),
             _vDivider(context),
-            taxCell(
-                'IGST', '₹${amtFmt.format(workbook.totalIgst)}', context),
+            taxCell('SGST', '₹${amtFmt.format(workbook.totalSgst)}', context),
+            _vDivider(context),
+            taxCell('IGST', '₹${amtFmt.format(workbook.totalIgst)}', context),
             _vDivider(context),
             taxCell(
               'Total Tax',
@@ -518,29 +556,36 @@ class _TaxLiabilityStrip extends StatelessWidget {
     );
   }
 
-  static Widget taxCell(String label, String value, BuildContext context,
-      {bool highlight = false}) =>
-      Column(
-        children: [
-          Text(label,
-              style: context.textTheme.labelSmall?.copyWith(
-                  color: context.colorScheme.onPrimaryContainer
-                      .withValues(alpha: 0.7))),
-          Text(value,
-              style: context.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: highlight
-                    ? context.colorScheme.primary
-                    : context.colorScheme.onPrimaryContainer,
-              )),
-        ],
-      );
+  static Widget taxCell(
+    String label,
+    String value,
+    BuildContext context, {
+    bool highlight = false,
+  }) => Column(
+    children: [
+      Text(
+        label,
+        style: context.textTheme.labelSmall?.copyWith(
+          color: context.colorScheme.onPrimaryContainer.withValues(alpha: 0.7),
+        ),
+      ),
+      Text(
+        value,
+        style: context.textTheme.bodySmall?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: highlight
+              ? context.colorScheme.primary
+              : context.colorScheme.onPrimaryContainer,
+        ),
+      ),
+    ],
+  );
 
   static Widget _vDivider(BuildContext context) => Container(
-        width: 1,
-        height: 28,
-        color: context.colorScheme.onPrimaryContainer.withValues(alpha: 0.15),
-      );
+    width: 1,
+    height: 28,
+    color: context.colorScheme.onPrimaryContainer.withValues(alpha: 0.15),
+  );
 }
 
 // ─── Table views ─────────────────────────────────────────────────────────────
@@ -554,17 +599,30 @@ class _T4View extends StatelessWidget {
   Widget build(BuildContext context) {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
-      headers: const ['GSTIN', 'Invoice No', 'Date', 'Rate%', 'Taxable', 'CGST', 'SGST', 'IGST'],
-      rows: rows.map((r) => [
-            r.receiverGstin,
-            r.invoiceNo,
-            r.invoiceDate,
-            r.rate.toStringAsFixed(0),
-            '₹${amtFmt.format(r.taxableValue)}',
-            '₹${amtFmt.format(r.cgst)}',
-            '₹${amtFmt.format(r.sgst)}',
-            '₹${amtFmt.format(r.igst)}',
-          ]).toList(),
+      headers: const [
+        'GSTIN',
+        'Invoice No',
+        'Date',
+        'Rate%',
+        'Taxable',
+        'CGST',
+        'SGST',
+        'IGST',
+      ],
+      rows: rows
+          .map(
+            (r) => [
+              r.receiverGstin,
+              r.invoiceNo,
+              r.invoiceDate,
+              r.rate.toStringAsFixed(0),
+              '₹${amtFmt.format(r.taxableValue)}',
+              '₹${amtFmt.format(r.cgst)}',
+              '₹${amtFmt.format(r.sgst)}',
+              '₹${amtFmt.format(r.igst)}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -579,12 +637,16 @@ class _T5View extends StatelessWidget {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
       headers: const ['POS', 'Rate%', 'Taxable', 'IGST'],
-      rows: rows.map((r) => [
-            r.placeOfSupply,
-            r.rate.toStringAsFixed(0),
-            '₹${amtFmt.format(r.taxableValue)}',
-            '₹${amtFmt.format(r.igst)}',
-          ]).toList(),
+      rows: rows
+          .map(
+            (r) => [
+              r.placeOfSupply,
+              r.rate.toStringAsFixed(0),
+              '₹${amtFmt.format(r.taxableValue)}',
+              '₹${amtFmt.format(r.igst)}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -598,16 +660,28 @@ class _T7View extends StatelessWidget {
   Widget build(BuildContext context) {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
-      headers: const ['Type', 'POS', 'Rate%', 'Taxable', 'CGST', 'SGST', 'IGST'],
-      rows: rows.map((r) => [
-            r.type,
-            r.placeOfSupply,
-            r.rate.toStringAsFixed(0),
-            '₹${amtFmt.format(r.taxableValue)}',
-            '₹${amtFmt.format(r.cgst)}',
-            '₹${amtFmt.format(r.sgst)}',
-            '₹${amtFmt.format(r.igst)}',
-          ]).toList(),
+      headers: const [
+        'Type',
+        'POS',
+        'Rate%',
+        'Taxable',
+        'CGST',
+        'SGST',
+        'IGST',
+      ],
+      rows: rows
+          .map(
+            (r) => [
+              r.type,
+              r.placeOfSupply,
+              r.rate.toStringAsFixed(0),
+              '₹${amtFmt.format(r.taxableValue)}',
+              '₹${amtFmt.format(r.cgst)}',
+              '₹${amtFmt.format(r.sgst)}',
+              '₹${amtFmt.format(r.igst)}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -621,16 +695,28 @@ class _T9View extends StatelessWidget {
   Widget build(BuildContext context) {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
-      headers: const ['GSTIN', 'Note No', 'Date', 'Type', 'Orig Invoice', 'Rate%', 'Taxable'],
-      rows: rows.map((r) => [
-            r.receiverGstin,
-            r.noteNo,
-            r.noteDate,
-            r.noteType == 'C' ? 'Credit' : 'Debit',
-            r.originalInvoiceNo,
-            r.rate.toStringAsFixed(0),
-            '₹${amtFmt.format(r.taxableValue)}',
-          ]).toList(),
+      headers: const [
+        'GSTIN',
+        'Note No',
+        'Date',
+        'Type',
+        'Orig Invoice',
+        'Rate%',
+        'Taxable',
+      ],
+      rows: rows
+          .map(
+            (r) => [
+              r.receiverGstin,
+              r.noteNo,
+              r.noteDate,
+              r.noteType == 'C' ? 'Credit' : 'Debit',
+              r.originalInvoiceNo,
+              r.rate.toStringAsFixed(0),
+              '₹${amtFmt.format(r.taxableValue)}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -644,16 +730,28 @@ class _T12View extends StatelessWidget {
   Widget build(BuildContext context) {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
-      headers: const ['HSN/SAC', 'Description', 'UQC', 'Qty', 'Taxable', 'CGST+SGST', 'IGST'],
-      rows: rows.map((r) => [
-            r.hsnCode,
-            r.description,
-            r.uqc,
-            r.totalQty.toStringAsFixed(2),
-            '₹${amtFmt.format(r.taxableValue)}',
-            '₹${amtFmt.format(r.cgst + r.sgst)}',
-            '₹${amtFmt.format(r.igst)}',
-          ]).toList(),
+      headers: const [
+        'HSN/SAC',
+        'Description',
+        'UQC',
+        'Qty',
+        'Taxable',
+        'CGST+SGST',
+        'IGST',
+      ],
+      rows: rows
+          .map(
+            (r) => [
+              r.hsnCode,
+              r.description,
+              r.uqc,
+              r.totalQty.toStringAsFixed(2),
+              '₹${amtFmt.format(r.taxableValue)}',
+              '₹${amtFmt.format(r.cgst + r.sgst)}',
+              '₹${amtFmt.format(r.igst)}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -667,13 +765,17 @@ class _T13View extends StatelessWidget {
     if (rows.isEmpty) return const _EmptyTable();
     return _ScrollableTable(
       headers: const ['Nature of Document', 'From', 'To', 'Total', 'Cancelled'],
-      rows: rows.map((r) => [
-            r.natureOfDocument,
-            r.seriesFrom,
-            r.seriesTo,
-            '${r.totalSubmitted}',
-            '${r.cancelled}',
-          ]).toList(),
+      rows: rows
+          .map(
+            (r) => [
+              r.natureOfDocument,
+              r.seriesFrom,
+              r.seriesTo,
+              '${r.totalSubmitted}',
+              '${r.cancelled}',
+            ],
+          )
+          .toList(),
     );
   }
 }
@@ -697,16 +799,14 @@ class _ScrollableTable extends StatelessWidget {
           dataRowMaxHeight: 36,
           columnSpacing: AppSpacing.md,
           headingTextStyle: context.textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: context.colorScheme.primary),
+            fontWeight: FontWeight.w700,
+            color: context.colorScheme.primary,
+          ),
           dataTextStyle: const TextStyle(fontSize: 11),
-          columns:
-              headers.map((h) => DataColumn(label: Text(h))).toList(),
+          columns: headers.map((h) => DataColumn(label: Text(h))).toList(),
           rows: rows
               .map(
-                (r) => DataRow(
-                  cells: r.map((c) => DataCell(Text(c))).toList(),
-                ),
+                (r) => DataRow(cells: r.map((c) => DataCell(Text(c))).toList()),
               )
               .toList(),
         ),
@@ -724,12 +824,18 @@ class _EmptyTable extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.table_rows_outlined,
-              size: 36, color: context.colorScheme.outlineVariant),
+          Icon(
+            Icons.table_rows_outlined,
+            size: 36,
+            color: context.colorScheme.outlineVariant,
+          ),
           const SizedBox(height: AppSpacing.sm),
-          Text('No data for this table',
-              style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant)),
+          Text(
+            'No data for this table',
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

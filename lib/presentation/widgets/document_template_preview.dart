@@ -51,24 +51,21 @@ class DocumentTemplatePreview extends ConsumerWidget {
     final ratio = _aspectRatio(record.pageSizeName);
 
     // Watch the async real render. Returns null while loading / on error.
-    final imageBytes =
-        ref.watch(templatePreviewProvider(templatePreviewKey(record, dpi))).valueOrNull;
+    final imageBytes = ref
+        .watch(templatePreviewProvider(templatePreviewKey(record, dpi)))
+        .valueOrNull;
 
     // Phase 1: instant Flutter mock skeleton.
     // Phase 2: replaced by the real PDF image once rasterised.
     Widget content = imageBytes != null
-        ? Image.memory(
-            imageBytes,
-            fit: BoxFit.fill,
-            gaplessPlayback: true,
-          )
+        ? Image.memory(imageBytes, fit: BoxFit.fill, gaplessPlayback: true)
         : (isThermal
-            ? _ThermalMock(accent: accent)
-            : _StandardMock(
-                accent: accent,
-                isBanner: isBanner,
-                showLogo: record.showLogo,
-              ));
+              ? _ThermalMock(accent: accent)
+              : _StandardMock(
+                  accent: accent,
+                  isBanner: isBanner,
+                  showLogo: record.showLogo,
+                ));
 
     Widget preview = AspectRatio(
       aspectRatio: ratio,
@@ -161,11 +158,23 @@ class _StandardMock extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _Stub(width: 36, height: 5, color: const Color(0xFFBDBDBD)),
+                        _Stub(
+                          width: 36,
+                          height: 5,
+                          color: const Color(0xFFBDBDBD),
+                        ),
                         const SizedBox(height: 4),
-                        _Stub(width: 60, height: 5, color: const Color(0xFFE0E0E0)),
+                        _Stub(
+                          width: 60,
+                          height: 5,
+                          color: const Color(0xFFE0E0E0),
+                        ),
                         const SizedBox(height: 3),
-                        _Stub(width: 48, height: 5, color: const Color(0xFFE0E0E0)),
+                        _Stub(
+                          width: 48,
+                          height: 5,
+                          color: const Color(0xFFE0E0E0),
+                        ),
                       ],
                     ),
                   ),
@@ -173,11 +182,23 @@ class _StandardMock extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _Stub(width: 36, height: 5, color: const Color(0xFFBDBDBD)),
+                        _Stub(
+                          width: 36,
+                          height: 5,
+                          color: const Color(0xFFBDBDBD),
+                        ),
                         const SizedBox(height: 4),
-                        _Stub(width: 66, height: 5, color: const Color(0xFFE0E0E0)),
+                        _Stub(
+                          width: 66,
+                          height: 5,
+                          color: const Color(0xFFE0E0E0),
+                        ),
                         const SizedBox(height: 3),
-                        _Stub(width: 54, height: 5, color: const Color(0xFFE0E0E0)),
+                        _Stub(
+                          width: 54,
+                          height: 5,
+                          color: const Color(0xFFE0E0E0),
+                        ),
                       ],
                     ),
                   ),
@@ -188,11 +209,7 @@ class _StandardMock extends StatelessWidget {
             const SizedBox(height: 12),
 
             // ── Items table header ─────────────────────────────────────────
-            Container(
-              margin: pad,
-              height: 8,
-              color: accent.withAlpha(30),
-            ),
+            Container(margin: pad, height: 8, color: accent.withAlpha(30)),
 
             const SizedBox(height: 4),
 
@@ -204,18 +221,12 @@ class _StandardMock extends StatelessWidget {
                   children: [
                     Expanded(
                       flex: 5,
-                      child: _Stub(
-                        height: 5,
-                        color: const Color(0xFFE0E0E0),
-                      ),
+                      child: _Stub(height: 5, color: const Color(0xFFE0E0E0)),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       flex: 2,
-                      child: _Stub(
-                        height: 5,
-                        color: const Color(0xFFE0E0E0),
-                      ),
+                      child: _Stub(height: 5, color: const Color(0xFFE0E0E0)),
                     ),
                   ],
                 ),
@@ -301,11 +312,19 @@ class _ThermalMock extends StatelessWidget {
             children: [
               // Business name
               Center(
-                child: _Stub(width: 80, height: 8, color: const Color(0xFF212121)),
+                child: _Stub(
+                  width: 80,
+                  height: 8,
+                  color: const Color(0xFF212121),
+                ),
               ),
               const SizedBox(height: 6),
               Center(
-                child: _Stub(width: 60, height: 6, color: const Color(0xFFBDBDBD)),
+                child: _Stub(
+                  width: 60,
+                  height: 6,
+                  color: const Color(0xFFBDBDBD),
+                ),
               ),
               const SizedBox(height: 8),
               _DashedLine(color: const Color(0xFFBDBDBD)),
@@ -339,7 +358,11 @@ class _ThermalMock extends StatelessWidget {
                         height: 6,
                         color: const Color(0xFFE0E0E0),
                       ),
-                      _Stub(width: 36, height: 6, color: const Color(0xFFE0E0E0)),
+                      _Stub(
+                        width: 36,
+                        height: 6,
+                        color: const Color(0xFFE0E0E0),
+                      ),
                     ],
                   ),
                 ),
@@ -366,7 +389,11 @@ class _ThermalMock extends StatelessWidget {
 
               // Footer
               Center(
-                child: _Stub(width: 70, height: 6, color: const Color(0xFFBDBDBD)),
+                child: _Stub(
+                  width: 70,
+                  height: 6,
+                  color: const Color(0xFFBDBDBD),
+                ),
               ),
             ],
           ),
@@ -522,23 +549,25 @@ class _DashedLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (_, constraints) {
-      final width = constraints.maxWidth;
-      const dashWidth = 3.0;
-      const gap = 2.0;
-      final count = (width / (dashWidth + gap)).floor();
-      return Row(
-        children: List.generate(
-          count,
-          (_) => Container(
-            width: dashWidth,
-            height: 1,
-            margin: const EdgeInsets.only(right: gap),
-            color: color,
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        final width = constraints.maxWidth;
+        const dashWidth = 3.0;
+        const gap = 2.0;
+        final count = (width / (dashWidth + gap)).floor();
+        return Row(
+          children: List.generate(
+            count,
+            (_) => Container(
+              width: dashWidth,
+              height: 1,
+              margin: const EdgeInsets.only(right: gap),
+              color: color,
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -547,11 +576,7 @@ class _DashedLine extends StatelessWidget {
 /// If [width] is null the stub fills its parent's available width
 /// (use inside [Expanded] or [FractionallySizedBox]).
 class _Stub extends StatelessWidget {
-  const _Stub({
-    this.width,
-    required this.height,
-    required this.color,
-  });
+  const _Stub({this.width, required this.height, required this.color});
 
   final double? width;
   final double height;

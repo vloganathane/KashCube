@@ -66,5 +66,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'kash-cube.firebasestorage.app',
     measurementId: 'G-V4SESSVHNX',
   );
-
 }

@@ -98,10 +98,7 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
   /// Save (create or update) a booking together with its line items.
   /// On create: inserts booking first, then saves items with the new id.
   /// On edit: updates booking, then replaces all items atomically.
-  Future<int> saveWithItems(
-    Booking booking,
-    List<BookingItem> items,
-  ) async {
+  Future<int> saveWithItems(Booking booking, List<BookingItem> items) async {
     final int id;
     if (booking.id == null) {
       id = await _repo.insert(booking);
@@ -129,40 +126,42 @@ class BookingsNotifier extends StateNotifier<AsyncValue<List<Booking>>> {
 
 final bookingsProvider =
     StateNotifierProvider<BookingsNotifier, AsyncValue<List<Booking>>>(
-  (ref) => BookingsNotifier(ref.read(bookingRepositoryProvider)),
-);
+      (ref) => BookingsNotifier(ref.read(bookingRepositoryProvider)),
+    );
 
 // ── Per-booking items ──────────────────────────────────────────────────────────
 
 /// Loads the ordered line items for a single booking.
 /// Used by booking detail screen and "Create Invoice" conversion.
-final bookingItemsProvider =
-    FutureProvider.autoDispose.family<List<BookingItem>, int>(
-  (ref, bookingId) async {
-    final repo = ref.read(bookingRepositoryProvider);
-    return repo.getItems(bookingId);
-  },
-);
+final bookingItemsProvider = FutureProvider.autoDispose
+    .family<List<BookingItem>, int>((ref, bookingId) async {
+      final repo = ref.read(bookingRepositoryProvider);
+      return repo.getItems(bookingId);
+    });
 
 // ── Single booking provider ──────────────────────────────────────────────────
 
 /// Derives a single booking from the already-loaded [bookingsProvider] so it
 /// automatically reflects any status change (confirm, complete, cancel, etc.)
 /// without a separate DB fetch.
-final bookingByIdProvider =
-    Provider.family<AsyncValue<Booking?>, int>((ref, id) {
+final bookingByIdProvider = Provider.family<AsyncValue<Booking?>, int>((
+  ref,
+  id,
+) {
   final bookings = ref.watch(bookingsProvider);
   return bookings.whenData(
     (list) => list.cast<Booking?>().firstWhere(
-          (b) => b?.id == id,
-          orElse: () => null,
-        ),
+      (b) => b?.id == id,
+      orElse: () => null,
+    ),
   );
 });
 
 /// Reverse-lookup: find the booking that is linked to a given invoice.
-final bookingByInvoiceIdProvider =
-    Provider.family<Booking?, int>((ref, invoiceId) {
+final bookingByInvoiceIdProvider = Provider.family<Booking?, int>((
+  ref,
+  invoiceId,
+) {
   final bookings = ref.watch(bookingsProvider).valueOrNull ?? [];
   return bookings.cast<Booking?>().firstWhere(
     (b) => b?.invoiceId == invoiceId,
@@ -172,8 +171,7 @@ final bookingByInvoiceIdProvider =
 
 // ── Upcoming bookings provider ───────────────────────────────────────────────
 
-final upcomingBookingsProvider =
-    FutureProvider<List<Booking>>((ref) async {
+final upcomingBookingsProvider = FutureProvider<List<Booking>>((ref) async {
   final repo = ref.read(bookingRepositoryProvider);
   return repo.getUpcoming(limit: 10);
 });
@@ -242,8 +240,10 @@ class BookingMonthStats {
 
 /// Derives booking stats for a given [month] from the already-loaded
 /// [bookingsProvider].  Only considers business-type bookings.
-final bookingMonthStatsProvider =
-    Provider.family<BookingMonthStats, DateTime>((ref, month) {
+final bookingMonthStatsProvider = Provider.family<BookingMonthStats, DateTime>((
+  ref,
+  month,
+) {
   final bookings = ref.watch(bookingsProvider).valueOrNull ?? [];
 
   final monthStart = DateTime(month.year, month.month, 1);
@@ -255,20 +255,24 @@ final bookingMonthStatsProvider =
         !b.startDatetime.isAfter(monthEnd);
   }).toList();
 
-  final completed =
-      inMonth.where((b) => b.status == BookingStatus.completed).toList();
+  final completed = inMonth
+      .where((b) => b.status == BookingStatus.completed)
+      .toList();
   final revenue = completed.fold<double>(0, (s, b) => s + b.totalAmount);
 
-  final confirmed =
-      inMonth.where((b) => b.status == BookingStatus.confirmed).length;
-  final pending =
-      inMonth.where((b) => b.status == BookingStatus.pending).length;
-  final noShow =
-      inMonth.where((b) => b.status == BookingStatus.noShow).length;
+  final confirmed = inMonth
+      .where((b) => b.status == BookingStatus.confirmed)
+      .length;
+  final pending = inMonth
+      .where((b) => b.status == BookingStatus.pending)
+      .length;
+  final noShow = inMonth.where((b) => b.status == BookingStatus.noShow).length;
 
   // Top service by frequency across all bookings (not just this month)
   final serviceFreq = <String, int>{};
-  for (final b in bookings.where((b) => b.bookingType == BookingType.business)) {
+  for (final b in bookings.where(
+    (b) => b.bookingType == BookingType.business,
+  )) {
     serviceFreq[b.serviceName] = (serviceFreq[b.serviceName] ?? 0) + 1;
   }
   final topServiceEntry = serviceFreq.entries.isEmpty

@@ -94,7 +94,9 @@ class _AppLogsScreenState extends State<AppLogsScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Clear logs?'),
-        content: const Text('This will remove all locally stored diagnostics logs.'),
+        content: const Text(
+          'This will remove all locally stored diagnostics logs.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -112,9 +114,9 @@ class _AppLogsScreenState extends State<AppLogsScreen>
     await DatabaseHelper.instance.clearAppLogs();
     await _loadLogs();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Diagnostics logs cleared')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Diagnostics logs cleared')));
   }
 
   String _asShareText() {
@@ -159,9 +161,9 @@ class _AppLogsScreenState extends State<AppLogsScreen>
     final text = _asShareText();
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Logs copied to clipboard')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Logs copied to clipboard')));
   }
 
   Future<void> _shareLogs() async {
@@ -220,12 +222,27 @@ class _AppLogsScreenState extends State<AppLogsScreen>
                         value: _selectedLevel,
                         items: const [
                           DropdownMenuItem(value: _all, child: Text('All')),
-                          DropdownMenuItem(value: 'fatal', child: Text('Fatal')),
-                          DropdownMenuItem(value: 'error', child: Text('Error')),
-                          DropdownMenuItem(value: 'warning', child: Text('Warning')),
+                          DropdownMenuItem(
+                            value: 'fatal',
+                            child: Text('Fatal'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'error',
+                            child: Text('Error'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'warning',
+                            child: Text('Warning'),
+                          ),
                           DropdownMenuItem(value: 'info', child: Text('Info')),
-                          DropdownMenuItem(value: 'debug', child: Text('Debug')),
-                          DropdownMenuItem(value: 'trace', child: Text('Trace')),
+                          DropdownMenuItem(
+                            value: 'debug',
+                            child: Text('Debug'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'trace',
+                            child: Text('Trace'),
+                          ),
                         ],
                         onChanged: (value) async {
                           if (value == null) return;
@@ -262,19 +279,21 @@ class _AppLogsScreenState extends State<AppLogsScreen>
                             final level = row['level']?.toString() ?? 'info';
                             final eventName = row['event_name']?.toString();
                             final message = row['message']?.toString() ?? '';
-                            final category = row['category']?.toString() ?? 'app';
+                            final category =
+                                row['category']?.toString() ?? 'app';
                             final error = row['error']?.toString();
 
                             return Card(
                               child: ListTile(
                                 leading: Icon(
-                                  source == 'terminal' || source == 'debug_print'
+                                  source == 'terminal' ||
+                                          source == 'debug_print'
                                       ? Icons.terminal_outlined
                                       : level == 'error' || level == 'fatal'
                                       ? Icons.error_outline
                                       : level == 'warning'
-                                          ? Icons.warning_amber_outlined
-                                          : Icons.info_outline,
+                                      ? Icons.warning_amber_outlined
+                                      : Icons.info_outline,
                                 ),
                                 title: Text(message),
                                 subtitle: Text(

@@ -59,8 +59,13 @@ class Category extends Equatable {
       sortOrder: (map['sort_order'] as int?) ?? 0,
       isSystem: (map['is_system'] as int? ?? 1) == 1,
       isActive: (map['is_active'] as int? ?? 1) == 1,
-      keywords: (map['keywords'] as String?)?.split(',').where((k) => k.isNotEmpty).toList(),
-      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'] as String) : null,
+      keywords: (map['keywords'] as String?)
+          ?.split(',')
+          .where((k) => k.isNotEmpty)
+          .toList(),
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'] as String)
+          : null,
     );
   }
 

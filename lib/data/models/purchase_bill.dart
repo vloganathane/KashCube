@@ -8,10 +8,10 @@ enum PurchaseBillStatus { unpaid, paid, partiallyPaid }
 
 extension PurchaseBillStatusExt on PurchaseBillStatus {
   String get label => const {
-        PurchaseBillStatus.unpaid: 'Unpaid',
-        PurchaseBillStatus.paid: 'Paid',
-        PurchaseBillStatus.partiallyPaid: 'Partial',
-      }[this]!;
+    PurchaseBillStatus.unpaid: 'Unpaid',
+    PurchaseBillStatus.paid: 'Paid',
+    PurchaseBillStatus.partiallyPaid: 'Partial',
+  }[this]!;
 
   String get dbValue {
     switch (this) {
@@ -52,10 +52,10 @@ enum ItcEligibility {
 
 extension ItcEligibilityExt on ItcEligibility {
   String get label => const {
-        ItcEligibility.eligible: 'Eligible',
-        ItcEligibility.blocked: 'Blocked (s.17(5))',
-        ItcEligibility.ineligible: 'Ineligible',
-      }[this]!;
+    ItcEligibility.eligible: 'Eligible',
+    ItcEligibility.blocked: 'Blocked (s.17(5))',
+    ItcEligibility.ineligible: 'Ineligible',
+  }[this]!;
 
   String get dbValue => name;
 
@@ -87,24 +87,24 @@ enum ItcBlockReason {
 
 extension ItcBlockReasonExt on ItcBlockReason {
   String get label => const {
-        ItcBlockReason.motorVehicle: 'Motor Vehicle',
-        ItcBlockReason.foodBeverages: 'Food & Beverages',
-        ItcBlockReason.clubMembership: 'Club Membership',
-        ItcBlockReason.personalUse: 'Personal Use',
-        ItcBlockReason.construction: 'Construction (immovable)',
-        ItcBlockReason.worksContract: 'Works Contract',
-        ItcBlockReason.other: 'Other',
-      }[this]!;
+    ItcBlockReason.motorVehicle: 'Motor Vehicle',
+    ItcBlockReason.foodBeverages: 'Food & Beverages',
+    ItcBlockReason.clubMembership: 'Club Membership',
+    ItcBlockReason.personalUse: 'Personal Use',
+    ItcBlockReason.construction: 'Construction (immovable)',
+    ItcBlockReason.worksContract: 'Works Contract',
+    ItcBlockReason.other: 'Other',
+  }[this]!;
 
   String get dbValue => const {
-        ItcBlockReason.motorVehicle: 'motor_vehicle',
-        ItcBlockReason.foodBeverages: 'food_beverages',
-        ItcBlockReason.clubMembership: 'club_membership',
-        ItcBlockReason.personalUse: 'personal_use',
-        ItcBlockReason.construction: 'construction',
-        ItcBlockReason.worksContract: 'works_contract',
-        ItcBlockReason.other: 'other',
-      }[this]!;
+    ItcBlockReason.motorVehicle: 'motor_vehicle',
+    ItcBlockReason.foodBeverages: 'food_beverages',
+    ItcBlockReason.clubMembership: 'club_membership',
+    ItcBlockReason.personalUse: 'personal_use',
+    ItcBlockReason.construction: 'construction',
+    ItcBlockReason.worksContract: 'works_contract',
+    ItcBlockReason.other: 'other',
+  }[this]!;
 
   static ItcBlockReason? fromDb(String? v) {
     switch (v) {
@@ -133,26 +133,26 @@ extension ItcBlockReasonExt on ItcBlockReason {
 // ---------------------------------------------------------------------------
 
 enum ItcReversalReason {
-  rule42,     // Input/capital goods used for exempt + taxable supplies
-  rule43,     // Capital goods — partial exemption
+  rule42, // Input/capital goods used for exempt + taxable supplies
+  rule43, // Capital goods — partial exemption
   section17_5, // Blocked category belatedly identified
   other,
 }
 
 extension ItcReversalReasonExt on ItcReversalReason {
   String get label => const {
-        ItcReversalReason.rule42: 'Rule 42',
-        ItcReversalReason.rule43: 'Rule 43',
-        ItcReversalReason.section17_5: 'Section 17(5)',
-        ItcReversalReason.other: 'Other',
-      }[this]!;
+    ItcReversalReason.rule42: 'Rule 42',
+    ItcReversalReason.rule43: 'Rule 43',
+    ItcReversalReason.section17_5: 'Section 17(5)',
+    ItcReversalReason.other: 'Other',
+  }[this]!;
 
   String get dbValue => const {
-        ItcReversalReason.rule42: 'rule_42',
-        ItcReversalReason.rule43: 'rule_43',
-        ItcReversalReason.section17_5: 'section_17_5',
-        ItcReversalReason.other: 'other',
-      }[this]!;
+    ItcReversalReason.rule42: 'rule_42',
+    ItcReversalReason.rule43: 'rule_43',
+    ItcReversalReason.section17_5: 'section_17_5',
+    ItcReversalReason.other: 'other',
+  }[this]!;
 
   static ItcReversalReason? fromDb(String? v) {
     switch (v) {
@@ -216,12 +216,16 @@ class PurchaseBillItem extends Equatable {
   final String? hsnCode;
   final String unit;
   final String hsnOrSac;
+
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
+
   /// Lot / batch identifier (optional).
   final String? lotNo;
+
   /// Expiry date for this lot (optional).
   final DateTime? expiryDate;
+
   /// Manufacturing date for this lot (optional).
   final DateTime? mfgDate;
 
@@ -245,86 +249,101 @@ class PurchaseBillItem extends Equatable {
     Object? lotNo = _sentinel,
     Object? expiryDate = _sentinel,
     Object? mfgDate = _sentinel,
-  }) =>
-      PurchaseBillItem(
-        id: id ?? this.id,
-        billId: billId ?? this.billId,
-        itemName: itemName ?? this.itemName,
-        description: description ?? this.description,
-        qty: qty ?? this.qty,
-        unitPrice: unitPrice ?? this.unitPrice,
-        taxPct: taxPct ?? this.taxPct,
-        discountPct: discountPct ?? this.discountPct,
-        lineTotal: lineTotal ?? this.lineTotal,
-        igstAmount: igstAmount ?? this.igstAmount,
-        cgstAmount: cgstAmount ?? this.cgstAmount,
-        sgstAmount: sgstAmount ?? this.sgstAmount,
-        hsnCode: hsnCode ?? this.hsnCode,
-        unit: unit ?? this.unit,
-        hsnOrSac: hsnOrSac ?? this.hsnOrSac,
-        catalogItemId: catalogItemId ?? this.catalogItemId,
-        lotNo: identical(lotNo, _sentinel) ? this.lotNo : lotNo as String?,
-        expiryDate: identical(expiryDate, _sentinel)
-            ? this.expiryDate
-            : expiryDate as DateTime?,
-        mfgDate:
-            identical(mfgDate, _sentinel) ? this.mfgDate : mfgDate as DateTime?,
-      );
+  }) => PurchaseBillItem(
+    id: id ?? this.id,
+    billId: billId ?? this.billId,
+    itemName: itemName ?? this.itemName,
+    description: description ?? this.description,
+    qty: qty ?? this.qty,
+    unitPrice: unitPrice ?? this.unitPrice,
+    taxPct: taxPct ?? this.taxPct,
+    discountPct: discountPct ?? this.discountPct,
+    lineTotal: lineTotal ?? this.lineTotal,
+    igstAmount: igstAmount ?? this.igstAmount,
+    cgstAmount: cgstAmount ?? this.cgstAmount,
+    sgstAmount: sgstAmount ?? this.sgstAmount,
+    hsnCode: hsnCode ?? this.hsnCode,
+    unit: unit ?? this.unit,
+    hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+    catalogItemId: catalogItemId ?? this.catalogItemId,
+    lotNo: identical(lotNo, _sentinel) ? this.lotNo : lotNo as String?,
+    expiryDate: identical(expiryDate, _sentinel)
+        ? this.expiryDate
+        : expiryDate as DateTime?,
+    mfgDate: identical(mfgDate, _sentinel)
+        ? this.mfgDate
+        : mfgDate as DateTime?,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'bill_id': billId,
-        'item_name': itemName,
-        'description': description,
-        'qty': qty,
-        'unit_price': unitPrice,
-        'tax_pct': taxPct,
-        'discount_pct': discountPct,
-        'line_total': lineTotal,
-        'igst_amount': igstAmount,
-        'cgst_amount': cgstAmount,
-        'sgst_amount': sgstAmount,
-        'hsn_code': hsnCode,
-        'unit': unit,
-        'hsn_or_sac': hsnOrSac,
-        'catalog_item_id': catalogItemId,
-        'lot_no': lotNo,
-        'expiry_date': expiryDate?.toIso8601String().substring(0, 10),
-        'mfg_date': mfgDate?.toIso8601String().substring(0, 10),
-      };
+    if (id != null) 'id': id,
+    'bill_id': billId,
+    'item_name': itemName,
+    'description': description,
+    'qty': qty,
+    'unit_price': unitPrice,
+    'tax_pct': taxPct,
+    'discount_pct': discountPct,
+    'line_total': lineTotal,
+    'igst_amount': igstAmount,
+    'cgst_amount': cgstAmount,
+    'sgst_amount': sgstAmount,
+    'hsn_code': hsnCode,
+    'unit': unit,
+    'hsn_or_sac': hsnOrSac,
+    'catalog_item_id': catalogItemId,
+    'lot_no': lotNo,
+    'expiry_date': expiryDate?.toIso8601String().substring(0, 10),
+    'mfg_date': mfgDate?.toIso8601String().substring(0, 10),
+  };
 
   factory PurchaseBillItem.fromMap(Map<String, dynamic> m) => PurchaseBillItem(
-        id: m['id'] as int?,
-        billId: m['bill_id'] as int,
-        itemName: m['item_name'] as String,
-        description: m['description'] as String?,
-        qty: (m['qty'] as num).toDouble(),
-        unitPrice: (m['unit_price'] as num).toDouble(),
-        taxPct: (m['tax_pct'] as num?)?.toDouble() ?? 0,
-        discountPct: (m['discount_pct'] as num?)?.toDouble() ?? 0,
-        lineTotal: (m['line_total'] as num).toDouble(),
-        igstAmount: (m['igst_amount'] as num?)?.toDouble() ?? 0,
-        cgstAmount: (m['cgst_amount'] as num?)?.toDouble() ?? 0,
-        sgstAmount: (m['sgst_amount'] as num?)?.toDouble() ?? 0,
-        hsnCode: m['hsn_code'] as String?,
-        unit: (m['unit'] as String?) ?? 'PCS',
-        hsnOrSac: (m['hsn_or_sac'] as String?) ?? 'HSN',
-        catalogItemId: m['catalog_item_id'] as int?,
-        lotNo: m['lot_no'] as String?,
-        expiryDate: m['expiry_date'] != null
-            ? DateTime.tryParse(m['expiry_date'] as String)
-            : null,
-        mfgDate: m['mfg_date'] != null
-            ? DateTime.tryParse(m['mfg_date'] as String)
-            : null,
-      );
+    id: m['id'] as int?,
+    billId: m['bill_id'] as int,
+    itemName: m['item_name'] as String,
+    description: m['description'] as String?,
+    qty: (m['qty'] as num).toDouble(),
+    unitPrice: (m['unit_price'] as num).toDouble(),
+    taxPct: (m['tax_pct'] as num?)?.toDouble() ?? 0,
+    discountPct: (m['discount_pct'] as num?)?.toDouble() ?? 0,
+    lineTotal: (m['line_total'] as num).toDouble(),
+    igstAmount: (m['igst_amount'] as num?)?.toDouble() ?? 0,
+    cgstAmount: (m['cgst_amount'] as num?)?.toDouble() ?? 0,
+    sgstAmount: (m['sgst_amount'] as num?)?.toDouble() ?? 0,
+    hsnCode: m['hsn_code'] as String?,
+    unit: (m['unit'] as String?) ?? 'PCS',
+    hsnOrSac: (m['hsn_or_sac'] as String?) ?? 'HSN',
+    catalogItemId: m['catalog_item_id'] as int?,
+    lotNo: m['lot_no'] as String?,
+    expiryDate: m['expiry_date'] != null
+        ? DateTime.tryParse(m['expiry_date'] as String)
+        : null,
+    mfgDate: m['mfg_date'] != null
+        ? DateTime.tryParse(m['mfg_date'] as String)
+        : null,
+  );
 
   @override
   List<Object?> get props => [
-        id, billId, itemName, description, qty, unitPrice, taxPct,
-        discountPct, lineTotal, igstAmount, cgstAmount, sgstAmount,
-        hsnCode, unit, hsnOrSac, lotNo, expiryDate, mfgDate,
-      ];
+    id,
+    billId,
+    itemName,
+    description,
+    qty,
+    unitPrice,
+    taxPct,
+    discountPct,
+    lineTotal,
+    igstAmount,
+    cgstAmount,
+    sgstAmount,
+    hsnCode,
+    unit,
+    hsnOrSac,
+    lotNo,
+    expiryDate,
+    mfgDate,
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -448,115 +467,133 @@ class PurchaseBill extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     List<PurchaseBillItem>? items,
-  }) =>
-      PurchaseBill(
-        id: id ?? this.id,
-        businessId: businessId ?? this.businessId,
-        billNo: billNo ?? this.billNo,
-        vendorPartyId: vendorPartyId ?? this.vendorPartyId,
-        vendorName: vendorName ?? this.vendorName,
-        vendorGstin: vendorGstin ?? this.vendorGstin,
-        billDate: billDate ?? this.billDate,
-        dueDate: dueDate ?? this.dueDate,
-        placeOfSupply: placeOfSupply ?? this.placeOfSupply,
-        reverseCharge: reverseCharge ?? this.reverseCharge,
-        subtotal: subtotal ?? this.subtotal,
-        igstAmount: igstAmount ?? this.igstAmount,
-        cgstAmount: cgstAmount ?? this.cgstAmount,
-        sgstAmount: sgstAmount ?? this.sgstAmount,
-        cessAmount: cessAmount ?? this.cessAmount,
-        taxTotal: taxTotal ?? this.taxTotal,
-        total: total ?? this.total,
-        paidAmount: paidAmount ?? this.paidAmount,
-        itcEligibility: itcEligibility ?? this.itcEligibility,
-        itcBlockReason: itcBlockReason ?? this.itcBlockReason,
-        itcAvailed: itcAvailed ?? this.itcAvailed,
-        itcReversalReason: itcReversalReason ?? this.itcReversalReason,
-        notes: notes ?? this.notes,
-        attachmentPath: attachmentPath ?? this.attachmentPath,
-        status: status ?? this.status,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-        items: items ?? this.items,
-      );
+  }) => PurchaseBill(
+    id: id ?? this.id,
+    businessId: businessId ?? this.businessId,
+    billNo: billNo ?? this.billNo,
+    vendorPartyId: vendorPartyId ?? this.vendorPartyId,
+    vendorName: vendorName ?? this.vendorName,
+    vendorGstin: vendorGstin ?? this.vendorGstin,
+    billDate: billDate ?? this.billDate,
+    dueDate: dueDate ?? this.dueDate,
+    placeOfSupply: placeOfSupply ?? this.placeOfSupply,
+    reverseCharge: reverseCharge ?? this.reverseCharge,
+    subtotal: subtotal ?? this.subtotal,
+    igstAmount: igstAmount ?? this.igstAmount,
+    cgstAmount: cgstAmount ?? this.cgstAmount,
+    sgstAmount: sgstAmount ?? this.sgstAmount,
+    cessAmount: cessAmount ?? this.cessAmount,
+    taxTotal: taxTotal ?? this.taxTotal,
+    total: total ?? this.total,
+    paidAmount: paidAmount ?? this.paidAmount,
+    itcEligibility: itcEligibility ?? this.itcEligibility,
+    itcBlockReason: itcBlockReason ?? this.itcBlockReason,
+    itcAvailed: itcAvailed ?? this.itcAvailed,
+    itcReversalReason: itcReversalReason ?? this.itcReversalReason,
+    notes: notes ?? this.notes,
+    attachmentPath: attachmentPath ?? this.attachmentPath,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    items: items ?? this.items,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'business_id': businessId,
-        'bill_no': billNo,
-        'vendor_party_id': vendorPartyId,
-        'vendor_name': vendorName,
-        'vendor_gstin': vendorGstin,
-        'bill_date': billDate.toIso8601String(),
-        'due_date': dueDate?.toIso8601String(),
-        'place_of_supply': placeOfSupply,
-        'reverse_charge': reverseCharge ? 1 : 0,
-        'subtotal': subtotal,
-        'igst_amount': igstAmount,
-        'cgst_amount': cgstAmount,
-        'sgst_amount': sgstAmount,
-        'cess_amount': cessAmount,
-        'tax_total': taxTotal,
-        'total': total,
-        'paid_amount': paidAmount,
-        'itc_eligibility': itcEligibility.dbValue,
-        'itc_block_reason': itcBlockReason?.dbValue,
-        'itc_availed': itcAvailed ? 1 : 0,
-        'itc_reversal_reason': itcReversalReason?.dbValue,
-        'notes': notes,
-        'attachment_path': attachmentPath,
-        'status': status.dbValue,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'business_id': businessId,
+    'bill_no': billNo,
+    'vendor_party_id': vendorPartyId,
+    'vendor_name': vendorName,
+    'vendor_gstin': vendorGstin,
+    'bill_date': billDate.toIso8601String(),
+    'due_date': dueDate?.toIso8601String(),
+    'place_of_supply': placeOfSupply,
+    'reverse_charge': reverseCharge ? 1 : 0,
+    'subtotal': subtotal,
+    'igst_amount': igstAmount,
+    'cgst_amount': cgstAmount,
+    'sgst_amount': sgstAmount,
+    'cess_amount': cessAmount,
+    'tax_total': taxTotal,
+    'total': total,
+    'paid_amount': paidAmount,
+    'itc_eligibility': itcEligibility.dbValue,
+    'itc_block_reason': itcBlockReason?.dbValue,
+    'itc_availed': itcAvailed ? 1 : 0,
+    'itc_reversal_reason': itcReversalReason?.dbValue,
+    'notes': notes,
+    'attachment_path': attachmentPath,
+    'status': status.dbValue,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
 
   factory PurchaseBill.fromMap(
     Map<String, dynamic> m, {
     List<PurchaseBillItem> items = const [],
-  }) =>
-      PurchaseBill(
-        id: m['id'] as int?,
-        businessId: m['business_id'] as int,
-        billNo: m['bill_no'] as String,
-        vendorPartyId: m['vendor_party_id'] as int?,
-        vendorName: m['vendor_name'] as String,
-        vendorGstin: m['vendor_gstin'] as String?,
-        billDate: DateTime.parse(m['bill_date'] as String),
-        dueDate: m['due_date'] != null
-            ? DateTime.parse(m['due_date'] as String)
-            : null,
-        placeOfSupply: m['place_of_supply'] as String?,
-        reverseCharge: (m['reverse_charge'] as int? ?? 0) == 1,
-        subtotal: (m['subtotal'] as num?)?.toDouble() ?? 0,
-        igstAmount: (m['igst_amount'] as num?)?.toDouble() ?? 0,
-        cgstAmount: (m['cgst_amount'] as num?)?.toDouble() ?? 0,
-        sgstAmount: (m['sgst_amount'] as num?)?.toDouble() ?? 0,
-        cessAmount: (m['cess_amount'] as num?)?.toDouble() ?? 0,
-        taxTotal: (m['tax_total'] as num?)?.toDouble() ?? 0,
-        total: (m['total'] as num?)?.toDouble() ?? 0,
-        paidAmount: (m['paid_amount'] as num?)?.toDouble() ?? 0,
-        itcEligibility:
-            ItcEligibilityExt.fromDb(m['itc_eligibility'] as String?),
-        itcBlockReason:
-            ItcBlockReasonExt.fromDb(m['itc_block_reason'] as String?),
-        itcAvailed: (m['itc_availed'] as int? ?? 0) == 1,
-        itcReversalReason:
-            ItcReversalReasonExt.fromDb(m['itc_reversal_reason'] as String?),
-        notes: m['notes'] as String?,
-        attachmentPath: m['attachment_path'] as String?,
-        status: PurchaseBillStatusExt.fromDb(m['status'] as String?),
-        createdAt: DateTime.parse(m['created_at'] as String),
-        updatedAt: DateTime.parse(m['updated_at'] as String),
-        items: items,
-      );
+  }) => PurchaseBill(
+    id: m['id'] as int?,
+    businessId: m['business_id'] as int,
+    billNo: m['bill_no'] as String,
+    vendorPartyId: m['vendor_party_id'] as int?,
+    vendorName: m['vendor_name'] as String,
+    vendorGstin: m['vendor_gstin'] as String?,
+    billDate: DateTime.parse(m['bill_date'] as String),
+    dueDate: m['due_date'] != null
+        ? DateTime.parse(m['due_date'] as String)
+        : null,
+    placeOfSupply: m['place_of_supply'] as String?,
+    reverseCharge: (m['reverse_charge'] as int? ?? 0) == 1,
+    subtotal: (m['subtotal'] as num?)?.toDouble() ?? 0,
+    igstAmount: (m['igst_amount'] as num?)?.toDouble() ?? 0,
+    cgstAmount: (m['cgst_amount'] as num?)?.toDouble() ?? 0,
+    sgstAmount: (m['sgst_amount'] as num?)?.toDouble() ?? 0,
+    cessAmount: (m['cess_amount'] as num?)?.toDouble() ?? 0,
+    taxTotal: (m['tax_total'] as num?)?.toDouble() ?? 0,
+    total: (m['total'] as num?)?.toDouble() ?? 0,
+    paidAmount: (m['paid_amount'] as num?)?.toDouble() ?? 0,
+    itcEligibility: ItcEligibilityExt.fromDb(m['itc_eligibility'] as String?),
+    itcBlockReason: ItcBlockReasonExt.fromDb(m['itc_block_reason'] as String?),
+    itcAvailed: (m['itc_availed'] as int? ?? 0) == 1,
+    itcReversalReason: ItcReversalReasonExt.fromDb(
+      m['itc_reversal_reason'] as String?,
+    ),
+    notes: m['notes'] as String?,
+    attachmentPath: m['attachment_path'] as String?,
+    status: PurchaseBillStatusExt.fromDb(m['status'] as String?),
+    createdAt: DateTime.parse(m['created_at'] as String),
+    updatedAt: DateTime.parse(m['updated_at'] as String),
+    items: items,
+  );
 
   @override
   List<Object?> get props => [
-        id, businessId, billNo, vendorPartyId, vendorName, vendorGstin,
-        billDate, dueDate, placeOfSupply, reverseCharge,
-        subtotal, igstAmount, cgstAmount, sgstAmount, cessAmount,
-        taxTotal, total, paidAmount,
-        itcEligibility, itcBlockReason, itcAvailed, itcReversalReason,
-        notes, attachmentPath, status, createdAt, updatedAt,
-      ];
+    id,
+    businessId,
+    billNo,
+    vendorPartyId,
+    vendorName,
+    vendorGstin,
+    billDate,
+    dueDate,
+    placeOfSupply,
+    reverseCharge,
+    subtotal,
+    igstAmount,
+    cgstAmount,
+    sgstAmount,
+    cessAmount,
+    taxTotal,
+    total,
+    paidAmount,
+    itcEligibility,
+    itcBlockReason,
+    itcAvailed,
+    itcReversalReason,
+    notes,
+    attachmentPath,
+    status,
+    createdAt,
+    updatedAt,
+  ];
 }

@@ -6,7 +6,7 @@ import '../../domain/repositories/credit_repository.dart';
 
 class CreditRepositoryImpl implements CreditRepository {
   CreditRepositoryImpl([DatabaseHelper? helper, this.contextId])
-      : _db = helper ?? DatabaseHelper.instance;
+    : _db = helper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 
@@ -47,7 +47,8 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'business_id IS NULL AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
+      where:
+          'business_id IS NULL AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       orderBy: 'credit_date DESC',
     );
     return rows.map(Credit.fromMap).toList();
@@ -58,7 +59,8 @@ class CreditRepositoryImpl implements CreditRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'business_id = ? AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
+      where:
+          'business_id = ? AND is_cleared = 0 AND deleted_at IS NULL AND $_ctx',
       whereArgs: [businessId],
       orderBy: 'credit_date DESC',
     );
@@ -152,14 +154,18 @@ class CreditRepositoryImpl implements CreditRepository {
       GROUP BY customer_name
       ORDER BY pending_given DESC
     ''');
-    return rows.map((r) => PartyCreditSummary(
-          partyName: r['customer_name'] as String,
-          totalGiven: (r['total_given'] as num?)?.toDouble() ?? 0,
-          totalReceived: (r['total_received'] as num?)?.toDouble() ?? 0,
-          pendingGiven: (r['pending_given'] as num?)?.toDouble() ?? 0,
-          pendingReceived: (r['pending_received'] as num?)?.toDouble() ?? 0,
-          activeCount: (r['active_count'] as int?) ?? 0,
-        )).toList();
+    return rows
+        .map(
+          (r) => PartyCreditSummary(
+            partyName: r['customer_name'] as String,
+            totalGiven: (r['total_given'] as num?)?.toDouble() ?? 0,
+            totalReceived: (r['total_received'] as num?)?.toDouble() ?? 0,
+            pendingGiven: (r['pending_given'] as num?)?.toDouble() ?? 0,
+            pendingReceived: (r['pending_received'] as num?)?.toDouble() ?? 0,
+            activeCount: (r['active_count'] as int?) ?? 0,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -219,8 +225,7 @@ class CreditRepositoryImpl implements CreditRepository {
       );
       if (rows.isEmpty) return;
       final totalAmount = (rows.first['total_amount'] as num).toDouble();
-      final paidAmount =
-          (rows.first['paid_amount'] as num?)?.toDouble() ?? 0;
+      final paidAmount = (rows.first['paid_amount'] as num?)?.toDouble() ?? 0;
       final newPaid = (paidAmount + amount).clamp(0, totalAmount);
       final newPending = totalAmount - newPaid;
       final isCleared = newPending <= 0.001 ? 1 : 0;

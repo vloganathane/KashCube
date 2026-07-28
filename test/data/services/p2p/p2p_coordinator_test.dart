@@ -123,7 +123,9 @@ void main() {
 
     test('getWatermarkForTest returns null when no row exists', () async {
       final ts = await P2pCoordinator.instance.getWatermarkForTest(
-        db, 'peer-A', 'transactions',
+        db,
+        'peer-A',
+        'transactions',
       );
       expect(ts, isNull);
     });
@@ -131,10 +133,15 @@ void main() {
     test('upsertWatermarkForTest inserts a new row', () async {
       final now = DateTime.utc(2026, 1, 15, 10, 0);
       await P2pCoordinator.instance.upsertWatermarkForTest(
-        db, 'peer-A', 'transactions', now,
+        db,
+        'peer-A',
+        'transactions',
+        now,
       );
       final ts = await P2pCoordinator.instance.getWatermarkForTest(
-        db, 'peer-A', 'transactions',
+        db,
+        'peer-A',
+        'transactions',
       );
       expect(ts, isNotNull);
       expect(ts!.isUtc, isTrue);
@@ -148,14 +155,22 @@ void main() {
       final t2 = DateTime.utc(2026, 2, 20);
 
       await P2pCoordinator.instance.upsertWatermarkForTest(
-        db, 'peer-B', 'parties', t1,
+        db,
+        'peer-B',
+        'parties',
+        t1,
       );
       await P2pCoordinator.instance.upsertWatermarkForTest(
-        db, 'peer-B', 'parties', t2,
+        db,
+        'peer-B',
+        'parties',
+        t2,
       );
 
       final ts = await P2pCoordinator.instance.getWatermarkForTest(
-        db, 'peer-B', 'parties',
+        db,
+        'peer-B',
+        'parties',
       );
       expect(ts?.month, 2);
       expect(ts?.day, 20);
@@ -166,17 +181,27 @@ void main() {
       final tB = DateTime.utc(2026, 4, 1);
 
       await P2pCoordinator.instance.upsertWatermarkForTest(
-        db, 'peer-X', 'parties', tA,
+        db,
+        'peer-X',
+        'parties',
+        tA,
       );
       await P2pCoordinator.instance.upsertWatermarkForTest(
-        db, 'peer-Y', 'parties', tB,
+        db,
+        'peer-Y',
+        'parties',
+        tB,
       );
 
       final tsX = await P2pCoordinator.instance.getWatermarkForTest(
-        db, 'peer-X', 'parties',
+        db,
+        'peer-X',
+        'parties',
       );
       final tsY = await P2pCoordinator.instance.getWatermarkForTest(
-        db, 'peer-Y', 'parties',
+        db,
+        'peer-Y',
+        'parties',
       );
 
       expect(tsX?.month, 3);
@@ -192,8 +217,11 @@ void main() {
     setUp(() async => db = await _openTestDb());
     tearDown(() async => db.close());
 
-    Future<void> insertParty(String syncId, String updatedAt,
-        {String? deletedAt}) async {
+    Future<void> insertParty(
+      String syncId,
+      String updatedAt, {
+      String? deletedAt,
+    }) async {
       await db.rawInsert(
         'INSERT INTO parties (sync_id, name, updated_at, deleted_at) '
         'VALUES (?, ?, ?, ?)',
@@ -204,11 +232,16 @@ void main() {
     test('afterMs=0 returns all non-deleted rows', () async {
       await insertParty('p1', '2026-01-01T00:00:00.000Z');
       await insertParty('p2', '2026-02-01T00:00:00.000Z');
-      await insertParty('p3', '2026-01-15T00:00:00.000Z',
-          deletedAt: '2026-01-20T00:00:00.000Z');
+      await insertParty(
+        'p3',
+        '2026-01-15T00:00:00.000Z',
+        deletedAt: '2026-01-20T00:00:00.000Z',
+      );
 
       final rows = await P2pCoordinator.instance.queryLocalChangesForTest(
-        db, 'parties', 0,
+        db,
+        'parties',
+        0,
       );
       // p3 is deleted, so only p1 and p2 should appear.
       expect(rows.length, 2);
@@ -219,13 +252,15 @@ void main() {
 
     test('afterMs filters by updated_at cutoff', () async {
       // Insert rows spread across different timestamps.
-      await insertParty('old', '2026-01-01T00:00:00.000Z');  // before cutoff
-      await insertParty('new', '2026-03-01T00:00:00.000Z');  // after cutoff
+      await insertParty('old', '2026-01-01T00:00:00.000Z'); // before cutoff
+      await insertParty('new', '2026-03-01T00:00:00.000Z'); // after cutoff
 
       // Cutoff = 2026-02-01 00:00:00 UTC.
       final cutoff = DateTime.utc(2026, 2, 1);
       final rows = await P2pCoordinator.instance.queryLocalChangesForTest(
-        db, 'parties', cutoff.millisecondsSinceEpoch,
+        db,
+        'parties',
+        cutoff.millisecondsSinceEpoch,
       );
       expect(rows.length, 1);
       expect(rows.first['sync_id'], 'new');
@@ -234,14 +269,18 @@ void main() {
     test('returns empty list when no rows match', () async {
       final future = DateTime.utc(2030, 1, 1);
       final rows = await P2pCoordinator.instance.queryLocalChangesForTest(
-        db, 'parties', future.millisecondsSinceEpoch,
+        db,
+        'parties',
+        future.millisecondsSinceEpoch,
       );
       expect(rows, isEmpty);
     });
 
     test('returns empty list for table with no rows', () async {
       final rows = await P2pCoordinator.instance.queryLocalChangesForTest(
-        db, 'transactions', 0,
+        db,
+        'transactions',
+        0,
       );
       expect(rows, isEmpty);
     });
@@ -249,7 +288,9 @@ void main() {
     test('handles gracefully when table does not exist', () async {
       // Should catch and return [] rather than throwing.
       final rows = await P2pCoordinator.instance.queryLocalChangesForTest(
-        db, 'nonexistent_table', 0,
+        db,
+        'nonexistent_table',
+        0,
       );
       expect(rows, isEmpty);
     });
@@ -264,22 +305,26 @@ void main() {
     // source via the sync cycle — we just confirm the public contract here.
     test('SyncPhase enum has all expected values', () {
       expect(SyncPhase.values, hasLength(5));
-      expect(SyncPhase.values, containsAll([
-        SyncPhase.idle,
-        SyncPhase.starting,
-        SyncPhase.syncing,
-        SyncPhase.done,
-        SyncPhase.error,
-      ]));
+      expect(
+        SyncPhase.values,
+        containsAll([
+          SyncPhase.idle,
+          SyncPhase.starting,
+          SyncPhase.syncing,
+          SyncPhase.done,
+          SyncPhase.error,
+        ]),
+      );
     });
   });
 
   group('P2pCoordinator signaling contract (M1)', () {
     test('returns SIGNAL_ERROR when session_id is missing', () async {
-      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
-        'type': SyncSignalingMessages.signalOffer,
-        'sdp': 'v=0',
-      });
+      final responses = await P2pCoordinator.instance
+          .handleWebSignalFrameForTest({
+            'type': SyncSignalingMessages.signalOffer,
+            'sdp': 'v=0',
+          });
 
       expect(responses, hasLength(1));
       expect(responses.first['type'], SyncSignalingMessages.signalError);
@@ -287,11 +332,12 @@ void main() {
     });
 
     test('rejects answer before offer', () async {
-      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
-        'type': SyncSignalingMessages.signalAnswer,
-        'session_id': 'sess-a1',
-        'sdp': 'v=0',
-      });
+      final responses = await P2pCoordinator.instance
+          .handleWebSignalFrameForTest({
+            'type': SyncSignalingMessages.signalAnswer,
+            'session_id': 'sess-a1',
+            'sdp': 'v=0',
+          });
 
       expect(responses.first['type'], SyncSignalingMessages.signalError);
       expect(responses.first['code'], 'ANSWER_BEFORE_OFFER');
@@ -304,31 +350,36 @@ void main() {
         'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
       });
 
-      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
-        'type': SyncSignalingMessages.signalOffer,
-        'session_id': 'sess-dup',
-        'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
-      });
+      final responses = await P2pCoordinator.instance
+          .handleWebSignalFrameForTest({
+            'type': SyncSignalingMessages.signalOffer,
+            'session_id': 'sess-dup',
+            'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
+          });
 
       expect(responses.first['type'], SyncSignalingMessages.signalError);
       expect(responses.first['code'], 'DUPLICATE_OFFER');
     });
 
-    test('queues ICE and responds with SIGNAL_ACK while waiting for answer', () async {
-      await P2pCoordinator.instance.handleWebSignalFrameForTest({
-        'type': SyncSignalingMessages.signalOffer,
-        'session_id': 'sess-ice-q',
-        'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
-      });
+    test(
+      'queues ICE and responds with SIGNAL_ACK while waiting for answer',
+      () async {
+        await P2pCoordinator.instance.handleWebSignalFrameForTest({
+          'type': SyncSignalingMessages.signalOffer,
+          'session_id': 'sess-ice-q',
+          'sdp': 'v=0\no=- 1 1 IN IP4 127.0.0.1',
+        });
 
-      final responses = await P2pCoordinator.instance.handleWebSignalFrameForTest({
-        'type': SyncSignalingMessages.signalIceCandidate,
-        'session_id': 'sess-ice-q',
-        'candidate': {'candidate': 'ice-1'},
-      });
+        final responses = await P2pCoordinator.instance
+            .handleWebSignalFrameForTest({
+              'type': SyncSignalingMessages.signalIceCandidate,
+              'session_id': 'sess-ice-q',
+              'candidate': {'candidate': 'ice-1'},
+            });
 
-      expect(responses.first['type'], SyncSignalingMessages.signalAck);
-      expect(responses.first['status'], 'ice_queued_waiting_for_answer');
-    });
+        expect(responses.first['type'], SyncSignalingMessages.signalAck);
+        expect(responses.first['status'], 'ice_queued_waiting_for_answer');
+      },
+    );
   });
 }

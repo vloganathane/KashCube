@@ -155,9 +155,9 @@ class _SmsBatchReviewSheetState extends State<SmsBatchReviewSheet> {
       ref.read(recentTransactionsProvider.notifier).loadRecent();
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving.remove(key));
@@ -236,8 +236,9 @@ class _SmsBatchReviewSheetState extends State<SmsBatchReviewSheet> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => AddEditTransactionScreen(
-          initialType:
-              parsed.isCredit ? TransactionType.income : TransactionType.expense,
+          initialType: parsed.isCredit
+              ? TransactionType.income
+              : TransactionType.expense,
           initialAmount: parsed.amount,
           initialPartyName: parsed.partyName,
         ),

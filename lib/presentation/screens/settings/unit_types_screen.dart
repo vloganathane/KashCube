@@ -16,9 +16,7 @@ class UnitTypesScreen extends ConsumerWidget {
     final customUnits = units.where((u) => !u.isSystem).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Unit Types'),
-      ),
+      appBar: AppBar(title: const Text('Unit Types')),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: null,
         onPressed: () => _showAddDialog(context, ref),
@@ -29,7 +27,9 @@ class UnitTypesScreen extends ConsumerWidget {
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.only(
-                  top: AppSpacing.sm, bottom: AppSpacing.xxxl + AppSpacing.xl),
+                top: AppSpacing.sm,
+                bottom: AppSpacing.xxxl + AppSpacing.xl,
+              ),
               children: [
                 // ── System defaults ────────────────────────────────────────
                 _SectionHeader(
@@ -38,31 +38,39 @@ class UnitTypesScreen extends ConsumerWidget {
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+                    horizontal: AppSpacing.base,
+                    vertical: AppSpacing.sm,
+                  ),
                   child: Wrap(
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: systemUnits
-                        .map((u) => Chip(
-                              label: Text(u.displayLabel),
-                              avatar: Icon(
-                                Icons.lock_outline,
-                                size: 14,
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                              side: BorderSide(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant),
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .surfaceContainerHighest,
-                            ))
+                        .map(
+                          (u) => Chip(
+                            label: Text(u.displayLabel),
+                            avatar: Icon(
+                              Icons.lock_outline,
+                              size: 14,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                            side: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
+                            ),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
 
-                const Divider(indent: AppSpacing.base, endIndent: AppSpacing.base),
+                const Divider(
+                  indent: AppSpacing.base,
+                  endIndent: AppSpacing.base,
+                ),
 
                 // ── Custom units ───────────────────────────────────────────
                 _SectionHeader(
@@ -78,8 +86,8 @@ class UnitTypesScreen extends ConsumerWidget {
                       child: Text(
                         'No custom units yet',
                         style: TextStyle(
-                            color:
-                                Theme.of(context).colorScheme.onSurfaceVariant),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   )
@@ -92,8 +100,10 @@ class UnitTypesScreen extends ConsumerWidget {
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: AppSpacing.base),
                         color: Theme.of(context).colorScheme.errorContainer,
-                        child: Icon(Icons.delete_outline,
-                            color: Theme.of(context).colorScheme.onErrorContainer),
+                        child: Icon(
+                          Icons.delete_outline,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
                       ),
                       confirmDismiss: (_) => _confirmDelete(context, u.label),
                       onDismissed: (_) =>
@@ -132,9 +142,9 @@ class UnitTypesScreen extends ConsumerWidget {
 
     final ok = await ref.read(unitTypesProvider.notifier).addUnit(label);
     if (!ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('"$label" already exists')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('"$label" already exists')));
     }
   }
 
@@ -144,7 +154,9 @@ class UnitTypesScreen extends ConsumerWidget {
       useRootNavigator: false,
       builder: (_) => AlertDialog(
         title: const Text('Delete unit?'),
-        content: Text('"$label" will be removed. Items using it keep their saved unit.'),
+        content: Text(
+          '"$label" will be removed. Items using it keep their saved unit.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -152,7 +164,8 @@ class UnitTypesScreen extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text('Delete'),
           ),
@@ -231,17 +244,25 @@ class _SectionHeader extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.base, AppSpacing.base, AppSpacing.xs),
+        AppSpacing.base,
+        AppSpacing.base,
+        AppSpacing.base,
+        AppSpacing.xs,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: cs.primary, fontWeight: FontWeight.w700)),
-          Text(subtitle,
-              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: cs.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+          ),
         ],
       ),
     );

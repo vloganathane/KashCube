@@ -115,8 +115,7 @@ class _TermsGateScreenState extends ConsumerState<TermsGateScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.arrow_downward,
-                        size: 14, color: cs.outline),
+                    Icon(Icons.arrow_downward, size: 14, color: cs.outline),
                     const SizedBox(width: AppSpacing.xs),
                     Text(
                       'Scroll to read all terms',
@@ -138,8 +137,7 @@ class _TermsGateScreenState extends ConsumerState<TermsGateScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   FilledButton(
-                    onPressed:
-                        (_scrolledToEnd && !_loading) ? _accept : null,
+                    onPressed: (_scrolledToEnd && !_loading) ? _accept : null,
                     child: _loading
                         ? const SizedBox(
                             height: 20,
@@ -339,7 +337,8 @@ class _TermsBody extends StatelessWidget {
         ),
         _Section(
           title: 'Updates and Feature Changes',
-          body: 'The Developer may add, modify, suspend, or remove features at any time.',
+          body:
+              'The Developer may add, modify, suspend, or remove features at any time.',
         ),
         _Section(
           title: 'Experimental Features',
@@ -690,10 +689,7 @@ class _CategoryHeader extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.xl,
-        bottom: AppSpacing.md,
-      ),
+      padding: const EdgeInsets.only(top: AppSpacing.xl, bottom: AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

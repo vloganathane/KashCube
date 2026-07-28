@@ -6,5 +6,6 @@ class PermissionDeniedException implements Exception {
   final String action;
 
   @override
-  String toString() => 'PermissionDeniedException: cannot $action in module "$module"';
+  String toString() =>
+      'PermissionDeniedException: cannot $action in module "$module"';
 }

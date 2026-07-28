@@ -20,7 +20,7 @@ class CustomizeHomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final config  = ref.watch(homeWidgetProvider);
+    final config = ref.watch(homeWidgetProvider);
     final notifier = ref.read(homeWidgetProvider.notifier);
 
     return Scaffold(
@@ -35,15 +35,18 @@ class CustomizeHomeScreen extends ConsumerWidget {
                 builder: (_) => AlertDialog(
                   title: const Text('Reset to defaults?'),
                   content: const Text(
-                      'All sections will be restored to their default '
-                      'order and visibility.'),
+                    'All sections will be restored to their default '
+                    'order and visibility.',
+                  ),
                   actions: [
                     TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Cancel')),
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
                     FilledButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Reset')),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Reset'),
+                    ),
                   ],
                 ),
               );
@@ -66,18 +69,23 @@ class CustomizeHomeScreen extends ConsumerWidget {
           // ── Instruction row ──────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.sm,
+            ),
             child: Row(
               children: [
-                Icon(Icons.info_outline,
-                    size: 14,
-                    color: context.colorScheme.onSurfaceVariant),
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: context.colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Expanded(
                   child: Text(
                     'Drag   to reorder  ·  Toggle switch to show/hide',
                     style: context.textTheme.labelSmall?.copyWith(
-                        color: context.colorScheme.onSurfaceVariant),
+                      color: context.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
               ],
@@ -87,8 +95,7 @@ class CustomizeHomeScreen extends ConsumerWidget {
           // ── Draggable list ───────────────────────────────────────────
           Expanded(
             child: ReorderableListView.builder(
-              padding:
-                  const EdgeInsets.only(bottom: AppSpacing.xxxl),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xxxl),
               itemCount: config.length,
               onReorder: (oldIndex, newIndex) {
                 if (newIndex > oldIndex) newIndex--;
@@ -121,22 +128,24 @@ class _PinnedTile extends StatelessWidget {
   });
 
   final IconData icon;
-  final String   label;
-  final String   subtitle;
+  final String label;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     final scheme = context.colorScheme;
     return ListTile(
       leading: Icon(icon, color: scheme.primary),
-      title: Text(label,
-          style: const TextStyle(fontWeight: FontWeight.w500)),
-      subtitle: Text(subtitle,
-          style: TextStyle(
-              fontSize: 11,
-              color: scheme.onSurfaceVariant)),
-      trailing: Icon(Icons.lock_outline, size: 16,
-          color: scheme.onSurfaceVariant),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+      ),
+      trailing: Icon(
+        Icons.lock_outline,
+        size: 16,
+        color: scheme.onSurfaceVariant,
+      ),
       tileColor: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
     );
   }
@@ -152,18 +161,18 @@ class _WidgetTile extends StatelessWidget {
     required this.onToggle,
   });
 
-  final int              index;
+  final int index;
   final HomeWidgetConfig config;
-  final VoidCallback     onToggle;
+  final VoidCallback onToggle;
 
   static const _icons = <String, IconData>{
-    HomeWidgetId.todayCashflow:      Icons.swap_horiz_rounded,
-    HomeWidgetId.upcoming:           Icons.schedule_outlined,
-    HomeWidgetId.upcomingBookings:   Icons.event_available_outlined,
-    HomeWidgetId.pendingSms:         Icons.sms_outlined,
-    HomeWidgetId.alerts:             Icons.notifications_active_outlined,
-    HomeWidgetId.budgets:            Icons.pie_chart_outline_rounded,
-    HomeWidgetId.reportsShortcut:    Icons.bar_chart_outlined,
+    HomeWidgetId.todayCashflow: Icons.swap_horiz_rounded,
+    HomeWidgetId.upcoming: Icons.schedule_outlined,
+    HomeWidgetId.upcomingBookings: Icons.event_available_outlined,
+    HomeWidgetId.pendingSms: Icons.sms_outlined,
+    HomeWidgetId.alerts: Icons.notifications_active_outlined,
+    HomeWidgetId.budgets: Icons.pie_chart_outline_rounded,
+    HomeWidgetId.reportsShortcut: Icons.bar_chart_outlined,
     HomeWidgetId.recentTransactions: Icons.receipt_long_outlined,
   };
 
@@ -180,26 +189,27 @@ class _WidgetTile extends StatelessWidget {
         // Drag handle on the left
         leading: ReorderableDragStartListener(
           index: index,
-          child: Icon(Icons.drag_handle_rounded,
-              color: scheme.onSurfaceVariant),
+          child: Icon(
+            Icons.drag_handle_rounded,
+            color: scheme.onSurfaceVariant,
+          ),
         ),
         title: Row(
           children: [
-            Icon(_iconFor(config.id),
-                size: 18, color: scheme.primary),
+            Icon(_iconFor(config.id), size: 18, color: scheme.primary),
             const SizedBox(width: AppSpacing.sm),
-            Text(label,
-                style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    color: config.enabled
-                        ? scheme.onSurface
-                        : scheme.onSurfaceVariant)),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: config.enabled
+                    ? scheme.onSurface
+                    : scheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
-        trailing: Switch(
-          value: config.enabled,
-          onChanged: (_) => onToggle(),
-        ),
+        trailing: Switch(value: config.enabled, onChanged: (_) => onToggle()),
       ),
     );
   }

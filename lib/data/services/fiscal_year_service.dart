@@ -34,8 +34,7 @@ class DateRange {
   final DateTime start;
   final DateTime end;
 
-  bool contains(DateTime date) =>
-      !date.isBefore(start) && !date.isAfter(end);
+  bool contains(DateTime date) => !date.isBefore(start) && !date.isAfter(end);
 
   @override
   String toString() =>
@@ -46,8 +45,8 @@ class FiscalYearService {
   FiscalYearService._({
     required SettingsRepository settings,
     required DatabaseHelper dbHelper,
-  })  : _settings = settings,
-        _dbHelper = dbHelper;
+  }) : _settings = settings,
+       _dbHelper = dbHelper;
 
   static final FiscalYearService instance = FiscalYearService._(
     settings: SettingsRepositoryImpl(),
@@ -62,10 +61,12 @@ class FiscalYearService {
   /// Returns the FY [DateRange] that contains [date], respecting the
   /// configured `fiscal_year_start_month` and `fiscal_year_start_day`.
   Future<DateRange> getFiscalYearFor(DateTime date) async {
-    final startMonth =
-        int.parse(await _settings.get('fiscal_year_start_month') ?? '4');
-    final startDay =
-        int.parse(await _settings.get('fiscal_year_start_day') ?? '1');
+    final startMonth = int.parse(
+      await _settings.get('fiscal_year_start_month') ?? '4',
+    );
+    final startDay = int.parse(
+      await _settings.get('fiscal_year_start_day') ?? '1',
+    );
 
     final thisYearStart = DateTime(date.year, startMonth, startDay);
 
@@ -73,8 +74,11 @@ class FiscalYearService {
       // date ≥ this year's FY start → FY spans date.year → date.year+1
       return DateRange(
         start: thisYearStart,
-        end: DateTime(date.year + 1, startMonth, startDay)
-            .subtract(const Duration(days: 1)),
+        end: DateTime(
+          date.year + 1,
+          startMonth,
+          startDay,
+        ).subtract(const Duration(days: 1)),
       );
     } else {
       // date < this year's FY start → FY spans date.year-1 → date.year
@@ -93,8 +97,9 @@ class FiscalYearService {
   /// Returns a display label such as "FY 2025–26" (April-start) or "CY 2025"
   /// (January-start / calendar year).
   Future<String> getFYLabel(DateRange range) async {
-    final startMonth =
-        int.parse(await _settings.get('fiscal_year_start_month') ?? '4');
+    final startMonth = int.parse(
+      await _settings.get('fiscal_year_start_month') ?? '4',
+    );
     if (startMonth == 1) {
       return 'CY ${range.start.year}';
     }
@@ -139,6 +144,15 @@ class FiscalYearService {
   Future<String> get challanNoFormat async =>
       await _settings.get('challan_no_format') ?? 'DC-{YY}-{YY+1}-{SEQ}';
 
+  Future<int> get invoiceNoStartSeq async =>
+      _readPositiveInt('invoice_no_start_seq', fallback: 1);
+
+  Future<int> get quoteNoStartSeq async =>
+      _readPositiveInt('quote_no_start_seq', fallback: 1);
+
+  Future<int> get challanNoStartSeq async =>
+      _readPositiveInt('challan_no_start_seq', fallback: 1);
+
   /// Public version of [_fyPrefixFromRange] used by [NumberReservationService].
   String computePrefix(String format, DateRange fy) =>
       _fyPrefixFromRange(format, fy);
@@ -153,12 +167,14 @@ class FiscalYearService {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
     final format = await invoiceNoFormat;
+    final startSeq = await invoiceNoStartSeq;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
     final numbers = await NumberReservationService.instance.reserveNext(
       db,
       docType: 'invoice',
       prefix: prefix,
+      configuredStartSeq: startSeq,
     );
     return numbers.first;
   }
@@ -168,12 +184,14 @@ class FiscalYearService {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
     final format = await quoteNoFormat;
+    final startSeq = await quoteNoStartSeq;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
     final numbers = await NumberReservationService.instance.reserveNext(
       db,
       docType: 'quote',
       prefix: prefix,
+      configuredStartSeq: startSeq,
     );
     return numbers.first;
   }
@@ -183,12 +201,14 @@ class FiscalYearService {
     final now = DateTime.now();
     final fy = await getFiscalYearFor(now);
     final format = await challanNoFormat;
+    final startSeq = await challanNoStartSeq;
     final prefix = _fyPrefixFromRange(format, fy);
     final db = await _dbHelper.database;
     final numbers = await NumberReservationService.instance.reserveNext(
       db,
       docType: 'dc',
       prefix: prefix,
+      configuredStartSeq: startSeq,
     );
     return numbers.first;
   }
@@ -223,6 +243,32 @@ class FiscalYearService {
     return numbers.first;
   }
 
+  /// Formats a document number without touching the cursor table.
+  String formatDocumentNumber(
+    String format,
+    DateRange fy,
+    int sequence, {
+    int padWidth = 4,
+  }) {
+    return _applyTokens(format, fy, sequence, padWidth: padWidth);
+  }
+
+  /// Pushes the current cursor for [docType] forward to the configured
+  /// starting sequence if needed. Never moves backward.
+  Future<void> syncDocumentCursor({required String docType}) async {
+    final db = await _dbHelper.database;
+    final fy = await currentFiscalYear;
+    final format = await _formatForDocType(docType);
+    final prefix = _fyPrefixFromRange(format, fy);
+    final startSeq = await _startSequenceForDocType(docType);
+    await NumberReservationService.instance.syncCursor(
+      db,
+      docType: docType,
+      prefix: prefix,
+      startSeq: startSeq,
+    );
+  }
+
   // ── Startup Hook ────────────────────────────────────────────────────────
 
   /// Call once at app startup (after DB open) to keep `current_fy_start` in
@@ -245,25 +291,62 @@ class FiscalYearService {
   String _fyPrefixFromRange(String format, DateRange fy) {
     final seqIdx = format.indexOf('{SEQ}');
     // Take only the portion of the format before {SEQ}.
-    final prefixTemplate =
-        seqIdx >= 0 ? format.substring(0, seqIdx) : format;
+    final prefixTemplate = seqIdx >= 0 ? format.substring(0, seqIdx) : format;
     // _applyTokens is safe here: {SEQ} is absent from prefixTemplate,
     // so the seq argument (0) has no effect on the output.
     return _applyTokens(prefixTemplate, fy, 0);
   }
 
   /// Substitutes all format tokens in [format] using [fy] and [seq].
-  String _applyTokens(String format, DateRange fy, int seq) {
+  String _applyTokens(
+    String format,
+    DateRange fy,
+    int seq, {
+    int padWidth = 4,
+  }) {
     final yyyy = fy.start.year.toString();
     final yy = (fy.start.year % 100).toString().padLeft(2, '0');
     // end.year may be same as start.year for calendar-year configs;
     // use start.year+1 for the {YY+1} token.
     final yy1 = ((fy.start.year + 1) % 100).toString().padLeft(2, '0');
-    final seqStr = seq.toString().padLeft(4, '0');
+    final seqStr = seq.toString().padLeft(padWidth, '0');
     return format
         .replaceAll('{YYYY}', yyyy)
         .replaceAll('{YY+1}', yy1) // must come before {YY}
         .replaceAll('{YY}', yy)
         .replaceAll('{SEQ}', seqStr);
+  }
+
+  Future<int> _readPositiveInt(String key, {required int fallback}) async {
+    final value = await _settings.get(key);
+    final parsed = int.tryParse(value ?? '');
+    if (parsed == null || parsed <= 0) return fallback;
+    return parsed;
+  }
+
+  Future<String> _formatForDocType(String docType) async {
+    switch (docType) {
+      case 'invoice':
+        return invoiceNoFormat;
+      case 'quote':
+        return quoteNoFormat;
+      case 'dc':
+        return challanNoFormat;
+      default:
+        return 'DOC-{YY}-{YY+1}-{SEQ}';
+    }
+  }
+
+  Future<int> _startSequenceForDocType(String docType) async {
+    switch (docType) {
+      case 'invoice':
+        return invoiceNoStartSeq;
+      case 'quote':
+        return quoteNoStartSeq;
+      case 'dc':
+        return challanNoStartSeq;
+      default:
+        return 1;
+    }
   }
 }

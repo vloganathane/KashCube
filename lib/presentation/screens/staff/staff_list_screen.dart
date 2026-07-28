@@ -81,7 +81,11 @@ class _StaffListScreenState extends ConsumerState<StaffListScreen>
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                AppSpacing.base, AppSpacing.sm, AppSpacing.base, 0),
+              AppSpacing.base,
+              AppSpacing.sm,
+              AppSpacing.base,
+              0,
+            ),
             child: TextField(
               controller: _searchController,
               decoration: const InputDecoration(
@@ -163,11 +167,10 @@ class _StaffList extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(AppSpacing.base),
           itemCount: filtered.length,
-          separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.sm),
-          itemBuilder: (context, i) => _StaffCard(
-            staff: filtered[i],
-            onTap: () => onTap(filtered[i]),
-          ),
+          separatorBuilder: (context, index) =>
+              const SizedBox(height: AppSpacing.sm),
+          itemBuilder: (context, i) =>
+              _StaffCard(staff: filtered[i], onTap: () => onTap(filtered[i])),
         );
       },
     );
@@ -187,7 +190,9 @@ class _StaffCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.kashColors;
-    final role = staff.staffRole?.isNotEmpty == true ? staff.staffRole! : 'Staff';
+    final role = staff.staffRole?.isNotEmpty == true
+        ? staff.staffRole!
+        : 'Staff';
     final salaryText = staff.staffSalary != null
         ? CurrencyFormatter.format(staff.staffSalary!)
         : null;

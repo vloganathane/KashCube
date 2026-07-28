@@ -5,7 +5,11 @@ enum ProductRelationshipType {
   accessory('accessory', 'Accessory', 'Compatible accessories sold separately'),
   sparePart('spare_part', 'Spare Part', 'Replacement parts for this product'),
   consumable('consumable', 'Consumable', 'Regularly purchased consumables'),
-  relatedProduct('related_product', 'Related Product', 'Similar or complementary products');
+  relatedProduct(
+    'related_product',
+    'Related Product',
+    'Similar or complementary products',
+  );
 
   const ProductRelationshipType(this.value, this.label, this.description);
 
@@ -67,13 +71,13 @@ class ProductRelationship extends Equatable {
   }
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'product_id': productId,
-        'related_product_id': relatedProductId,
-        'relationship_type': relationshipType.value,
-        'created_at': createdAt.toIso8601String(),
-        if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'product_id': productId,
+    'related_product_id': relatedProductId,
+    'relationship_type': relationshipType.value,
+    'created_at': createdAt.toIso8601String(),
+    if (deletedAt != null) 'deleted_at': deletedAt!.toIso8601String(),
+  };
 
   factory ProductRelationship.fromMap(Map<String, dynamic> map) =>
       ProductRelationship(
@@ -91,11 +95,11 @@ class ProductRelationship extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        productId,
-        relatedProductId,
-        relationshipType,
-        createdAt,
-        deletedAt,
-      ];
+    id,
+    productId,
+    relatedProductId,
+    relationshipType,
+    createdAt,
+    deletedAt,
+  ];
 }

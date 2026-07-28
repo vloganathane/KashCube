@@ -50,21 +50,21 @@ class Gstr1B2bRow {
   final double igst;
 
   List<dynamic> toCsvRow() => [
-        receiverGstin,
-        receiverName,
-        invoiceNo,
-        invoiceDate,
-        _amount(invoiceValue),
-        placeOfSupply,
-        reverseCharge ? 'Y' : 'N',
-        invoiceType,
-        ecomGstin ?? '',
-        _pct(rate),
-        _amount(taxableValue),
-        _amount(cgst),
-        _amount(sgst),
-        _amount(igst),
-      ];
+    receiverGstin,
+    receiverName,
+    invoiceNo,
+    invoiceDate,
+    _amount(invoiceValue),
+    placeOfSupply,
+    reverseCharge ? 'Y' : 'N',
+    invoiceType,
+    ecomGstin ?? '',
+    _pct(rate),
+    _amount(taxableValue),
+    _amount(cgst),
+    _amount(sgst),
+    _amount(igst),
+  ];
 
   static const List<String> csvHeaders = [
     'GSTIN of Receiver',
@@ -101,12 +101,12 @@ class Gstr1B2cLargeRow {
   final String? ecomGstin;
 
   List<dynamic> toCsvRow() => [
-        placeOfSupply,
-        _pct(rate),
-        _amount(taxableValue),
-        _amount(igst),
-        ecomGstin ?? '',
-      ];
+    placeOfSupply,
+    _pct(rate),
+    _amount(taxableValue),
+    _amount(igst),
+    ecomGstin ?? '',
+  ];
 
   static const List<String> csvHeaders = [
     'Place of Supply (State Code)',
@@ -138,14 +138,14 @@ class Gstr1B2cSmallRow {
   final double igst;
 
   List<dynamic> toCsvRow() => [
-        type,
-        placeOfSupply,
-        _pct(rate),
-        _amount(taxableValue),
-        _amount(cgst),
-        _amount(sgst),
-        _amount(igst),
-      ];
+    type,
+    placeOfSupply,
+    _pct(rate),
+    _amount(taxableValue),
+    _amount(cgst),
+    _amount(sgst),
+    _amount(igst),
+  ];
 
   static const List<String> csvHeaders = [
     'Type (OE = Others)',
@@ -191,20 +191,20 @@ class Gstr1CdnRow {
   final double igst;
 
   List<dynamic> toCsvRow() => [
-        receiverGstin,
-        noteNo,
-        noteDate,
-        noteType,
-        placeOfSupply,
-        originalInvoiceNo,
-        originalInvoiceDate,
-        _amount(value),
-        _pct(rate),
-        _amount(taxableValue),
-        _amount(cgst),
-        _amount(sgst),
-        _amount(igst),
-      ];
+    receiverGstin,
+    noteNo,
+    noteDate,
+    noteType,
+    placeOfSupply,
+    originalInvoiceNo,
+    originalInvoiceDate,
+    _amount(value),
+    _pct(rate),
+    _amount(taxableValue),
+    _amount(cgst),
+    _amount(sgst),
+    _amount(igst),
+  ];
 
   static const List<String> csvHeaders = [
     'GSTIN of Receiver',
@@ -250,17 +250,17 @@ class Gstr1HsnRow {
   final double cess;
 
   List<dynamic> toCsvRow() => [
-        hsnCode,
-        description,
-        uqc,
-        totalQty.toStringAsFixed(3),
-        _amount(totalValue),
-        _amount(taxableValue),
-        _amount(igst),
-        _amount(cgst),
-        _amount(sgst),
-        _amount(cess),
-      ];
+    hsnCode,
+    description,
+    uqc,
+    totalQty.toStringAsFixed(3),
+    _amount(totalValue),
+    _amount(taxableValue),
+    _amount(igst),
+    _amount(cgst),
+    _amount(sgst),
+    _amount(cess),
+  ];
 
   static const List<String> csvHeaders = [
     'HSN/SAC',
@@ -293,12 +293,12 @@ class Gstr1DocSummaryRow {
   final int cancelled;
 
   List<dynamic> toCsvRow() => [
-        natureOfDocument,
-        seriesFrom,
-        seriesTo,
-        totalSubmitted,
-        cancelled,
-      ];
+    natureOfDocument,
+    seriesFrom,
+    seriesTo,
+    totalSubmitted,
+    cancelled,
+  ];
 
   static const List<String> csvHeaders = [
     'Nature of Document',
@@ -509,8 +509,7 @@ const Map<String, String> _uqcMap = {
   'job': 'OTH',
 };
 
-String _unitToUqc(String unit) =>
-    _uqcMap[unit.trim().toLowerCase()] ?? 'OTH';
+String _unitToUqc(String unit) => _uqcMap[unit.trim().toLowerCase()] ?? 'OTH';
 
 // ─── Formatting helpers ──────────────────────────────────────────────────────
 
@@ -533,8 +532,8 @@ class Gstr1Service {
   const Gstr1Service({
     required BusinessRepository businessRepo,
     required InvoiceRepository invoiceRepo,
-  })  : _business = businessRepo,
-        _invoice = invoiceRepo;
+  }) : _business = businessRepo,
+       _invoice = invoiceRepo;
 
   final BusinessRepository _business;
   final InvoiceRepository _invoice;
@@ -598,7 +597,8 @@ class Gstr1Service {
     String? dnSeriesLast;
 
     for (final inv in invoices) {
-      final isInterState = sellerStateCode.isNotEmpty &&
+      final isInterState =
+          sellerStateCode.isNotEmpty &&
           inv.placeOfSupply != null &&
           inv.placeOfSupply != sellerStateCode;
       final pos = inv.placeOfSupply ?? '96'; // 96 = Other Territory
@@ -628,8 +628,11 @@ class Gstr1Service {
       final Map<double, _RateBucket> rateBuckets = {};
       for (final item in inv.items) {
         final rate = item.taxPct;
-        final taxable = item.unitPrice * item.qty * (1 - item.discountPct / 100);
-        rateBuckets.putIfAbsent(rate, () => _RateBucket(rate)).add(
+        final taxable =
+            item.unitPrice * item.qty * (1 - item.discountPct / 100);
+        rateBuckets
+            .putIfAbsent(rate, () => _RateBucket(rate))
+            .add(
               taxable: taxable,
               lineTotal: item.lineTotal,
               qty: item.qty,
@@ -716,25 +719,28 @@ class Gstr1Service {
             inv.invoiceType == InvoiceType.debitNote) {
           // T9 — only for registered receivers
           if (inv.customerGstin != null && inv.customerGstin!.isNotEmpty) {
-            cdnRows.add(Gstr1CdnRow(
-              receiverGstin: inv.customerGstin!,
-              noteNo: inv.invoiceNo,
-              noteDate: invDateStr,
-              noteType:
-                  inv.invoiceType == InvoiceType.creditNote ? 'C' : 'D',
-              placeOfSupply: pos,
-              originalInvoiceNo: inv.originalInvoiceNo ?? '',
-              originalInvoiceDate: inv.originalInvoiceDate != null
-                  ? _fmtDate(DateTime.tryParse(inv.originalInvoiceDate!) ??
-                      inv.issueDate)
-                  : '',
-              value: inv.total,
-              rate: rate,
-              taxableValue: taxable,
-              cgst: cgst,
-              sgst: sgst,
-              igst: igst,
-            ));
+            cdnRows.add(
+              Gstr1CdnRow(
+                receiverGstin: inv.customerGstin!,
+                noteNo: inv.invoiceNo,
+                noteDate: invDateStr,
+                noteType: inv.invoiceType == InvoiceType.creditNote ? 'C' : 'D',
+                placeOfSupply: pos,
+                originalInvoiceNo: inv.originalInvoiceNo ?? '',
+                originalInvoiceDate: inv.originalInvoiceDate != null
+                    ? _fmtDate(
+                        DateTime.tryParse(inv.originalInvoiceDate!) ??
+                            inv.issueDate,
+                      )
+                    : '',
+                value: inv.total,
+                rate: rate,
+                taxableValue: taxable,
+                cgst: cgst,
+                sgst: sgst,
+                igst: igst,
+              ),
+            );
           }
         }
 
@@ -744,22 +750,20 @@ class Gstr1Service {
           hsnMap
               .putIfAbsent(
                 hsnKey,
-                () => _HsnAcc(hsnEntry.hsnCode ?? 'UNKNOWN',
-                    hsnEntry.itemName, hsnEntry.uqc, rate),
+                () => _HsnAcc(
+                  hsnEntry.hsnCode ?? 'UNKNOWN',
+                  hsnEntry.itemName,
+                  hsnEntry.uqc,
+                  rate,
+                ),
               )
               .add(
                 qty: hsnEntry.qty,
                 lineTotal: hsnEntry.lineTotal,
                 taxable: hsnEntry.taxable,
-                igst: isInterState
-                    ? hsnEntry.taxable * rate / 100
-                    : 0,
-                cgst: isInterState
-                    ? 0
-                    : hsnEntry.taxable * rate / 200,
-                sgst: isInterState
-                    ? 0
-                    : hsnEntry.taxable * rate / 200,
+                igst: isInterState ? hsnEntry.taxable * rate / 100 : 0,
+                cgst: isInterState ? 0 : hsnEntry.taxable * rate / 200,
+                sgst: isInterState ? 0 : hsnEntry.taxable * rate / 200,
               );
         }
       }
@@ -767,59 +771,67 @@ class Gstr1Service {
 
     // ── Materialise T4 ───────────────────────────────────────────────────────
     final b2bRows = b2bMap.values
-        .map((a) => Gstr1B2bRow(
-              receiverGstin: a.receiverGstin,
-              receiverName: a.receiverName,
-              invoiceNo: a.invoiceNo,
-              invoiceDate: a.invoiceDate,
-              invoiceValue: a.invoiceValue,
-              placeOfSupply: a.placeOfSupply,
-              reverseCharge: a.reverseCharge,
-              invoiceType: a.invoiceType,
-              rate: a.rate,
-              taxableValue: a.taxableValue,
-              cgst: a.cgst,
-              sgst: a.sgst,
-              igst: a.igst,
-            ))
+        .map(
+          (a) => Gstr1B2bRow(
+            receiverGstin: a.receiverGstin,
+            receiverName: a.receiverName,
+            invoiceNo: a.invoiceNo,
+            invoiceDate: a.invoiceDate,
+            invoiceValue: a.invoiceValue,
+            placeOfSupply: a.placeOfSupply,
+            reverseCharge: a.reverseCharge,
+            invoiceType: a.invoiceType,
+            rate: a.rate,
+            taxableValue: a.taxableValue,
+            cgst: a.cgst,
+            sgst: a.sgst,
+            igst: a.igst,
+          ),
+        )
         .toList();
 
     // ── Materialise T5 ───────────────────────────────────────────────────────
     final b2cLargeRows = b2cLargeMap.values
-        .map((a) => Gstr1B2cLargeRow(
-              placeOfSupply: a.pos,
-              rate: a.rate,
-              taxableValue: a.taxableValue,
-              igst: a.igst,
-            ))
+        .map(
+          (a) => Gstr1B2cLargeRow(
+            placeOfSupply: a.pos,
+            rate: a.rate,
+            taxableValue: a.taxableValue,
+            igst: a.igst,
+          ),
+        )
         .toList();
 
     // ── Materialise T7 ───────────────────────────────────────────────────────
     final b2cSmallRows = b2cSmallMap.values
-        .map((a) => Gstr1B2cSmallRow(
-              type: 'OE',
-              placeOfSupply: a.pos,
-              rate: a.rate,
-              taxableValue: a.taxableValue,
-              cgst: a.cgst,
-              sgst: a.sgst,
-              igst: a.igst,
-            ))
+        .map(
+          (a) => Gstr1B2cSmallRow(
+            type: 'OE',
+            placeOfSupply: a.pos,
+            rate: a.rate,
+            taxableValue: a.taxableValue,
+            cgst: a.cgst,
+            sgst: a.sgst,
+            igst: a.igst,
+          ),
+        )
         .toList();
 
     // ── Materialise T12 ──────────────────────────────────────────────────────
     final hsnRows = hsnMap.values
-        .map((a) => Gstr1HsnRow(
-              hsnCode: a.hsnCode,
-              description: a.description,
-              uqc: a.uqc,
-              totalQty: a.totalQty,
-              totalValue: a.totalValue,
-              taxableValue: a.taxableValue,
-              igst: a.igst,
-              cgst: a.cgst,
-              sgst: a.sgst,
-            ))
+        .map(
+          (a) => Gstr1HsnRow(
+            hsnCode: a.hsnCode,
+            description: a.description,
+            uqc: a.uqc,
+            totalQty: a.totalQty,
+            totalValue: a.totalValue,
+            taxableValue: a.taxableValue,
+            igst: a.igst,
+            cgst: a.cgst,
+            sgst: a.sgst,
+          ),
+        )
         .toList();
 
     // ── Materialise T13 ──────────────────────────────────────────────────────
@@ -889,22 +901,39 @@ class Gstr1Service {
       String name,
       List<String> headers,
       List<List<dynamic>> rows,
-    ) =>
-        CsvExporter.writeToTemp(name, CsvExporter.encode(headers, rows));
+    ) => CsvExporter.writeToTemp(name, CsvExporter.encode(headers, rows));
 
     final files = await Future.wait([
-      csv('${prefix}_T4_B2B.csv', Gstr1B2bRow.csvHeaders,
-          workbook.tableB2b.map((r) => r.toCsvRow()).toList()),
-      csv('${prefix}_T5_B2CLarge.csv', Gstr1B2cLargeRow.csvHeaders,
-          workbook.tableB2cLarge.map((r) => r.toCsvRow()).toList()),
-      csv('${prefix}_T7_B2CSmall.csv', Gstr1B2cSmallRow.csvHeaders,
-          workbook.tableB2cSmall.map((r) => r.toCsvRow()).toList()),
-      csv('${prefix}_T9_CDN.csv', Gstr1CdnRow.csvHeaders,
-          workbook.tableCdn.map((r) => r.toCsvRow()).toList()),
-      csv('${prefix}_T12_HSN.csv', Gstr1HsnRow.csvHeaders,
-          workbook.tableHsn.map((r) => r.toCsvRow()).toList()),
-      csv('${prefix}_T13_DocSummary.csv', Gstr1DocSummaryRow.csvHeaders,
-          workbook.tableDocSummary.map((r) => r.toCsvRow()).toList()),
+      csv(
+        '${prefix}_T4_B2B.csv',
+        Gstr1B2bRow.csvHeaders,
+        workbook.tableB2b.map((r) => r.toCsvRow()).toList(),
+      ),
+      csv(
+        '${prefix}_T5_B2CLarge.csv',
+        Gstr1B2cLargeRow.csvHeaders,
+        workbook.tableB2cLarge.map((r) => r.toCsvRow()).toList(),
+      ),
+      csv(
+        '${prefix}_T7_B2CSmall.csv',
+        Gstr1B2cSmallRow.csvHeaders,
+        workbook.tableB2cSmall.map((r) => r.toCsvRow()).toList(),
+      ),
+      csv(
+        '${prefix}_T9_CDN.csv',
+        Gstr1CdnRow.csvHeaders,
+        workbook.tableCdn.map((r) => r.toCsvRow()).toList(),
+      ),
+      csv(
+        '${prefix}_T12_HSN.csv',
+        Gstr1HsnRow.csvHeaders,
+        workbook.tableHsn.map((r) => r.toCsvRow()).toList(),
+      ),
+      csv(
+        '${prefix}_T13_DocSummary.csv',
+        Gstr1DocSummaryRow.csvHeaders,
+        workbook.tableDocSummary.map((r) => r.toCsvRow()).toList(),
+      ),
     ]);
 
     return CsvExporter.zipFiles('$prefix.zip', files);
@@ -982,7 +1011,7 @@ class Gstr1Service {
                   'samt': 0.0,
                   'csamt': 0.0,
                 },
-              }
+              },
             ],
           };
         }).toList(),
@@ -1078,7 +1107,7 @@ class Gstr1Service {
               'totnum': r.totalSubmitted,
               'cancel': r.cancelled,
               'net_issue': net,
-            }
+            },
           ],
         };
       }).toList(),
@@ -1100,7 +1129,11 @@ class Gstr1Service {
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/GSTR1_${period}_$gstin.json');
     await file.writeAsString(jsonStr);
-    return XFile(file.path, mimeType: 'application/json', name: 'GSTR1_${period}_$gstin.json');
+    return XFile(
+      file.path,
+      mimeType: 'application/json',
+      name: 'GSTR1_${period}_$gstin.json',
+    );
   }
 
   static double _round2(double v) => (v * 100).roundToDouble() / 100;
@@ -1136,11 +1169,12 @@ class _B2bAcc {
   double sgst = 0;
   double igst = 0;
 
-  void add(
-      {required double taxable,
-      required double cgst,
-      required double sgst,
-      required double igst}) {
+  void add({
+    required double taxable,
+    required double cgst,
+    required double sgst,
+    required double igst,
+  }) {
     taxableValue += taxable;
     this.cgst += cgst;
     this.sgst += sgst;
@@ -1159,11 +1193,12 @@ class _B2cAcc {
   double sgst = 0;
   double igst = 0;
 
-  void add(
-      {required double taxable,
-      required double cgst,
-      required double sgst,
-      required double igst}) {
+  void add({
+    required double taxable,
+    required double cgst,
+    required double sgst,
+    required double igst,
+  }) {
     taxableValue += taxable;
     this.cgst += cgst;
     this.sgst += sgst;
@@ -1205,14 +1240,16 @@ class _RateBucket {
     required String itemName,
   }) {
     taxableValue += taxable;
-    hsnEntries.add(_HsnItem(
-      hsnCode: hsnCode,
-      itemName: itemName,
-      uqc: uqc,
-      qty: qty,
-      lineTotal: lineTotal,
-      taxable: taxable,
-    ));
+    hsnEntries.add(
+      _HsnItem(
+        hsnCode: hsnCode,
+        itemName: itemName,
+        uqc: uqc,
+        qty: qty,
+        lineTotal: lineTotal,
+        taxable: taxable,
+      ),
+    );
   }
 }
 

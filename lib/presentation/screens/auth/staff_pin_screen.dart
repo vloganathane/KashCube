@@ -41,7 +41,9 @@ class _StaffPinScreenState extends ConsumerState<StaffPinScreen> {
 
   void _onBackspace() {
     if (_isLocked || _enteredPin.isEmpty) return;
-    setState(() => _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1));
+    setState(
+      () => _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1),
+    );
   }
 
   Future<void> _verify() async {
@@ -64,7 +66,8 @@ class _StaffPinScreenState extends ConsumerState<StaffPinScreen> {
           _isLocked = true;
           _errorMessage = 'Too many attempts. Ask owner to unlock.';
         } else {
-          _errorMessage = 'Incorrect PIN — $remaining attempt${remaining == 1 ? '' : 's'} left';
+          _errorMessage =
+              'Incorrect PIN — $remaining attempt${remaining == 1 ? '' : 's'} left';
         }
       });
     }
@@ -112,17 +115,16 @@ class _StaffPinScreenState extends ConsumerState<StaffPinScreen> {
             const SizedBox(height: AppSpacing.sm),
             Text(
               widget.user.displayName,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
               widget.user.role.label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: cs.onSurface.withValues(alpha: 0.6),
-                  ),
+                color: cs.onSurface.withValues(alpha: 0.6),
+              ),
             ),
             const SizedBox(height: AppSpacing.xxl),
             // PIN dots
@@ -139,8 +141,8 @@ class _StaffPinScreenState extends ConsumerState<StaffPinScreen> {
                     color: _isLocked
                         ? cs.error
                         : filled
-                            ? cs.primary
-                            : cs.outlineVariant,
+                        ? cs.primary
+                        : cs.outlineVariant,
                   ),
                 );
               }),
@@ -165,18 +167,24 @@ class _StaffPinScreenState extends ConsumerState<StaffPinScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: row
-                          .map((d) => _KeypadButton(
-                                label: d,
-                                onTap: () => _onDigit(d),
-                                enabled: !_isLocked,
-                              ))
+                          .map(
+                            (d) => _KeypadButton(
+                              label: d,
+                              onTap: () => _onDigit(d),
+                              enabled: !_isLocked,
+                            ),
+                          )
                           .toList(),
                     ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       const SizedBox(width: 72, height: 72),
-                      _KeypadButton(label: '0', onTap: () => _onDigit('0'), enabled: !_isLocked),
+                      _KeypadButton(
+                        label: '0',
+                        onTap: () => _onDigit('0'),
+                        enabled: !_isLocked,
+                      ),
                       _KeypadButton(
                         icon: Icons.backspace_outlined,
                         onTap: _onBackspace,
@@ -224,12 +232,16 @@ class _KeypadButton extends StatelessWidget {
                 ? Text(
                     label!,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: enabled ? cs.onSurface : cs.onSurface.withValues(alpha: 0.3),
-                        ),
+                      color: enabled
+                          ? cs.onSurface
+                          : cs.onSurface.withValues(alpha: 0.3),
+                    ),
                   )
                 : Icon(
                     icon,
-                    color: enabled ? cs.onSurface : cs.onSurface.withValues(alpha: 0.3),
+                    color: enabled
+                        ? cs.onSurface
+                        : cs.onSurface.withValues(alpha: 0.3),
                   ),
           ),
         ),

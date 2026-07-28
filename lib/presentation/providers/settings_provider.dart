@@ -40,30 +40,46 @@ class SettingsKeys {
   /// Stores the T&C version the user accepted.
   /// null = never accepted. Compare against [AppTerms.currentVersion].
   static const termsAcceptedVersion = 'terms_accepted_version';
+
   /// ISO-8601 timestamp of when the user accepted the current T&C.
   static const termsAcceptedAt = 'terms_accepted_at';
 
   // Personal vCard / My Card fields
-  static const ownerName        = 'owner_name';
-  static const personalPhone    = 'personal_phone';
-  static const personalEmail    = 'personal_email';
-  static const personalWebsite  = 'personal_website';
+  static const ownerName = 'owner_name';
+  static const personalPhone = 'personal_phone';
+  static const personalEmail = 'personal_email';
+  static const personalWebsite = 'personal_website';
   static const personalWhatsapp = 'personal_whatsapp';
   static const personalLinkedin = 'personal_linkedin';
-  static const personalInstagram= 'personal_instagram';
+  static const personalInstagram = 'personal_instagram';
   static const personalPhotoPath = 'personal_photo_path';
-  static const personalAddress  = 'personal_address';
-  static const personalCity     = 'personal_city';
-  static const personalState    = 'personal_state';
-  static const personalPincode  = 'personal_pincode';
-  static const personalCountry  = 'personal_country';
+  static const personalAddress = 'personal_address';
+  static const personalCity = 'personal_city';
+  static const personalState = 'personal_state';
+  static const personalPincode = 'personal_pincode';
+  static const personalCountry = 'personal_country';
   static const personalDialCode = 'personal_dial_code';
 
   // Default T&C shown in PDF footers
   static const invoiceTerms = 'invoice_terms';
-  static const quoteTerms   = 'quote_terms';
+  static const quoteTerms = 'quote_terms';
   static const bookingTerms = 'booking_terms';
   static const challanTerms = 'challan_terms';
+
+  // Document numbering formats and starting sequences
+  static const invoiceNoFormat = 'invoice_no_format';
+  static const quoteNoFormat = 'quote_no_format';
+  static const challanNoFormat = 'challan_no_format';
+  static const invoiceNoStartSeq = 'invoice_no_start_seq';
+  static const quoteNoStartSeq = 'quote_no_start_seq';
+  static const challanNoStartSeq = 'challan_no_start_seq';
+
+  static const defaultInvoiceNoFormat = 'INV-{YY}-{YY+1}-{SEQ}';
+  static const defaultQuoteNoFormat = 'QT-{YY}-{YY+1}-{SEQ}';
+  static const defaultChallanNoFormat = 'DC-{YY}-{YY+1}-{SEQ}';
+  static const defaultInvoiceNoStartSeq = '1';
+  static const defaultQuoteNoStartSeq = '1';
+  static const defaultChallanNoStartSeq = '1';
 
   // Built-in fallback T&C used when the user has not yet customised them
   static const defaultInvoiceTerms =
@@ -98,9 +114,9 @@ class SettingsKeys {
   static const homeWidgetsConfig = 'home_widgets_config';
 
   // Device identity (LAN sync)
-  static const deviceId         = 'device_id';
+  static const deviceId = 'device_id';
   static const primaryPublicKey = 'primary_public_key';
-  static const deviceName       = 'device_name';
+  static const deviceName = 'device_name';
 
   // Sync transport preferences
   /// Enable experimental libp2p-based peer-to-peer sync (Phase 1+).
@@ -117,14 +133,14 @@ class SettingsKeys {
 
   // Tutorial coach marks — 'true' once user has seen (or skipped) each tour.
   static const tutorialTransactionsDone = 'tutorial_transactions_done';
-  static const tutorialCreditsDone     = 'tutorial_credits_done';
-  static const tutorialHomeDone        = 'tutorial_home_done';
-  static const tutorialReportsDone     = 'tutorial_reports_done';
-  static const tutorialInvoicesDone    = 'tutorial_invoices_done';
+  static const tutorialCreditsDone = 'tutorial_credits_done';
+  static const tutorialHomeDone = 'tutorial_home_done';
+  static const tutorialReportsDone = 'tutorial_reports_done';
+  static const tutorialInvoicesDone = 'tutorial_invoices_done';
 
   // Tutorial flow-following — 'true' once user has completed (or skipped) each guided flow.
-  static const tutorialTxFlowDone      = 'tutorial_tx_flow_done';
-  static const tutorialCreditFlowDone  = 'tutorial_credit_flow_done';
+  static const tutorialTxFlowDone = 'tutorial_tx_flow_done';
+  static const tutorialCreditFlowDone = 'tutorial_credit_flow_done';
   static const tutorialInvoiceFlowDone = 'tutorial_invoice_flow_done';
 }
 
@@ -172,8 +188,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   }
 }
 
-final themeModeProvider =
-    StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
+final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, ThemeMode>(
   (ref) => ThemeModeNotifier(ref.read(settingsRepositoryProvider)),
 );
 
@@ -205,8 +220,8 @@ class DefaultAccountNotifier extends StateNotifier<int?> {
 
 final defaultAccountIdProvider =
     StateNotifierProvider<DefaultAccountNotifier, int?>(
-  (ref) => DefaultAccountNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => DefaultAccountNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 /// Whether app lock (PIN) is enabled.
 final appLockEnabledProvider = FutureProvider<bool>((ref) async {
@@ -265,8 +280,7 @@ class BusinessModeNotifier extends StateNotifier<bool> {
   }
 }
 
-final businessModeProvider =
-    StateNotifierProvider<BusinessModeNotifier, bool>(
+final businessModeProvider = StateNotifierProvider<BusinessModeNotifier, bool>(
   (ref) => BusinessModeNotifier(ref.read(settingsRepositoryProvider)),
 );
 
@@ -289,8 +303,8 @@ class BusinessNameNotifier extends StateNotifier<String> {
 
 final businessNameProvider =
     StateNotifierProvider<BusinessNameNotifier, String>(
-  (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => BusinessNameNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // libp2p Sync (Experimental Phase 1 Feature)
@@ -323,8 +337,8 @@ class Libp2pSyncEnabledNotifier extends StateNotifier<bool> {
 
 final libp2pSyncEnabledProvider =
     StateNotifierProvider<Libp2pSyncEnabledNotifier, bool>(
-  (ref) => Libp2pSyncEnabledNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => Libp2pSyncEnabledNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // Document Template
@@ -368,8 +382,8 @@ class DocumentTemplateNotifier extends StateNotifier<DocumentTemplate> {
 
 final documentTemplateProvider =
     StateNotifierProvider<DocumentTemplateNotifier, DocumentTemplate>(
-  (ref) => DocumentTemplateNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => DocumentTemplateNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // Notification Settings
@@ -392,8 +406,7 @@ typedef NotificationSettings = Map<String, dynamic>;
 
 class NotificationSettingsNotifier
     extends StateNotifier<AsyncValue<NotificationSettings>> {
-  NotificationSettingsNotifier(this._repo)
-      : super(const AsyncValue.loading()) {
+  NotificationSettingsNotifier(this._repo) : super(const AsyncValue.loading()) {
     _load();
   }
 
@@ -435,10 +448,14 @@ class NotificationSettingsNotifier
   Future<void> reload() => _load();
 }
 
-final notificationSettingsProvider = StateNotifierProvider<
-    NotificationSettingsNotifier, AsyncValue<NotificationSettings>>(
-  (ref) => NotificationSettingsNotifier(ref.read(settingsRepositoryProvider)),
-);
+final notificationSettingsProvider =
+    StateNotifierProvider<
+      NotificationSettingsNotifier,
+      AsyncValue<NotificationSettings>
+    >(
+      (ref) =>
+          NotificationSettingsNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // Subscription Tier
@@ -464,8 +481,8 @@ class SubscriptionTierNotifier extends StateNotifier<SubscriptionTier> {
 
 final subscriptionTierProvider =
     StateNotifierProvider<SubscriptionTierNotifier, SubscriptionTier>(
-  (ref) => SubscriptionTierNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => SubscriptionTierNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // SMS Auto-Detect
@@ -493,8 +510,8 @@ class SmsAutoDetectNotifier extends StateNotifier<bool> {
 
 final smsAutoDetectEnabledProvider =
     StateNotifierProvider<SmsAutoDetectNotifier, bool>(
-  (ref) => SmsAutoDetectNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => SmsAutoDetectNotifier(ref.read(settingsRepositoryProvider)),
+    );
 
 // ---------------------------------------------------------------------------
 // Setup Wizard
@@ -510,7 +527,9 @@ class SetupWizardNotifier extends AsyncNotifier<bool> {
         .timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('[Wizard] Timeout reading setup wizard status; defaulting to not done');
+            debugPrint(
+              '[Wizard] Timeout reading setup wizard status; defaulting to not done',
+            );
             return null;
           },
         );
@@ -521,10 +540,9 @@ class SetupWizardNotifier extends AsyncNotifier<bool> {
   }
 
   Future<void> markDone() async {
-    await ref.read(settingsRepositoryProvider).set(
-          SettingsKeys.setupWizardDone,
-          'true',
-        );
+    await ref
+        .read(settingsRepositoryProvider)
+        .set(SettingsKeys.setupWizardDone, 'true');
     state = const AsyncData(true);
   }
 }

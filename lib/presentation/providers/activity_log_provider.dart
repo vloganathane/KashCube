@@ -15,10 +15,10 @@ final activityLogRepositoryProvider = Provider<ActivityLogRepository>(
 
 /// Watches the activity log for a specific entity.
 /// Usage: `ref.watch(activityLogProvider(('quote', quoteId)))`
-final activityLogProvider = FutureProvider.family<List<ActivityLog>,
-    (String entityType, int entityId)>(
-  (ref, args) async {
-    final repo = ref.read(activityLogRepositoryProvider);
-    return repo.getForEntity(args.$1, args.$2);
-  },
-);
+final activityLogProvider =
+    FutureProvider.family<List<ActivityLog>, (String entityType, int entityId)>(
+      (ref, args) async {
+        final repo = ref.read(activityLogRepositoryProvider);
+        return repo.getForEntity(args.$1, args.$2);
+      },
+    );

@@ -24,18 +24,18 @@ enum ChainOrigin {
   directInvoice;
 
   String get label => switch (this) {
-        ChainOrigin.quote => 'Quote',
-        ChainOrigin.challan => 'Delivery Challan',
-        ChainOrigin.booking => 'Booking',
-        ChainOrigin.directInvoice => 'Invoice',
-      };
+    ChainOrigin.quote => 'Quote',
+    ChainOrigin.challan => 'Delivery Challan',
+    ChainOrigin.booking => 'Booking',
+    ChainOrigin.directInvoice => 'Invoice',
+  };
 
   String get icon => switch (this) {
-        ChainOrigin.quote => 'quote',
-        ChainOrigin.challan => 'truck',
-        ChainOrigin.booking => 'calendar',
-        ChainOrigin.directInvoice => 'receipt',
-      };
+    ChainOrigin.quote => 'quote',
+    ChainOrigin.challan => 'truck',
+    ChainOrigin.booking => 'calendar',
+    ChainOrigin.directInvoice => 'receipt',
+  };
 }
 
 // ── Chain status ─────────────────────────────────────────────────────────────
@@ -57,12 +57,12 @@ enum ChainStatus {
   cancelled;
 
   String get label => switch (this) {
-        ChainStatus.complete => 'Complete',
-        ChainStatus.awaitingPayment => 'Awaiting Payment',
-        ChainStatus.awaitingInvoice => '⚠ Invoice Not Raised',
-        ChainStatus.invoicedPartially => 'Partially Paid',
-        ChainStatus.cancelled => 'Cancelled',
-      };
+    ChainStatus.complete => 'Complete',
+    ChainStatus.awaitingPayment => 'Awaiting Payment',
+    ChainStatus.awaitingInvoice => '⚠ Invoice Not Raised',
+    ChainStatus.invoicedPartially => 'Partially Paid',
+    ChainStatus.cancelled => 'Cancelled',
+  };
 
   bool get isLeaking => this == ChainStatus.awaitingInvoice;
 
@@ -144,9 +144,9 @@ class BusinessFlowChain {
 
   /// Urgent call-to-action label based on status.
   String get ctaLabel => switch (status) {
-        ChainStatus.awaitingInvoice => 'Raise Invoice',
-        ChainStatus.awaitingPayment => 'Send Reminder',
-        ChainStatus.invoicedPartially => 'Record Balance',
-        _ => 'View',
-      };
+    ChainStatus.awaitingInvoice => 'Raise Invoice',
+    ChainStatus.awaitingPayment => 'Send Reminder',
+    ChainStatus.invoicedPartially => 'Record Balance',
+    _ => 'View',
+  };
 }

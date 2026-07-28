@@ -48,18 +48,53 @@ final currentTabIndexProvider = StateProvider<int>((ref) => 0);
 /// Maps a screen index (0–4 in [IndexedStack]) to its [NavigationDestination].
 class _TabSpec {
   const _TabSpec(this.screenIndex, this.destination);
-  final int                 screenIndex;
+  final int screenIndex;
   final NavigationDestination destination;
 }
 
 /// Returns the visible tab specs (all tabs — sync-based preset filtering removed).
 List<_TabSpec> _computeVisibleTabs() {
   return const [
-    _TabSpec(0, NavigationDestination(icon: Icon(Icons.home_outlined),         selectedIcon: Icon(Icons.home),         label: 'Home')),
-    _TabSpec(1, NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Transactions')),
-    _TabSpec(2, NavigationDestination(icon: Icon(Icons.storefront_outlined),   selectedIcon: Icon(Icons.storefront),   label: 'Business')),
-    _TabSpec(3, NavigationDestination(icon: Icon(Icons.people_outline),        selectedIcon: Icon(Icons.people),       label: 'Contacts')),
-    _TabSpec(4, NavigationDestination(icon: Icon(Icons.settings_outlined),     selectedIcon: Icon(Icons.settings),     label: 'Settings')),
+    _TabSpec(
+      0,
+      NavigationDestination(
+        icon: Icon(Icons.home_outlined),
+        selectedIcon: Icon(Icons.home),
+        label: 'Home',
+      ),
+    ),
+    _TabSpec(
+      1,
+      NavigationDestination(
+        icon: Icon(Icons.receipt_long_outlined),
+        selectedIcon: Icon(Icons.receipt_long),
+        label: 'Transactions',
+      ),
+    ),
+    _TabSpec(
+      2,
+      NavigationDestination(
+        icon: Icon(Icons.storefront_outlined),
+        selectedIcon: Icon(Icons.storefront),
+        label: 'Business',
+      ),
+    ),
+    _TabSpec(
+      3,
+      NavigationDestination(
+        icon: Icon(Icons.people_outline),
+        selectedIcon: Icon(Icons.people),
+        label: 'Contacts',
+      ),
+    ),
+    _TabSpec(
+      4,
+      NavigationDestination(
+        icon: Icon(Icons.settings_outlined),
+        selectedIcon: Icon(Icons.settings),
+        label: 'Settings',
+      ),
+    ),
   ];
 }
 
@@ -73,14 +108,16 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   bool _smsListenerStarted = false;
-  bool _deepLinksStarted  = false;
+  bool _deepLinksStarted = false;
   final _appLinks = AppLinks();
 
   /// Per-tab [Navigator] keys — one per tab in [IndexedStack].
   /// Allows each tab to maintain its own push stack while the bottom nav
   /// bar remains visible at all depths.
-  final List<GlobalKey<NavigatorState>> _tabNavKeys =
-      List.generate(5, (_) => GlobalKey<NavigatorState>());
+  final List<GlobalKey<NavigatorState>> _tabNavKeys = List.generate(
+    5,
+    (_) => GlobalKey<NavigatorState>(),
+  );
 
   /// Tab navigator widgets — created ONCE in [initState] and never rebuilt.
   /// Keeping stable widget objects prevents Flutter from briefly unmounting
@@ -97,14 +134,42 @@ class _AppShellState extends ConsumerState<AppShell> {
     super.initState();
     _tabObservers = List.generate(
       5,
-      (_) => _StackObserver(() { if (mounted) setState(() {}); }),
+      (_) => _StackObserver(() {
+        if (mounted) setState(() {});
+      }),
     );
     _tabScreens = [
-      Navigator(key: _tabNavKeys[0], observers: [_tabObservers[0]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const HomeScreen())),
-      Navigator(key: _tabNavKeys[1], observers: [_tabObservers[1]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const TransactionsHubScreen())),
-      Navigator(key: _tabNavKeys[2], observers: [_tabObservers[2]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen())),
-      Navigator(key: _tabNavKeys[3], observers: [_tabObservers[3]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const PartiesScreen())),
-      Navigator(key: _tabNavKeys[4], observers: [_tabObservers[4]], onGenerateRoute: (_) => MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
+      Navigator(
+        key: _tabNavKeys[0],
+        observers: [_tabObservers[0]],
+        onGenerateRoute: (_) =>
+            MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+      ),
+      Navigator(
+        key: _tabNavKeys[1],
+        observers: [_tabObservers[1]],
+        onGenerateRoute: (_) => MaterialPageRoute<void>(
+          builder: (_) => const TransactionsHubScreen(),
+        ),
+      ),
+      Navigator(
+        key: _tabNavKeys[2],
+        observers: [_tabObservers[2]],
+        onGenerateRoute: (_) =>
+            MaterialPageRoute<void>(builder: (_) => const BusinessHubScreen()),
+      ),
+      Navigator(
+        key: _tabNavKeys[3],
+        observers: [_tabObservers[3]],
+        onGenerateRoute: (_) =>
+            MaterialPageRoute<void>(builder: (_) => const PartiesScreen()),
+      ),
+      Navigator(
+        key: _tabNavKeys[4],
+        observers: [_tabObservers[4]],
+        onGenerateRoute: (_) =>
+            MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+      ),
     ];
     // Kick off SMS listener after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -172,7 +237,7 @@ class _AppShellState extends ConsumerState<AppShell> {
   Future<void> _checkInstallReferrer() async {
     const prefKey = 'install_referrer_checked';
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.getBool(prefKey) == true) return;   // already consumed
+    if (prefs.getBool(prefKey) == true) return; // already consumed
     await prefs.setBool(prefKey, true);
 
     try {
@@ -248,9 +313,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     if (!autoDetect) return;
 
     _smsListenerStarted = true;
-    smsService.startListening(
-      onTransactionDetected: _onSmsTransactionDetected,
-    );
+    smsService.startListening(onTransactionDetected: _onSmsTransactionDetected);
   }
 
   void _onSmsTransactionDetected(ParsedSms parsed) {
@@ -266,10 +329,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
   }
 
-  Future<void> _showSmsConfirmation(
-    ParsedSms parsed,
-    String dedupeHash,
-  ) async {
+  Future<void> _showSmsConfirmation(ParsedSms parsed, String dedupeHash) async {
     // Check if already saved (by dedupe hash)
     final repo = ref.read(transactionRepositoryProvider);
     final exists = await repo.existsByDedupeHash(dedupeHash);
@@ -314,9 +374,11 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentTabIndexProvider);
-    final subRouteActive = _tabNavKeys[currentIndex].currentState?.canPop() ?? false;
-    final showFab = (currentIndex == 0 || currentIndex == 1 || currentIndex == 2)
-        && !subRouteActive;
+    final subRouteActive =
+        _tabNavKeys[currentIndex].currentState?.canPop() ?? false;
+    final showFab =
+        (currentIndex == 0 || currentIndex == 1 || currentIndex == 2) &&
+        !subRouteActive;
     final activeUser = ref.watch(activeAppUserProvider);
     final isWide = context.isExpanded; // ≥840 dp → NavigationRail layout
 
@@ -332,9 +394,9 @@ class _AppShellState extends ConsumerState<AppShell> {
     const tabModules = [
       PermissionModule.transactions, // 0: Home
       PermissionModule.transactions, // 1: Transactions
-      PermissionModule.invoices,     // 2: Business
-      PermissionModule.credits,      // 3: Contacts
-      null,                          // 4: Settings — always visible
+      PermissionModule.invoices, // 2: Business
+      PermissionModule.credits, // 3: Contacts
+      null, // 4: Settings — always visible
     ];
 
     Future<void> handleTabSelected(int screenIndex) async {
@@ -346,7 +408,7 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
         return;
       }
-      
+
       // When switching TO a tab, also pop that tab's stack to root if it has a deep navigation.
       // This ensures that tapping "Transactions" always shows TransactionsHubScreen, even if
       // the user previously navigated to a detail screen then switched away.
@@ -354,7 +416,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (targetNavState != null && targetNavState.canPop()) {
         targetNavState.popUntil((r) => r.isFirst);
       }
-      
+
       if (activeUser == null) {
         ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;
@@ -364,9 +426,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         ref.read(currentTabIndexProvider.notifier).state = screenIndex;
         return;
       }
-      final perm = await ref.read(permissionProvider(
-        (module: module, businessId: UserPermission.kPersonalScope),
-      ));
+      final perm = await ref.read(
+        permissionProvider((
+          module: module,
+          businessId: UserPermission.kPersonalScope,
+        )),
+      );
       if (!perm.canView) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -435,7 +500,10 @@ class _AppShellState extends ConsumerState<AppShell> {
         : visibleTabs;
 
     // Build content stack once; wrap with web-disconnect banner when on web.
-    Widget contentStack = IndexedStack(index: currentIndex, children: _tabScreens);
+    Widget contentStack = IndexedStack(
+      index: currentIndex,
+      children: _tabScreens,
+    );
     if (kIsWeb) contentStack = WebConnectionBanner(child: contentStack);
 
     return PopScope(
@@ -455,57 +523,57 @@ class _AppShellState extends ConsumerState<AppShell> {
         }
       },
       child: Scaffold(
-      body: Column(
-        children: [
-          // Context banner: shown when viewing a linked business session.
-          const ContextBannerWidget(),
-          if (isWide)
-            // ── Expanded layout: NavigationRail + constrained content ─────
-            Expanded(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    selectedIndex: navBarIndex,
-                    labelType: NavigationRailLabelType.all,
-                    onDestinationSelected: (navIdx) =>
-                        handleTabSelected(visibleTabs[navIdx].screenIndex),
-                    destinations: displayedTabs
-                        .map(
-                          (t) => NavigationRailDestination(
-                            icon: t.destination.icon,
-                            selectedIcon: t.destination.selectedIcon,
-                            label: Text(t.destination.label),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const VerticalDivider(width: 1, thickness: 1),
-                  Expanded(child: contentStack),
-                ],
+        body: Column(
+          children: [
+            // Context banner: shown when viewing a linked business session.
+            const ContextBannerWidget(),
+            if (isWide)
+              // ── Expanded layout: NavigationRail + constrained content ─────
+              Expanded(
+                child: Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: navBarIndex,
+                      labelType: NavigationRailLabelType.all,
+                      onDestinationSelected: (navIdx) =>
+                          handleTabSelected(visibleTabs[navIdx].screenIndex),
+                      destinations: displayedTabs
+                          .map(
+                            (t) => NavigationRailDestination(
+                              icon: t.destination.icon,
+                              selectedIcon: t.destination.selectedIcon,
+                              label: Text(t.destination.label),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const VerticalDivider(width: 1, thickness: 1),
+                    Expanded(child: contentStack),
+                  ],
+                ),
+              )
+            else
+              // ── Compact/medium layout: full-width content ─────────────────
+              Expanded(child: contentStack),
+          ],
+        ),
+        bottomNavigationBar: isWide
+            ? null
+            : NavigationBar(
+                selectedIndex: navBarIndex,
+                labelBehavior:
+                    NavigationDestinationLabelBehavior.onlyShowSelected,
+                onDestinationSelected: (navIdx) {
+                  handleTabSelected(visibleTabs[navIdx].screenIndex);
+                },
+                destinations: displayedTabs.map((t) => t.destination).toList(),
               ),
-            )
-          else
-            // ── Compact/medium layout: full-width content ─────────────────
-            Expanded(child: contentStack),
-        ],
-      ),
-      bottomNavigationBar: isWide
-          ? null
-          : NavigationBar(
-              selectedIndex: navBarIndex,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.onlyShowSelected,
-              onDestinationSelected: (navIdx) {
-                handleTabSelected(visibleTabs[navIdx].screenIndex);
-              },
-              destinations: displayedTabs.map((t) => t.destination).toList(),
-            ),
-      floatingActionButton: showFab
-          ? SpeedDialFab(
-              transactionsTabOnly: currentIndex == 1,
-              showAllOptions: currentIndex != 2,
-            )
-          : null,
+        floatingActionButton: showFab
+            ? SpeedDialFab(
+                transactionsTabOnly: currentIndex == 1,
+                showAllOptions: currentIndex != 2,
+              )
+            : null,
       ),
     );
   }
@@ -520,10 +588,15 @@ class _StackObserver extends NavigatorObserver {
   _StackObserver(this.onChanged);
   final VoidCallback onChanged;
 
-  void _notify() => WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
+  void _notify() =>
+      WidgetsBinding.instance.addPostFrameCallback((_) => onChanged());
 
-  @override void didPush(Route route, Route? previousRoute) => _notify();
-  @override void didPop(Route route, Route? previousRoute) => _notify();
-  @override void didRemove(Route route, Route? previousRoute) => _notify();
-  @override void didReplace({Route? newRoute, Route? oldRoute}) => _notify();
+  @override
+  void didPush(Route route, Route? previousRoute) => _notify();
+  @override
+  void didPop(Route route, Route? previousRoute) => _notify();
+  @override
+  void didRemove(Route route, Route? previousRoute) => _notify();
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) => _notify();
 }

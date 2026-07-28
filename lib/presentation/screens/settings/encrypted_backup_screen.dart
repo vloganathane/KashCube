@@ -50,10 +50,7 @@ class _EncryptedBackupScreenState extends State<EncryptedBackupScreen>
       ),
       body: TabBarView(
         controller: _tabs,
-        children: const [
-          _ExportTab(),
-          _ImportTab(),
-        ],
+        children: const [_ExportTab(), _ImportTab()],
       ),
     );
   }
@@ -87,8 +84,9 @@ class _ExportTabState extends State<_ExportTab> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _exporting = true);
     try {
-      final file = await EncryptedBackupService.instance
-          .exportEncrypted(_passCtrl.text.trim());
+      final file = await EncryptedBackupService.instance.exportEncrypted(
+        _passCtrl.text.trim(),
+      );
 
       if (!mounted) return;
 
@@ -130,14 +128,14 @@ class _ExportTabState extends State<_ExportTab> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.security_outlined,
-                            color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          Icons.security_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
                           'AES-256-GCM Encrypted',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
+                          style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -155,11 +153,12 @@ class _ExportTabState extends State<_ExportTab> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            Text('Passphrase',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Passphrase',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.xs),
             TextFormField(
               controller: _passCtrl,
@@ -168,11 +167,12 @@ class _ExportTabState extends State<_ExportTab> {
               decoration: InputDecoration(
                 hintText: 'Enter a strong passphrase',
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePass
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
-                  onPressed: () =>
-                      setState(() => _obscurePass = !_obscurePass),
+                  icon: Icon(
+                    _obscurePass
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () => setState(() => _obscurePass = !_obscurePass),
                 ),
               ),
               validator: (v) {
@@ -187,11 +187,12 @@ class _ExportTabState extends State<_ExportTab> {
             ),
             const SizedBox(height: AppSpacing.base),
 
-            Text('Confirm passphrase',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Confirm passphrase',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.xs),
             TextFormField(
               controller: _confirmCtrl,
@@ -201,9 +202,11 @@ class _ExportTabState extends State<_ExportTab> {
               decoration: InputDecoration(
                 hintText: 'Re-enter your passphrase',
                 suffixIcon: IconButton(
-                  icon: Icon(_obscureConfirm
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
+                  icon: Icon(
+                    _obscureConfirm
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                   onPressed: () =>
                       setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
@@ -224,7 +227,9 @@ class _ExportTabState extends State<_ExportTab> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.lock_outlined),
                 label: Text(_exporting ? 'Encrypting…' : 'Encrypt & Export'),
@@ -274,7 +279,8 @@ class _ImportTabState extends State<_ImportTab> {
   Future<void> _refreshLockStatus() async {
     final locked = await EncryptedBackupService.instance.isLockedOut();
     final attempts = await EncryptedBackupService.instance.attemptsRemaining();
-    final mins = await EncryptedBackupService.instance.lockoutMinutesRemaining();
+    final mins = await EncryptedBackupService.instance
+        .lockoutMinutesRemaining();
     if (mounted) {
       setState(() {
         _lockedOut = locked;
@@ -302,8 +308,10 @@ class _ImportTabState extends State<_ImportTab> {
 
   Future<void> _import() async {
     if (_selectedPath == null) {
-      context.showSnackBar('Please select a .kashcube file first',
-          isError: true);
+      context.showSnackBar(
+        'Please select a .kashcube file first',
+        isError: true,
+      );
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -313,8 +321,10 @@ class _ImportTabState extends State<_ImportTab> {
 
     setState(() => _importing = true);
     try {
-      final manifest = await EncryptedBackupService.instance
-          .importEncrypted(_selectedPath!, _passCtrl.text.trim());
+      final manifest = await EncryptedBackupService.instance.importEncrypted(
+        _selectedPath!,
+        _passCtrl.text.trim(),
+      );
 
       if (!mounted) return;
 
@@ -434,11 +444,12 @@ class _ImportTabState extends State<_ImportTab> {
             ],
 
             // File picker
-            Text('Backup file',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Backup file',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.xs),
             InkWell(
               onTap: _pickFile,
@@ -460,14 +471,11 @@ class _ImportTabState extends State<_ImportTab> {
                       child: Text(
                         _selectedName ?? 'Tap to choose .kashcube file',
                         style: _selectedName == null
-                            ? Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                )
+                            ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              )
                             : null,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -485,11 +493,12 @@ class _ImportTabState extends State<_ImportTab> {
             const SizedBox(height: AppSpacing.base),
 
             // Passphrase
-            Text('Passphrase',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
+            Text(
+              'Passphrase',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+            ),
             const SizedBox(height: AppSpacing.xs),
             TextFormField(
               controller: _passCtrl,
@@ -502,7 +511,10 @@ class _ImportTabState extends State<_ImportTab> {
                 hintText: 'Enter your backup passphrase',
                 suffixIcon: IconButton(
                   icon: Icon(
-                      _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
                   onPressed: () => setState(() => _obscure = !_obscure),
                 ),
               ),
@@ -516,8 +528,8 @@ class _ImportTabState extends State<_ImportTab> {
               Text(
                 '$_attemptsRemaining attempt${_attemptsRemaining == 1 ? '' : 's'} remaining before lockout',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                  color: Theme.of(context).colorScheme.error,
+                ),
               ),
             ],
             const SizedBox(height: AppSpacing.xl),
@@ -531,7 +543,9 @@ class _ImportTabState extends State<_ImportTab> {
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.restore_outlined),
                 label: Text(_importing ? 'Decrypting…' : 'Decrypt & Restore'),
@@ -560,8 +574,8 @@ class _Disclaimer extends StatelessWidget {
       'No data is sent to any server. '
       'Your passphrase is never stored.',
       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }

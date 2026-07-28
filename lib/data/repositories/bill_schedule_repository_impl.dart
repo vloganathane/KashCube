@@ -10,7 +10,7 @@ class BillScheduleRepositoryImpl implements BillScheduleRepository {
   final DatabaseHelper _dbHelper;
 
   BillScheduleRepositoryImpl([DatabaseHelper? dbHelper])
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   Future<Database> get _db => _dbHelper.database;
 
@@ -37,7 +37,12 @@ class BillScheduleRepositoryImpl implements BillScheduleRepository {
   Future<List<Bill>> getUpcoming({int days = 7}) async {
     final bills = await getAll();
     return bills
-        .where((b) => !b.isPaidThisPeriod && b.daysUntilDue >= 0 && b.daysUntilDue <= days)
+        .where(
+          (b) =>
+              !b.isPaidThisPeriod &&
+              b.daysUntilDue >= 0 &&
+              b.daysUntilDue <= days,
+        )
         .toList();
   }
 
@@ -63,12 +68,7 @@ class BillScheduleRepositoryImpl implements BillScheduleRepository {
   Future<void> update(Bill bill) async {
     final db = await _db;
     final map = bill.copyWith(updatedAt: DateTime.now()).toMap();
-    await db.update(
-      _table,
-      map,
-      where: 'id = ?',
-      whereArgs: [bill.id],
-    );
+    await db.update(_table, map, where: 'id = ?', whereArgs: [bill.id]);
   }
 
   @override
@@ -101,10 +101,7 @@ class BillScheduleRepositoryImpl implements BillScheduleRepository {
     final db = await _db;
     await db.update(
       _table,
-      {
-        'last_paid_date': null,
-        'updated_at': DateTime.now().toIso8601String(),
-      },
+      {'last_paid_date': null, 'updated_at': DateTime.now().toIso8601String()},
       where: 'id = ?',
       whereArgs: [id],
     );

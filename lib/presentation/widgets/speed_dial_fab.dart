@@ -95,16 +95,15 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
 
   void _openUdhar() {
     _close();
-    Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const AddCreditScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const AddCreditScreen()));
   }
 
   void _openBillsAndPayments() {
     _close();
     Navigator.of(context).push(
-      MaterialPageRoute(
-          builder: (_) => const AddEditScheduledPaymentScreen()),
+      MaterialPageRoute(builder: (_) => const AddEditScheduledPaymentScreen()),
     );
   }
 
@@ -112,7 +111,9 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
     _close();
     // Advance tutorial flow if active
     if (ref.read(tutorialFlowProvider) == TutorialFlowStep.newInvoiceFab) {
-      ref.read(tutorialFlowProvider.notifier).advance(TutorialFlowStep.newInvoiceCustomer);
+      ref
+          .read(tutorialFlowProvider.notifier)
+          .advance(TutorialFlowStep.newInvoiceCustomer);
     }
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -123,36 +124,33 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
 
   void _openNewQuote() {
     _close();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const QuoteBuilderScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const QuoteBuilderScreen()));
   }
 
   void _openNewDeliveryChallan() {
     _close();
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const QuoteBuilderScreen(
-          docType: DocumentType.deliveryChallan,
-        ),
+        builder: (_) =>
+            const QuoteBuilderScreen(docType: DocumentType.deliveryChallan),
       ),
     );
   }
 
   void _openNewPurchaseBill() {
     _close();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AddPurchaseBillScreen()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddPurchaseBillScreen()));
   }
 
   void _openNewBooking() {
     _close();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const CreateBookingScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CreateBookingScreen()));
   }
 
   void _openAddItem() {
@@ -161,9 +159,9 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
   }
 
   Widget _animated(Widget child) => ScaleTransition(
-        scale: _expandAnim,
-        child: FadeTransition(opacity: _expandAnim, child: child),
-      );
+    scale: _expandAnim,
+    child: FadeTransition(opacity: _expandAnim, child: child),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -173,71 +171,91 @@ class _SpeedDialFabState extends ConsumerState<SpeedDialFab>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-// ── Invoice + Quote + Booking + Item (business mode, not on transactions tab) ──
-        if (isBusiness && !widget.transactionsTabOnly) ...[          
-          _animated(SpeedDialOption(
-            icon: Icons.inventory_2_outlined,
-            label: 'Add Item',
-            onTap: _openAddItem,
-          )),
+        // ── Invoice + Quote + Booking + Item (business mode, not on transactions tab) ──
+        if (isBusiness && !widget.transactionsTabOnly) ...[
+          _animated(
+            SpeedDialOption(
+              icon: Icons.inventory_2_outlined,
+              label: 'Add Item',
+              onTap: _openAddItem,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.receipt_outlined,
-            label: 'Invoice',
-            onTap: _openNewInvoice,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.receipt_outlined,
+              label: 'Invoice',
+              onTap: _openNewInvoice,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.request_quote_outlined,
-            label: 'Quote',
-            onTap: _openNewQuote,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.request_quote_outlined,
+              label: 'Quote',
+              onTap: _openNewQuote,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.local_shipping_outlined,
-            label: 'Delivery Challan',
-            onTap: _openNewDeliveryChallan,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.local_shipping_outlined,
+              label: 'Delivery Challan',
+              onTap: _openNewDeliveryChallan,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.receipt_long_outlined,
-            label: 'Purchase Bill',
-            onTap: _openNewPurchaseBill,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.receipt_long_outlined,
+              label: 'Purchase Bill',
+              onTap: _openNewPurchaseBill,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.calendar_month_outlined,
-            label: 'Booking',
-            onTap: _openNewBooking,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.calendar_month_outlined,
+              label: 'Booking',
+              onTap: _openNewBooking,
+            ),
+          ),
           const SizedBox(height: 12),
         ],
 
         // ── Transaction / Loan / Bills (home shell only) ────────────────
         if (widget.showAllOptions) ...[
-          _animated(SpeedDialOption(
-            icon: Icons.event_repeat,
-            label: 'Bills Payable',
-            onTap: _openBillsAndPayments,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.event_repeat,
+              label: 'Bills Payable',
+              onTap: _openBillsAndPayments,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.currency_rupee_outlined,
-            label: 'Dues',
-            onTap: _openUdhar,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.currency_rupee_outlined,
+              label: 'Dues',
+              onTap: _openUdhar,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.handshake_outlined,
-            label: 'Loan / Lend',
-            onTap: _openLoan,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.handshake_outlined,
+              label: 'Loan / Lend',
+              onTap: _openLoan,
+            ),
+          ),
           const SizedBox(height: 12),
-          _animated(SpeedDialOption(
-            icon: Icons.receipt_long_outlined,
-            label: 'Transaction',
-            onTap: _openTransaction,
-          )),
+          _animated(
+            SpeedDialOption(
+              icon: Icons.receipt_long_outlined,
+              label: 'Transaction',
+              onTap: _openTransaction,
+            ),
+          ),
           const SizedBox(height: 12),
         ],
 
@@ -285,8 +303,7 @@ class SpeedDialOption extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: onTap,
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Text(
                 label,
                 style: TextStyle(

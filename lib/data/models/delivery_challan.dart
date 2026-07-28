@@ -6,20 +6,20 @@ enum ChallanStatus { draft, dispatched, returned, converted, pendingNumber }
 
 extension ChallanStatusExt on ChallanStatus {
   String get label => const {
-        ChallanStatus.draft: 'Draft',
-        ChallanStatus.dispatched: 'Dispatched',
-        ChallanStatus.returned: 'Returned',
-        ChallanStatus.converted: 'Converted',
-        ChallanStatus.pendingNumber: 'Awaiting No.',
-      }[this]!;
+    ChallanStatus.draft: 'Draft',
+    ChallanStatus.dispatched: 'Dispatched',
+    ChallanStatus.returned: 'Returned',
+    ChallanStatus.converted: 'Converted',
+    ChallanStatus.pendingNumber: 'Awaiting No.',
+  }[this]!;
 
   String get dbValue => const {
-        ChallanStatus.draft: 'draft',
-        ChallanStatus.dispatched: 'dispatched',
-        ChallanStatus.returned: 'returned',
-        ChallanStatus.converted: 'converted',
-        ChallanStatus.pendingNumber: 'pending_number',
-      }[this]!;
+    ChallanStatus.draft: 'draft',
+    ChallanStatus.dispatched: 'dispatched',
+    ChallanStatus.returned: 'returned',
+    ChallanStatus.converted: 'converted',
+    ChallanStatus.pendingNumber: 'pending_number',
+  }[this]!;
 
   static ChallanStatus fromDb(String? v) {
     switch (v) {
@@ -43,20 +43,20 @@ enum ChallanPurpose { supply, jobWork, branchTransfer, returnable, approval }
 
 extension ChallanPurposeExt on ChallanPurpose {
   String get label => const {
-        ChallanPurpose.supply: 'Supply',
-        ChallanPurpose.jobWork: 'Job Work',
-        ChallanPurpose.branchTransfer: 'Branch Transfer',
-        ChallanPurpose.returnable: 'Returnable Goods',
-        ChallanPurpose.approval: 'Approval / Trial',
-      }[this]!;
+    ChallanPurpose.supply: 'Supply',
+    ChallanPurpose.jobWork: 'Job Work',
+    ChallanPurpose.branchTransfer: 'Branch Transfer',
+    ChallanPurpose.returnable: 'Returnable Goods',
+    ChallanPurpose.approval: 'Approval / Trial',
+  }[this]!;
 
   String get dbValue => const {
-        ChallanPurpose.supply: 'supply',
-        ChallanPurpose.jobWork: 'job_work',
-        ChallanPurpose.branchTransfer: 'branch_transfer',
-        ChallanPurpose.returnable: 'returnable',
-        ChallanPurpose.approval: 'approval',
-      }[this]!;
+    ChallanPurpose.supply: 'supply',
+    ChallanPurpose.jobWork: 'job_work',
+    ChallanPurpose.branchTransfer: 'branch_transfer',
+    ChallanPurpose.returnable: 'returnable',
+    ChallanPurpose.approval: 'approval',
+  }[this]!;
 
   static ChallanPurpose fromDb(String? v) {
     switch (v) {
@@ -99,6 +99,7 @@ class ChallanItem extends Equatable {
   final double unitPrice;
   final String? hsnCode;
   final String hsnOrSac;
+
   /// FK to [item_catalog.id] — null for manually-typed items.
   final int? catalogItemId;
 
@@ -115,46 +116,45 @@ class ChallanItem extends Equatable {
     String? hsnCode,
     String? hsnOrSac,
     int? catalogItemId,
-  }) =>
-      ChallanItem(
-        id: id ?? this.id,
-        challanId: challanId ?? this.challanId,
-        itemName: itemName ?? this.itemName,
-        description: description ?? this.description,
-        qty: qty ?? this.qty,
-        unit: unit ?? this.unit,
-        unitPrice: unitPrice ?? this.unitPrice,
-        hsnCode: hsnCode ?? this.hsnCode,
-        hsnOrSac: hsnOrSac ?? this.hsnOrSac,
-        catalogItemId: catalogItemId ?? this.catalogItemId,
-      );
+  }) => ChallanItem(
+    id: id ?? this.id,
+    challanId: challanId ?? this.challanId,
+    itemName: itemName ?? this.itemName,
+    description: description ?? this.description,
+    qty: qty ?? this.qty,
+    unit: unit ?? this.unit,
+    unitPrice: unitPrice ?? this.unitPrice,
+    hsnCode: hsnCode ?? this.hsnCode,
+    hsnOrSac: hsnOrSac ?? this.hsnOrSac,
+    catalogItemId: catalogItemId ?? this.catalogItemId,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'challan_id': challanId,
-        'item_name': itemName,
-        'description': description,
-        'qty': qty,
-        'unit': unit,
-        'unit_price': unitPrice,
-        'line_total': lineTotal,
-        'hsn_code': hsnCode,
-        'hsn_or_sac': hsnOrSac,
-        'catalog_item_id': catalogItemId,
-      };
+    if (id != null) 'id': id,
+    'challan_id': challanId,
+    'item_name': itemName,
+    'description': description,
+    'qty': qty,
+    'unit': unit,
+    'unit_price': unitPrice,
+    'line_total': lineTotal,
+    'hsn_code': hsnCode,
+    'hsn_or_sac': hsnOrSac,
+    'catalog_item_id': catalogItemId,
+  };
 
   factory ChallanItem.fromMap(Map<String, dynamic> map) => ChallanItem(
-        id: map['id'] as int?,
-        challanId: map['challan_id'] as int,
-        itemName: map['item_name'] as String,
-        description: map['description'] as String?,
-        qty: (map['qty'] as num).toDouble(),
-        unit: (map['unit'] as String?) ?? 'PCS',
-        unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0,
-        hsnCode: map['hsn_code'] as String?,
-        hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
-        catalogItemId: map['catalog_item_id'] as int?,
-      );
+    id: map['id'] as int?,
+    challanId: map['challan_id'] as int,
+    itemName: map['item_name'] as String,
+    description: map['description'] as String?,
+    qty: (map['qty'] as num).toDouble(),
+    unit: (map['unit'] as String?) ?? 'PCS',
+    unitPrice: (map['unit_price'] as num?)?.toDouble() ?? 0,
+    hsnCode: map['hsn_code'] as String?,
+    hsnOrSac: (map['hsn_or_sac'] as String?) ?? 'HSN',
+    catalogItemId: map['catalog_item_id'] as int?,
+  );
 
   @override
   List<Object?> get props => [id, challanId, itemName, qty, unitPrice];
@@ -210,16 +210,19 @@ class DeliveryChallan extends Equatable {
   final String? placeOfSupply;
   final String? vehicleNo;
   final String? transporterName;
+
   /// GSTN transport mode: '1'=Road '2'=Rail '3'=Air '4'=Ship
   final String? transportMode;
   final int? distanceKm;
   final int? convertedInvoiceId;
   final String? ewbNo;
+
   /// Delivery address snapshot — recorded at time of dispatch.
   final String? deliveryAddress;
   final String? deliveryCity;
   final String? deliveryState;
   final String? deliveryPincode;
+
   /// Delivery location GSTIN (may differ from customer billing GSTIN).
   final String? deliveryGstin;
   final List<ChallanItem> items;
@@ -258,108 +261,112 @@ class DeliveryChallan extends Equatable {
     List<ChallanItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      DeliveryChallan(
-        id: id ?? this.id,
-        challanNo: challanNo ?? this.challanNo,
-        customerPartyId: customerPartyId ?? this.customerPartyId,
-        customerName: customerName ?? this.customerName,
-        status: status ?? this.status,
-        challanDate: challanDate ?? this.challanDate,
-        dispatchDate: dispatchDate ?? this.dispatchDate,
-        expectedReturnDate: expectedReturnDate ?? this.expectedReturnDate,
-        purpose: purpose ?? this.purpose,
-        subtotal: subtotal ?? this.subtotal,
-        notes: notes ?? this.notes,
-        businessId: businessId ?? this.businessId,
-        customerGstin: customerGstin ?? this.customerGstin,
-        placeOfSupply: placeOfSupply ?? this.placeOfSupply,
-        vehicleNo: vehicleNo ?? this.vehicleNo,
-        transporterName: transporterName ?? this.transporterName,
-        transportMode: transportMode ?? this.transportMode,
-        distanceKm: distanceKm ?? this.distanceKm,
-        convertedInvoiceId: convertedInvoiceId ?? this.convertedInvoiceId,
-        ewbNo: ewbNo ?? this.ewbNo,
-        deliveryAddress: deliveryAddress ?? this.deliveryAddress,
-        deliveryCity: deliveryCity ?? this.deliveryCity,
-        deliveryState: deliveryState ?? this.deliveryState,
-        deliveryPincode: deliveryPincode ?? this.deliveryPincode,
-        deliveryGstin: deliveryGstin ?? this.deliveryGstin,
-        items: items ?? this.items,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => DeliveryChallan(
+    id: id ?? this.id,
+    challanNo: challanNo ?? this.challanNo,
+    customerPartyId: customerPartyId ?? this.customerPartyId,
+    customerName: customerName ?? this.customerName,
+    status: status ?? this.status,
+    challanDate: challanDate ?? this.challanDate,
+    dispatchDate: dispatchDate ?? this.dispatchDate,
+    expectedReturnDate: expectedReturnDate ?? this.expectedReturnDate,
+    purpose: purpose ?? this.purpose,
+    subtotal: subtotal ?? this.subtotal,
+    notes: notes ?? this.notes,
+    businessId: businessId ?? this.businessId,
+    customerGstin: customerGstin ?? this.customerGstin,
+    placeOfSupply: placeOfSupply ?? this.placeOfSupply,
+    vehicleNo: vehicleNo ?? this.vehicleNo,
+    transporterName: transporterName ?? this.transporterName,
+    transportMode: transportMode ?? this.transportMode,
+    distanceKm: distanceKm ?? this.distanceKm,
+    convertedInvoiceId: convertedInvoiceId ?? this.convertedInvoiceId,
+    ewbNo: ewbNo ?? this.ewbNo,
+    deliveryAddress: deliveryAddress ?? this.deliveryAddress,
+    deliveryCity: deliveryCity ?? this.deliveryCity,
+    deliveryState: deliveryState ?? this.deliveryState,
+    deliveryPincode: deliveryPincode ?? this.deliveryPincode,
+    deliveryGstin: deliveryGstin ?? this.deliveryGstin,
+    items: items ?? this.items,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'challan_no': challanNo,
-        'customer_party_id': customerPartyId,
-        'customer_name': customerName,
-        'status': status.dbValue,
-        'challan_date': challanDate.toIso8601String(),
-        'dispatch_date': dispatchDate?.toIso8601String(),
-        'expected_return_date': expectedReturnDate?.toIso8601String(),
-        'purpose': purpose.dbValue,
-        'subtotal': subtotal,
-        'notes': notes,
-        'business_id': businessId,
-        'customer_gstin': customerGstin,
-        'place_of_supply': placeOfSupply,
-        'vehicle_no': vehicleNo,
-        'transporter_name': transporterName,
-        'transport_mode': transportMode,
-        'distance_km': distanceKm,
-        'converted_invoice_id': convertedInvoiceId,
-        'ewb_no': ewbNo,
-        'delivery_address': deliveryAddress,
-        'delivery_city': deliveryCity,
-        'delivery_state': deliveryState,
-        'delivery_pincode': deliveryPincode,
-        'delivery_gstin': deliveryGstin,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'challan_no': challanNo,
+    'customer_party_id': customerPartyId,
+    'customer_name': customerName,
+    'status': status.dbValue,
+    'challan_date': challanDate.toIso8601String(),
+    'dispatch_date': dispatchDate?.toIso8601String(),
+    'expected_return_date': expectedReturnDate?.toIso8601String(),
+    'purpose': purpose.dbValue,
+    'subtotal': subtotal,
+    'notes': notes,
+    'business_id': businessId,
+    'customer_gstin': customerGstin,
+    'place_of_supply': placeOfSupply,
+    'vehicle_no': vehicleNo,
+    'transporter_name': transporterName,
+    'transport_mode': transportMode,
+    'distance_km': distanceKm,
+    'converted_invoice_id': convertedInvoiceId,
+    'ewb_no': ewbNo,
+    'delivery_address': deliveryAddress,
+    'delivery_city': deliveryCity,
+    'delivery_state': deliveryState,
+    'delivery_pincode': deliveryPincode,
+    'delivery_gstin': deliveryGstin,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
+  };
 
   factory DeliveryChallan.fromMap(
     Map<String, dynamic> map, {
     List<ChallanItem> items = const [],
-  }) =>
-      DeliveryChallan(
-        id: map['id'] as int?,
-        challanNo: map['challan_no'] as String,
-        customerPartyId: map['customer_party_id'] as int?,
-        customerName: map['customer_name'] as String,
-        status: ChallanStatusExt.fromDb(map['status'] as String?),
-        challanDate: DateTime.parse(map['challan_date'] as String),
-        dispatchDate: map['dispatch_date'] != null
-            ? DateTime.parse(map['dispatch_date'] as String)
-            : null,
-        expectedReturnDate: map['expected_return_date'] != null
-            ? DateTime.parse(map['expected_return_date'] as String)
-            : null,
-        purpose: ChallanPurposeExt.fromDb(map['purpose'] as String?),
-        subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0,
-        notes: map['notes'] as String?,
-        businessId: map['business_id'] as int?,
-        customerGstin: map['customer_gstin'] as String?,
-        placeOfSupply: map['place_of_supply'] as String?,
-        vehicleNo: map['vehicle_no'] as String?,
-        transporterName: map['transporter_name'] as String?,
-        transportMode: map['transport_mode'] as String?,
-        distanceKm: map['distance_km'] as int?,
-        convertedInvoiceId: map['converted_invoice_id'] as int?,
-        ewbNo: map['ewb_no'] as String?,
-        deliveryAddress: map['delivery_address'] as String?,
-        deliveryCity: map['delivery_city'] as String?,
-        deliveryState: map['delivery_state'] as String?,
-        deliveryPincode: map['delivery_pincode'] as String?,
-        deliveryGstin: map['delivery_gstin'] as String?,
-        items: items,
-        createdAt: DateTime.parse(map['created_at'] as String),
-        updatedAt: DateTime.parse(map['updated_at'] as String),
-      );
+  }) => DeliveryChallan(
+    id: map['id'] as int?,
+    challanNo: map['challan_no'] as String,
+    customerPartyId: map['customer_party_id'] as int?,
+    customerName: map['customer_name'] as String,
+    status: ChallanStatusExt.fromDb(map['status'] as String?),
+    challanDate: DateTime.parse(map['challan_date'] as String),
+    dispatchDate: map['dispatch_date'] != null
+        ? DateTime.parse(map['dispatch_date'] as String)
+        : null,
+    expectedReturnDate: map['expected_return_date'] != null
+        ? DateTime.parse(map['expected_return_date'] as String)
+        : null,
+    purpose: ChallanPurposeExt.fromDb(map['purpose'] as String?),
+    subtotal: (map['subtotal'] as num?)?.toDouble() ?? 0,
+    notes: map['notes'] as String?,
+    businessId: map['business_id'] as int?,
+    customerGstin: map['customer_gstin'] as String?,
+    placeOfSupply: map['place_of_supply'] as String?,
+    vehicleNo: map['vehicle_no'] as String?,
+    transporterName: map['transporter_name'] as String?,
+    transportMode: map['transport_mode'] as String?,
+    distanceKm: map['distance_km'] as int?,
+    convertedInvoiceId: map['converted_invoice_id'] as int?,
+    ewbNo: map['ewb_no'] as String?,
+    deliveryAddress: map['delivery_address'] as String?,
+    deliveryCity: map['delivery_city'] as String?,
+    deliveryState: map['delivery_state'] as String?,
+    deliveryPincode: map['delivery_pincode'] as String?,
+    deliveryGstin: map['delivery_gstin'] as String?,
+    items: items,
+    createdAt: DateTime.parse(map['created_at'] as String),
+    updatedAt: DateTime.parse(map['updated_at'] as String),
+  );
 
   @override
-  List<Object?> get props =>
-      [id, challanNo, customerName, status, subtotal, updatedAt];
+  List<Object?> get props => [
+    id,
+    challanNo,
+    customerName,
+    status,
+    subtotal,
+    updatedAt,
+  ];
 }

@@ -25,8 +25,7 @@ class LoanPayment {
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// Whether this installment is overdue (unpaid and past due date).
-  bool get isOverdue =>
-      !isPaid && dueDate.isBefore(DateTime.now());
+  bool get isOverdue => !isPaid && dueDate.isBefore(DateTime.now());
 
   /// Remaining amount for this installment.
   double get remainingAmount => (amount - paidAmount).clamp(0, double.infinity);

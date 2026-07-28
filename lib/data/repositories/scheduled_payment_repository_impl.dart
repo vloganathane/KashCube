@@ -5,7 +5,7 @@ import '../services/database_helper.dart';
 /// SQLite implementation of [ScheduledPaymentRepository].
 class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
   ScheduledPaymentRepositoryImpl([DatabaseHelper? dbHelper, this.contextId])
-      : _db = dbHelper ?? DatabaseHelper.instance;
+    : _db = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
   static const _table = 'scheduled_payments';
@@ -34,7 +34,8 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL AND is_active = 1 AND $_ctx AND party_name = ?',
+      where:
+          'deleted_at IS NULL AND is_active = 1 AND $_ctx AND party_name = ?',
       whereArgs: [partyName],
       orderBy: 'next_date ASC',
     );
@@ -46,7 +47,8 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
     final db = await _db.database;
     final rows = await db.query(
       _table,
-      where: 'deleted_at IS NULL AND is_active = 1 AND $_ctx AND bill_context = ?',
+      where:
+          'deleted_at IS NULL AND is_active = 1 AND $_ctx AND bill_context = ?',
       whereArgs: [context],
       orderBy: 'next_date ASC',
     );
@@ -63,10 +65,12 @@ class ScheduledPaymentRepositoryImpl implements ScheduledPaymentRepository {
   Future<List<ScheduledPayment>> getUpcoming({int days = 7}) async {
     final all = await getAll();
     return all
-        .where((p) =>
-            !p.isPaidThisPeriod &&
-            p.daysUntilDue >= 0 &&
-            p.daysUntilDue <= days)
+        .where(
+          (p) =>
+              !p.isPaidThisPeriod &&
+              p.daysUntilDue >= 0 &&
+              p.daysUntilDue <= days,
+        )
         .toList();
   }
 

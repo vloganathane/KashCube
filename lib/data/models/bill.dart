@@ -71,12 +71,16 @@ class Bill {
       case RecurringFrequency.weekly:
         // dueDay as weekday (1=Mon, 7=Sun)
         final diff = (dueDay - now.weekday + 7) % 7;
-        var due = today.add(Duration(days: diff == 0 && isPaidThisPeriod ? 7 : diff));
+        var due = today.add(
+          Duration(days: diff == 0 && isPaidThisPeriod ? 7 : diff),
+        );
         return due;
 
       case RecurringFrequency.biweekly:
         final diff = (dueDay - now.weekday + 14) % 14;
-        return today.add(Duration(days: diff == 0 && isPaidThisPeriod ? 14 : diff));
+        return today.add(
+          Duration(days: diff == 0 && isPaidThisPeriod ? 14 : diff),
+        );
 
       case RecurringFrequency.daily:
         return isPaidThisPeriod ? today.add(const Duration(days: 1)) : today;
@@ -158,7 +162,8 @@ class Bill {
       amount: (map['amount'] as num).toDouble(),
       category: map['category'] as String? ?? 'Bills & Utilities',
       frequency: RecurringFrequency.fromDb(
-          map['frequency'] as String? ?? 'monthly'),
+        map['frequency'] as String? ?? 'monthly',
+      ),
       dueDay: map['due_day'] as int? ?? 1,
       isAutoPay: (map['is_auto_pay'] as int?) == 1,
       isActive: (map['is_active'] as int?) != 0,
@@ -214,7 +219,8 @@ class Bill {
   }
 
   @override
-  String toString() => 'Bill(id=$id, name=$name, ₹$amount, '
+  String toString() =>
+      'Bill(id=$id, name=$name, ₹$amount, '
       'due=$dueDay, freq=${frequency.label}, '
       'paid=${isPaidThisPeriod ? "yes" : "no"})';
 }

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:pdf/pdf.dart';
@@ -10,6 +11,7 @@ import '../models/business.dart';
 import '../models/delivery_challan.dart';
 import '../models/party.dart';
 import 'document_template_service.dart';
+import 'pdf_copy_info.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
 
@@ -31,6 +33,7 @@ class DeliveryChallanPdfService {
     Party? customerParty,
     String? termsAndConditions,
     bool showFreeWatermark = false,
+    String? copyLabel,
   }) async {
     final logo = business != null ? await _loadLogo(business) : null;
     final data = _challanToData(
@@ -40,6 +43,7 @@ class DeliveryChallanPdfService {
       logo: logo,
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
+      copyLabel: copyLabel,
     );
     final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
@@ -47,6 +51,28 @@ class DeliveryChallanPdfService {
       template,
       'DC_${challan.challanNo.replaceAll('/', '-')}.pdf',
     );
+  }
+
+  Future<Uint8List> generateChallanPdfBytes(
+    DeliveryChallan challan, {
+    Business? business,
+    Party? customerParty,
+    String? termsAndConditions,
+    bool showFreeWatermark = false,
+    String? copyLabel,
+  }) async {
+    final logo = business != null ? await _loadLogo(business) : null;
+    final data = _challanToData(
+      challan,
+      business: business,
+      customerParty: customerParty,
+      logo: logo,
+      termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+      copyLabel: copyLabel,
+    );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
+    return PdfLayoutEngine.instance.generateBytes(data, template);
   }
 
   // ── Serialiser ─────────────────────────────────────────────────────────────
@@ -58,12 +84,15 @@ class DeliveryChallanPdfService {
     pw.MemoryImage? logo,
     String? termsAndConditions,
     bool showFreeWatermark = false,
+    String? copyLabel,
   }) {
     final hasTransport =
         (challan.vehicleNo != null && challan.vehicleNo!.isNotEmpty) ||
         (challan.transporterName != null &&
             challan.transporterName!.isNotEmpty) ||
         challan.distanceKm != null;
+
+    final copyInfo = buildGoodsCopyInfo();
 
     return PdfDocumentData(
       type: PdfDocumentType.deliveryChallan,
@@ -101,6 +130,8 @@ class DeliveryChallanPdfService {
         subtotal: challan.subtotal,
         grandTotal: challan.subtotal,
       ),
+      copyInfo: copyInfo,
+      copyLabel: copyLabel ?? copyInfo.copyLabels.first,
       transport: hasTransport
           ? PdfTransportInfo(
               transporterName: challan.transporterName,

@@ -65,9 +65,9 @@ sealed class CashFlowEvent {
 
   /// Sort key: overdue items sort before any future items of the same date.
   int get sortPriority => switch (status) {
-    CashFlowStatus.overdue   => 0,
-    CashFlowStatus.recorded  => 1,
-    CashFlowStatus.upcoming  => 2,
+    CashFlowStatus.overdue => 0,
+    CashFlowStatus.recorded => 1,
+    CashFlowStatus.upcoming => 2,
     CashFlowStatus.projected => 3,
   };
 }
@@ -86,23 +86,24 @@ final class RecordedEvent extends CashFlowEvent {
     super.categoryLabel,
     required this.transaction,
   }) : super(
-          status: CashFlowStatus.recorded,
-          source: CashFlowSource.transaction,
-        );
+         status: CashFlowStatus.recorded,
+         source: CashFlowSource.transaction,
+       );
 
   final Transaction transaction;
 
   factory RecordedEvent.fromTransaction(Transaction txn) => RecordedEvent(
-        date: txn.date,
-        amount: txn.amount,
-        direction:
-            txn.isIncome ? CashFlowDirection.inflow : CashFlowDirection.outflow,
-        description: txn.category,
-        partyName: txn.partyName,
-        sourceId: txn.id,
-        categoryLabel: txn.category,
-        transaction: txn,
-      );
+    date: txn.date,
+    amount: txn.amount,
+    direction: txn.isIncome
+        ? CashFlowDirection.inflow
+        : CashFlowDirection.outflow,
+    description: txn.category,
+    partyName: txn.partyName,
+    sourceId: txn.id,
+    categoryLabel: txn.category,
+    transaction: txn,
+  );
 }
 
 /// An invoice whose due date has passed and hasn't been paid.
@@ -114,19 +115,19 @@ final class OverdueInvoiceEvent extends CashFlowEvent {
     super.partyName,
     super.sourceId,
   }) : super(
-          direction: CashFlowDirection.inflow,
-          status: CashFlowStatus.overdue,
-          source: CashFlowSource.invoice,
-          categoryLabel: 'Overdue Invoice',
-        );
+         direction: CashFlowDirection.inflow,
+         status: CashFlowStatus.overdue,
+         source: CashFlowSource.invoice,
+         categoryLabel: 'Overdue Invoice',
+       );
 
   factory OverdueInvoiceEvent.fromInvoice(Invoice inv) => OverdueInvoiceEvent(
-        date: inv.dueDate ?? inv.issueDate,
-        amount: (inv.total - inv.paidAmount).clamp(0, double.infinity),
-        description: 'Invoice ${inv.invoiceNo}',
-        partyName: inv.customerName,
-        sourceId: inv.id,
-      );
+    date: inv.dueDate ?? inv.issueDate,
+    amount: (inv.total - inv.paidAmount).clamp(0, double.infinity),
+    description: 'Invoice ${inv.invoiceNo}',
+    partyName: inv.customerName,
+    sourceId: inv.id,
+  );
 }
 
 /// An upcoming invoice due date (not yet overdue).
@@ -138,20 +139,19 @@ final class UpcomingInvoiceEvent extends CashFlowEvent {
     super.partyName,
     super.sourceId,
   }) : super(
-          direction: CashFlowDirection.inflow,
-          status: CashFlowStatus.upcoming,
-          source: CashFlowSource.invoice,
-          categoryLabel: 'Invoice Due',
-        );
+         direction: CashFlowDirection.inflow,
+         status: CashFlowStatus.upcoming,
+         source: CashFlowSource.invoice,
+         categoryLabel: 'Invoice Due',
+       );
 
-  factory UpcomingInvoiceEvent.fromInvoice(Invoice inv) =>
-      UpcomingInvoiceEvent(
-        date: inv.dueDate!,
-        amount: (inv.total - inv.paidAmount).clamp(0, double.infinity),
-        description: 'Invoice ${inv.invoiceNo}',
-        partyName: inv.customerName,
-        sourceId: inv.id,
-      );
+  factory UpcomingInvoiceEvent.fromInvoice(Invoice inv) => UpcomingInvoiceEvent(
+    date: inv.dueDate!,
+    amount: (inv.total - inv.paidAmount).clamp(0, double.infinity),
+    description: 'Invoice ${inv.invoiceNo}',
+    partyName: inv.customerName,
+    sourceId: inv.id,
+  );
 }
 
 /// An overdue credit/udhar due date.
@@ -164,22 +164,24 @@ final class OverdueCreditEvent extends CashFlowEvent {
     super.sourceId,
     required this.isInflow,
   }) : super(
-          direction: isInflow ? CashFlowDirection.inflow : CashFlowDirection.outflow,
-          status: CashFlowStatus.overdue,
-          source: CashFlowSource.credit,
-          categoryLabel: 'Overdue Due',
-        );
+         direction: isInflow
+             ? CashFlowDirection.inflow
+             : CashFlowDirection.outflow,
+         status: CashFlowStatus.overdue,
+         source: CashFlowSource.credit,
+         categoryLabel: 'Overdue Due',
+       );
 
   final bool isInflow;
 
   factory OverdueCreditEvent.fromCredit(Credit c) => OverdueCreditEvent(
-        date: c.dueDate ?? c.creditDate,
-        amount: c.pendingAmount,
-        description: 'Due — ${c.customerName}',
-        partyName: c.customerName,
-        sourceId: c.id,
-        isInflow: c.isGiven, // given = they owe us = inflow when returned
-      );
+    date: c.dueDate ?? c.creditDate,
+    amount: c.pendingAmount,
+    description: 'Due — ${c.customerName}',
+    partyName: c.customerName,
+    sourceId: c.id,
+    isInflow: c.isGiven, // given = they owe us = inflow when returned
+  );
 }
 
 /// Upcoming credit/udhar due date.
@@ -192,22 +194,24 @@ final class UpcomingCreditEvent extends CashFlowEvent {
     super.sourceId,
     required this.isInflow,
   }) : super(
-          direction: isInflow ? CashFlowDirection.inflow : CashFlowDirection.outflow,
-          status: CashFlowStatus.upcoming,
-          source: CashFlowSource.credit,
-          categoryLabel: 'Due Date',
-        );
+         direction: isInflow
+             ? CashFlowDirection.inflow
+             : CashFlowDirection.outflow,
+         status: CashFlowStatus.upcoming,
+         source: CashFlowSource.credit,
+         categoryLabel: 'Due Date',
+       );
 
   final bool isInflow;
 
   factory UpcomingCreditEvent.fromCredit(Credit c) => UpcomingCreditEvent(
-        date: c.dueDate!,
-        amount: c.pendingAmount,
-        description: 'Due — ${c.customerName}',
-        partyName: c.customerName,
-        sourceId: c.id,
-        isInflow: c.isGiven,
-      );
+    date: c.dueDate!,
+    amount: c.pendingAmount,
+    description: 'Due — ${c.customerName}',
+    partyName: c.customerName,
+    sourceId: c.id,
+    isInflow: c.isGiven,
+  );
 }
 
 /// An overdue loan EMI.
@@ -220,22 +224,24 @@ final class OverdueLoanEvent extends CashFlowEvent {
     super.sourceId,
     required this.isInflow,
   }) : super(
-          direction: isInflow ? CashFlowDirection.inflow : CashFlowDirection.outflow,
-          status: CashFlowStatus.overdue,
-          source: CashFlowSource.loan,
-          categoryLabel: 'Overdue EMI',
-        );
+         direction: isInflow
+             ? CashFlowDirection.inflow
+             : CashFlowDirection.outflow,
+         status: CashFlowStatus.overdue,
+         source: CashFlowSource.loan,
+         categoryLabel: 'Overdue EMI',
+       );
 
   final bool isInflow;
 
   factory OverdueLoanEvent.fromLoan(Loan l) => OverdueLoanEvent(
-        date: l.nextEmiDate ?? l.dueDate ?? l.loanDate,
-        amount: l.emiAmount ?? l.pendingAmount,
-        description: 'Loan EMI — ${l.lenderName}',
-        partyName: l.lenderName,
-        sourceId: l.id,
-        isInflow: l.direction == LoanDirection.lent,
-      );
+    date: l.nextEmiDate ?? l.dueDate ?? l.loanDate,
+    amount: l.emiAmount ?? l.pendingAmount,
+    description: 'Loan EMI — ${l.lenderName}',
+    partyName: l.lenderName,
+    sourceId: l.id,
+    isInflow: l.direction == LoanDirection.lent,
+  );
 }
 
 /// An upcoming loan EMI.
@@ -248,22 +254,24 @@ final class UpcomingLoanEvent extends CashFlowEvent {
     super.sourceId,
     required this.isInflow,
   }) : super(
-          direction: isInflow ? CashFlowDirection.inflow : CashFlowDirection.outflow,
-          status: CashFlowStatus.upcoming,
-          source: CashFlowSource.loan,
-          categoryLabel: 'EMI Due',
-        );
+         direction: isInflow
+             ? CashFlowDirection.inflow
+             : CashFlowDirection.outflow,
+         status: CashFlowStatus.upcoming,
+         source: CashFlowSource.loan,
+         categoryLabel: 'EMI Due',
+       );
 
   final bool isInflow;
 
   factory UpcomingLoanEvent.fromLoan(Loan l) => UpcomingLoanEvent(
-        date: l.nextEmiDate!,
-        amount: l.emiAmount ?? l.pendingAmount,
-        description: 'Loan EMI — ${l.lenderName}',
-        partyName: l.lenderName,
-        sourceId: l.id,
-        isInflow: l.direction == LoanDirection.lent,
-      );
+    date: l.nextEmiDate!,
+    amount: l.emiAmount ?? l.pendingAmount,
+    description: 'Loan EMI — ${l.lenderName}',
+    partyName: l.lenderName,
+    sourceId: l.id,
+    isInflow: l.direction == LoanDirection.lent,
+  );
 }
 
 /// An overdue scheduled payment (bill / recurring reminder).
@@ -276,10 +284,10 @@ final class OverdueScheduledEvent extends CashFlowEvent {
     super.sourceId,
     super.categoryLabel,
   }) : super(
-          direction: CashFlowDirection.outflow,
-          status: CashFlowStatus.overdue,
-          source: CashFlowSource.scheduledPayment,
-        );
+         direction: CashFlowDirection.outflow,
+         status: CashFlowStatus.overdue,
+         source: CashFlowSource.scheduledPayment,
+       );
 
   factory OverdueScheduledEvent.fromPayment(ScheduledPayment p) =>
       OverdueScheduledEvent(
@@ -302,10 +310,10 @@ final class UpcomingScheduledEvent extends CashFlowEvent {
     super.sourceId,
     super.categoryLabel,
   }) : super(
-          direction: CashFlowDirection.outflow,
-          status: CashFlowStatus.upcoming,
-          source: CashFlowSource.scheduledPayment,
-        );
+         direction: CashFlowDirection.outflow,
+         status: CashFlowStatus.upcoming,
+         source: CashFlowSource.scheduledPayment,
+       );
 
   factory UpcomingScheduledEvent.fromPayment(ScheduledPayment p) =>
       UpcomingScheduledEvent(
@@ -328,10 +336,10 @@ final class ProjectedScheduledEvent extends CashFlowEvent {
     super.sourceId,
     super.categoryLabel,
   }) : super(
-          direction: CashFlowDirection.outflow,
-          status: CashFlowStatus.projected,
-          source: CashFlowSource.scheduledPayment,
-        );
+         direction: CashFlowDirection.outflow,
+         status: CashFlowStatus.projected,
+         source: CashFlowSource.scheduledPayment,
+       );
 }
 
 /// A booking service date with an outstanding balance.
@@ -343,17 +351,17 @@ final class UpcomingBookingEvent extends CashFlowEvent {
     super.partyName,
     super.sourceId,
   }) : super(
-          direction: CashFlowDirection.inflow,
-          status: CashFlowStatus.upcoming,
-          source: CashFlowSource.booking,
-          categoryLabel: 'Booking',
-        );
+         direction: CashFlowDirection.inflow,
+         status: CashFlowStatus.upcoming,
+         source: CashFlowSource.booking,
+         categoryLabel: 'Booking',
+       );
 
   factory UpcomingBookingEvent.fromBooking(Booking b) => UpcomingBookingEvent(
-        date: b.startDatetime,
-        amount: (b.totalAmount - b.paidAmount).clamp(0, double.infinity),
-        description: '${b.serviceName} — ${b.customerName}',
-        partyName: b.customerName,
-        sourceId: b.id,
-      );
+    date: b.startDatetime,
+    amount: (b.totalAmount - b.paidAmount).clamp(0, double.infinity),
+    description: '${b.serviceName} — ${b.customerName}',
+    partyName: b.customerName,
+    sourceId: b.id,
+  );
 }

@@ -40,7 +40,9 @@ class SyncModeRuntime {
       await syncRepo.initialize();
 
       debugPrint('[SyncRuntime] ✅ libp2p sync initialized');
-      debugPrint('[SyncRuntime] Peer ID: ${_ref.read(libp2pNodeProvider).localPeerId}');
+      debugPrint(
+        '[SyncRuntime] Peer ID: ${_ref.read(libp2pNodeProvider).localPeerId}',
+      );
       debugPrint(
         '[SyncRuntime] Listening on: ${_ref.read(libp2pNodeProvider).listeningAddrs.join(", ")}',
       );

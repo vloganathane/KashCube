@@ -54,8 +54,9 @@ class _StaffDetailScreenState extends ConsumerState<StaffDetailScreen>
     return repo.getById(widget.staffPartyId);
   }
 
-  void _prevMonth() =>
-      setState(() => _payPeriod = DateTime(_payPeriod.year, _payPeriod.month - 1));
+  void _prevMonth() => setState(
+    () => _payPeriod = DateTime(_payPeriod.year, _payPeriod.month - 1),
+  );
 
   void _nextMonth() {
     final next = DateTime(_payPeriod.year, _payPeriod.month + 1);
@@ -198,8 +199,9 @@ class _ProfileTab extends StatelessWidget {
                     children: [
                       Text(
                         staff.name,
-                        style: context.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                        style: context.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       if (staff.staffRole?.isNotEmpty == true)
                         Text(
@@ -236,9 +238,7 @@ class _ProfileTab extends StatelessWidget {
         _DetailRow(
           Icons.calendar_today_outlined,
           'Join Date',
-          staff.staffJoinDate != null
-              ? _fmtDate(staff.staffJoinDate!)
-              : null,
+          staff.staffJoinDate != null ? _fmtDate(staff.staffJoinDate!) : null,
         ),
         if (staff.staffSalary != null)
           _DetailRow(
@@ -251,10 +251,7 @@ class _ProfileTab extends StatelessWidget {
           _SectionHeader('Notes & Bank Details'),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-            child: Text(
-              staff.notes!,
-              style: context.textTheme.bodyMedium,
-            ),
+            child: Text(staff.notes!, style: context.textTheme.bodyMedium),
           ),
         ],
         const SizedBox(height: AppSpacing.xxl),
@@ -325,15 +322,11 @@ class _DetailRow extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             '$label: ',
-            style: context.textTheme.bodySmall
-                ?.copyWith(color: context.colorScheme.outline),
-          ),
-          Expanded(
-            child: Text(
-              value!,
-              style: context.textTheme.bodyMedium,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.outline,
             ),
           ),
+          Expanded(child: Text(value!, style: context.textTheme.bodyMedium)),
         ],
       ),
     );
@@ -376,7 +369,9 @@ class _PayrollTab extends ConsumerWidget {
         Container(
           color: context.colorScheme.surfaceContainerHighest,
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.base,
+            vertical: AppSpacing.sm,
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -386,8 +381,9 @@ class _PayrollTab extends ConsumerWidget {
               ),
               Text(
                 DateFormat('MMMM yyyy').format(payPeriod),
-                style: context.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                style: context.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
@@ -520,22 +516,25 @@ class _PayrollSummaryCard extends StatelessWidget {
               _SummaryRow(
                 'Paid',
                 CurrencyFormatter.format(paid),
-                style: context.textTheme.bodyMedium
-                    ?.copyWith(color: context.kashColors.expense),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.kashColors.expense,
+                ),
               ),
             ],
             if (deductions > 0)
               _SummaryRow(
                 'Deductions',
                 '−${CurrencyFormatter.format(deductions)}',
-                style: context.textTheme.bodyMedium
-                    ?.copyWith(color: context.kashColors.expense),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: context.kashColors.expense,
+                ),
               ),
             const Divider(height: AppSpacing.base),
             _SummaryRow(
               alreadyPaid ? 'Net paid' : 'Net payable',
               CurrencyFormatter.format(
-                  alreadyPaid ? net : baseSalary - deductions),
+                alreadyPaid ? net : baseSalary - deductions,
+              ),
               style: context.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: alreadyPaid
@@ -549,8 +548,11 @@ class _PayrollSummaryCard extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Icon(Icons.check_circle,
-                        size: 16, color: context.kashColors.income),
+                    Icon(
+                      Icons.check_circle,
+                      size: 16,
+                      color: context.kashColors.income,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Paid',
@@ -608,9 +610,7 @@ class _PayrollTxnTile extends StatelessWidget {
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.12),
         child: Icon(
-          isDeduction
-              ? Icons.remove_circle_outline
-              : Icons.payments_outlined,
+          isDeduction ? Icons.remove_circle_outline : Icons.payments_outlined,
           color: color,
           size: 20,
         ),
@@ -621,8 +621,9 @@ class _PayrollTxnTile extends StatelessWidget {
       ),
       subtitle: Text(
         DateFormat('d MMM yyyy').format(txn.date),
-        style: context.textTheme.bodySmall
-            ?.copyWith(color: context.colorScheme.outline),
+        style: context.textTheme.bodySmall?.copyWith(
+          color: context.colorScheme.outline,
+        ),
       ),
       trailing: Text(
         '${isDeduction ? '−' : ''}${CurrencyFormatter.format(txn.amount)}',

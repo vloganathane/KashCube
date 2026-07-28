@@ -43,18 +43,32 @@ abstract class TransactionRepository {
   Future<double> getTotalExpense(DateTime start, DateTime end, {String? mode});
 
   /// Get category-wise spending summary for a date range.
-  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end, {String? mode});
+  Future<Map<String, double>> getCategorySummary(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  });
 
   /// Get category-wise income summary for a date range.
   Future<Map<String, double>> getIncomeByCategorySummary(
-      DateTime start, DateTime end, {String? mode});
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  });
 
   /// Get category-wise expense summary for a date range.
   Future<Map<String, double>> getExpenseByCategorySummary(
-      DateTime start, DateTime end, {String? mode});
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  });
 
   /// Get daily totals for a date range (for trend charts).
-  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end, {String? mode});
+  Future<List<DailyTotal>> getDailyTotals(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  });
 
   /// Get monthly totals for the last N months.
   Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6, String? mode});
@@ -123,7 +137,8 @@ abstract class TransactionRepository {
   Future<({double invested, double redeemed})> getAllTimeInvestments();
 
   /// Gets all-time income and expense totals grouped by payment_method.
-  Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod();
+  Future<Map<String, ({double income, double expense})>>
+  getAllTimeByPaymentMethod();
 
   /// Gets all-time income and expense totals grouped by [account_id].
   /// Only transactions that have a non-null [account_id] are included.
@@ -132,7 +147,8 @@ abstract class TransactionRepository {
   /// Gets all-time income and expense for transactions with NO linked account,
   /// grouped by payment_method. Used for the "unlinked transactions" balance
   /// buckets shown alongside named accounts on the home screen.
-  Future<Map<String, ({double income, double expense})>> getAllTimeUnlinkedByPaymentMethod();
+  Future<Map<String, ({double income, double expense})>>
+  getAllTimeUnlinkedByPaymentMethod();
 }
 
 /// Daily income/expense totals.
@@ -163,8 +179,18 @@ class MonthlyTotal {
   double get net => income - expense;
   String get label {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[month - 1];
   }
@@ -182,8 +208,10 @@ class PartyTotal {
   final String partyName;
   final double totalAmount;
   final int transactionCount;
+
   /// Total income received from this party in the period.
   final double income;
+
   /// Total expenses paid to this party in the period.
   final double expense;
 }
@@ -226,15 +254,19 @@ class LedgerPartyEntry {
   // ── Regular transactions with this party ────────────────────────────────
   /// Money received FROM this party (salary, rent, freelance, etc.)
   final double totalIncome;
+
   /// Money paid TO this party (bills, services, purchases, etc.)
   final double totalExpense;
 
   final int transactionCount;
+
   /// Number of personal-mode transactions with this party.
   final int personalCount;
+
   /// Number of business-mode transactions with this party.
   final int businessCount;
   final DateTime? lastTransactionDate;
+
   /// 'person' or 'vendor' — sourced from the parties table.
   final String partyType;
 

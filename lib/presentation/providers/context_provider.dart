@@ -29,14 +29,14 @@ class LinkedSession {
   final bool isReadOnly;
 
   static LinkedSession fromMap(Map<String, dynamic> m) => LinkedSession(
-        id: m['id'] as int,
-        businessName: m['business_name'] as String? ?? 'Linked Business',
-        sessionId: m['session_id'] as String? ?? '',
-        lastSyncAt: m['last_sync_at'] != null
-            ? DateTime.tryParse(m['last_sync_at'] as String)
-            : null,
-        isReadOnly: (m['is_read_only_forced'] as int? ?? 0) == 1,
-      );
+    id: m['id'] as int,
+    businessName: m['business_name'] as String? ?? 'Linked Business',
+    sessionId: m['session_id'] as String? ?? '',
+    lastSyncAt: m['last_sync_at'] != null
+        ? DateTime.tryParse(m['last_sync_at'] as String)
+        : null,
+    isReadOnly: (m['is_read_only_forced'] as int? ?? 0) == 1,
+  );
 }
 
 /// All active (not yet unlinked) business sessions, sorted by display_order.

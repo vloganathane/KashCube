@@ -437,85 +437,91 @@ class PdfLayoutEngine {
         pw.SizedBox(width: 16),
         docMetaCol,
       ];
-      return pw.Container(
-        padding: const pw.EdgeInsets.all(12),
-        decoration: pw.BoxDecoration(
-          color: t.accentColor,
-          borderRadius: pw.BorderRadius.circular(6),
-        ),
-        child: pw.Row(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: t.headerAlignment == PdfHeaderAlignment.left
-              ? headerChildren
-              : headerChildren.reversed.toList(),
+      return _wrapCopyLabel(
+        data,
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            color: t.accentColor,
+            borderRadius: pw.BorderRadius.circular(6),
+          ),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: t.headerAlignment == PdfHeaderAlignment.left
+                ? headerChildren
+                : headerChildren.reversed.toList(),
+          ),
         ),
       );
     } else {
       // Minimal: business block → thin accent line → doc title row
-      return pw.Column(
-        crossAxisAlignment: pw.CrossAxisAlignment.start,
-        children: [
-          businessCol,
-          pw.SizedBox(height: 12),
-          if (t.config.dividerThickness > 0)
-            pw.Container(
-              height: t.config.dividerThickness,
-              color: t.accentColor,
+      return _wrapCopyLabel(
+        data,
+        pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            businessCol,
+            pw.SizedBox(height: 12),
+            if (t.config.dividerThickness > 0)
+              pw.Container(
+                height: t.config.dividerThickness,
+                color: t.accentColor,
+              ),
+            pw.SizedBox(height: 16),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: _alignedHeaderChildren(t, [
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _buildDocumentTitle(data.typeLabel, t),
+                    if (data.subTypeLabel != null) ...[
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        data.subTypeLabel!,
+                        style: pw.TextStyle(fontSize: 10, color: _muted),
+                      ),
+                    ],
+                    if (t.config.showDocumentNumber) ...[
+                      pw.SizedBox(height: 6),
+                      pw.Text(
+                        data.docNumber,
+                        style: pw.TextStyle(fontSize: 14, color: _muted),
+                      ),
+                    ],
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    if (t.config.showDates)
+                      pw.Text(
+                        'Date: ${DateFormatter.formatFull(data.issueDate)}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (t.config.showDates && data.dueDate != null)
+                      pw.Text(
+                        'Due: ${DateFormatter.formatFull(data.dueDate!)}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    if (t.config.showDates && data.validUntil != null)
+                      pw.Text(
+                        'Valid Until: ${DateFormatter.formatFull(data.validUntil!)}',
+                        style: const pw.TextStyle(fontSize: 12),
+                      ),
+                    pw.SizedBox(height: 4),
+                    _statusBadge(
+                      data.statusLabel,
+                      data.statusColor,
+                      onDark: false,
+                    ),
+                  ],
+                ),
+              ]),
             ),
-          pw.SizedBox(height: 16),
-          pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: _alignedHeaderChildren(t, [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  _buildDocumentTitle(data.typeLabel, t),
-                  if (data.subTypeLabel != null) ...[
-                    pw.SizedBox(height: 2),
-                    pw.Text(
-                      data.subTypeLabel!,
-                      style: pw.TextStyle(fontSize: 10, color: _muted),
-                    ),
-                  ],
-                  if (t.config.showDocumentNumber) ...[
-                    pw.SizedBox(height: 6),
-                    pw.Text(
-                      data.docNumber,
-                      style: pw.TextStyle(fontSize: 14, color: _muted),
-                    ),
-                  ],
-                ],
-              ),
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.end,
-                children: [
-                  if (t.config.showDates)
-                    pw.Text(
-                      'Date: ${DateFormatter.formatFull(data.issueDate)}',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                  if (t.config.showDates && data.dueDate != null)
-                    pw.Text(
-                      'Due: ${DateFormatter.formatFull(data.dueDate!)}',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                  if (t.config.showDates && data.validUntil != null)
-                    pw.Text(
-                      'Valid Until: ${DateFormatter.formatFull(data.validUntil!)}',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                  pw.SizedBox(height: 4),
-                  _statusBadge(
-                    data.statusLabel,
-                    data.statusColor,
-                    onDark: false,
-                  ),
-                ],
-              ),
-            ]),
-          ),
-        ],
+          ],
+        ),
       );
     }
   }
@@ -579,6 +585,32 @@ class PdfLayoutEngine {
           ],
         );
     }
+  }
+
+  pw.Widget _wrapCopyLabel(PdfDocumentData data, pw.Widget child) {
+    if (data.copyLabel == null || data.copyLabel!.isEmpty) {
+      return child;
+    }
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Align(
+          alignment: pw.Alignment.centerRight,
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.only(right: 4),
+            child: pw.Text(
+              data.copyLabel!,
+              style: pw.TextStyle(
+                fontSize: 11,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+        pw.SizedBox(height: 4),
+        child,
+      ],
+    );
   }
 
   pw.Widget _buildDocumentTitle(String label, DocumentTemplate template) {
@@ -1771,6 +1803,62 @@ class PdfLayoutEngine {
         ),
       ],
     );
+  }
+
+  // Legacy full-page copy note block retained for possible future reuse.
+  // ignore: unused_element
+  pw.Widget _buildCopyInfoBox(PdfCopyInfo copyInfo) {
+    return pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: _divider),
+        borderRadius: pw.BorderRadius.circular(4),
+        color: PdfColors.grey50,
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            'NUMBER OF COPIES REQUIRED',
+            style: pw.TextStyle(
+              fontSize: 8,
+              fontWeight: pw.FontWeight.bold,
+              color: _muted,
+              letterSpacing: 0.6,
+            ),
+          ),
+          pw.SizedBox(height: 4),
+          pw.Text(
+            '${copyInfo.heading}: Prepared in ${_copyCountLabel(copyInfo.copyCount)} (${copyInfo.copyCount} copies)',
+            style: const pw.TextStyle(fontSize: 8, color: _dark),
+          ),
+          pw.SizedBox(height: 4),
+          ...copyInfo.copyLines.map(
+            (line) => pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 1),
+              child: pw.Text(
+                '- $line',
+                style: const pw.TextStyle(fontSize: 8, color: _dark),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _copyCountLabel(int count) {
+    switch (count) {
+      case 2:
+        return 'duplicate';
+      case 3:
+        return 'triplicate';
+      case 4:
+        return 'quadruplicate';
+      default:
+        return '$count-copies';
+    }
   }
 
   /// Amber-tinted banner shown on documents generated by Free-tier users.

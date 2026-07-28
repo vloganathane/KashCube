@@ -35,24 +35,24 @@ class InvoiceEvent {
   final String syncId;
 
   factory InvoiceEvent.fromMap(Map<String, dynamic> map) => InvoiceEvent(
-        id:          map['id'] as int?,
-        invoiceId:   map['invoice_id'] as String,
-        eventType:   map['event_type'] as String,
-        eventData:   map['event_data'] as String?,
-        occurredAt:  DateTime.parse(map['occurred_at'] as String),
-        deviceId:    map['device_id'] as String,
-        syncId:      map['sync_id'] as String,
-      );
+    id: map['id'] as int?,
+    invoiceId: map['invoice_id'] as String,
+    eventType: map['event_type'] as String,
+    eventData: map['event_data'] as String?,
+    occurredAt: DateTime.parse(map['occurred_at'] as String),
+    deviceId: map['device_id'] as String,
+    syncId: map['sync_id'] as String,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'invoice_id':  invoiceId,
-        'event_type':  eventType,
-        if (eventData != null) 'event_data': eventData,
-        'occurred_at': occurredAt.toIso8601String(),
-        'device_id':   deviceId,
-        'sync_id':     syncId,
-      };
+    if (id != null) 'id': id,
+    'invoice_id': invoiceId,
+    'event_type': eventType,
+    if (eventData != null) 'event_data': eventData,
+    'occurred_at': occurredAt.toIso8601String(),
+    'device_id': deviceId,
+    'sync_id': syncId,
+  };
 
   @override
   String toString() => 'InvoiceEvent($syncId, $eventType on $invoiceId)';

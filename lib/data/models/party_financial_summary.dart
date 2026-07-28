@@ -92,19 +92,21 @@ class PartyFinancialSummary {
 
     // ── Invoices ─────────────────────────────────────────────────────────
     final activeInvoices = invoices
-        .where((i) =>
-            i.status != InvoiceStatus.paid)
+        .where((i) => i.status != InvoiceStatus.paid)
         .toList();
 
     final invoicesPending = activeInvoices.fold<double>(
       0,
-      (sum, inv) => sum + (inv.total - inv.paidAmount).clamp(0, double.infinity),
+      (sum, inv) =>
+          sum + (inv.total - inv.paidAmount).clamp(0, double.infinity),
     );
 
     final openInvoices = activeInvoices.length;
-    final hasOverdueInvoice =
-        activeInvoices.any((i) => i.status == InvoiceStatus.overdue ||
-            (i.dueDate != null && i.dueDate!.isBefore(now)));
+    final hasOverdueInvoice = activeInvoices.any(
+      (i) =>
+          i.status == InvoiceStatus.overdue ||
+          (i.dueDate != null && i.dueDate!.isBefore(now)),
+    );
 
     final invoiceDueDates = activeInvoices
         .where((i) => i.dueDate != null)
@@ -119,8 +121,9 @@ class PartyFinancialSummary {
       (sum, c) => sum + c.pendingAmount,
     );
     final openDues = activeDues.length;
-    final hasOverdueDue = activeDues.any((c) => c.isOverdue ||
-        (c.dueDate != null && c.dueDate!.isBefore(now)));
+    final hasOverdueDue = activeDues.any(
+      (c) => c.isOverdue || (c.dueDate != null && c.dueDate!.isBefore(now)),
+    );
     final dueDueDates = activeDues
         .where((c) => c.dueDate != null)
         .map((c) => c.dueDate!);
@@ -134,21 +137,27 @@ class PartyFinancialSummary {
       (sum, l) => sum + l.pendingAmount,
     );
     final activeLoans = activeLentLoans.length;
-    final hasOverdueLoan = activeLentLoans.any((l) => l.isOverdue ||
-        (l.nextEmiDate != null && l.nextEmiDate!.isBefore(now)));
+    final hasOverdueLoan = activeLentLoans.any(
+      (l) =>
+          l.isOverdue ||
+          (l.nextEmiDate != null && l.nextEmiDate!.isBefore(now)),
+    );
     final loanDueDates = activeLentLoans
         .where((l) => l.nextEmiDate != null)
         .map((l) => l.nextEmiDate!);
 
     // ── Bookings ─────────────────────────────────────────────────────────
     final activeBookingsList = bookings
-        .where((b) =>
-            b.status == BookingStatus.pending ||
-            b.status == BookingStatus.confirmed)
+        .where(
+          (b) =>
+              b.status == BookingStatus.pending ||
+              b.status == BookingStatus.confirmed,
+        )
         .toList();
     final bookingsPending = activeBookingsList.fold<double>(
       0,
-      (sum, b) => sum + (b.totalAmount - b.paidAmount).clamp(0, double.infinity),
+      (sum, b) =>
+          sum + (b.totalAmount - b.paidAmount).clamp(0, double.infinity),
     );
     final activeBookings = activeBookingsList.length;
     final bookingDueDates = activeBookingsList.map((b) => b.startDatetime);
@@ -173,7 +182,8 @@ class PartyFinancialSummary {
     // ── Reminders ─────────────────────────────────────────────────────────
     DateTime? lastReminderDate;
     if (reminders.isNotEmpty) {
-      final sorted = [...reminders]..sort((a, b) => b.sentAt.compareTo(a.sentAt));
+      final sorted = [...reminders]
+        ..sort((a, b) => b.sentAt.compareTo(a.sentAt));
       lastReminderDate = sorted.first.sentAt;
     }
 

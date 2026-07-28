@@ -69,7 +69,7 @@ class SuggestionService {
     // Average amount
     final avgAmount =
         transactions.map((t) => t.amount).reduce((a, b) => a + b) /
-            transactions.length;
+        transactions.length;
 
     return TransactionSuggestion(
       category: bestCategory,

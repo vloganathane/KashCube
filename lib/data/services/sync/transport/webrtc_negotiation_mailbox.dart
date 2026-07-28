@@ -57,12 +57,14 @@ class WebRtcNegotiationMailbox {
   }
 
   List<Map<String, dynamic>> remoteIceCandidates(String sessionId) {
-    final list = _remoteIceBySession[sessionId] ?? const <Map<String, dynamic>>[];
+    final list =
+        _remoteIceBySession[sessionId] ?? const <Map<String, dynamic>>[];
     return UnmodifiableListView<Map<String, dynamic>>(list);
   }
 
   List<Map<String, dynamic>> drainRemoteIceCandidates(String sessionId) {
-    final list = _remoteIceBySession.remove(sessionId) ?? <Map<String, dynamic>>[];
+    final list =
+        _remoteIceBySession.remove(sessionId) ?? <Map<String, dynamic>>[];
     return list;
   }
 

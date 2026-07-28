@@ -65,13 +65,15 @@ class GenericSyncQueryBuilder {
     int limit,
   ) {
     final where = <String>[];
-    final args  = <Object?>[];
+    final args = <Object?>[];
 
     if (since != null) {
       final sinceIso = since.toUtc().toIso8601String();
 
       if (plan.hasUpdatedAt && plan.hasCreatedAt) {
-        where.add("${utcExpr('COALESCE(updated_at, created_at)')} > julianday(?)");
+        where.add(
+          "${utcExpr('COALESCE(updated_at, created_at)')} > julianday(?)",
+        );
         args.add(sinceIso);
       } else if (plan.hasUpdatedAt) {
         where.add("${utcExpr('updated_at')} > julianday(?)");
@@ -89,8 +91,8 @@ class GenericSyncQueryBuilder {
     }
 
     final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final orderBy  = _tsOrderBy(plan);
-    final sql      = 'SELECT * FROM ${plan.tableName}$whereSql$orderBy LIMIT $limit';
+    final orderBy = _tsOrderBy(plan);
+    final sql = 'SELECT * FROM ${plan.tableName}$whereSql$orderBy LIMIT $limit';
 
     return SyncQuery(sql: sql, args: args);
   }
@@ -101,7 +103,7 @@ class GenericSyncQueryBuilder {
     int limit,
   ) {
     final where = <String>[];
-    final args  = <Object?>[];
+    final args = <Object?>[];
 
     if (afterVersion != null) {
       where.add('version > ?');
@@ -113,15 +115,18 @@ class GenericSyncQueryBuilder {
     }
 
     final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
-    final sql      = 'SELECT * FROM ${plan.tableName}$whereSql ORDER BY version ASC LIMIT $limit';
+    final sql =
+        'SELECT * FROM ${plan.tableName}$whereSql ORDER BY version ASC LIMIT $limit';
 
     return SyncQuery(sql: sql, args: args);
   }
 
   static SyncQuery _buildSnapshotQuery(SyncTablePlan plan, int limit) {
-    final where   = plan.hasDeletedAt ? ' WHERE deleted_at IS NULL' : '';
-    final orderBy = plan.keyColumn != null ? ' ORDER BY ${plan.keyColumn} ASC' : '';
-    final sql     = 'SELECT * FROM ${plan.tableName}$where$orderBy LIMIT $limit';
+    final where = plan.hasDeletedAt ? ' WHERE deleted_at IS NULL' : '';
+    final orderBy = plan.keyColumn != null
+        ? ' ORDER BY ${plan.keyColumn} ASC'
+        : '';
+    final sql = 'SELECT * FROM ${plan.tableName}$where$orderBy LIMIT $limit';
     return SyncQuery(sql: sql, args: []);
   }
 
@@ -144,7 +149,8 @@ class GenericSyncQueryBuilder {
   static DateTime maxTimestamp(List<Map<String, dynamic>> rows) {
     var max = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
     for (final row in rows) {
-      final ts = DateTime.tryParse(row['updated_at']?.toString() ?? '') ??
+      final ts =
+          DateTime.tryParse(row['updated_at']?.toString() ?? '') ??
           DateTime.tryParse(row['created_at']?.toString() ?? '');
       if (ts != null && ts.toUtc().isAfter(max)) max = ts.toUtc();
     }

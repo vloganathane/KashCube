@@ -84,7 +84,11 @@ class EnvSyncTurnConfigSource extends SyncTurnConfigSource {
   List<String> _resolveHints() {
     const raw = String.fromEnvironment('KASHCUBE_SYNC_TURN_RELAY_HINTS');
     if (raw.isEmpty) return const <String>[];
-    return raw.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    return raw
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
   }
 }
 

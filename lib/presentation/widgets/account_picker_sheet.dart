@@ -63,9 +63,9 @@ class _AccountPickerSheet extends ConsumerWidget {
                   final account = filtered[i];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Theme.of(context)
-                          .colorScheme
-                          .primaryContainer,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer,
                       child: Icon(
                         _iconForType(account.accountType),
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
@@ -75,7 +75,10 @@ class _AccountPickerSheet extends ConsumerWidget {
                     title: Text(account.accountName),
                     subtitle: Text(account.accountType.label),
                     trailing: account.isPrimary
-                        ? Chip(label: const Text('Primary'), labelStyle: const TextStyle(fontSize: 11))
+                        ? Chip(
+                            label: const Text('Primary'),
+                            labelStyle: const TextStyle(fontSize: 11),
+                          )
                         : null,
                     onTap: () => Navigator.of(context).pop(account),
                   );

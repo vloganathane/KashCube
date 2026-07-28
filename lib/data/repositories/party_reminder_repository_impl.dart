@@ -4,7 +4,7 @@ import '../../domain/repositories/party_reminder_repository.dart';
 
 class PartyReminderRepositoryImpl implements PartyReminderRepository {
   PartyReminderRepositoryImpl([DatabaseHelper? helper])
-      : _db = helper ?? DatabaseHelper.instance;
+    : _db = helper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _db;
 

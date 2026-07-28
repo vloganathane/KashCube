@@ -48,17 +48,16 @@ class PeerDevice {
     bool? isTrusted,
     bool? isReachable,
     DateTime? lastSeenAt,
-  }) =>
-      PeerDevice(
-        identityId:   identityId,
-        displayName:  displayName ?? this.displayName,
-        host:         host ?? this.host,
-        port:         port ?? this.port,
-        businessName: businessName ?? this.businessName,
-        isTrusted:    isTrusted ?? this.isTrusted,
-        isReachable:  isReachable ?? this.isReachable,
-        lastSeenAt:   lastSeenAt ?? this.lastSeenAt,
-      );
+  }) => PeerDevice(
+    identityId: identityId,
+    displayName: displayName ?? this.displayName,
+    host: host ?? this.host,
+    port: port ?? this.port,
+    businessName: businessName ?? this.businessName,
+    isTrusted: isTrusted ?? this.isTrusted,
+    isReachable: isReachable ?? this.isReachable,
+    lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+  );
 
   @override
   bool operator ==(Object other) =>

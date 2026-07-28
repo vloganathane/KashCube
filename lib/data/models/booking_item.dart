@@ -74,18 +74,18 @@ class BookingItem extends Equatable {
   /// Maps this item to an [InvoiceItem] for the Booking → Invoice flow.
   /// [invoiceId] is the newly created invoice's id (or 0 as placeholder).
   InvoiceItem toInvoiceItem(int invoiceId) => InvoiceItem(
-        invoiceId: invoiceId,
-        itemName: itemName,
-        description: description,
-        qty: qty,
-        unitPrice: unitPrice,
-        taxPct: taxPct,
-        discountPct: discountPct,
-        lineTotal: lineTotal,
-        hsnCode: sacCode,
-        unit: unit,
-        hsnOrSac: 'SAC',
-      );
+    invoiceId: invoiceId,
+    itemName: itemName,
+    description: description,
+    qty: qty,
+    unitPrice: unitPrice,
+    taxPct: taxPct,
+    discountPct: discountPct,
+    lineTotal: lineTotal,
+    hsnCode: sacCode,
+    unit: unit,
+    hsnOrSac: 'SAC',
+  );
 
   // ── copyWith ─────────────────────────────────────────────────────────────
 
@@ -124,48 +124,48 @@ class BookingItem extends Equatable {
   // ── Serialisation ────────────────────────────────────────────────────────
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'booking_id': bookingId,
-        'item_name': itemName,
-        'description': description,
-        'qty': qty,
-        'unit': unit,
-        'unit_price': unitPrice,
-        'tax_pct': taxPct,
-        'discount_pct': discountPct,
-        'line_total': lineTotal,
-        'sac_code': sacCode,
-        'sort_order': sortOrder,
-        'service_item_id': serviceItemId,
-      };
+    if (id != null) 'id': id,
+    'booking_id': bookingId,
+    'item_name': itemName,
+    'description': description,
+    'qty': qty,
+    'unit': unit,
+    'unit_price': unitPrice,
+    'tax_pct': taxPct,
+    'discount_pct': discountPct,
+    'line_total': lineTotal,
+    'sac_code': sacCode,
+    'sort_order': sortOrder,
+    'service_item_id': serviceItemId,
+  };
 
   factory BookingItem.fromMap(Map<String, dynamic> map) => BookingItem(
-        id: map['id'] as int?,
-        bookingId: map['booking_id'] as int,
-        itemName: map['item_name'] as String,
-        description: map['description'] as String?,
-        qty: (map['qty'] as num).toDouble(),
-        unit: (map['unit'] as String?) ?? 'session',
-        unitPrice: (map['unit_price'] as num).toDouble(),
-        taxPct: (map['tax_pct'] as num?)?.toDouble() ?? 0,
-        discountPct: (map['discount_pct'] as num?)?.toDouble() ?? 0,
-        lineTotal: (map['line_total'] as num).toDouble(),
-        sacCode: map['sac_code'] as String?,
-        sortOrder: (map['sort_order'] as int?) ?? 0,
-        serviceItemId: map['service_item_id'] as int?,
-      );
+    id: map['id'] as int?,
+    bookingId: map['booking_id'] as int,
+    itemName: map['item_name'] as String,
+    description: map['description'] as String?,
+    qty: (map['qty'] as num).toDouble(),
+    unit: (map['unit'] as String?) ?? 'session',
+    unitPrice: (map['unit_price'] as num).toDouble(),
+    taxPct: (map['tax_pct'] as num?)?.toDouble() ?? 0,
+    discountPct: (map['discount_pct'] as num?)?.toDouble() ?? 0,
+    lineTotal: (map['line_total'] as num).toDouble(),
+    sacCode: map['sac_code'] as String?,
+    sortOrder: (map['sort_order'] as int?) ?? 0,
+    serviceItemId: map['service_item_id'] as int?,
+  );
 
   @override
   List<Object?> get props => [
-        id,
-        bookingId,
-        itemName,
-        qty,
-        unit,
-        unitPrice,
-        taxPct,
-        discountPct,
-        lineTotal,
-        sortOrder,
-      ];
+    id,
+    bookingId,
+    itemName,
+    qty,
+    unit,
+    unitPrice,
+    taxPct,
+    discountPct,
+    lineTotal,
+    sortOrder,
+  ];
 }

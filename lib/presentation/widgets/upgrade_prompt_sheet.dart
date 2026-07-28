@@ -29,6 +29,7 @@ enum UpgradePromptAction {
 /// ```
 Future<UpgradePromptAction?> showUpgradePromptSheet(
   BuildContext context, {
+
   /// Short name of the document type shown in the sheet body (e.g. 'invoice').
   String featureName = 'document',
 }) {
@@ -103,11 +104,20 @@ class _UpgradePromptContent extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
 
           // Feature bullets
-          _FeatureBullet(icon: Icons.picture_as_pdf_outlined, label: 'Watermark-free PDFs'),
+          _FeatureBullet(
+            icon: Icons.picture_as_pdf_outlined,
+            label: 'Watermark-free PDFs',
+          ),
           const SizedBox(height: AppSpacing.sm),
-          _FeatureBullet(icon: Icons.download_outlined, label: 'Export reports to CSV & PDF'),
+          _FeatureBullet(
+            icon: Icons.download_outlined,
+            label: 'Export reports to CSV & PDF',
+          ),
           const SizedBox(height: AppSpacing.sm),
-          _FeatureBullet(icon: Icons.qr_code_outlined, label: 'UPI payment QR on invoices'),
+          _FeatureBullet(
+            icon: Icons.qr_code_outlined,
+            label: 'UPI payment QR on invoices',
+          ),
           const SizedBox(height: AppSpacing.xxl),
 
           // Primary CTA — annual
@@ -125,8 +135,9 @@ class _UpgradePromptContent extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => Navigator.of(context)
-                  .pop(UpgradePromptAction.shareWithWatermark),
+              onPressed: () => Navigator.of(
+                context,
+              ).pop(UpgradePromptAction.shareWithWatermark),
               child: Text(
                 'Share with Watermark',
                 style: TextStyle(color: cs.onSurfaceVariant),

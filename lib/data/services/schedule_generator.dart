@@ -26,12 +26,14 @@ class ScheduleGenerator {
         installmentNumber: i,
       );
 
-      payments.add(LoanPayment(
-        loanId: loanId,
-        installmentNumber: i,
-        dueDate: dueDate,
-        amount: installmentAmount,
-      ));
+      payments.add(
+        LoanPayment(
+          loanId: loanId,
+          installmentNumber: i,
+          dueDate: dueDate,
+          amount: installmentAmount,
+        ),
+      );
     }
 
     return payments;

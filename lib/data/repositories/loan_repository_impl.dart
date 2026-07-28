@@ -12,7 +12,7 @@ class LoanRepositoryImpl implements LoanRepository {
   final DatabaseHelper _dbHelper;
 
   LoanRepositoryImpl([DatabaseHelper? dbHelper])
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   Future<Database> get _db => _dbHelper.database;
 
@@ -116,7 +116,9 @@ class LoanRepositoryImpl implements LoanRepository {
     final loanId = await db.insert('loans', loan.toMap());
 
     // Auto-create a transaction representing this loan creation
-    final txType = loan.isLent ? tx.TransactionType.lent : tx.TransactionType.borrowed;
+    final txType = loan.isLent
+        ? tx.TransactionType.lent
+        : tx.TransactionType.borrowed;
     final linkedTx = tx.Transaction(
       amount: loan.principalAmount,
       date: loan.loanDate,
@@ -129,8 +131,9 @@ class LoanRepositoryImpl implements LoanRepository {
       interestType: loan.interestType == InterestType.none
           ? null
           : tx.InterestType.fromDb(loan.interestType.dbValue),
-      repaymentFrequency:
-          tx.RepaymentFrequency.fromDb(loan.repaymentFrequency?.dbValue),
+      repaymentFrequency: tx.RepaymentFrequency.fromDb(
+        loan.repaymentFrequency?.dbValue,
+      ),
       totalInstallments: loan.totalEmis,
       emiAmount: loan.emiAmount,
       loanId: loanId,
@@ -196,7 +199,11 @@ class LoanRepositoryImpl implements LoanRepository {
           'updated_at': DateTime.now().toIso8601String(),
         },
         where: 'loan_id = ? AND type IN (?, ?) AND deleted_at IS NULL',
-        whereArgs: [loan.id, tx.TransactionType.lent.dbValue, tx.TransactionType.borrowed.dbValue],
+        whereArgs: [
+          loan.id,
+          tx.TransactionType.lent.dbValue,
+          tx.TransactionType.borrowed.dbValue,
+        ],
       );
     }
 
@@ -232,7 +239,10 @@ class LoanRepositoryImpl implements LoanRepository {
     if (loan == null) return;
 
     final newPaid = loan.paidAmount + amount;
-    final newPending = (loan.principalAmount - newPaid).clamp(0, double.infinity);
+    final newPending = (loan.principalAmount - newPaid).clamp(
+      0,
+      double.infinity,
+    );
     final isCleared = newPending <= 0;
 
     // If loan has a repayment schedule, mark the next installment as paid
@@ -248,8 +258,10 @@ class LoanRepositoryImpl implements LoanRepository {
       for (final row in unpaid) {
         if (remaining <= 0) break;
         final payment = LoanPayment.fromMap(row);
-        final payable =
-            (payment.amount - payment.paidAmount).clamp(0, double.infinity);
+        final payable = (payment.amount - payment.paidAmount).clamp(
+          0,
+          double.infinity,
+        );
         final toPay = remaining >= payable ? payable : remaining;
         final totalPaid = payment.paidAmount + toPay;
         final isPaid = totalPaid >= payment.amount;
@@ -306,7 +318,9 @@ class LoanRepositoryImpl implements LoanRepository {
     }
 
     // Auto-create a repayment transaction so it appears in Khata/reports
-    final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;
+    final repayType = loan.isLent
+        ? tx.TransactionType.receivedBack
+        : tx.TransactionType.paidBack;
     final repayTx = tx.Transaction(
       amount: amount,
       date: DateTime.now(),
@@ -325,8 +339,10 @@ class LoanRepositoryImpl implements LoanRepository {
     if (loan == null) return;
 
     final newPaid = loan.paidAmount + amount;
-    final newPending =
-        (loan.principalAmount - newPaid).clamp(0, double.infinity);
+    final newPending = (loan.principalAmount - newPaid).clamp(
+      0,
+      double.infinity,
+    );
     final isCleared = newPending <= 0;
 
     // Count paid installments from the schedule table
@@ -373,7 +389,9 @@ class LoanRepositoryImpl implements LoanRepository {
     }
 
     // Auto-create a repayment transaction so it appears in Khata/reports
-    final repayType = loan.isLent ? tx.TransactionType.receivedBack : tx.TransactionType.paidBack;
+    final repayType = loan.isLent
+        ? tx.TransactionType.receivedBack
+        : tx.TransactionType.paidBack;
     final repayTx2 = tx.Transaction(
       amount: amount,
       date: DateTime.now(),
@@ -392,7 +410,10 @@ class LoanRepositoryImpl implements LoanRepository {
     if (loan == null) return;
 
     final newPaid = (loan.paidAmount - amount).clamp(0.0, double.infinity);
-    final newPending = (loan.principalAmount - newPaid).clamp(0.0, double.infinity);
+    final newPending = (loan.principalAmount - newPaid).clamp(
+      0.0,
+      double.infinity,
+    );
 
     // Recount paid installments after the reversal (is_paid already reset by caller)
     final countResult = await db.rawQuery(
@@ -426,8 +447,9 @@ class LoanRepositoryImpl implements LoanRepository {
         orderBy: 'due_date ASC',
         limit: 1,
       );
-      final nextEmi =
-          nextRow.isNotEmpty ? nextRow.first['due_date'] as String? : null;
+      final nextEmi = nextRow.isNotEmpty
+          ? nextRow.first['due_date'] as String?
+          : null;
       await db.update(
         'loans',
         {'next_emi_date': nextEmi},
@@ -484,14 +506,18 @@ class LoanRepositoryImpl implements LoanRepository {
       ORDER BY active_count DESC, lender_name ASC
     ''');
 
-    return rows.map((r) => PartyLedgerSummary(
-      partyName: r['lender_name'] as String,
-      totalLent: (r['total_lent'] as num?)?.toDouble() ?? 0,
-      totalBorrowed: (r['total_borrowed'] as num?)?.toDouble() ?? 0,
-      pendingLent: (r['pending_lent'] as num?)?.toDouble() ?? 0,
-      pendingBorrowed: (r['pending_borrowed'] as num?)?.toDouble() ?? 0,
-      activeCount: (r['active_count'] as int?) ?? 0,
-    )).toList();
+    return rows
+        .map(
+          (r) => PartyLedgerSummary(
+            partyName: r['lender_name'] as String,
+            totalLent: (r['total_lent'] as num?)?.toDouble() ?? 0,
+            totalBorrowed: (r['total_borrowed'] as num?)?.toDouble() ?? 0,
+            pendingLent: (r['pending_lent'] as num?)?.toDouble() ?? 0,
+            pendingBorrowed: (r['pending_borrowed'] as num?)?.toDouble() ?? 0,
+            activeCount: (r['active_count'] as int?) ?? 0,
+          ),
+        )
+        .toList();
   }
 
   @override

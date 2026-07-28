@@ -18,10 +18,9 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
 // ---------------------------------------------------------------------------
 
 /// Holds the list of budgets for a given (year, month) key.
-class BudgetsNotifier
-    extends StateNotifier<AsyncValue<List<Budget>>> {
+class BudgetsNotifier extends StateNotifier<AsyncValue<List<Budget>>> {
   BudgetsNotifier(this._repo, this._year, this._month)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -67,14 +66,16 @@ class BudgetsNotifier
         .toList();
 
     for (final prev in toCopy) {
-      await _repo.upsert(Budget(
-        year: _year,
-        month: _month,
-        category: prev.category,
-        budgetAmount: prev.budgetAmount,
-        alertAtPercentage: prev.alertAtPercentage,
-        createdAt: DateTime.now(),
-      ));
+      await _repo.upsert(
+        Budget(
+          year: _year,
+          month: _month,
+          category: prev.category,
+          budgetAmount: prev.budgetAmount,
+          alertAtPercentage: prev.alertAtPercentage,
+          createdAt: DateTime.now(),
+        ),
+      );
     }
 
     if (toCopy.isNotEmpty) await load();
@@ -83,25 +84,27 @@ class BudgetsNotifier
 }
 
 /// Parameter-based provider keyed on (year, month).
-final budgetsForMonthProvider = StateNotifierProvider.family<
-    BudgetsNotifier, AsyncValue<List<Budget>>, ({int year, int month})>(
-  (ref, key) => BudgetsNotifier(
-    ref.read(budgetRepositoryProvider),
-    key.year,
-    key.month,
-  ),
-);
+final budgetsForMonthProvider =
+    StateNotifierProvider.family<
+      BudgetsNotifier,
+      AsyncValue<List<Budget>>,
+      ({int year, int month})
+    >(
+      (ref, key) => BudgetsNotifier(
+        ref.read(budgetRepositoryProvider),
+        key.year,
+        key.month,
+      ),
+    );
 
 /// Convenience provider that watches the reportMonth so budget section in
 /// Reports automatically re-renders when the user changes the month.
 final currentMonthBudgetsProvider =
-    StateNotifierProvider<BudgetsNotifier, AsyncValue<List<Budget>>>(
-  (ref) {
-    final month = ref.watch(reportMonthProvider);
-    return BudgetsNotifier(
-      ref.read(budgetRepositoryProvider),
-      month.year,
-      month.month,
-    );
-  },
-);
+    StateNotifierProvider<BudgetsNotifier, AsyncValue<List<Budget>>>((ref) {
+      final month = ref.watch(reportMonthProvider);
+      return BudgetsNotifier(
+        ref.read(budgetRepositoryProvider),
+        month.year,
+        month.month,
+      );
+    });

@@ -26,11 +26,11 @@ class ContextBannerWidget extends ConsumerWidget {
 
     final theme = Theme.of(context);
     final bannerColor = theme.brightness == Brightness.dark
-        ? const Color(0xFF3E2723)   // dark amber-brown
-        : const Color(0xFFFFF8E1);  // light amber-50
+        ? const Color(0xFF3E2723) // dark amber-brown
+        : const Color(0xFFFFF8E1); // light amber-50
     final onBannerColor = theme.brightness == Brightness.dark
-        ? const Color(0xFFFFB74D)   // amber-300
-        : const Color(0xFFE65100);  // deep-orange-900
+        ? const Color(0xFFFFB74D) // amber-300
+        : const Color(0xFFE65100); // deep-orange-900
 
     return ColoredBox(
       color: bannerColor,

@@ -4,13 +4,7 @@ import 'package:equatable/equatable.dart';
 // ActivityLogType — what kind of event happened
 // ---------------------------------------------------------------------------
 
-enum ActivityLogType {
-  statusChange,
-  note,
-  action,
-  payment,
-  reminder,
-}
+enum ActivityLogType { statusChange, note, action, payment, reminder }
 
 extension ActivityLogTypeExt on ActivityLogType {
   String get dbValue {
@@ -71,25 +65,32 @@ class ActivityLog extends Equatable {
   final int? id;
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'entity_type': entityType,
-        'entity_id': entityId,
-        'type': type.dbValue,
-        'message': message,
-        'meta': meta,
-        'created_at': createdAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'entity_type': entityType,
+    'entity_id': entityId,
+    'type': type.dbValue,
+    'message': message,
+    'meta': meta,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory ActivityLog.fromMap(Map<String, dynamic> map) => ActivityLog(
-        id: map['id'] as int?,
-        entityType: map['entity_type'] as String,
-        entityId: map['entity_id'] as int,
-        type: ActivityLogTypeExt.fromDb(map['type'] as String?),
-        message: map['message'] as String,
-        meta: map['meta'] as String?,
-        createdAt: DateTime.parse(map['created_at'] as String),
-      );
+    id: map['id'] as int?,
+    entityType: map['entity_type'] as String,
+    entityId: map['entity_id'] as int,
+    type: ActivityLogTypeExt.fromDb(map['type'] as String?),
+    message: map['message'] as String,
+    meta: map['meta'] as String?,
+    createdAt: DateTime.parse(map['created_at'] as String),
+  );
 
   @override
-  List<Object?> get props => [id, entityType, entityId, type, message, createdAt];
+  List<Object?> get props => [
+    id,
+    entityType,
+    entityId,
+    type,
+    message,
+    createdAt,
+  ];
 }

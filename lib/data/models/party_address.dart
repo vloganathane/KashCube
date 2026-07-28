@@ -63,50 +63,58 @@ class PartyAddress extends Equatable {
     String? gstin,
     bool? isDefault,
     DateTime? createdAt,
-  }) =>
-      PartyAddress(
-        id: id ?? this.id,
-        partyId: partyId ?? this.partyId,
-        label: label ?? this.label,
-        address: address ?? this.address,
-        city: city ?? this.city,
-        state: state ?? this.state,
-        pincode: pincode ?? this.pincode,
-        country: country ?? this.country,
-        gstin: gstin ?? this.gstin,
-        isDefault: isDefault ?? this.isDefault,
-        createdAt: createdAt ?? this.createdAt,
-      );
+  }) => PartyAddress(
+    id: id ?? this.id,
+    partyId: partyId ?? this.partyId,
+    label: label ?? this.label,
+    address: address ?? this.address,
+    city: city ?? this.city,
+    state: state ?? this.state,
+    pincode: pincode ?? this.pincode,
+    country: country ?? this.country,
+    gstin: gstin ?? this.gstin,
+    isDefault: isDefault ?? this.isDefault,
+    createdAt: createdAt ?? this.createdAt,
+  );
 
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'party_id': partyId,
-        'label': label,
-        'address': address,
-        'city': city,
-        'state': state,
-        'pincode': pincode,
-        'country': country,
-        'gstin': gstin,
-        'is_default': isDefault ? 1 : 0,
-        'created_at': createdAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'party_id': partyId,
+    'label': label,
+    'address': address,
+    'city': city,
+    'state': state,
+    'pincode': pincode,
+    'country': country,
+    'gstin': gstin,
+    'is_default': isDefault ? 1 : 0,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory PartyAddress.fromMap(Map<String, dynamic> map) => PartyAddress(
-        id: map['id'] as int?,
-        partyId: map['party_id'] as int,
-        label: (map['label'] as String?) ?? 'Address',
-        address: map['address'] as String?,
-        city: map['city'] as String?,
-        state: map['state'] as String?,
-        pincode: map['pincode'] as String?,
-        country: (map['country'] as String?) ?? 'India',
-        gstin: map['gstin'] as String?,
-        isDefault: (map['is_default'] as int?) == 1,
-        createdAt: DateTime.parse(map['created_at'] as String),
-      );
+    id: map['id'] as int?,
+    partyId: map['party_id'] as int,
+    label: (map['label'] as String?) ?? 'Address',
+    address: map['address'] as String?,
+    city: map['city'] as String?,
+    state: map['state'] as String?,
+    pincode: map['pincode'] as String?,
+    country: (map['country'] as String?) ?? 'India',
+    gstin: map['gstin'] as String?,
+    isDefault: (map['is_default'] as int?) == 1,
+    createdAt: DateTime.parse(map['created_at'] as String),
+  );
 
   @override
-  List<Object?> get props =>
-      [id, partyId, label, address, city, state, pincode, gstin, isDefault];
+  List<Object?> get props => [
+    id,
+    partyId,
+    label,
+    address,
+    city,
+    state,
+    pincode,
+    gstin,
+    isDefault,
+  ];
 }

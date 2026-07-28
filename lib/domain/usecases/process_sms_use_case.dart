@@ -15,8 +15,8 @@ class ProcessSmsUseCase {
   const ProcessSmsUseCase({
     required TransactionRepository transactionRepository,
     required SmsParserService smsParserService,
-  })  : _txnRepo = transactionRepository,
-        _parser = smsParserService;
+  }) : _txnRepo = transactionRepository,
+       _parser = smsParserService;
 
   final TransactionRepository _txnRepo;
   final SmsParserService _parser;

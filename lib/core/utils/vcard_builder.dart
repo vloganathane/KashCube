@@ -159,7 +159,8 @@ Map<String, String?> parseVCard(String raw) {
       }
     } else if (trimmed.startsWith('EMAIL')) {
       final colonIdx = trimmed.indexOf(':');
-      if (colonIdx != -1) setValue('email', trimmed.substring(colonIdx + 1).trim());
+      if (colonIdx != -1)
+        setValue('email', trimmed.substring(colonIdx + 1).trim());
     } else if (trimmed.startsWith('ADR')) {
       final colonIdx = trimmed.indexOf(':');
       if (colonIdx != -1) {
@@ -200,7 +201,8 @@ String _toE164(String phone) {
 
 String _stripE164(String phone) {
   final digits = phone.replaceAll(RegExp(r'[^\d]'), '');
-  if (digits.length == 12 && digits.startsWith('91')) return digits.substring(2);
+  if (digits.length == 12 && digits.startsWith('91'))
+    return digits.substring(2);
   if (digits.length == 10) return digits;
   return phone;
 }

@@ -37,7 +37,7 @@ class IdentityService {
   static const String _kPrivateKeyStorageKey = 'primary_signing_key';
   static const String _kIdentityKeyStorageKey = 'identity_private_key';
 
-  final _algo    = Ed25519();
+  final _algo = Ed25519();
   final _storage = const FlutterSecureStorage();
 
   // ── macOS: file-based key storage (keychain requires dev cert in sandbox) ─
@@ -151,21 +151,20 @@ class IdentityService {
     if (rows.isEmpty) {
       _identityId = const Uuid().v4();
       await db.insert('my_identity', {
-        'id':           1,
-        'identity_id':  _identityId,
+        'id': 1,
+        'identity_id': _identityId,
         'display_name': displayName,
-        'public_key':   _identityPublicKeyBase64,
+        'public_key': _identityPublicKeyBase64,
       }, conflictAlgorithm: ConflictAlgorithm.ignore);
     } else {
       _identityId = rows.first['identity_id'] as String;
       // Refresh public key if it has changed (key rotation / restore)
       final storedPk = rows.first['public_key'] as String?;
       if (storedPk != _identityPublicKeyBase64) {
-        await db.update(
-          'my_identity',
-          {'public_key': _identityPublicKeyBase64, 'updated_at': DateTime.now().toIso8601String()},
-          where: 'id = 1',
-        );
+        await db.update('my_identity', {
+          'public_key': _identityPublicKeyBase64,
+          'updated_at': DateTime.now().toIso8601String(),
+        }, where: 'id = 1');
       }
     }
   }
@@ -174,31 +173,39 @@ class IdentityService {
 
   Future<String> get deviceId async {
     if (_deviceId != null) return _deviceId!;
-    throw StateError('IdentityService not initialized — call ensureInitialized first');
+    throw StateError(
+      'IdentityService not initialized — call ensureInitialized first',
+    );
   }
 
   Future<String> get publicKeyBase64 async {
     if (_publicKeyBase64 != null) return _publicKeyBase64!;
-    throw StateError('IdentityService not initialized — call ensureInitialized first');
+    throw StateError(
+      'IdentityService not initialized — call ensureInitialized first',
+    );
   }
 
   // ── Identity keypair accessors ────────────────────────────────────────────
 
   String get identityId {
     if (_identityId != null) return _identityId!;
-    throw StateError('IdentityService identity not initialized — call ensureIdentityInitialized first');
+    throw StateError(
+      'IdentityService identity not initialized — call ensureIdentityInitialized first',
+    );
   }
 
   String get identityPublicKeyBase64 {
     if (_identityPublicKeyBase64 != null) return _identityPublicKeyBase64!;
-    throw StateError('IdentityService identity not initialized — call ensureIdentityInitialized first');
+    throw StateError(
+      'IdentityService identity not initialized — call ensureIdentityInitialized first',
+    );
   }
 
   /// Returns the JSON string used for the identity QR code.
   /// Fields: identity_id, identity_public_key.
   String identityQrPayload() {
     return jsonEncode({
-      'identity_id':         identityId,
+      'identity_id': identityId,
       'identity_public_key': identityPublicKeyBase64,
     });
   }
@@ -250,17 +257,19 @@ class IdentityService {
 
   void _assertInitialized() {
     if (_keyPair == null) {
-      throw StateError('IdentityService not initialized — call ensureInitialized first');
+      throw StateError(
+        'IdentityService not initialized — call ensureInitialized first',
+      );
     }
   }
 
   /// Resets in-memory state (for testing only).
   void reset() {
-    _keyPair                  = null;
-    _deviceId                 = null;
-    _publicKeyBase64          = null;
-    _identityKeyPair          = null;
-    _identityId               = null;
-    _identityPublicKeyBase64  = null;
+    _keyPair = null;
+    _deviceId = null;
+    _publicKeyBase64 = null;
+    _identityKeyPair = null;
+    _identityId = null;
+    _identityPublicKeyBase64 = null;
   }
 }

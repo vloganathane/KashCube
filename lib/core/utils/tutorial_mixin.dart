@@ -61,8 +61,8 @@ mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Default: one entry that replays the orientation tour.
   /// Override on screens that also have flow-following guides.
   List<TutorialMenuItem> get tutorialMenuItems => [
-        TutorialMenuItem(label: 'Replay orientation tour', onTap: replayTutorial),
-      ];
+    TutorialMenuItem(label: 'Replay orientation tour', onTap: replayTutorial),
+  ];
 
   /// Builds the `?` AppBar action.
   ///
@@ -187,10 +187,7 @@ mixin TutorialMixin<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 ///
 /// Returns a [Column] with a bold [title] and body [message] in white,
 /// matching KashCube's dark overlay style.
-Widget tutorialContentCard({
-  required String title,
-  required String message,
-}) {
+Widget tutorialContentCard({required String title, required String message}) {
   return Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.start,

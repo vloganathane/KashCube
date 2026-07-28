@@ -21,10 +21,7 @@ Future<WebPreflightProbeResult> probePhoneHealth(String wsUrl) async {
 
     final status = response.status ?? 0;
     if (status >= 200 && status < 300) {
-      return const WebPreflightProbeResult(
-        reachable: true,
-        errorMessage: '',
-      );
+      return const WebPreflightProbeResult(reachable: true, errorMessage: '');
     }
 
     return WebPreflightProbeResult(

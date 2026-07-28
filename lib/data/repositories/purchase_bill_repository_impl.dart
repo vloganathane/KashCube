@@ -146,7 +146,8 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
     final db = await _db.database;
     final rows = await db.query(
       'purchase_bills',
-      where: "business_id = ? AND $_ctx AND status IN ('unpaid', 'partially_paid')",
+      where:
+          "business_id = ? AND $_ctx AND status IN ('unpaid', 'partially_paid')",
       whereArgs: [businessId],
       orderBy: 'due_date ASC',
     );
@@ -175,8 +176,7 @@ class PurchaseBillRepositoryImpl implements PurchaseBillRepository {
       );
       if (rows.isEmpty) return;
       final total = (rows.first['total'] as num).toDouble();
-      final newPaid =
-          (rows.first['paid_amount'] as num).toDouble() + amount;
+      final newPaid = (rows.first['paid_amount'] as num).toDouble() + amount;
       final status = _deriveStatus(total, newPaid);
       await txn.update(
         'purchase_bills',

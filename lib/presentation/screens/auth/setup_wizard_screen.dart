@@ -101,8 +101,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
   }
 
   // Whether business step is needed given current mode.
-  bool get _hasBizStep =>
-      _mode == _AppMode.business || _mode == _AppMode.both;
+  bool get _hasBizStep => _mode == _AppMode.business || _mode == _AppMode.both;
 
   // Total number of pages for the current mode.
   int get _totalPages => _hasBizStep ? 4 : 3;
@@ -179,9 +178,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
 
       // ── Mode ──────────────────────────────────────────────────────────
       final bizEnabled = _mode != _AppMode.personal;
-      await ref
-          .read(businessModeProvider.notifier)
-          .setEnabled(bizEnabled);
+      await ref.read(businessModeProvider.notifier).setEnabled(bizEnabled);
 
       // ── Profile ──────────────────────────────────────────────────────
       final name = _nameCtrl.text.trim();
@@ -212,9 +209,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
             createdAt: now,
             updatedAt: now,
           );
-          await ref
-              .read(businessesProvider.notifier)
-              .add(biz, setActive: true);
+          await ref.read(businessesProvider.notifier).add(biz, setActive: true);
         }
       }
 
@@ -225,7 +220,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
       // ── Opening balances ──────────────────────────────────────────────
       final cashAmt = double.tryParse(_cashCtrl.text.trim());
       if (cashAmt != null && cashAmt > 0) {
-        await ref.read(accountsProvider.notifier).addAccount(
+        await ref
+            .read(accountsProvider.notifier)
+            .addAccount(
               Account(
                 accountName: 'Cash',
                 accountType: AccountType.cash,
@@ -238,7 +235,9 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
 
       final bankAmt = double.tryParse(_bankCtrl.text.trim());
       if (bankAmt != null && bankAmt > 0) {
-        await ref.read(accountsProvider.notifier).addAccount(
+        await ref
+            .read(accountsProvider.notifier)
+            .addAccount(
               Account(
                 accountName: 'Bank Account',
                 accountType: AccountType.savings,
@@ -319,8 +318,7 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
                   // Page 3 – Financial
                   _FinancialPage(
                     fyStartMonth: _fyStartMonth,
-                    onFyMonthChanged: (m) =>
-                        setState(() => _fyStartMonth = m),
+                    onFyMonthChanged: (m) => setState(() => _fyStartMonth = m),
                     cashCtrl: _cashCtrl,
                     bankCtrl: _bankCtrl,
                   ),
@@ -379,7 +377,11 @@ class _WizardHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.lg, AppSpacing.base, AppSpacing.sm),
+        AppSpacing.base,
+        AppSpacing.lg,
+        AppSpacing.base,
+        AppSpacing.sm,
+      ),
       child: Column(
         children: [
           Row(
@@ -408,8 +410,8 @@ class _WizardHeader extends StatelessWidget {
                           color: isActive
                               ? cs.primary
                               : isDone
-                                  ? cs.primary.withValues(alpha: 0.7)
-                                  : cs.outline,
+                              ? cs.primary.withValues(alpha: 0.7)
+                              : cs.outline,
                           fontWeight: isActive ? FontWeight.bold : null,
                         ),
                       ),
@@ -458,14 +460,15 @@ class _WizardFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-          AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.lg),
+        AppSpacing.base,
+        AppSpacing.sm,
+        AppSpacing.base,
+        AppSpacing.lg,
+      ),
       child: Row(
         children: [
           if (canGoBack)
-            OutlinedButton(
-              onPressed: onBack,
-              child: const Text('Back'),
-            )
+            OutlinedButton(onPressed: onBack, child: const Text('Back'))
           else
             const SizedBox.shrink(),
           const Spacer(),
@@ -498,10 +501,7 @@ class _WizardFooter extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 class _ModePage extends StatelessWidget {
-  const _ModePage({
-    required this.selectedMode,
-    required this.onModeChanged,
-  });
+  const _ModePage({required this.selectedMode, required this.onModeChanged});
 
   final _AppMode selectedMode;
   final ValueChanged<_AppMode> onModeChanged;
@@ -551,8 +551,7 @@ class _ModePage extends StatelessWidget {
           _ModeCard(
             icon: Icons.people_outline,
             title: 'Both',
-            subtitle:
-                'Keep personal and business finances separate in one app',
+            subtitle: 'Keep personal and business finances separate in one app',
             selected: selectedMode == _AppMode.both,
             onTap: () => onModeChanged(_AppMode.both),
           ),
@@ -619,15 +618,15 @@ class _ModeCard extends StatelessWidget {
                     title,
                     style: tt.titleMedium?.copyWith(
                       color: selected ? cs.primary : cs.onSurface,
-                      fontWeight:
-                          selected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: selected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: tt.bodySmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
+                    style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -635,8 +634,7 @@ class _ModeCard extends StatelessWidget {
             if (selected)
               Icon(Icons.check_circle, color: cs.primary)
             else
-              Icon(Icons.radio_button_unchecked,
-                  color: cs.outlineVariant),
+              Icon(Icons.radio_button_unchecked, color: cs.outlineVariant),
           ],
         ),
       ),
@@ -813,8 +811,11 @@ class _BusinessPage extends StatelessWidget {
               prefixIcon: const Icon(Icons.pin_drop_outlined),
               counterText: '',
               suffixIcon: pincodeAutoFilled
-                  ? const Icon(Icons.check_circle_outline,
-                      color: Colors.green, size: 18)
+                  ? const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                      size: 18,
+                    )
                   : null,
             ),
           ),
@@ -844,9 +845,7 @@ class _BusinessPage extends StatelessWidget {
                     prefixIcon: const Icon(Icons.map_outlined),
                     filled: pincodeAutoFilled,
                     fillColor: pincodeAutoFilled
-                        ? Theme.of(context)
-                            .colorScheme
-                            .surfaceContainerHighest
+                        ? Theme.of(context).colorScheme.surfaceContainerHighest
                         : null,
                   ),
                 ),
@@ -914,10 +913,9 @@ class _FinancialPage extends StatelessWidget {
             value: fyStartMonth,
             isExpanded: true,
             items: _fyOptions
-                .map((o) => DropdownMenuItem(
-                      value: o.month,
-                      child: Text(o.label),
-                    ))
+                .map(
+                  (o) => DropdownMenuItem(value: o.month, child: Text(o.label)),
+                )
                 .toList(),
             onChanged: (v) {
               if (v != null) onFyMonthChanged(v);
@@ -935,11 +933,9 @@ class _FinancialPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: cashCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(
-                  RegExp(r'^\d+\.?\d{0,2}')),
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
             ],
             decoration: const InputDecoration(
               labelText: 'Cash in hand',
@@ -950,11 +946,9 @@ class _FinancialPage extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           TextField(
             controller: bankCtrl,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(
-                  RegExp(r'^\d+\.?\d{0,2}')),
+              FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
             ],
             decoration: const InputDecoration(
               labelText: 'Bank account balance',

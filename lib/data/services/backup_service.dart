@@ -108,12 +108,14 @@ class BackupService {
     final backups = <BackupInfo>[];
     for (final file in files) {
       final stat = await file.stat();
-      backups.add(BackupInfo(
-        path: file.path,
-        name: basename(file.path),
-        size: stat.size,
-        createdAt: stat.modified,
-      ));
+      backups.add(
+        BackupInfo(
+          path: file.path,
+          name: basename(file.path),
+          size: stat.size,
+          createdAt: stat.modified,
+        ),
+      );
     }
 
     backups.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -150,16 +152,16 @@ class BackupService {
       final identity = await IdentityRepositoryImpl().getMyIdentity();
       if (identity == null) return null;
 
-      final privateSeed =
-          await IdentityService.instance.exportIdentityPrivateKeySeed();
+      final privateSeed = await IdentityService.instance
+          .exportIdentityPrivateKeySeed();
 
       return {
         'schema': 1,
-        'identity_id':      identity.identityId,
-        'display_name':     identity.displayName,
-        'public_key':       identity.publicKey,
-        'avatar_seed':      ?identity.avatarSeed,
-        'created_at':       identity.createdAt.toIso8601String(),
+        'identity_id': identity.identityId,
+        'display_name': identity.displayName,
+        'public_key': identity.publicKey,
+        'avatar_seed': ?identity.avatarSeed,
+        'created_at': identity.createdAt.toIso8601String(),
         'private_key_seed': ?privateSeed,
       };
     } catch (e) {
@@ -177,35 +179,41 @@ class BackupService {
   Future<void> importIdentitySection(Map<String, dynamic>? section) async {
     if (section == null) {
       // Old backup — clear any existing identity so fresh generation is triggered
-      debugPrint('[BackupService] importIdentitySection: no identity section, will generate fresh identity');
+      debugPrint(
+        '[BackupService] importIdentitySection: no identity section, will generate fresh identity',
+      );
       return;
     }
 
     try {
       final privateSeed = section['private_key_seed'] as String?;
       if (privateSeed != null) {
-        await IdentityService.instance.importIdentityPrivateKeySeed(privateSeed);
+        await IdentityService.instance.importIdentityPrivateKeySeed(
+          privateSeed,
+        );
       }
 
-      final identityId  = section['identity_id']  as String?;
+      final identityId = section['identity_id'] as String?;
       final displayName = section['display_name'] as String?;
-      final publicKey   = section['public_key']   as String?;
+      final publicKey = section['public_key'] as String?;
 
       if (identityId != null && displayName != null && publicKey != null) {
         await DatabaseHelper.instance.withDatabase((db) async {
           await db.delete('my_identity');
           await db.insert('my_identity', {
-            'id':           1,
-            'identity_id':  identityId,
+            'id': 1,
+            'identity_id': identityId,
             'display_name': displayName,
-            'public_key':   publicKey,
+            'public_key': publicKey,
             if (section['avatar_seed'] != null)
               'avatar_seed': section['avatar_seed'],
             if (section['created_at'] != null)
               'created_at': section['created_at'],
           });
         });
-        debugPrint('[BackupService] importIdentitySection: restored identity $identityId');
+        debugPrint(
+          '[BackupService] importIdentitySection: restored identity $identityId',
+        );
       }
     } catch (e) {
       debugPrint('[BackupService] importIdentitySection failed: $e');

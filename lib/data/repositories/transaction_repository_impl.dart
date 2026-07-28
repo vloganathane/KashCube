@@ -14,7 +14,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   final int? contextId;
 
   TransactionRepositoryImpl({DatabaseHelper? dbHelper, this.contextId})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   /// SQL fragment that constrains rows to the active context.
   String get _ctx =>
@@ -129,7 +129,10 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<List<Transaction>> getByType(TransactionType type, {int? limit}) async {
+  Future<List<Transaction>> getByType(
+    TransactionType type, {
+    int? limit,
+  }) async {
     final db = await _db;
     final rows = await db.query(
       'transactions',
@@ -147,7 +150,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
     final pattern = '%$query%';
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND $_ctx AND (party_name LIKE ? OR notes LIKE ? OR category LIKE ?)',
+      where:
+          'deleted_at IS NULL AND $_ctx AND (party_name LIKE ? OR notes LIKE ? OR category LIKE ?)',
       whereArgs: [pattern, pattern, pattern],
       orderBy: 'date DESC',
       limit: 50,
@@ -197,7 +201,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<double> getTotalIncome(DateTime start, DateTime end, {String? mode}) async {
+  Future<double> getTotalIncome(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -212,7 +220,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<double> getTotalExpense(DateTime start, DateTime end, {String? mode}) async {
+  Future<double> getTotalExpense(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -227,7 +239,11 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<Map<String, double>> getCategorySummary(DateTime start, DateTime end, {String? mode}) async {
+  Future<Map<String, double>> getCategorySummary(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -238,12 +254,18 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "GROUP BY category ORDER BY total DESC",
       args,
     );
-    return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
+    return {
+      for (final r in rows)
+        r['category'] as String: (r['total'] as num).toDouble(),
+    };
   }
 
   @override
   Future<Map<String, double>> getIncomeByCategorySummary(
-      DateTime start, DateTime end, {String? mode}) async {
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -255,12 +277,18 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "GROUP BY category ORDER BY total DESC",
       args,
     );
-    return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
+    return {
+      for (final r in rows)
+        r['category'] as String: (r['total'] as num).toDouble(),
+    };
   }
 
   @override
   Future<Map<String, double>> getExpenseByCategorySummary(
-      DateTime start, DateTime end, {String? mode}) async {
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -272,11 +300,18 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "GROUP BY category ORDER BY total DESC",
       args,
     );
-    return {for (final r in rows) r['category'] as String: (r['total'] as num).toDouble()};
+    return {
+      for (final r in rows)
+        r['category'] as String: (r['total'] as num).toDouble(),
+    };
   }
 
   @override
-  Future<List<DailyTotal>> getDailyTotals(DateTime start, DateTime end, {String? mode}) async {
+  Future<List<DailyTotal>> getDailyTotals(
+    DateTime start,
+    DateTime end, {
+    String? mode,
+  }) async {
     final db = await _db;
     final modeClause = mode != null ? "AND mode = ? " : "";
     final args = <dynamic>[start.toIso8601String(), end.toIso8601String()];
@@ -291,16 +326,21 @@ class TransactionRepositoryImpl implements TransactionRepository {
       args,
     );
     return rows
-        .map((r) => DailyTotal(
-              date: DateTime.parse(r['day'] as String),
-              income: (r['income'] as num).toDouble(),
-              expense: (r['expense'] as num).toDouble(),
-            ))
+        .map(
+          (r) => DailyTotal(
+            date: DateTime.parse(r['day'] as String),
+            income: (r['income'] as num).toDouble(),
+            expense: (r['expense'] as num).toDouble(),
+          ),
+        )
         .toList();
   }
 
   @override
-  Future<List<MonthlyTotal>> getMonthlyTotals({int months = 6, String? mode}) async {
+  Future<List<MonthlyTotal>> getMonthlyTotals({
+    int months = 6,
+    String? mode,
+  }) async {
     final db = await _db;
     final now = DateTime.now();
     final start = DateTime(now.year, now.month - months + 1, 1);
@@ -319,12 +359,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
       args,
     );
     return rows
-        .map((r) => MonthlyTotal(
-              year: (r['yr'] as num).toInt(),
-              month: (r['mo'] as num).toInt(),
-              income: (r['income'] as num).toDouble(),
-              expense: (r['expense'] as num).toDouble(),
-            ))
+        .map(
+          (r) => MonthlyTotal(
+            year: (r['yr'] as num).toInt(),
+            month: (r['mo'] as num).toInt(),
+            income: (r['income'] as num).toDouble(),
+            expense: (r['expense'] as num).toDouble(),
+          ),
+        )
         .toList();
   }
 
@@ -353,13 +395,15 @@ class TransactionRepositoryImpl implements TransactionRepository {
       args,
     );
     return rows
-        .map((r) => PartyTotal(
-              partyName: r['party_name'] as String,
-              totalAmount: (r['total'] as num).toDouble(),
-              transactionCount: (r['cnt'] as num).toInt(),
-              income: (r['income_total'] as num).toDouble(),
-              expense: (r['expense_total'] as num).toDouble(),
-            ))
+        .map(
+          (r) => PartyTotal(
+            partyName: r['party_name'] as String,
+            totalAmount: (r['total'] as num).toDouble(),
+            transactionCount: (r['cnt'] as num).toInt(),
+            income: (r['income_total'] as num).toDouble(),
+            expense: (r['expense_total'] as num).toDouble(),
+          ),
+        )
         .toList();
   }
 
@@ -404,24 +448,28 @@ class TransactionRepositoryImpl implements TransactionRepository {
       "GROUP BY LOWER(TRIM(t.party_name)) "
       "ORDER BY MAX(t.date) DESC",
     );
-    return rows.map((r) => LedgerPartyEntry(
-      partyName: r['party_name'] as String,
-      partyType: r['party_type'] as String? ?? 'person',
-      totalLent:          (r['total_lent']          as num).toDouble(),
-      totalBorrowed:      (r['total_borrowed']       as num).toDouble(),
-      totalReceivedBack:  (r['total_received_back']  as num).toDouble(),
-      totalPaidBack:      (r['total_paid_back']      as num).toDouble(),
-      totalInvested:      (r['total_invested']       as num).toDouble(),
-      totalRedeemed:      (r['total_redeemed']       as num).toDouble(),
-      totalIncome:        (r['total_income']          as num).toDouble(),
-      totalExpense:       (r['total_expense']         as num).toDouble(),
-      transactionCount:   (r['cnt'] as num).toInt(),
-      personalCount:      (r['personal_cnt'] as num).toInt(),
-      businessCount:      (r['business_cnt'] as num).toInt(),
-      lastTransactionDate: r['last_date'] != null
-          ? DateTime.tryParse(r['last_date'] as String)
-          : null,
-    )).toList();
+    return rows
+        .map(
+          (r) => LedgerPartyEntry(
+            partyName: r['party_name'] as String,
+            partyType: r['party_type'] as String? ?? 'person',
+            totalLent: (r['total_lent'] as num).toDouble(),
+            totalBorrowed: (r['total_borrowed'] as num).toDouble(),
+            totalReceivedBack: (r['total_received_back'] as num).toDouble(),
+            totalPaidBack: (r['total_paid_back'] as num).toDouble(),
+            totalInvested: (r['total_invested'] as num).toDouble(),
+            totalRedeemed: (r['total_redeemed'] as num).toDouble(),
+            totalIncome: (r['total_income'] as num).toDouble(),
+            totalExpense: (r['total_expense'] as num).toDouble(),
+            transactionCount: (r['cnt'] as num).toInt(),
+            personalCount: (r['personal_cnt'] as num).toInt(),
+            businessCount: (r['business_cnt'] as num).toInt(),
+            lastTransactionDate: r['last_date'] != null
+                ? DateTime.tryParse(r['last_date'] as String)
+                : null,
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -430,11 +478,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
     // Return ALL transaction types for this party (full khata view).
     final rows = await db.query(
       'transactions',
-      where: 'deleted_at IS NULL AND $_ctx AND LOWER(TRIM(party_name)) = LOWER(TRIM(?))',
+      where:
+          'deleted_at IS NULL AND $_ctx AND LOWER(TRIM(party_name)) = LOWER(TRIM(?))',
       whereArgs: [partyName],
-      orderBy: 'date ASC',  // ascending for running-balance chronology
+      orderBy: 'date ASC', // ascending for running-balance chronology
     );
-    return rows.map((r) => Transaction.fromMap(Map<String, dynamic>.from(r))).toList();
+    return rows
+        .map((r) => Transaction.fromMap(Map<String, dynamic>.from(r)))
+        .toList();
   }
 
   @override
@@ -521,7 +572,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
   ///
   /// Keys are [PaymentMethod.dbValue] strings (e.g. 'cash', 'upi').
   @override
-  Future<Map<String, ({double income, double expense})>> getAllTimeByPaymentMethod() async {
+  Future<Map<String, ({double income, double expense})>>
+  getAllTimeByPaymentMethod() async {
     final db = await _db;
     final rows = await db.rawQuery(
       "SELECT payment_method, "
@@ -543,7 +595,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<Map<int, ({double income, double expense})>> getAllTimeByAccountId() async {
+  Future<Map<int, ({double income, double expense})>>
+  getAllTimeByAccountId() async {
     final db = await _db;
     final rows = await db.rawQuery(
       "SELECT account_id, "
@@ -565,7 +618,8 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<Map<String, ({double income, double expense})>> getAllTimeUnlinkedByPaymentMethod() async {
+  Future<Map<String, ({double income, double expense})>>
+  getAllTimeUnlinkedByPaymentMethod() async {
     final db = await _db;
     final rows = await db.rawQuery(
       "SELECT payment_method, "

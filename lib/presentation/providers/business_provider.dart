@@ -7,17 +7,14 @@ import 'context_provider.dart';
 
 // ── Repository ──────────────────────────────────────────────────────────────────────
 
-final businessRepositoryProvider = Provider<BusinessRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return BusinessRepositoryImpl(contextId: contextId);
-  },
-);
+final businessRepositoryProvider = Provider<BusinessRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return BusinessRepositoryImpl(contextId: contextId);
+});
 
 // ── List of all businesses ────────────────────────────────────────────────────
 
-class BusinessesNotifier
-    extends StateNotifier<AsyncValue<List<Business>>> {
+class BusinessesNotifier extends StateNotifier<AsyncValue<List<Business>>> {
   BusinessesNotifier(this._repo) : super(const AsyncValue.loading()) {
     load();
   }
@@ -52,15 +49,18 @@ class BusinessesNotifier
 
 final businessesProvider =
     StateNotifierProvider<BusinessesNotifier, AsyncValue<List<Business>>>(
-  (ref) => BusinessesNotifier(ref.read(businessRepositoryProvider)),
-);
+      (ref) => BusinessesNotifier(ref.read(businessRepositoryProvider)),
+    );
 
 // ── Active business (convenience) ────────────────────────────────────────────
 
 /// The currently active business profile, or null if none is set.
 final activeBusinessProvider = Provider<Business?>((ref) {
-  return ref.watch(businessesProvider).whenOrNull(
-    data: (list) =>
-        list.isEmpty ? null : list.firstWhere((b) => b.isActive, orElse: () => list.first),
-  );
+  return ref
+      .watch(businessesProvider)
+      .whenOrNull(
+        data: (list) => list.isEmpty
+            ? null
+            : list.firstWhere((b) => b.isActive, orElse: () => list.first),
+      );
 });

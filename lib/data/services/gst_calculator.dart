@@ -173,9 +173,13 @@ class GstCalculator {
   }) {
     if (gstPct <= 0 || taxableAmount <= 0) {
       return GstSplit(
-        cgst: 0, sgst: 0, igst: 0, total: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
+        total: 0,
         isInterState: false,
-        gstPct: gstPct, taxableAmount: taxableAmount,
+        gstPct: gstPct,
+        taxableAmount: taxableAmount,
       );
     }
 
@@ -184,17 +188,25 @@ class GstCalculator {
 
     if (inter) {
       return GstSplit(
-        cgst: 0, sgst: 0, igst: taxAmt, total: taxAmt,
+        cgst: 0,
+        sgst: 0,
+        igst: taxAmt,
+        total: taxAmt,
         isInterState: true,
-        gstPct: gstPct, taxableAmount: taxableAmount,
+        gstPct: gstPct,
+        taxableAmount: taxableAmount,
       );
     } else {
       final half = _round2(taxAmt / 2);
       final other = _round2(taxAmt - half); // avoids rounding drift
       return GstSplit(
-        cgst: half, sgst: other, igst: 0, total: taxAmt,
+        cgst: half,
+        sgst: other,
+        igst: 0,
+        total: taxAmt,
         isInterState: false,
-        gstPct: gstPct, taxableAmount: taxableAmount,
+        gstPct: gstPct,
+        taxableAmount: taxableAmount,
       );
     }
   }
@@ -216,8 +228,9 @@ class GstCalculator {
 
     for (final item in items) {
       if (item.gstPct <= 0) continue;
-      final taxable =
-          _round2(item.qty * item.unitPrice * (1 - item.discountPct / 100));
+      final taxable = _round2(
+        item.qty * item.unitPrice * (1 - item.discountPct / 100),
+      );
       final split = calculate(
         sellerState: sellerState,
         buyerState: buyerState,
@@ -242,17 +255,19 @@ class GstCalculator {
     }
 
     return map.values
-        .map((a) => GstSummaryRow(
-              hsnOrSac: a.hsnOrSac,
-              code: a.code,
-              taxableAmount: _round2(a.taxableAmount),
-              gstPct: a.gstPct,
-              cgst: _round2(a.cgst),
-              sgst: _round2(a.sgst),
-              igst: _round2(a.igst),
-              total: _round2(a.total),
-              isInterState: a.isInterState,
-            ))
+        .map(
+          (a) => GstSummaryRow(
+            hsnOrSac: a.hsnOrSac,
+            code: a.code,
+            taxableAmount: _round2(a.taxableAmount),
+            gstPct: a.gstPct,
+            cgst: _round2(a.cgst),
+            sgst: _round2(a.sgst),
+            igst: _round2(a.igst),
+            total: _round2(a.total),
+            isInterState: a.isInterState,
+          ),
+        )
         .toList()
       ..sort((a, b) => a.code.compareTo(b.code));
   }
@@ -269,8 +284,7 @@ class GstCalculator {
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   static String _normalise(String state) =>
-      _stateNormalMap[state.trim().toLowerCase()] ??
-      state.trim().toLowerCase();
+      _stateNormalMap[state.trim().toLowerCase()] ?? state.trim().toLowerCase();
 
   static double _round2(double v) => (v * 100).roundToDouble() / 100;
 }
@@ -320,13 +334,13 @@ class _RowAccum {
 /// Extension to convert InvoiceItem / QuoteItem list → GstSplitInput list.
 extension InvoiceItemsSplit on List<dynamic> {
   List<GstSplitInput> toSplitInputs() => map((item) {
-        return GstSplitInput(
-          qty: (item.qty as num).toDouble(),
-          unitPrice: (item.unitPrice as num).toDouble(),
-          discountPct: (item.discountPct as num).toDouble(),
-          gstPct: (item.taxPct as num).toDouble(),
-          code: (item.hsnCode as String?) ?? '',
-          hsnOrSac: (item.hsnOrSac as String?) ?? 'HSN',
-        );
-      }).toList();
+    return GstSplitInput(
+      qty: (item.qty as num).toDouble(),
+      unitPrice: (item.unitPrice as num).toDouble(),
+      discountPct: (item.discountPct as num).toDouble(),
+      gstPct: (item.taxPct as num).toDouble(),
+      code: (item.hsnCode as String?) ?? '',
+      hsnOrSac: (item.hsnOrSac as String?) ?? 'HSN',
+    );
+  }).toList();
 }

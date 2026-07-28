@@ -6,7 +6,7 @@ import '../services/database_helper.dart';
 class RecurringTransactionRepositoryImpl
     implements RecurringTransactionRepository {
   RecurringTransactionRepositoryImpl([DatabaseHelper? dbHelper])
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   final DatabaseHelper _dbHelper;
   static const _table = 'recurring_transactions';
@@ -67,12 +67,7 @@ class RecurringTransactionRepositoryImpl
     final db = await _dbHelper.database;
     final map = recurring.toMap();
     map['updated_at'] = DateTime.now().toIso8601String();
-    await db.update(
-      _table,
-      map,
-      where: 'id = ?',
-      whereArgs: [recurring.id],
-    );
+    await db.update(_table, map, where: 'id = ?', whereArgs: [recurring.id]);
   }
 
   @override

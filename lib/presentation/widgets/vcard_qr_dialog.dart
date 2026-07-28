@@ -87,13 +87,14 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
       final safeName = widget.displayName
           .replaceAll(RegExp(r'[^A-Za-z0-9_\- ]'), '_')
           .trim();
-      final file = File('${dir.path}/qr_${safeName}_${DateTime.now().millisecondsSinceEpoch}.png');
+      final file = File(
+        '${dir.path}/qr_${safeName}_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       await file.writeAsBytes(bytes);
       if (!mounted) return;
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'image/png')],
-        subject: '${widget.displayName} — Contact QR',
-      );
+      await Share.shareXFiles([
+        XFile(file.path, mimeType: 'image/png'),
+      ], subject: '${widget.displayName} — Contact QR');
     } finally {
       if (mounted) setState(() => _sharing = false);
     }
@@ -113,7 +114,10 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
   void _showError(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Theme.of(context).colorScheme.error),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      ),
     );
   }
 
@@ -151,9 +155,7 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
                     children: [
                       Text(
                         widget.displayName,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
+                        style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -163,7 +165,9 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
                         Text(
                           widget.subtitle!,
                           style: TextStyle(
-                              fontSize: 12, color: cs.onSurfaceVariant),
+                            fontSize: 12,
+                            color: cs.onSurfaceVariant,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -222,10 +226,7 @@ class _VCardQrDialogState extends State<_VCardQrDialog> {
 
             Text(
               'Scan with Kash Cube or any QR reader',
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: AppSpacing.xl),
 

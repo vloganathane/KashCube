@@ -9,7 +9,7 @@ class LoanPaymentRepositoryImpl implements LoanPaymentRepository {
   final DatabaseHelper _dbHelper;
 
   LoanPaymentRepositoryImpl([DatabaseHelper? dbHelper])
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   Future<Database> get _db => _dbHelper.database;
 
@@ -106,11 +106,7 @@ class LoanPaymentRepositoryImpl implements LoanPaymentRepository {
     final db = await _db;
     await db.update(
       'loan_payments',
-      {
-        'is_paid': 0,
-        'paid_date': null,
-        'paid_amount': 0.0,
-      },
+      {'is_paid': 0, 'paid_date': null, 'paid_amount': 0.0},
       where: 'id = ?',
       whereArgs: [paymentId],
     );
@@ -119,11 +115,7 @@ class LoanPaymentRepositoryImpl implements LoanPaymentRepository {
   @override
   Future<void> deleteByLoanId(int loanId) async {
     final db = await _db;
-    await db.delete(
-      'loan_payments',
-      where: 'loan_id = ?',
-      whereArgs: [loanId],
-    );
+    await db.delete('loan_payments', where: 'loan_id = ?', whereArgs: [loanId]);
   }
 
   @override

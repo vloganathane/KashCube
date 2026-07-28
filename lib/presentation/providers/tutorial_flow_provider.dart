@@ -80,5 +80,5 @@ class TutorialFlowNotifier extends StateNotifier<TutorialFlowStep> {
 
 final tutorialFlowProvider =
     StateNotifierProvider<TutorialFlowNotifier, TutorialFlowStep>(
-  (_) => TutorialFlowNotifier(),
-);
+      (_) => TutorialFlowNotifier(),
+    );

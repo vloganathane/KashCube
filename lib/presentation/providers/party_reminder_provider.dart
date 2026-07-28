@@ -14,8 +14,8 @@ final partyReminderRepositoryProvider = Provider<PartyReminderRepository>(
 
 final partyRemindersProvider =
     FutureProvider.family<List<PartyReminder>, String>((ref, partyName) {
-  return ref.read(partyReminderRepositoryProvider).getByParty(partyName);
-});
+      return ref.read(partyReminderRepositoryProvider).getByParty(partyName);
+    });
 
 // ── Global recent reminders ───────────────────────────────────────────────────
 

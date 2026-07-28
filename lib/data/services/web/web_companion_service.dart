@@ -67,10 +67,7 @@ class WebCompanionService {
       // Delay release so page-refresh or brief network hiccup doesn't
       // unnecessarily cycle the wake lock.
       _releaseTimer?.cancel();
-      _releaseTimer = Timer(
-        const Duration(seconds: 30),
-        _releaseWakeLock,
-      );
+      _releaseTimer = Timer(const Duration(seconds: 30), _releaseWakeLock);
     }
   }
 

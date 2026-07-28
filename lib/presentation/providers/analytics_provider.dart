@@ -50,8 +50,9 @@ final analyticsProvider = FutureProvider<AnalyticsService>((ref) async {
 // ---------------------------------------------------------------------------
 
 /// Read/toggle analytics consent. Updates the backend immediately.
-final analyticsConsentProvider =
-    AsyncNotifierProvider<_ConsentNotifier, bool?>(_ConsentNotifier.new);
+final analyticsConsentProvider = AsyncNotifierProvider<_ConsentNotifier, bool?>(
+  _ConsentNotifier.new,
+);
 
 class _ConsentNotifier extends AsyncNotifier<bool?> {
   @override
@@ -60,9 +61,9 @@ class _ConsentNotifier extends AsyncNotifier<bool?> {
         .read(settingsRepositoryProvider)
         .get(SettingsKeys.analyticsConsent);
     return switch (raw) {
-      'true'  => true,
+      'true' => true,
       'false' => false,
-      _       => null, // not yet asked
+      _ => null, // not yet asked
     };
   }
 
@@ -98,13 +99,11 @@ void trackEvent(
   String event, {
   Map<String, String> properties = const {},
 }) {
-  ref.read(analyticsProvider).whenData(
-        (svc) => svc.trackEvent(event, properties: properties),
-      );
+  ref
+      .read(analyticsProvider)
+      .whenData((svc) => svc.trackEvent(event, properties: properties));
 }
 
 void trackScreen(WidgetRef ref, String screenName) {
-  ref.read(analyticsProvider).whenData(
-        (svc) => svc.trackScreen(screenName),
-      );
+  ref.read(analyticsProvider).whenData((svc) => svc.trackScreen(screenName));
 }

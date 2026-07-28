@@ -26,10 +26,11 @@ class PurchaseBillDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, _) => Scaffold(
-          appBar: AppBar(), body: Center(child: Text('Error: $e'))),
+        appBar: AppBar(),
+        body: Center(child: Text('Error: $e')),
+      ),
       data: (bills) {
-        final bill =
-            bills.where((b) => b.id == billId).firstOrNull;
+        final bill = bills.where((b) => b.id == billId).firstOrNull;
         if (bill == null) {
           return Scaffold(
             appBar: AppBar(),
@@ -83,11 +84,9 @@ class _DetailViewState extends ConsumerState<_DetailView> {
     setState(() => _paying = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(purchaseBillsProvider.notifier).recordPayment(
-            billId: bill.id!,
-            amount: amount,
-            paidAt: paidDate,
-          );
+      await ref
+          .read(purchaseBillsProvider.notifier)
+          .recordPayment(billId: bill.id!, amount: amount, paidAt: paidDate);
 
       final txn = Transaction(
         amount: amount,
@@ -104,12 +103,15 @@ class _DetailViewState extends ConsumerState<_DetailView> {
         createdAt: paidDate,
         updatedAt: paidDate,
       );
-      final txnId =
-          await ref.read(transactionsProvider.notifier).addTransaction(txn);
+      final txnId = await ref
+          .read(transactionsProvider.notifier)
+          .addTransaction(txn);
 
       // Auto-attach the vendor's scanned invoice to the payment transaction
       if (bill.attachmentPath != null) {
-        await ref.read(billNotifierProvider(txnId).notifier).saveBill(
+        await ref
+            .read(billNotifierProvider(txnId).notifier)
+            .saveBill(
               sourcePath: bill.attachmentPath!,
               originalFileName: bill.attachmentPath!.split('/').last,
             );
@@ -137,14 +139,17 @@ class _DetailViewState extends ConsumerState<_DetailView> {
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Bill?'),
         content: Text(
-            'Bill "${bill.billNo}" will be permanently deleted. This cannot be undone.'),
+          'Bill "${bill.billNo}" will be permanently deleted. This cannot be undone.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.error),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
           ),
@@ -188,12 +193,13 @@ class _DetailViewState extends ConsumerState<_DetailView> {
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: 'delete',
-                child: Row(children: [
-                  Icon(Icons.delete_outline,
-                      color: cs.error, size: 20),
-                  const SizedBox(width: 12),
-                  Text('Delete', style: TextStyle(color: cs.error)),
-                ]),
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, color: cs.error, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Delete', style: TextStyle(color: cs.error)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -203,21 +209,27 @@ class _DetailViewState extends ConsumerState<_DetailView> {
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base,
-                    AppSpacing.sm,
-                    AppSpacing.base,
-                    AppSpacing.base),
+                  AppSpacing.base,
+                  AppSpacing.sm,
+                  AppSpacing.base,
+                  AppSpacing.base,
+                ),
                 child: FilledButton.icon(
                   icon: _paying
                       ? const SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.payments_outlined),
-                  label: Text(bill.paidAmount > 0
-                      ? 'Record Payment (${CurrencyFormatter.format(bill.balanceDue)} remaining)'
-                      : 'Mark as Paid'),
+                  label: Text(
+                    bill.paidAmount > 0
+                        ? 'Record Payment (${CurrencyFormatter.format(bill.balanceDue)} remaining)'
+                        : 'Mark as Paid',
+                  ),
                   onPressed: _paying ? null : _showPaymentDialog,
                 ),
               ),
@@ -271,15 +283,16 @@ class _BillHeaderCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     bill.vendorName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -287,7 +300,9 @@ class _BillHeaderCard extends StatelessWidget {
                   child: Text(
                     bill.status.label,
                     style: TextStyle(
-                        color: statusColor, fontWeight: FontWeight.w700),
+                      color: statusColor,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -295,17 +310,18 @@ class _BillHeaderCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             _InfoRow(label: 'Bill #', value: bill.billNo),
             _InfoRow(
-                label: 'Date',
-                value: DateFormatter.formatFull(bill.billDate)),
+              label: 'Date',
+              value: DateFormatter.formatFull(bill.billDate),
+            ),
             if (bill.dueDate != null)
               _InfoRow(
-                  label: 'Due',
-                  value: DateFormatter.formatFull(bill.dueDate!)),
+                label: 'Due',
+                value: DateFormatter.formatFull(bill.dueDate!),
+              ),
             if (bill.vendorGstin != null)
               _InfoRow(label: 'GSTIN', value: bill.vendorGstin!),
             if (bill.placeOfSupply != null)
-              _InfoRow(
-                  label: 'Place of Supply', value: bill.placeOfSupply!),
+              _InfoRow(label: 'Place of Supply', value: bill.placeOfSupply!),
             if (bill.reverseCharge)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -333,15 +349,19 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: AppSpacing.xs),
       child: Row(
         children: [
-          Text(label,
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
-                  fontSize: 13)),
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.outline,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w500, fontSize: 13)),
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -363,8 +383,7 @@ class _LineItemsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Items',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Items', style: Theme.of(context).textTheme.titleMedium),
             const Divider(height: AppSpacing.base),
             // Header row
             Padding(
@@ -372,74 +391,91 @@ class _LineItemsCard extends StatelessWidget {
               child: Row(
                 children: [
                   Expanded(
-                      flex: 4,
-                      child: Text('Item',
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.outline,
-                              fontSize: 12))),
+                    flex: 4,
+                    child: Text(
+                      'Item',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                   Expanded(
-                      child: Text('Qty',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.outline,
-                              fontSize: 12))),
+                    child: Text(
+                      'Qty',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                   Expanded(
-                      flex: 2,
-                      child: Text('Amount',
-                          textAlign: TextAlign.end,
-                          style: TextStyle(
-                              color: Theme.of(context).colorScheme.outline,
-                              fontSize: 12))),
+                    flex: 2,
+                    child: Text(
+                      'Amount',
+                      textAlign: TextAlign.end,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            ...bill.items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                          flex: 4,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(item.itemName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w500)),
-                              Text(
-                                [
-                                  if (item.hsnCode != null &&
-                                      item.hsnCode!.isNotEmpty)
-                                    '${item.hsnOrSac}: ${item.hsnCode}',
-                                  '${item.taxPct.toInt()}% GST',
-                                  if (item.discountPct > 0)
-                                    '${item.discountPct.toInt()}% disc',
-                                ].join(' · '),
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .outline),
-                              ),
-                            ],
-                          )),
-                      Expanded(
-                          child: Text(
-                              item.qty == item.qty.truncateToDouble()
-                                  ? item.qty.toInt().toString()
-                                  : item.qty.toStringAsFixed(2),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 13))),
-                      Expanded(
-                          flex: 2,
-                          child: Text(
-                            CurrencyFormatter.format(item.lineTotal),
-                            textAlign: TextAlign.end,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600),
-                          )),
-                    ],
-                  ),
-                )),
+            ...bill.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.itemName,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            [
+                              if (item.hsnCode != null &&
+                                  item.hsnCode!.isNotEmpty)
+                                '${item.hsnOrSac}: ${item.hsnCode}',
+                              '${item.taxPct.toInt()}% GST',
+                              if (item.discountPct > 0)
+                                '${item.discountPct.toInt()}% disc',
+                            ].join(' · '),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        item.qty == item.qty.truncateToDouble()
+                            ? item.qty.toInt().toString()
+                            : item.qty.toStringAsFixed(2),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        CurrencyFormatter.format(item.lineTotal),
+                        textAlign: TextAlign.end,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -470,11 +506,13 @@ class _TotalsCard extends StatelessWidget {
             if (bill.cessAmount > 0)
               _TRow('Cess', CurrencyFormatter.format(bill.cessAmount)),
             const Divider(height: AppSpacing.base),
-            _TRow('Total', CurrencyFormatter.format(bill.total),
-                bold: true),
+            _TRow('Total', CurrencyFormatter.format(bill.total), bold: true),
             if (bill.paidAmount > 0)
-              _TRow('Paid', CurrencyFormatter.format(bill.paidAmount),
-                  valueColor: const Color(0xFF2E7D32)),
+              _TRow(
+                'Paid',
+                CurrencyFormatter.format(bill.paidAmount),
+                valueColor: const Color(0xFF2E7D32),
+              ),
             if (bill.balanceDue > 0)
               _TRow(
                 'Balance Due',
@@ -490,8 +528,7 @@ class _TotalsCard extends StatelessWidget {
 }
 
 class _TRow extends StatelessWidget {
-  const _TRow(this.label, this.value,
-      {this.bold = false, this.valueColor});
+  const _TRow(this.label, this.value, {this.bold = false, this.valueColor});
   final String label;
   final String value;
   final bool bold;
@@ -504,16 +541,18 @@ class _TRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label,
-              style: bold
-                  ? const TextStyle(fontWeight: FontWeight.bold)
-                  : null),
-          Text(value,
-              style: TextStyle(
-                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
-                color: valueColor,
-                fontFamily: 'RobotoMono',
-              )),
+          Text(
+            label,
+            style: bold ? const TextStyle(fontWeight: FontWeight.bold) : null,
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+              color: valueColor,
+              fontFamily: 'RobotoMono',
+            ),
+          ),
         ],
       ),
     );
@@ -550,13 +589,18 @@ class _ItcCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Input Tax Credit',
-                          style: Theme.of(context).textTheme.titleSmall),
-                      Text(bill.itcEligibility.label,
-                          style: TextStyle(
-                              color: itcColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13)),
+                      Text(
+                        'Input Tax Credit',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      Text(
+                        bill.itcEligibility.label,
+                        style: TextStyle(
+                          color: itcColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -588,13 +632,13 @@ class _LinkedTransactionsCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(transactionsProvider).when(
+    return ref
+        .watch(transactionsProvider)
+        .when(
           loading: () => const SizedBox.shrink(),
           error: (_, _) => const SizedBox.shrink(),
           data: (all) {
-            final linked = all
-                .where((t) => t.referenceId == billNo)
-                .toList()
+            final linked = all.where((t) => t.referenceId == billNo).toList()
               ..sort((a, b) => b.date.compareTo(a.date));
 
             if (linked.isEmpty) return const SizedBox.shrink();
@@ -609,17 +653,17 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.receipt_long_outlined,
-                                size: 20,
-                                color:
-                                    Theme.of(context).colorScheme.primary),
+                            Icon(
+                              Icons.receipt_long_outlined,
+                              size: 20,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                             const SizedBox(width: AppSpacing.sm),
-                            Text('Payment History',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                        fontWeight: FontWeight.bold)),
+                            Text(
+                              'Payment History',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
                             const Spacer(),
                             Chip(
                               label: Text('${linked.length}'),
@@ -628,37 +672,38 @@ class _LinkedTransactionsCard extends ConsumerWidget {
                           ],
                         ),
                         const SizedBox(height: AppSpacing.md),
-                        ...linked.map((txn) => ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                Icons.account_balance_wallet_outlined,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .tertiary,
+                        ...linked.map(
+                          (txn) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.account_balance_wallet_outlined,
+                              color: Theme.of(context).colorScheme.tertiary,
+                            ),
+                            title: Text(
+                              CurrencyFormatter.format(txn.amount),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'RobotoMono',
                               ),
-                              title: Text(
-                                CurrencyFormatter.format(txn.amount),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'RobotoMono',
+                            ),
+                            subtitle: Text(
+                              '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                            ),
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => TransactionDetailScreen(
+                                  transactionId: txn.id!,
                                 ),
                               ),
-                              subtitle: Text(
-                                '${DateFormatter.format(txn.date)} · ${txn.paymentMethod.label}',
-                                style:
-                                    Theme.of(context).textTheme.bodySmall,
-                              ),
-                              trailing: const Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 16),
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => TransactionDetailScreen(
-                                      transactionId: txn.id!),
-                                ),
-                              ),
-                            )),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -687,17 +732,17 @@ class _NotesCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.notes_outlined,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.notes_outlined,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(width: AppSpacing.sm),
-                Text('Notes',
-                    style: Theme.of(context).textTheme.titleSmall),
+                Text('Notes', style: Theme.of(context).textTheme.titleSmall),
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(notes,
-                style: Theme.of(context).textTheme.bodyMedium),
+            Text(notes, style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
       ),

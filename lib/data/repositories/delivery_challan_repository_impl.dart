@@ -147,8 +147,7 @@ class DeliveryChallanRepositoryImpl implements DeliveryChallanRepository {
     }
 
     final now = DateTime.now();
-    final subtotal =
-        challan.items.fold<double>(0, (s, i) => s + i.lineTotal);
+    final subtotal = challan.items.fold<double>(0, (s, i) => s + i.lineTotal);
 
     final invoice = Invoice(
       invoiceNo: invoiceNo,

@@ -29,7 +29,8 @@ class GstrDateRange {
 
 // ─── Indian fiscal year helpers ───────────────────────────────────────────────
 
-String _fyLabel(int startYear) => '$startYear-${(startYear + 1) % 100 < 10 ? '0${(startYear + 1) % 100}' : '${(startYear + 1) % 100}'}';
+String _fyLabel(int startYear) =>
+    '$startYear-${(startYear + 1) % 100 < 10 ? '0${(startYear + 1) % 100}' : '${(startYear + 1) % 100}'}';
 
 /// Returns the 12 months (Apr–Mar) for the FY starting in [startYear].
 List<DateTime> _fyMonths(int startYear) {
@@ -45,15 +46,27 @@ List<DateTime> _fyMonths(int startYear) {
 
 /// Returns the 4 quarters (Apr-Jun, Jul-Sep, Oct-Dec, Jan-Mar) for the FY.
 List<_Quarter> _fyQuarters(int startYear) => [
-      _Quarter('Q1 (Apr–Jun)', DateTime(startYear, 4, 1),
-          DateTime(startYear, 6, 30)),
-      _Quarter('Q2 (Jul–Sep)', DateTime(startYear, 7, 1),
-          DateTime(startYear, 9, 30)),
-      _Quarter('Q3 (Oct–Dec)', DateTime(startYear, 10, 1),
-          DateTime(startYear, 12, 31)),
-      _Quarter('Q4 (Jan–Mar)', DateTime(startYear + 1, 1, 1),
-          DateTime(startYear + 1, 3, 31)),
-    ];
+  _Quarter(
+    'Q1 (Apr–Jun)',
+    DateTime(startYear, 4, 1),
+    DateTime(startYear, 6, 30),
+  ),
+  _Quarter(
+    'Q2 (Jul–Sep)',
+    DateTime(startYear, 7, 1),
+    DateTime(startYear, 9, 30),
+  ),
+  _Quarter(
+    'Q3 (Oct–Dec)',
+    DateTime(startYear, 10, 1),
+    DateTime(startYear, 12, 31),
+  ),
+  _Quarter(
+    'Q4 (Jan–Mar)',
+    DateTime(startYear + 1, 1, 1),
+    DateTime(startYear + 1, 3, 31),
+  ),
+];
 
 class _Quarter {
   const _Quarter(this.label, this.from, this.to);
@@ -66,8 +79,7 @@ String _monthLabel(DateTime d) => DateFormat('MMM yyyy').format(d);
 String _returnLabel(DateTime d) =>
     '${d.month.toString().padLeft(2, '0')}${d.year}';
 
-DateTime _lastDayOf(DateTime month) =>
-    DateTime(month.year, month.month + 1, 0);
+DateTime _lastDayOf(DateTime month) => DateTime(month.year, month.month + 1, 0);
 
 // ─── Widget ───────────────────────────────────────────────────────────────────
 
@@ -81,10 +93,7 @@ DateTime _lastDayOf(DateTime month) =>
 /// Calls [onChanged] whenever the selection changes. The initial value is the
 /// most recently completed month.
 class GstrPeriodPicker extends StatefulWidget {
-  const GstrPeriodPicker({
-    super.key,
-    required this.onChanged,
-  });
+  const GstrPeriodPicker({super.key, required this.onChanged});
 
   final void Function(GstrDateRange range) onChanged;
 
@@ -111,8 +120,7 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
   }
 
   // Pick the most recently completed month within the current FY
-  static int _fyStartYear_(DateTime d) =>
-      d.month >= 4 ? d.year : d.year - 1;
+  static int _fyStartYear_(DateTime d) => d.month >= 4 ? d.year : d.year - 1;
 
   static int _defaultMonthIdx(DateTime now) {
     final fyStart = _fyStartYear_(now);
@@ -153,8 +161,7 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
 
   bool _isFuture(DateTime d) {
     final now = DateTime.now();
-    return d.year > now.year ||
-        (d.year == now.year && d.month > now.month);
+    return d.year > now.year || (d.year == now.year && d.month > now.month);
   }
 
   @override
@@ -187,8 +194,7 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
                 ),
                 _FyChip(
                   label: _fyLabel(_fyStartYear_(DateTime.now()) - 1),
-                  selected:
-                      _fyStartYear == _fyStartYear_(DateTime.now()) - 1,
+                  selected: _fyStartYear == _fyStartYear_(DateTime.now()) - 1,
                   onTap: () => setState(() {
                     _fyStartYear = _fyStartYear_(DateTime.now()) - 1;
                     _notify();
@@ -196,8 +202,7 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
                 ),
                 _FyChip(
                   label: _fyLabel(_fyStartYear_(DateTime.now()) - 2),
-                  selected:
-                      _fyStartYear == _fyStartYear_(DateTime.now()) - 2,
+                  selected: _fyStartYear == _fyStartYear_(DateTime.now()) - 2,
                   onTap: () => setState(() {
                     _fyStartYear = _fyStartYear_(DateTime.now()) - 2;
                     _notify();
@@ -246,9 +251,9 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
                     onSelected: future
                         ? null
                         : (_) => setState(() {
-                              _monthIdx = i;
-                              _notify();
-                            }),
+                            _monthIdx = i;
+                            _notify();
+                          }),
                     visualDensity: VisualDensity.compact,
                   );
                 }),
@@ -266,9 +271,9 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
                     onSelected: future
                         ? null
                         : (_) => setState(() {
-                              _quarterIdx = i;
-                              _notify();
-                            }),
+                            _quarterIdx = i;
+                            _notify();
+                          }),
                     visualDensity: VisualDensity.compact,
                   );
                 }),
@@ -279,9 +284,11 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
             // ── Selected range label ────────────────────────────────────────
             Row(
               children: [
-                Icon(Icons.calendar_month_outlined,
-                    size: 14,
-                    color: context.colorScheme.primary),
+                Icon(
+                  Icons.calendar_month_outlined,
+                  size: 14,
+                  color: context.colorScheme.primary,
+                ),
                 const SizedBox(width: AppSpacing.xs),
                 Text(
                   range.displayLabel,
@@ -295,9 +302,11 @@ class _GstrPeriodPickerState extends State<GstrPeriodPicker> {
                   Chip(
                     label: const Text('Future period'),
                     labelStyle: TextStyle(
-                        color: context.colorScheme.error, fontSize: 11),
-                    backgroundColor:
-                        context.colorScheme.errorContainer.withValues(alpha: 0.4),
+                      color: context.colorScheme.error,
+                      fontSize: 11,
+                    ),
+                    backgroundColor: context.colorScheme.errorContainer
+                        .withValues(alpha: 0.4),
                     padding: EdgeInsets.zero,
                     visualDensity: VisualDensity.compact,
                   ),

@@ -30,37 +30,34 @@ import 'transaction_provider.dart';
 /// All deal chains for a single party (by partyId).
 /// Parameterised by party ID — key input for Party 360° Deals tab.
 final businessFlowChainsProvider =
-    FutureProvider.family<List<BusinessFlowChain>, int>(
-        (ref, partyId) async {
-  // Re-evaluate whenever the active context switches.
-  ref.watch(activeContextProvider);
-  // Fetch party to get name
-  final party = await ref.read(partyRepositoryProvider).getById(partyId);
-  if (party == null) throw Exception('Party $partyId not found');
+    FutureProvider.family<List<BusinessFlowChain>, int>((ref, partyId) async {
+      // Re-evaluate whenever the active context switches.
+      ref.watch(activeContextProvider);
+      // Fetch party to get name
+      final party = await ref.read(partyRepositoryProvider).getById(partyId);
+      if (party == null) throw Exception('Party $partyId not found');
 
-  // Parallel DB reads
-  final results = await Future.wait([
-    ref.read(quoteRepositoryProvider).getByPartyId(partyId),        // 0
-    ref
-        .read(deliveryChallanRepositoryProvider)
-        .getByPartyId(partyId),                                     // 1
-    ref.read(bookingRepositoryProvider).getByPartyId(partyId),      // 2
-    ref.read(invoiceRepositoryProvider).getByPartyId(partyId),      // 3
-    ref.read(transactionRepositoryProvider).getByPartyId(partyId),  // 4
-    ref.read(partyReminderRepositoryProvider).getByParty(party.name), // 5
-  ]);
+      // Parallel DB reads
+      final results = await Future.wait([
+        ref.read(quoteRepositoryProvider).getByPartyId(partyId), // 0
+        ref.read(deliveryChallanRepositoryProvider).getByPartyId(partyId), // 1
+        ref.read(bookingRepositoryProvider).getByPartyId(partyId), // 2
+        ref.read(invoiceRepositoryProvider).getByPartyId(partyId), // 3
+        ref.read(transactionRepositoryProvider).getByPartyId(partyId), // 4
+        ref.read(partyReminderRepositoryProvider).getByParty(party.name), // 5
+      ]);
 
-  return BusinessFlowChainBuilder.build(
-    partyId: partyId,
-    partyName: party.name,
-    quotes: results[0] as List<Quote>,
-    challans: results[1] as List<DeliveryChallan>,
-    bookings: results[2] as List<Booking>,
-    invoices: results[3] as List<Invoice>,
-    transactions: results[4] as List<Transaction>,
-    reminders: (results[5] as List).cast<PartyReminder>(),
-  );
-});
+      return BusinessFlowChainBuilder.build(
+        partyId: partyId,
+        partyName: party.name,
+        quotes: results[0] as List<Quote>,
+        challans: results[1] as List<DeliveryChallan>,
+        bookings: results[2] as List<Booking>,
+        invoices: results[3] as List<Invoice>,
+        transactions: results[4] as List<Transaction>,
+        reminders: (results[5] as List).cast<PartyReminder>(),
+      );
+    });
 
 // ---------------------------------------------------------------------------
 // Global leaking chains (Action Center — E5)
@@ -73,7 +70,9 @@ final businessFlowChainsProvider =
 ///   • Confirmed/completed booking past service date with no invoice ≥1 day
 ///
 /// Used by the Action Center "Leaking" urgency section (E5).
-final leakingChainsProvider = FutureProvider<List<BusinessFlowChain>>((ref) async {
+final leakingChainsProvider = FutureProvider<List<BusinessFlowChain>>((
+  ref,
+) async {
   // Fetch all parties via repo to guarantee async load
   final partyRepo = ref.read(partyRepositoryProvider);
   final parties = await partyRepo.getAll();

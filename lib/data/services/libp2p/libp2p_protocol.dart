@@ -14,10 +14,11 @@ const int defaultMaxFrameSize = 1048576; // 1 MB
 ///
 /// Receives a parsed JSON frame and returns an optional response frame.
 /// The response is sent back to the peer if non-null.
-typedef FrameHandler = Future<Map<String, dynamic>?> Function(
-  Map<String, dynamic> frame,
-  String peerId,
-);
+typedef FrameHandler =
+    Future<Map<String, dynamic>?> Function(
+      Map<String, dynamic> frame,
+      String peerId,
+    );
 
 /// Stream handler type alias for libp2p protocol streams.
 /// Signature matches dart_libp2p StreamHandler: (P2PStream, PeerId) async function
@@ -102,7 +103,7 @@ class LibP2pProtocol {
       } catch (e, stack) {
         debugPrint('[LibP2pProtocol] Stream error from $peerId: $e');
         debugPrint(stack.toString());
-        
+
         // Send ERROR frame if possible
         try {
           await _sendFrame(stream, {
@@ -146,11 +147,13 @@ class LibP2pProtocol {
         debugPrint('[LibP2pProtocol] Received ${frame['type']} from $peerId');
 
         // Emit received frame event
-        _receivedFrames.add(ReceivedFrame(
-          frame: frame,
-          peerId: peerId,
-          timestamp: DateTime.now(),
-        ));
+        _receivedFrames.add(
+          ReceivedFrame(
+            frame: frame,
+            peerId: peerId,
+            timestamp: DateTime.now(),
+          ),
+        );
 
         // Route to handler
         final response = await _routeFrame(frame, peerId);
@@ -162,7 +165,7 @@ class LibP2pProtocol {
         }
       } catch (e) {
         debugPrint('[LibP2pProtocol] Frame processing error: $e');
-        
+
         // Send ERROR frame
         await _sendFrame(stream, {
           'type': 'ERROR',
@@ -170,7 +173,7 @@ class LibP2pProtocol {
           'message': e.toString(),
           'timestamp': DateTime.now().toUtc().toIso8601String(),
         });
-        
+
         // Continue to next frame (don't break connection on single frame error)
       }
     }
@@ -215,13 +218,13 @@ class LibP2pProtocol {
     }
 
     // Parse length (big-endian u32)
-    final length = ByteData.sublistView(lengthBytes).getUint32(0, Endian.big).toInt();
+    final length = ByteData.sublistView(
+      lengthBytes,
+    ).getUint32(0, Endian.big).toInt();
 
     // Check frame size limit
     if (length > maxFrameSize) {
-      throw StateError(
-        'Frame too large: $length bytes (max: $maxFrameSize)',
-      );
+      throw StateError('Frame too large: $length bytes (max: $maxFrameSize)');
     }
 
     // Read JSON payload
@@ -275,7 +278,9 @@ class LibP2pProtocol {
 
     // Build length prefix (4-byte big-endian u32)
     final lengthBytes = Uint8List(4);
-    ByteData.sublistView(lengthBytes).setUint32(0, payloadBytes.length, Endian.big);
+    ByteData.sublistView(
+      lengthBytes,
+    ).setUint32(0, payloadBytes.length, Endian.big);
 
     // Write length + payload
     await stream.write(Uint8List.fromList([...lengthBytes, ...payloadBytes]));
@@ -299,7 +304,9 @@ class LibP2pProtocol {
         if (bytesRead == 0) {
           return null; // EOF at start
         }
-        throw StateError('Stream closed mid-frame (read $bytesRead of $n bytes)');
+        throw StateError(
+          'Stream closed mid-frame (read $bytesRead of $n bytes)',
+        );
       }
 
       final chunkLength = (chunk.length as num).toInt();
@@ -309,8 +316,6 @@ class LibP2pProtocol {
 
     return buffer;
   }
-
-
 
   // ────────────────────────────────────────────────────────────────────────────
   // Cleanup

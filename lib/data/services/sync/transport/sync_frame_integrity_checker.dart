@@ -60,7 +60,7 @@ class PassthroughSyncFrameIntegrityChecker extends SyncFrameIntegrityChecker {
 /// convention already used by `P2pAuthService` for HTTP request signing.
 class HmacSyncFrameIntegrityChecker extends SyncFrameIntegrityChecker {
   HmacSyncFrameIntegrityChecker({required List<int> secretBytes})
-      : _secretBytes = List<int>.unmodifiable(secretBytes);
+    : _secretBytes = List<int>.unmodifiable(secretBytes);
 
   static const _sigField = '_kash_sig';
 

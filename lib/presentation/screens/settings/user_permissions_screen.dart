@@ -19,8 +19,7 @@ class UserPermissionsScreen extends ConsumerStatefulWidget {
       _UserPermissionsScreenState();
 }
 
-class _UserPermissionsScreenState
-    extends ConsumerState<UserPermissionsScreen> {
+class _UserPermissionsScreenState extends ConsumerState<UserPermissionsScreen> {
   // In-memory editable state: module → Permission
   // We only edit the personal scope (business_id = -1) on this screen.
   // Per-business scoping can be done in a future iteration.
@@ -44,9 +43,9 @@ class _UserPermissionsScreenState
       if (p.businessId == UserPermission.kPersonalScope) {
         map[p.module] = _EditablePermission.fromPermission(
           Permission(
-            canView:   p.canView,
+            canView: p.canView,
             canCreate: p.canCreate,
-            canEdit:   p.canEdit,
+            canEdit: p.canEdit,
             canDelete: p.canDelete,
           ),
         );
@@ -54,7 +53,10 @@ class _UserPermissionsScreenState
     }
     // Fill any missing modules with Permission.none
     for (final module in PermissionModule.all) {
-      map.putIfAbsent(module, () => _EditablePermission.fromPermission(Permission.none));
+      map.putIfAbsent(
+        module,
+        () => _EditablePermission.fromPermission(Permission.none),
+      );
     }
     if (mounted) setState(() => _perms = map);
   }
@@ -62,18 +64,24 @@ class _UserPermissionsScreenState
   Future<void> _save() async {
     if (_perms == null) return;
     setState(() => _isSaving = true);
-    final permissions = _perms!.entries.map((e) => UserPermission(
-          userId:     widget.user.id!,
-          businessId: UserPermission.kPersonalScope,
-          module:     e.key,
-          canView:    e.value.canView,
-          canCreate:  e.value.canCreate,
-          canEdit:    e.value.canEdit,
-          canDelete:  e.value.canDelete,
-        )).toList();
+    final permissions = _perms!.entries
+        .map(
+          (e) => UserPermission(
+            userId: widget.user.id!,
+            businessId: UserPermission.kPersonalScope,
+            module: e.key,
+            canView: e.value.canView,
+            canCreate: e.value.canCreate,
+            canEdit: e.value.canEdit,
+            canDelete: e.value.canDelete,
+          ),
+        )
+        .toList();
     try {
-      await ref.read(appUserRepositoryProvider).setPermissions(
-            userId:     widget.user.id!,
+      await ref
+          .read(appUserRepositoryProvider)
+          .setPermissions(
+            userId: widget.user.id!,
             businessId: UserPermission.kPersonalScope,
             permissions: permissions,
           );
@@ -82,8 +90,9 @@ class _UserPermissionsScreenState
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -102,7 +111,8 @@ class _UserPermissionsScreenState
                 ? const SizedBox(
                     height: 18,
                     width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2))
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Text('Save'),
           ),
         ],
@@ -111,12 +121,14 @@ class _UserPermissionsScreenState
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               children: PermissionModule.all
-                  .map((module) => _ModuleTile(
-                        module: module,
-                        perm: _perms![module]!,
-                        onChanged: (updated) =>
-                            setState(() => _perms![module] = updated),
-                      ))
+                  .map(
+                    (module) => _ModuleTile(
+                      module: module,
+                      perm: _perms![module]!,
+                      onChanged: (updated) =>
+                          setState(() => _perms![module] = updated),
+                    ),
+                  )
                   .toList(),
             ),
     );
@@ -147,7 +159,9 @@ class _ModuleTile extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+            horizontal: AppSpacing.base,
+            vertical: AppSpacing.sm,
+          ),
           child: Column(
             children: [
               _Toggle(
@@ -214,18 +228,19 @@ class _PermissionChips extends StatelessWidget {
       if (perm.canDelete) 'Delete',
     ];
     if (active.isEmpty) {
-      return Text('No access',
-          style: TextStyle(color: cs.error, fontSize: 12));
+      return Text('No access', style: TextStyle(color: cs.error, fontSize: 12));
     }
     return Wrap(
       spacing: 4,
       children: active
-          .map((l) => Chip(
-                label: Text(l, style: const TextStyle(fontSize: 11)),
-                padding: EdgeInsets.zero,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ))
+          .map(
+            (l) => Chip(
+              label: Text(l, style: const TextStyle(fontSize: 11)),
+              padding: EdgeInsets.zero,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          )
           .toList(),
     );
   }
@@ -243,9 +258,9 @@ class _EditablePermission {
 
   factory _EditablePermission.fromPermission(Permission p) =>
       _EditablePermission(
-        canView:   p.canView,
+        canView: p.canView,
         canCreate: p.canCreate,
-        canEdit:   p.canEdit,
+        canEdit: p.canEdit,
         canDelete: p.canDelete,
       );
 
@@ -259,11 +274,10 @@ class _EditablePermission {
     bool? canCreate,
     bool? canEdit,
     bool? canDelete,
-  }) =>
-      _EditablePermission(
-        canView:   canView   ?? this.canView,
-        canCreate: canCreate ?? this.canCreate,
-        canEdit:   canEdit   ?? this.canEdit,
-        canDelete: canDelete ?? this.canDelete,
-      );
+  }) => _EditablePermission(
+    canView: canView ?? this.canView,
+    canCreate: canCreate ?? this.canCreate,
+    canEdit: canEdit ?? this.canEdit,
+    canDelete: canDelete ?? this.canDelete,
+  );
 }

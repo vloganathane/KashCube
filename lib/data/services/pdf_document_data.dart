@@ -522,6 +522,91 @@ class DocumentTemplate {
     amountDecimalDigits: 2,
   );
 
+  /// Corporate Ledger: black-and-white invoice layout with dense tabular
+  /// sections and a ledger-style feel.
+  static const ledger = DocumentTemplate(
+    id: 'ledger',
+    name: 'Corporate Ledger',
+    accentColor: PdfColors.black,
+    headerStyle: PdfHeaderStyle.minimal,
+    showLogo: true,
+    amountDecimalDigits: 2,
+    pageSize: PageSize.a4,
+    fontFamily: PdfFontFamily.times,
+    bodyFontSize: 8.5,
+    titleFontSize: 26,
+    pageMargin: 24,
+    sectionSpacing: 12,
+    itemColumnWidthPct: 42,
+    headerAlignment: PdfHeaderAlignment.left,
+    config: PdfTemplateConfig(
+      sectionOrder: ['header', 'parties', 'items', 'gst', 'totals', 'footer'],
+      columns: [
+        PdfTemplateColumn(
+          id: 'index',
+          label: 'SL. No.',
+          widthPct: 5,
+          alignment: PdfTextAlign.center,
+        ),
+        PdfTemplateColumn(
+          id: 'hsn',
+          label: 'HSN Code',
+          widthPct: 9,
+          alignment: PdfTextAlign.left,
+        ),
+        PdfTemplateColumn(
+          id: 'item',
+          label: 'Product Name / Description',
+          widthPct: 46,
+          alignment: PdfTextAlign.left,
+        ),
+        PdfTemplateColumn(
+          id: 'qty',
+          label: 'Qty.',
+          widthPct: 10,
+          alignment: PdfTextAlign.center,
+        ),
+        PdfTemplateColumn(
+          id: 'rate',
+          label: 'Unit Price',
+          widthPct: 15,
+          alignment: PdfTextAlign.right,
+        ),
+        PdfTemplateColumn(
+          id: 'amount',
+          label: 'Total',
+          widthPct: 15,
+          alignment: PdfTextAlign.right,
+        ),
+      ],
+      rowDensity: 'compact',
+      logoPosition: 'aboveRight',
+      logoSize: 52,
+      titleStyle: 'boxed',
+      dividerThickness: 2,
+      totalsAlignment: 'right',
+      showSubtotal: true,
+      showTaxBreakdown: true,
+      showPaid: true,
+      showBalance: true,
+      showAmountInWords: false,
+      balanceColorHex: '#000000',
+      paymentDisplay: 'text',
+      paymentText: '',
+      footerMessage: '',
+      showTerms: true,
+      showSignature: true,
+      signatureLabel: 'For Authorised Signatory',
+      signatureAlignment: 'right',
+      showGeneratedDate: false,
+      showDocumentNumber: true,
+      showDates: true,
+      showGstin: true,
+      showAddresses: true,
+      showNotes: true,
+    ),
+  );
+
   /// Modern: white header with accent rule — current Invoice / Quote look.
   static const modern = DocumentTemplate(
     id: 'modern',
@@ -602,6 +687,7 @@ class DocumentTemplate {
 
   static const List<DocumentTemplate> presets = [
     classic,
+    ledger,
     modern,
     plain,
     receipt,
@@ -736,6 +822,44 @@ class PdfTotals {
   bool get hasPayment => paidAmount > 0;
 }
 
+// ── Copy requirement ─────────────────────────────────────────────────────────
+
+class PdfCopyInfo {
+  const PdfCopyInfo({
+    required this.heading,
+    required this.copyCount,
+    required this.copyLabels,
+    required this.copyLines,
+  });
+
+  final String heading;
+  final int copyCount;
+  final List<String> copyLabels;
+  final List<String> copyLines;
+
+  String labelForCopy(int index) {
+    if (index < 0 || index >= copyLabels.length) {
+      throw RangeError.index(index, copyLabels);
+    }
+    return copyLabels[index];
+  }
+
+  String filenameSuffixForCopy(int index) {
+    switch (index) {
+      case 0:
+        return 'Original';
+      case 1:
+        return 'Duplicate';
+      case 2:
+        return 'Triplicate';
+      case 3:
+        return 'Quadruplicate';
+      default:
+        return 'Copy ${index + 1}';
+    }
+  }
+}
+
 // ── Transport info (DC only) ──────────────────────────────────────────────────
 
 class PdfTransportInfo {
@@ -788,6 +912,8 @@ class PdfDocumentData {
     this.purpose,
     this.ewbNo,
     this.termsAndConditions,
+    this.copyInfo,
+    this.copyLabel,
     required this.footerNote,
     this.upiQrBytes,
     this.showFreeWatermark = false,
@@ -840,6 +966,8 @@ class PdfDocumentData {
   // ── Footer ───────────────────────────────────────────────────────────────────
 
   final String? termsAndConditions;
+  final PdfCopyInfo? copyInfo;
+  final String? copyLabel;
 
   /// Primary footer sentence, e.g. 'Thank you for your business!' for invoices,
   /// validity sentence for quotes, empty for DC (which uses a declaration block).

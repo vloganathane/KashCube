@@ -30,11 +30,11 @@ abstract class InvoiceRepository {
   Future<int> insert(Invoice invoice, List<InvoiceItem> items);
   Future<void> update(Invoice invoice, List<InvoiceItem> items);
   Future<void> delete(int id);
-  
+
   /// Mark invoice as paid and automatically create transaction in main ledger.
-  /// 
+  ///
   /// Returns the created transaction ID.
-  /// 
+  ///
   /// [partialAmount] - If provided, records partial payment. If null, marks as fully paid.
   /// [bookingId] - Optional booking ID to link (for booking invoices).
   Future<int> markAsPaid({

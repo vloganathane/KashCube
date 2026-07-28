@@ -10,9 +10,8 @@ class ProductGroupRepositoryImpl implements ProductGroupRepository {
   /// The active context for data isolation.
   final int? contextId;
 
-  String get _ctx => contextId == null
-      ? 'context_id IS NULL'
-      : 'context_id = $contextId';
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<ProductGroup>> getAll({bool activeOnly = true}) async {
@@ -36,10 +35,13 @@ class ProductGroupRepositoryImpl implements ProductGroupRepository {
   Future<ProductGroup?> getById(int id) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM product_groups
       WHERE id = ? AND $_ctx
-    ''', [id]);
+    ''',
+      [id],
+    );
 
     return rows.isEmpty ? null : ProductGroup.fromMap(rows.first);
   }

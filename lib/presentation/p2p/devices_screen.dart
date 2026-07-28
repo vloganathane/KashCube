@@ -26,9 +26,9 @@ class DevicesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final enabled          = ref.watch(p2pEnabledProvider);
-    final peersAsync        = ref.watch(p2pPeersProvider);
-    final statusAsync       = ref.watch(p2pSyncStatusProvider);
+    final enabled = ref.watch(p2pEnabledProvider);
+    final peersAsync = ref.watch(p2pPeersProvider);
+    final statusAsync = ref.watch(p2pSyncStatusProvider);
     final trustedPeersAsync = ref.watch(trustedPeersProvider);
 
     // Refresh the trusted-peers list ("last synced" timestamps) whenever a
@@ -81,15 +81,15 @@ class DevicesScreen extends ConsumerWidget {
 
           // ── Sync status banner ─────────────────────────────────────────
           statusAsync.when(
-            data:    (s) => _SyncStatusBanner(status: s),
+            data: (s) => _SyncStatusBanner(status: s),
             loading: () => const SizedBox.shrink(),
-            error:   (_, _) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
 
           // ── Paired devices ─────────────────────────────────────────────
           trustedPeersAsync.when(
             loading: () => const SizedBox.shrink(),
-            error:   (_, _) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
             data: (peers) {
               if (peers.isEmpty) return const SizedBox.shrink();
               return Column(
@@ -97,8 +97,10 @@ class DevicesScreen extends ConsumerWidget {
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.base, AppSpacing.lg,
-                      AppSpacing.base, AppSpacing.sm,
+                      AppSpacing.base,
+                      AppSpacing.lg,
+                      AppSpacing.base,
+                      AppSpacing.sm,
                     ),
                     child: Text(
                       'PAIRED DEVICES',
@@ -121,7 +123,10 @@ class DevicesScreen extends ConsumerWidget {
           // ── Peer list ──────────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.lg, AppSpacing.base, AppSpacing.sm,
+              AppSpacing.base,
+              AppSpacing.lg,
+              AppSpacing.base,
+              AppSpacing.sm,
             ),
             child: Text(
               'NEARBY DEVICES',
@@ -138,9 +143,7 @@ class DevicesScreen extends ConsumerWidget {
             data: (peers) => peers.isEmpty
                 ? _EmptyPeers(enabled: enabled)
                 : Column(
-                    children: peers
-                        .map((p) => _PeerTile(peer: p))
-                        .toList(),
+                    children: peers.map((p) => _PeerTile(peer: p)).toList(),
                   ),
             loading: () => const Padding(
               padding: EdgeInsets.all(AppSpacing.xxl),
@@ -148,8 +151,10 @@ class DevicesScreen extends ConsumerWidget {
             ),
             error: (e, _) => Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
-              child: Text('Discovery error: $e',
-                  style: TextStyle(color: context.colorScheme.error)),
+              child: Text(
+                'Discovery error: $e',
+                style: TextStyle(color: context.colorScheme.error),
+              ),
             ),
           ),
 
@@ -164,7 +169,7 @@ class DevicesScreen extends ConsumerWidget {
           context,
           MaterialPageRoute<void>(builder: (_) => const PairScreen()),
         ),
-        icon:  const Icon(Icons.qr_code_scanner),
+        icon: const Icon(Icons.qr_code_scanner),
         label: const Text('Pair Device'),
       ),
     );
@@ -181,10 +186,10 @@ class _TrustedPeerTile extends ConsumerWidget {
   String _ago(DateTime? dt) {
     if (dt == null) return 'Never synced';
     final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60)  return 'Synced just now';
-    if (diff.inMinutes < 60)  return 'Synced ${diff.inMinutes}m ago';
-    if (diff.inHours   < 24)  return 'Synced ${diff.inHours}h ago';
-    if (diff.inDays    < 30)  return 'Synced ${diff.inDays}d ago';
+    if (diff.inSeconds < 60) return 'Synced just now';
+    if (diff.inMinutes < 60) return 'Synced ${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return 'Synced ${diff.inHours}h ago';
+    if (diff.inDays < 30) return 'Synced ${diff.inDays}d ago';
     return 'Synced ${DateFormat('d MMM').format(dt)}';
   }
 
@@ -268,8 +273,11 @@ class _TrustedPeerTile extends ConsumerWidget {
                 value: 'revoke',
                 child: Row(
                   children: [
-                    Icon(Icons.link_off,
-                        size: 18, color: context.colorScheme.error),
+                    Icon(
+                      Icons.link_off,
+                      size: 18,
+                      color: context.colorScheme.error,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Revoke access',
@@ -302,9 +310,9 @@ class _SyncStatusBanner extends StatelessWidget {
 
     final (icon, color) = switch (phase) {
       SyncPhase.syncing => (Icons.sync, context.colorScheme.primary),
-      SyncPhase.done    => (Icons.check_circle_outline, context.kashColors.income),
-      SyncPhase.error   => (Icons.error_outline, context.colorScheme.error),
-      _                 => (Icons.info_outline, context.colorScheme.secondary),
+      SyncPhase.done => (Icons.check_circle_outline, context.kashColors.income),
+      SyncPhase.error => (Icons.error_outline, context.colorScheme.error),
+      _ => (Icons.info_outline, context.colorScheme.secondary),
     };
 
     return Material(
@@ -439,7 +447,8 @@ class _ManualPeerConnectCard extends ConsumerStatefulWidget {
       _ManualPeerConnectCardState();
 }
 
-class _ManualPeerConnectCardState extends ConsumerState<_ManualPeerConnectCard> {
+class _ManualPeerConnectCardState
+    extends ConsumerState<_ManualPeerConnectCard> {
   static const _kFavoritesKey = 'p2p_manual_peer_favorites';
 
   final _hostController = TextEditingController();
@@ -485,17 +494,17 @@ class _ManualPeerConnectCardState extends ConsumerState<_ManualPeerConnectCard> 
     if (preset != null) {
       final sep = preset.lastIndexOf(':');
       if (sep <= 0 || sep >= preset.length - 1) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid favorite entry')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invalid favorite entry')));
         return;
       }
       host = preset.substring(0, sep);
       final parsed = int.tryParse(preset.substring(sep + 1));
       if (parsed == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid favorite port')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Invalid favorite port')));
         return;
       }
       port = parsed;
@@ -543,7 +552,9 @@ class _ManualPeerConnectCardState extends ConsumerState<_ManualPeerConnectCard> 
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Found ${peer.displayName} at ${peer.host}:${peer.port}')),
+      SnackBar(
+        content: Text('Found ${peer.displayName} at ${peer.host}:${peer.port}'),
+      ),
     );
   }
 
@@ -666,7 +677,7 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   String? _testResult;
-  bool    _testing = false;
+  bool _testing = false;
 
   @override
   void initState() {
@@ -684,19 +695,27 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
     if (_testing) return;
     // dart:io HttpClient is not available on Flutter Web.
     if (kIsWeb) {
-      setState(() { _testResult = '⚠️ Not available in browser'; });
+      setState(() {
+        _testResult = '⚠️ Not available in browser';
+      });
       return;
     }
-    setState(() { _testing = true; _testResult = null; });
-    final ip   = await P2pDiscoveryService.getLocalIp();
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+    final ip = await P2pDiscoveryService.getLocalIp();
     final port = P2pCoordinator.instance.serverPort;
     if (ip == null || port == null) {
-      setState(() { _testResult = '❌ Server not running'; _testing = false; });
+      setState(() {
+        _testResult = '❌ Server not running';
+        _testing = false;
+      });
       return;
     }
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 4);
     try {
-      final req  = await client.getUrl(Uri.parse('http://$ip:$port/hello'));
+      final req = await client.getUrl(Uri.parse('http://$ip:$port/hello'));
       final resp = await req.close().timeout(const Duration(seconds: 4));
       final body = await resp.transform(Utf8Decoder()).join();
       setState(() {
@@ -705,35 +724,34 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
             : '❌ HTTP ${resp.statusCode}';
       });
     } catch (e) {
-      setState(() { _testResult = '❌ $e'; });
+      setState(() {
+        _testResult = '❌ $e';
+      });
     } finally {
       client.close(force: true);
-      setState(() { _testing = false; });
+      setState(() {
+        _testing = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final discoveryLog = ref.watch(p2pDiscoveryLogProvider).valueOrNull ?? const [];
-    final httpLog      = ref.watch(p2pServerLogProvider).valueOrNull    ?? const [];
-    final ipAsync      = ref.watch(p2pLocalIpProvider);
+    final discoveryLog =
+        ref.watch(p2pDiscoveryLogProvider).valueOrNull ?? const [];
+    final httpLog = ref.watch(p2pServerLogProvider).valueOrNull ?? const [];
+    final ipAsync = ref.watch(p2pLocalIpProvider);
 
-    final ip   = ipAsync.valueOrNull;
+    final ip = ipAsync.valueOrNull;
     final port = P2pCoordinator.instance.serverPort;
-    final addressLine = [
-      ?ip,
-      if (port != null) 'port $port',
-    ].join('  ');
+    final addressLine = [?ip, if (port != null) 'port $port'].join('  ');
 
     return ExpansionTile(
       leading: Icon(
         Icons.bug_report_outlined,
         color: context.colorScheme.onSurfaceVariant,
       ),
-      title: Text(
-        'Diagnostics',
-        style: context.textTheme.bodyMedium,
-      ),
+      title: Text('Diagnostics', style: context.textTheme.bodyMedium),
       subtitle: Text(
         addressLine.isEmpty ? 'Starting…' : addressLine,
         style: context.textTheme.bodySmall?.copyWith(
@@ -743,14 +761,17 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
       ),
       tilePadding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
       childrenPadding: const EdgeInsets.fromLTRB(
-        AppSpacing.base, 0, AppSpacing.base, AppSpacing.base,
+        AppSpacing.base,
+        0,
+        AppSpacing.base,
+        AppSpacing.base,
       ),
       children: [
         // ── Tab bar ──────────────────────────────────────────────────────
         TabBar(
-          controller:     _tabController,
-          labelStyle:     context.textTheme.labelSmall,
-          indicatorSize:  TabBarIndicatorSize.tab,
+          controller: _tabController,
+          labelStyle: context.textTheme.labelSmall,
+          indicatorSize: TabBarIndicatorSize.tab,
           tabs: const [
             Tab(text: 'mDNS'),
             Tab(text: 'Web / HTTP'),
@@ -764,9 +785,9 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
           builder: (context, _) {
             if (_tabController.index != 0) return const SizedBox.shrink();
             return _LogBox(
-              log:         discoveryLog,
+              log: discoveryLog,
               addressLine: addressLine,
-              label:       'mDNS',
+              label: 'mDNS',
             );
           },
         ),
@@ -786,7 +807,8 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
                       onPressed: _testing ? null : _testHello,
                       child: _testing
                           ? const SizedBox(
-                              width: 14, height: 14,
+                              width: 14,
+                              height: 14,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Text('Test /hello'),
@@ -794,7 +816,8 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
-                        _testResult ?? 'Tap to probe the server from this device',
+                        _testResult ??
+                            'Tap to probe the server from this device',
                         style: context.textTheme.bodySmall?.copyWith(
                           fontFamily: 'monospace',
                           color: context.colorScheme.onSurfaceVariant,
@@ -804,11 +827,7 @@ class _DiagnosticsPanelState extends ConsumerState<_DiagnosticsPanel>
                   ],
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                _LogBox(
-                  log:         httpLog,
-                  addressLine: addressLine,
-                  label:       'HTTP',
-                ),
+                _LogBox(log: httpLog, addressLine: addressLine, label: 'HTTP'),
               ],
             );
           },
@@ -850,10 +869,13 @@ class _LogBox extends StatelessWidget {
               tooltip: 'Copy log',
               onPressed: () {
                 final text = log.reversed.join('\n');
-                Clipboard.setData(ClipboardData(
-                  text: '--- KashCube $label Log ---\n'
-                      'Server: $addressLine\n\n$text',
-                ));
+                Clipboard.setData(
+                  ClipboardData(
+                    text:
+                        '--- KashCube $label Log ---\n'
+                        'Server: $addressLine\n\n$text',
+                  ),
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Log copied to clipboard'),
@@ -870,21 +892,24 @@ class _LogBox extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color:        context.colorScheme.surfaceContainerHighest,
+              color: context.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: log.reversed.take(30).map(
-                (e) => Text(
-                  e,
-                  style: context.textTheme.labelSmall?.copyWith(
-                    fontFamily: 'monospace',
-                    color: context.colorScheme.onSurfaceVariant,
-                    height: 1.5,
-                  ),
-                ),
-              ).toList(),
+              children: log.reversed
+                  .take(30)
+                  .map(
+                    (e) => Text(
+                      e,
+                      style: context.textTheme.labelSmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: context.colorScheme.onSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
         ],

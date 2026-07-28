@@ -6,14 +6,7 @@ import 'package:talker/talker.dart';
 
 import 'database_helper.dart';
 
-enum AppLogLevel {
-  trace,
-  debug,
-  info,
-  warning,
-  error,
-  fatal,
-}
+enum AppLogLevel { trace, debug, info, warning, error, fatal }
 
 class AppLogger {
   AppLogger._();
@@ -238,16 +231,18 @@ class AppLogger {
 
     // Serialize terminal writes to avoid many concurrent inserts hitting the
     // same SQLite connection in a single frame.
-    _terminalWriteQueue = _terminalWriteQueue.then((_) => _persistLog(
-          level: AppLogLevel.info,
-          source: source,
-          category: 'terminal',
-          eventName: 'terminal_line',
-          message: safe,
-          error: null,
-          stackTrace: null,
-          contextJson: null,
-        ));
+    _terminalWriteQueue = _terminalWriteQueue.then(
+      (_) => _persistLog(
+        level: AppLogLevel.info,
+        source: source,
+        category: 'terminal',
+        eventName: 'terminal_line',
+        message: safe,
+        error: null,
+        stackTrace: null,
+        contextJson: null,
+      ),
+    );
     await _terminalWriteQueue;
   }
 
@@ -262,36 +257,35 @@ class AppLogger {
     Map<String, Object?>? context,
   }) async {
     final safeMessage = _truncate(_redact(message));
-    final safeError = error == null ? null : _truncate(_redact(error.toString()));
+    final safeError = error == null
+        ? null
+        : _truncate(_redact(error.toString()));
     final safeStack = stackTrace == null
         ? null
         : _truncate(_redact(stackTrace.toString()));
 
-    runZoned(
-      () {
-        switch (level) {
-          case AppLogLevel.trace:
-            _talker.verbose(safeMessage, safeError, stackTrace);
-            break;
-          case AppLogLevel.debug:
-            _talker.debug(safeMessage, safeError, stackTrace);
-            break;
-          case AppLogLevel.info:
-            _talker.info(safeMessage, safeError, stackTrace);
-            break;
-          case AppLogLevel.warning:
-            _talker.warning(safeMessage, safeError, stackTrace);
-            break;
-          case AppLogLevel.error:
-            _talker.error(safeMessage, safeError, stackTrace);
-            break;
-          case AppLogLevel.fatal:
-            _talker.critical(safeMessage, safeError, stackTrace);
-            break;
-        }
-      },
-      zoneValues: {_internalConsoleZoneKey: true},
-    );
+    runZoned(() {
+      switch (level) {
+        case AppLogLevel.trace:
+          _talker.verbose(safeMessage, safeError, stackTrace);
+          break;
+        case AppLogLevel.debug:
+          _talker.debug(safeMessage, safeError, stackTrace);
+          break;
+        case AppLogLevel.info:
+          _talker.info(safeMessage, safeError, stackTrace);
+          break;
+        case AppLogLevel.warning:
+          _talker.warning(safeMessage, safeError, stackTrace);
+          break;
+        case AppLogLevel.error:
+          _talker.error(safeMessage, safeError, stackTrace);
+          break;
+        case AppLogLevel.fatal:
+          _talker.critical(safeMessage, safeError, stackTrace);
+          break;
+      }
+    }, zoneValues: {_internalConsoleZoneKey: true});
 
     final contextJson = context == null
         ? null
@@ -357,7 +351,8 @@ class AppLogger {
     // Mask long digit sequences that may include account/phone/reference values.
     final maskedDigits = input.replaceAllMapped(
       RegExp(r'\b\d{8,}\b'),
-      (m) => '${m.group(0)!.substring(0, 2)}******${m.group(0)!.substring(m.group(0)!.length - 2)}',
+      (m) =>
+          '${m.group(0)!.substring(0, 2)}******${m.group(0)!.substring(m.group(0)!.length - 2)}',
     );
     return maskedDigits;
   }

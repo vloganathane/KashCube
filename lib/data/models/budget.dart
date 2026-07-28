@@ -50,25 +50,25 @@ class Budget {
   /// `spentAmount`, `remainingAmount`, `isActive`, `updatedAt` are computed or
   /// from the old schema and must NOT be persisted.
   Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'year': year,
-        'month': month,
-        'category': category,
-        'budget_amount': budgetAmount,
-        'alert_at_percentage': alertAtPercentage,
-        'created_at': createdAt.toIso8601String(),
-      };
+    if (id != null) 'id': id,
+    'year': year,
+    'month': month,
+    'category': category,
+    'budget_amount': budgetAmount,
+    'alert_at_percentage': alertAtPercentage,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   factory Budget.fromMap(Map<String, dynamic> m) => Budget(
-        id: (m['id'] as num?)?.toInt(),
-        year: (m['year'] as num).toInt(),
-        month: (m['month'] as num).toInt(),
-        category: m['category'] as String,
-        budgetAmount: (m['budget_amount'] as num).toDouble(),
-        spentAmount: (m['spent_amount'] as num? ?? 0).toDouble(),
-        alertAtPercentage: (m['alert_at_percentage'] as num?)?.toInt() ?? 80,
-        createdAt: DateTime.parse(m['created_at'] as String),
-      );
+    id: (m['id'] as num?)?.toInt(),
+    year: (m['year'] as num).toInt(),
+    month: (m['month'] as num).toInt(),
+    category: m['category'] as String,
+    budgetAmount: (m['budget_amount'] as num).toDouble(),
+    spentAmount: (m['spent_amount'] as num? ?? 0).toDouble(),
+    alertAtPercentage: (m['alert_at_percentage'] as num?)?.toInt() ?? 80,
+    createdAt: DateTime.parse(m['created_at'] as String),
+  );
 
   Budget copyWith({
     int? id,
@@ -81,17 +81,16 @@ class Budget {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) =>
-      Budget(
-        id: id ?? this.id,
-        year: year ?? this.year,
-        month: month ?? this.month,
-        category: category ?? this.category,
-        budgetAmount: budgetAmount ?? this.budgetAmount,
-        spentAmount: spentAmount ?? this.spentAmount,
-        alertAtPercentage: alertAtPercentage ?? this.alertAtPercentage,
-        isActive: isActive ?? this.isActive,
-        createdAt: createdAt ?? this.createdAt,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) => Budget(
+    id: id ?? this.id,
+    year: year ?? this.year,
+    month: month ?? this.month,
+    category: category ?? this.category,
+    budgetAmount: budgetAmount ?? this.budgetAmount,
+    spentAmount: spentAmount ?? this.spentAmount,
+    alertAtPercentage: alertAtPercentage ?? this.alertAtPercentage,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
 }

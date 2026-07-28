@@ -34,15 +34,19 @@ class TallyXmlService {
       final dir = Directory(join(appDir.path, _exportDir));
       if (!await dir.exists()) await dir.create(recursive: true);
 
-      final timestamp =
-          DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
+      final timestamp = DateTime.now()
+          .toIso8601String()
+          .replaceAll(':', '-')
+          .substring(0, 19);
       final name = fileName ?? 'kash_cube_tally_$timestamp.xml';
       final filePath = join(dir.path, name);
 
       final xml = _buildXml(transactions, companyName: companyName);
       await File(filePath).writeAsString(xml, encoding: const SystemEncoding());
 
-      debugPrint('[Tally] Exported ${transactions.length} vouchers → $filePath');
+      debugPrint(
+        '[Tally] Exported ${transactions.length} vouchers → $filePath',
+      );
       return filePath;
     } catch (e) {
       debugPrint('[Tally] Export failed: $e');
@@ -64,12 +68,12 @@ class TallyXmlService {
     buf.writeln('        <REPORTNAME>Vouchers</REPORTNAME>');
     buf.writeln('        <STATICVARIABLES>');
     buf.writeln(
-        '          <SVCURRENTCOMPANY>${_esc(companyName)}</SVCURRENTCOMPANY>');
+      '          <SVCURRENTCOMPANY>${_esc(companyName)}</SVCURRENTCOMPANY>',
+    );
     buf.writeln('        </STATICVARIABLES>');
     buf.writeln('      </REQUESTDESC>');
     buf.writeln('      <REQUESTDATA>');
-    buf.writeln(
-        '        <TALLYMESSAGE xmlns:UDF="TallyUDF">');
+    buf.writeln('        <TALLYMESSAGE xmlns:UDF="TallyUDF">');
 
     for (final txn in transactions) {
       _writeVoucher(buf, txn);
@@ -103,7 +107,8 @@ class TallyXmlService {
     // In Tally: positive AMOUNT = credit entry, negative = debit entry.
     // For expenses/payments: party ledger is debited (+), cash/bank credited (-).
     // For income/receipts: cash/bank is debited (+), income ledger credited (-).
-    final isIncome = txn.type == TransactionType.income ||
+    final isIncome =
+        txn.type == TransactionType.income ||
         txn.type == TransactionType.receivedBack ||
         txn.type == TransactionType.redeemed;
 
@@ -115,7 +120,9 @@ class TallyXmlService {
     buf.writeln('            <NARRATION>$narration</NARRATION>');
     buf.writeln('            <VOUCHERTYPENAME>$vchType</VOUCHERTYPENAME>');
     buf.writeln('            <PARTYLEDGERNAME>$party</PARTYLEDGERNAME>');
-    buf.writeln('            <REFERENCE>${txn.upiRefNo ?? txn.id?.toString() ?? ""}</REFERENCE>');
+    buf.writeln(
+      '            <REFERENCE>${txn.upiRefNo ?? txn.id?.toString() ?? ""}</REFERENCE>',
+    );
     buf.writeln('            <ALLLEDGERENTRIES.LIST>');
     if (isIncome) {
       // Cash/Bank debited
@@ -153,8 +160,7 @@ class TallyXmlService {
     TransactionType.expense ||
     TransactionType.paidBack ||
     TransactionType.lent => 'Payment',
-    TransactionType.invested ||
-    TransactionType.transfer => 'Journal',
+    TransactionType.invested || TransactionType.transfer => 'Journal',
   };
 
   String _cashLedger(Transaction txn) => switch (txn.paymentMethod) {

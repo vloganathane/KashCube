@@ -23,6 +23,6 @@ final knownPartyNamesProvider = FutureProvider<List<String>>((ref) async {
 /// ```
 final partySuggestionProvider =
     FutureProvider.family<TransactionSuggestion?, String>((ref, partyName) {
-  final service = ref.read(suggestionServiceProvider);
-  return service.suggestForParty(partyName);
-});
+      final service = ref.read(suggestionServiceProvider);
+      return service.suggestForParty(partyName);
+    });

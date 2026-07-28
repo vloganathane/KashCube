@@ -16,10 +16,7 @@ import 'bill_viewer_screen.dart';
 
 /// Displays full details of a single transaction.
 class TransactionDetailScreen extends ConsumerWidget {
-  const TransactionDetailScreen({
-    super.key,
-    required this.transactionId,
-  });
+  const TransactionDetailScreen({super.key, required this.transactionId});
 
   final int transactionId;
 
@@ -29,7 +26,9 @@ class TransactionDetailScreen extends ConsumerWidget {
 
     return transactionsAsync.when(
       data: (transactions) {
-        final txn = transactions.where((t) => t.id == transactionId).firstOrNull;
+        final txn = transactions
+            .where((t) => t.id == transactionId)
+            .firstOrNull;
         if (txn == null) {
           return Scaffold(
             appBar: AppBar(title: const Text('Transaction')),
@@ -69,7 +68,9 @@ class TransactionDetailPanel extends ConsumerWidget {
     final isIncome = transaction.isIncome;
     final amountColor = isIncome ? colors.income : colors.expense;
     final prefix = isIncome ? '+' : '-';
-    final bgColor = isIncome ? colors.incomeBackground : colors.expenseBackground;
+    final bgColor = isIncome
+        ? colors.incomeBackground
+        : colors.expenseBackground;
 
     return Scaffold(
       appBar: AppBar(
@@ -167,7 +168,8 @@ class TransactionDetailPanel extends ConsumerWidget {
                     label: 'UPI Ref',
                     value: transaction.upiRefNo!,
                   ),
-                if (transaction.referenceId != null && transaction.referenceId != transaction.upiRefNo)
+                if (transaction.referenceId != null &&
+                    transaction.referenceId != transaction.upiRefNo)
                   _DetailRow(
                     icon: Icons.confirmation_number_outlined,
                     label: 'Reference',
@@ -209,7 +211,9 @@ class TransactionDetailPanel extends ConsumerWidget {
                           color: context.colorScheme.primary,
                         ),
                         title: const Text('Invoice Payment'),
-                        subtitle: Text('Invoice ID: ${transaction.linkedInvoiceId}'),
+                        subtitle: Text(
+                          'Invoice ID: ${transaction.linkedInvoiceId}',
+                        ),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
                           Navigator.push(
@@ -231,13 +235,17 @@ class TransactionDetailPanel extends ConsumerWidget {
                           color: context.colorScheme.secondary,
                         ),
                         title: const Text('Booking Payment'),
-                        subtitle: Text('Booking ID: ${transaction.linkedBookingId}'),
+                        subtitle: Text(
+                          'Booking ID: ${transaction.linkedBookingId}',
+                        ),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
                           // TODO: Navigate to booking detail screen when implemented
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Booking detail screen coming soon'),
+                              content: Text(
+                                'Booking detail screen coming soon',
+                              ),
                             ),
                           );
                         },
@@ -354,11 +362,13 @@ class TransactionDetailPanel extends ConsumerWidget {
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     // Check if transaction is linked to invoice or booking
-    final bool isLinked = transaction.linkedInvoiceId != null ||
+    final bool isLinked =
+        transaction.linkedInvoiceId != null ||
         transaction.linkedBookingId != null;
 
     String title = 'Delete Transaction';
-    String content = 'Are you sure you want to delete this transaction? '
+    String content =
+        'Are you sure you want to delete this transaction? '
         'This action cannot be undone.';
 
     if (isLinked) {
@@ -370,7 +380,8 @@ class TransactionDetailPanel extends ConsumerWidget {
       if (transaction.linkedBookingId != null) {
         linkedTo.add('a booking');
       }
-      content = 'This transaction is linked to ${linkedTo.join(' and ')}. '
+      content =
+          'This transaction is linked to ${linkedTo.join(' and ')}. '
           'Deleting it will affect payment records and may cause data inconsistencies.\\n\\n'
           'Are you sure you want to proceed?';
     }
@@ -448,12 +459,7 @@ class _DetailRow extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: context.textTheme.bodyLarge,
-            ),
-          ),
+          Expanded(child: Text(value, style: context.textTheme.bodyLarge)),
         ],
       ),
     );

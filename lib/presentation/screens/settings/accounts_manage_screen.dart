@@ -39,7 +39,11 @@ class AccountsManageScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.account_balance_outlined, size: 64, color: Colors.grey),
+                  Icon(
+                    Icons.account_balance_outlined,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
                   SizedBox(height: AppSpacing.md),
                   Text('No accounts yet', style: TextStyle(color: Colors.grey)),
                 ],
@@ -54,12 +58,12 @@ class AccountsManageScreen extends ConsumerWidget {
               final account = accounts[i];
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
                   child: Icon(
                     _iconForType(account.accountType),
-                    color:
-                        Theme.of(context).colorScheme.onPrimaryContainer,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
                     size: 20,
                   ),
                 ),
@@ -99,15 +103,17 @@ class AccountsManageScreen extends ConsumerWidget {
             },
           );
         },
-        loading: () =>
-            const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
     );
   }
 
-  void _showAddEditSheet(BuildContext context, WidgetRef ref,
-      {Account? account}) {
+  void _showAddEditSheet(
+    BuildContext context,
+    WidgetRef ref, {
+    Account? account,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -138,7 +144,8 @@ class AccountsManageScreen extends ConsumerWidget {
     return parts.join(' · ');
   }
 
-  IconData _iconForType(AccountType type) {    switch (type) {
+  IconData _iconForType(AccountType type) {
+    switch (type) {
       case AccountType.savings:
       case AccountType.current:
         return Icons.account_balance_outlined;
@@ -180,11 +187,11 @@ class _AddEditAccountSheet extends ConsumerStatefulWidget {
 }
 
 class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
-  final _nameController       = TextEditingController();
-  final _openingBalCtrl       = TextEditingController();
-  final _creditLimitCtrl      = TextEditingController();
-  final _acctNumberCtrl       = TextEditingController();
-  final _bankNameCtrl         = TextEditingController();
+  final _nameController = TextEditingController();
+  final _openingBalCtrl = TextEditingController();
+  final _creditLimitCtrl = TextEditingController();
+  final _acctNumberCtrl = TextEditingController();
+  final _bankNameCtrl = TextEditingController();
 
   late AccountType _type;
   int? _linkedBankAccountId;
@@ -207,20 +214,18 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
   void initState() {
     super.initState();
     final a = widget.account;
-    _nameController.text  = a?.accountName ?? '';
-    _type                 = a?.accountType ?? AccountType.savings;
-    _isPrimary            = a?.isPrimary ?? false;
-    _linkedBankAccountId  = a?.linkedBankAccountId;
-    _acctNumberCtrl.text  = a?.accountNumberLast4 ?? '';
-    _bankNameCtrl.text    = a?.bankName ?? '';
+    _nameController.text = a?.accountName ?? '';
+    _type = a?.accountType ?? AccountType.savings;
+    _isPrimary = a?.isPrimary ?? false;
+    _linkedBankAccountId = a?.linkedBankAccountId;
+    _acctNumberCtrl.text = a?.accountNumberLast4 ?? '';
+    _bankNameCtrl.text = a?.bankName ?? '';
 
     if (a?.openingBalance != null && a!.openingBalance! != 0) {
-      _openingBalCtrl.text =
-          _formatBalance(a.openingBalance!);
+      _openingBalCtrl.text = _formatBalance(a.openingBalance!);
     }
     if (a?.creditLimit != null && a!.creditLimit! != 0) {
-      _creditLimitCtrl.text =
-          _formatBalance(a.creditLimit!);
+      _creditLimitCtrl.text = _formatBalance(a.creditLimit!);
     }
   }
 
@@ -238,28 +243,25 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    final openingBal   = double.tryParse(_openingBalCtrl.text.trim());
-    final creditLimit  = double.tryParse(_creditLimitCtrl.text.trim());
-    final acctNum      = _acctNumberCtrl.text.trim();
-    final bankName     = _bankNameCtrl.text.trim();
+    final openingBal = double.tryParse(_openingBalCtrl.text.trim());
+    final creditLimit = double.tryParse(_creditLimitCtrl.text.trim());
+    final acctNum = _acctNumberCtrl.text.trim();
+    final bankName = _bankNameCtrl.text.trim();
 
     widget.onSave(
       (widget.account ??
-              const Account(
-                accountType: AccountType.savings,
-                accountName: '',
-              ))
+              const Account(accountType: AccountType.savings, accountName: ''))
           .copyWith(
-        accountName:          name,
-        accountType:          _type,
-        openingBalance:       openingBal,
-        creditLimit:          creditLimit,
-        linkedBankAccountId:  _linkedBankAccountId,
-        accountNumberLast4:   acctNum.isEmpty ? null : acctNum,
-        bankName:             bankName.isEmpty ? null : bankName,
-        isPrimary:            _isPrimary,
-        isActive:             true,
-      ),
+            accountName: name,
+            accountType: _type,
+            openingBalance: openingBal,
+            creditLimit: creditLimit,
+            linkedBankAccountId: _linkedBankAccountId,
+            accountNumberLast4: acctNum.isEmpty ? null : acctNum,
+            bankName: bankName.isEmpty ? null : bankName,
+            isPrimary: _isPrimary,
+            isActive: true,
+          ),
     );
     Navigator.of(context).pop();
   }
@@ -270,10 +272,12 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
     final allAccounts = ref.watch(accountsProvider).valueOrNull ?? [];
     // Potential linked bank accounts: savings/current only, excluding self.
     final bankAccounts = allAccounts
-        .where((a) =>
-            (a.accountType == AccountType.savings ||
-                a.accountType == AccountType.current) &&
-            a.id != widget.account?.id)
+        .where(
+          (a) =>
+              (a.accountType == AccountType.savings ||
+                  a.accountType == AccountType.current) &&
+              a.id != widget.account?.id,
+        )
         .toList();
 
     return Padding(
@@ -315,8 +319,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
                 prefixIcon: Icon(Icons.category_outlined),
               ),
               items: AccountType.values
-                  .map((t) =>
-                      DropdownMenuItem(value: t, child: Text(t.label)))
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                   .toList(),
               onChanged: (v) {
                 if (v != null) {
@@ -333,8 +336,9 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             // ── Opening Balance ───────────────────────────────────────
             TextField(
               controller: _openingBalCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
               ],
@@ -355,8 +359,9 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             if (_type == AccountType.creditCard) ...[
               TextField(
                 controller: _creditLimitCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                 ],
@@ -419,8 +424,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
                     ),
                   ),
                 ],
-                onChanged: (v) =>
-                    setState(() => _linkedBankAccountId = v),
+                onChanged: (v) => setState(() => _linkedBankAccountId = v),
               ),
               const SizedBox(height: AppSpacing.lg),
             ],
@@ -429,11 +433,9 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Set as primary account'),
-              subtitle: const Text(
-                  'Pre-selected when adding transactions'),
+              subtitle: const Text('Pre-selected when adding transactions'),
               value: _isPrimary,
-              onChanged: (v) =>
-                  setState(() => _isPrimary = v ?? false),
+              onChanged: (v) => setState(() => _isPrimary = v ?? false),
             ),
             const SizedBox(height: AppSpacing.lg),
 
@@ -442,8 +444,7 @@ class _AddEditAccountSheetState extends ConsumerState<_AddEditAccountSheet> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _save,
-                child:
-                    Text(_isEditing ? 'Save Changes' : 'Add Account'),
+                child: Text(_isEditing ? 'Save Changes' : 'Add Account'),
               ),
             ),
           ],

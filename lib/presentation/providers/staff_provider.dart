@@ -39,11 +39,12 @@ class StaffNotifier extends StateNotifier<AsyncValue<List<Staff>>> {
 }
 
 final staffProvider =
-    StateNotifierProvider.autoDispose<StaffNotifier, AsyncValue<List<Staff>>>(
-        (ref) {
-  final businessId = ref.watch(activeBusinessIdProvider);
-  return StaffNotifier(businessId);
-});
+    StateNotifierProvider.autoDispose<StaffNotifier, AsyncValue<List<Staff>>>((
+      ref,
+    ) {
+      final businessId = ref.watch(activeBusinessIdProvider);
+      return StaffNotifier(businessId);
+    });
 
 // ── Salary payments for one staff member ───────────────────────────────────────
 
@@ -79,9 +80,11 @@ class SalaryPaymentNotifier
 }
 
 final salaryPaymentsProvider = StateNotifierProvider.autoDispose
-    .family<SalaryPaymentNotifier, AsyncValue<List<SalaryPayment>>, int>(
-        (ref, staffId) {
-  return SalaryPaymentNotifier(staffId);
-});
+    .family<SalaryPaymentNotifier, AsyncValue<List<SalaryPayment>>, int>((
+      ref,
+      staffId,
+    ) {
+      return SalaryPaymentNotifier(staffId);
+    });
 
 // activeBusinessIdProvider is imported from inventory_provider.dart

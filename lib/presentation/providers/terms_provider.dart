@@ -19,8 +19,9 @@ abstract final class AppTerms {
 // ---------------------------------------------------------------------------
 
 /// Async state: null = loading, true = accepted, false = not yet accepted.
-final termsAcceptedProvider =
-    AsyncNotifierProvider<_TermsNotifier, bool>(_TermsNotifier.new);
+final termsAcceptedProvider = AsyncNotifierProvider<_TermsNotifier, bool>(
+  _TermsNotifier.new,
+);
 
 class _TermsNotifier extends AsyncNotifier<bool> {
   @override
@@ -32,11 +33,15 @@ class _TermsNotifier extends AsyncNotifier<bool> {
         .timeout(
           const Duration(seconds: 8),
           onTimeout: () {
-            debugPrint('[Terms] Timeout reading acceptance version; defaulting to not accepted');
+            debugPrint(
+              '[Terms] Timeout reading acceptance version; defaulting to not accepted',
+            );
             return null;
           },
         );
-    debugPrint('[Terms] Accepted version: $accepted (current: ${AppTerms.currentVersion})');
+    debugPrint(
+      '[Terms] Accepted version: $accepted (current: ${AppTerms.currentVersion})',
+    );
     final result = accepted == AppTerms.currentVersion;
     debugPrint('[Terms] Result: $result');
     return result;
@@ -46,9 +51,13 @@ class _TermsNotifier extends AsyncNotifier<bool> {
   Future<void> accept() async {
     final settings = ref.read(settingsRepositoryProvider);
     await settings.set(
-        SettingsKeys.termsAcceptedVersion, AppTerms.currentVersion);
+      SettingsKeys.termsAcceptedVersion,
+      AppTerms.currentVersion,
+    );
     await settings.set(
-        SettingsKeys.termsAcceptedAt, DateTime.now().toIso8601String());
+      SettingsKeys.termsAcceptedAt,
+      DateTime.now().toIso8601String(),
+    );
 
     // Accepting T&C also constitutes analytics consent (disclosed in §6).
     await settings.set(SettingsKeys.analyticsConsent, 'true');

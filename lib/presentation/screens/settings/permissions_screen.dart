@@ -14,7 +14,7 @@ class PermissionsScreen extends StatefulWidget {
 
 class _PermissionsScreenState extends State<PermissionsScreen> {
   static final _localAuth = LocalAuthentication();
-  
+
   late final bool _isAndroid;
 
   bool _loading = true;
@@ -129,8 +129,8 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
                 Text(
                   'Tip: If a permission is permanently denied, open system app settings and enable it manually.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),

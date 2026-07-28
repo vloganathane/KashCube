@@ -166,13 +166,12 @@ class EwayBillService {
     Business? business,
     Party? customerParty,
     EwbTransportDetails transport = const EwbTransportDetails(),
-  }) =>
-      _buildResult(
-        invoice,
-        business: business,
-        customerParty: customerParty,
-        transport: transport,
-      );
+  }) => _buildResult(
+    invoice,
+    business: business,
+    customerParty: customerParty,
+    transport: transport,
+  );
 
   /// Returns the e-Way Bill payload as a [Map] without writing any file.
   ///
@@ -182,9 +181,12 @@ class EwayBillService {
     Business? business,
     Party? customerParty,
     EwbTransportDetails transport = const EwbTransportDetails(),
-  }) =>
-      _buildPayload(invoice,
-          business: business, customerParty: customerParty, transport: transport);
+  }) => _buildPayload(
+    invoice,
+    business: business,
+    customerParty: customerParty,
+    transport: transport,
+  );
 
   /// Returns `true` if the invoice total is below the EWB threshold (₹50,000).
   /// EWB is still allowed below threshold; this is just a UX warning signal.
@@ -214,12 +216,13 @@ class EwayBillService {
 
   /// Shares an already-built [EwbExportResult] for a delivery challan.
   Future<void> shareResultForChallan(
-          EwbExportResult result, DeliveryChallan challan) =>
-      Share.shareXFiles(
-        [XFile(result.file.path, mimeType: 'application/json')],
-        subject: 'e-Way Bill — ${challan.challanNo}',
-        text: 'e-Way Bill JSON for delivery challan ${challan.challanNo}',
-      );
+    EwbExportResult result,
+    DeliveryChallan challan,
+  ) => Share.shareXFiles(
+    [XFile(result.file.path, mimeType: 'application/json')],
+    subject: 'e-Way Bill — ${challan.challanNo}',
+    text: 'e-Way Bill JSON for delivery challan ${challan.challanNo}',
+  );
 
   /// Builds the e-Way Bill JSON for a challan and returns [EwbExportResult].
   ///
@@ -229,13 +232,12 @@ class EwayBillService {
     Business? business,
     Party? customerParty,
     EwbTransportDetails transport = const EwbTransportDetails(),
-  }) =>
-      _buildResultForChallan(
-        challan,
-        business: business,
-        customerParty: customerParty,
-        transport: transport,
-      );
+  }) => _buildResultForChallan(
+    challan,
+    business: business,
+    customerParty: customerParty,
+    transport: transport,
+  );
 
   /// Returns `true` if the challan subtotal is below the EWB threshold.
   bool isBelowThresholdForChallan(DeliveryChallan challan) =>
@@ -251,8 +253,12 @@ class EwayBillService {
   }) async {
     final now = DateTime.now();
     final validUntil = transport.validUntil(now);
-    final payload = _buildPayload(invoice,
-        business: business, customerParty: customerParty, transport: transport);
+    final payload = _buildPayload(
+      invoice,
+      business: business,
+      customerParty: customerParty,
+      transport: transport,
+    );
     final jsonContent = const JsonEncoder.withIndent('  ').convert(payload);
     final file = await _writeJsonFromString(invoice, jsonContent);
     return EwbExportResult(
@@ -308,10 +314,11 @@ class EwayBillService {
   }
 
   Future<File> _writeJsonForChallan(
-      DeliveryChallan challan, String json) async {
+    DeliveryChallan challan,
+    String json,
+  ) async {
     final dir = await _ewayDir();
-    final safe =
-        challan.challanNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
+    final safe = challan.challanNo.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_');
     final file = File('${dir.path}/EWB_DC_$safe.json');
     await file.writeAsString(json, flush: true);
     return file;
@@ -341,8 +348,8 @@ class EwayBillService {
     final toGstin = (challan.customerGstin?.trim().isNotEmpty ?? false)
         ? challan.customerGstin!.trim().toUpperCase()
         : (customerParty?.gstin?.trim().isNotEmpty ?? false)
-            ? customerParty!.gstin!.trim().toUpperCase()
-            : 'URP';
+        ? customerParty!.gstin!.trim().toUpperCase()
+        : 'URP';
     final toStateCode = _stateCodeInt(
       toGstin,
       customerParty?.state ?? challan.placeOfSupply,
@@ -462,8 +469,8 @@ class EwayBillService {
     final toGstin = (invoice.customerGstin?.trim().isNotEmpty ?? false)
         ? invoice.customerGstin!.trim().toUpperCase()
         : (customerParty?.gstin?.trim().isNotEmpty ?? false)
-            ? customerParty!.gstin!.trim().toUpperCase()
-            : 'URP';
+        ? customerParty!.gstin!.trim().toUpperCase()
+        : 'URP';
     final toStateCode = _stateCodeInt(
       toGstin,
       customerParty?.state ?? invoice.placeOfSupply,
@@ -677,8 +684,7 @@ class EwayBillService {
   static double _half(double pct) => _round2(pct / 2);
 
   /// Rounds to 2 decimal places.
-  static double _round2(double v) =>
-      (v * 100).roundToDouble() / 100;
+  static double _round2(double v) => (v * 100).roundToDouble() / 100;
 
   /// Taxable amount for a line item = line_total minus tax (back-calculate).
   ///

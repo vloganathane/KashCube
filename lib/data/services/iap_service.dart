@@ -13,10 +13,10 @@ import '../../presentation/providers/settings_provider.dart';
 class KashCubeProducts {
   KashCubeProducts._();
 
-  static const starterMonthly  = 'com.kashcube.starter.monthly';
-  static const starterAnnual   = 'com.kashcube.starter.annual';
+  static const starterMonthly = 'com.kashcube.starter.monthly';
+  static const starterAnnual = 'com.kashcube.starter.annual';
   static const businessMonthly = 'com.kashcube.business.monthly';
-  static const businessAnnual  = 'com.kashcube.business.annual';
+  static const businessAnnual = 'com.kashcube.business.annual';
 
   static const all = {
     starterMonthly,
@@ -84,7 +84,9 @@ class IapService {
     // On macOS/iOS/web, StoreKit would fire storekit_no_response because
     // products are not registered in App Store Connect.
     if (!kIsWeb && !Platform.isAndroid) {
-      debugPrint('[IAP] Skipping IAP init — Google Play only (current platform: ${Platform.operatingSystem})');
+      debugPrint(
+        '[IAP] Skipping IAP init — Google Play only (current platform: ${Platform.operatingSystem})',
+      );
       return;
     }
 
@@ -125,7 +127,8 @@ class IapService {
     final product = products.firstWhere(
       (p) => p.id == productId,
       orElse: () => throw StateError(
-          '[IAP] Product not loaded: $productId. Call init() first.'),
+        '[IAP] Product not loaded: $productId. Call init() first.',
+      ),
     );
     final param = PurchaseParam(productDetails: product);
     return _iap.buyNonConsumable(purchaseParam: param);

@@ -11,19 +11,21 @@ class ProductRelationshipRepositoryImpl
   /// The active context for data isolation.
   final int? contextId;
 
-  String get _ctx => contextId == null
-      ? 'context_id IS NULL'
-      : 'context_id = $contextId';
+  String get _ctx =>
+      contextId == null ? 'context_id IS NULL' : 'context_id = $contextId';
 
   @override
   Future<List<ProductRelationship>> getAllForProduct(int productId) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM product_relationships
       WHERE product_id = ? AND deleted_at IS NULL AND $_ctx
       ORDER BY created_at DESC
-    ''', [productId]);
+    ''',
+      [productId],
+    );
 
     return rows.map(ProductRelationship.fromMap).toList();
   }
@@ -32,10 +34,13 @@ class ProductRelationshipRepositoryImpl
   Future<ProductRelationship?> getById(int id) async {
     final db = await _dbHelper.database;
 
-    final rows = await db.rawQuery('''
+    final rows = await db.rawQuery(
+      '''
       SELECT * FROM product_relationships
       WHERE id = ? AND $_ctx
-    ''', [id]);
+    ''',
+      [id],
+    );
 
     return rows.isEmpty ? null : ProductRelationship.fromMap(rows.first);
   }

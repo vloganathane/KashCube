@@ -56,8 +56,11 @@ void main() {
       ]) {
         final frame = <String, dynamic>{'type': type, 'sync_id': 'abc'};
         final signed = checker.sign(frame);
-        expect(signed.containsKey('_kash_sig'), isTrue,
-            reason: 'type=$type should be signed');
+        expect(
+          signed.containsKey('_kash_sig'),
+          isTrue,
+          reason: 'type=$type should be signed',
+        );
         expect(signed['_kash_sig'], isA<String>());
         expect((signed['_kash_sig'] as String).isNotEmpty, isTrue);
       }
@@ -77,8 +80,11 @@ void main() {
       ]) {
         final frame = <String, dynamic>{'type': type};
         final signed = checker.sign(frame);
-        expect(signed.containsKey('_kash_sig'), isFalse,
-            reason: 'control-plane type=$type should not be signed');
+        expect(
+          signed.containsKey('_kash_sig'),
+          isFalse,
+          reason: 'control-plane type=$type should not be signed',
+        );
       }
     });
 
@@ -115,7 +121,9 @@ void main() {
       final frame = <String, dynamic>{
         'type': SyncSignalingMessages.push,
         'table': 'transactions',
-        'rows': <dynamic>[<String, dynamic>{'sync_id': 'r1'}],
+        'rows': <dynamic>[
+          <String, dynamic>{'sync_id': 'r1'},
+        ],
       };
       final signed = checker.sign(frame);
       final verified = checker.verify(signed);
@@ -148,51 +156,60 @@ void main() {
       expect(checker.verify(tampered), isNull);
     });
 
-    test('verify returns null for data-plane frame with body mutation after sign', () {
-      final checker = _hmac();
-      final frame = <String, dynamic>{
-        'type': SyncSignalingMessages.write,
-        'sync_id': 'tamper-2',
-        'table': 'transactions',
-      };
-      final signed = checker.sign(frame);
-      final mutated = Map<String, dynamic>.from(signed);
-      mutated['table'] = 'loans'; // body changed after signing
-      expect(checker.verify(mutated), isNull);
-    });
+    test(
+      'verify returns null for data-plane frame with body mutation after sign',
+      () {
+        final checker = _hmac();
+        final frame = <String, dynamic>{
+          'type': SyncSignalingMessages.write,
+          'sync_id': 'tamper-2',
+          'table': 'transactions',
+        };
+        final signed = checker.sign(frame);
+        final mutated = Map<String, dynamic>.from(signed);
+        mutated['table'] = 'loans'; // body changed after signing
+        expect(checker.verify(mutated), isNull);
+      },
+    );
 
-    test('verify passes through control-plane frames without sig requirement', () {
-      final checker = _hmac();
-      final frame = <String, dynamic>{
-        'type': SyncSignalingMessages.ping,
-        'ts': 1234567890,
-      };
-      final result = checker.verify(frame);
-      expect(result, isNotNull);
-      expect(result!['type'], SyncSignalingMessages.ping);
-    });
+    test(
+      'verify passes through control-plane frames without sig requirement',
+      () {
+        final checker = _hmac();
+        final frame = <String, dynamic>{
+          'type': SyncSignalingMessages.ping,
+          'ts': 1234567890,
+        };
+        final result = checker.verify(frame);
+        expect(result, isNotNull);
+        expect(result!['type'], SyncSignalingMessages.ping);
+      },
+    );
 
     test('verify returns null for frame with missing type field', () {
       final checker = _hmac();
       expect(checker.verify(<String, dynamic>{'sync_id': 'x'}), isNull);
     });
 
-    test('signed frame verifies with same secret but not with different secret', () {
-      final checker1 = HmacSyncFrameIntegrityChecker(
-        secretBytes: utf8.encode('secret-a'),
-      );
-      final checker2 = HmacSyncFrameIntegrityChecker(
-        secretBytes: utf8.encode('secret-b'),
-      );
-      final frame = <String, dynamic>{
-        'type': SyncSignalingMessages.write,
-        'sync_id': 'cross-key-1',
-      };
+    test(
+      'signed frame verifies with same secret but not with different secret',
+      () {
+        final checker1 = HmacSyncFrameIntegrityChecker(
+          secretBytes: utf8.encode('secret-a'),
+        );
+        final checker2 = HmacSyncFrameIntegrityChecker(
+          secretBytes: utf8.encode('secret-b'),
+        );
+        final frame = <String, dynamic>{
+          'type': SyncSignalingMessages.write,
+          'sync_id': 'cross-key-1',
+        };
 
-      final signed = checker1.sign(frame);
-      expect(checker1.verify(signed), isNotNull);
-      expect(checker2.verify(signed), isNull);
-    });
+        final signed = checker1.sign(frame);
+        expect(checker1.verify(signed), isNotNull);
+        expect(checker2.verify(signed), isNull);
+      },
+    );
   });
 
   group('HmacSyncFrameIntegrityChecker — canonicalization', () {
@@ -220,8 +237,10 @@ void main() {
         'sync_id': 'sort-1',
         'type': SyncSignalingMessages.write,
       };
-      expect(checker.sign(frameA)['_kash_sig'],
-          equals(checker.sign(frameB)['_kash_sig']));
+      expect(
+        checker.sign(frameA)['_kash_sig'],
+        equals(checker.sign(frameB)['_kash_sig']),
+      );
     });
 
     test('sig changes when any payload field value changes', () {
@@ -234,8 +253,10 @@ void main() {
         'type': SyncSignalingMessages.write,
         'sync_id': 'val-2',
       };
-      expect(checker.sign(frameA)['_kash_sig'],
-          isNot(equals(checker.sign(frameB)['_kash_sig'])));
+      expect(
+        checker.sign(frameA)['_kash_sig'],
+        isNot(equals(checker.sign(frameB)['_kash_sig'])),
+      );
     });
   });
 
@@ -257,8 +278,7 @@ void main() {
         };
         final signed = checker.sign(frame);
         final verified = checker.verify(signed);
-        expect(verified, isNotNull,
-            reason: 'round-trip failed for type=$type');
+        expect(verified, isNotNull, reason: 'round-trip failed for type=$type');
         expect(verified!['type'], type);
         expect(verified['sync_id'], 'roundtrip-$type');
         expect(verified.containsKey('_kash_sig'), isFalse);

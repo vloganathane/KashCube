@@ -100,7 +100,7 @@ class _DisconnectedBanner extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.base,
-          vertical:   AppSpacing.sm,
+          vertical: AppSpacing.sm,
         ),
         child: Row(
           children: [

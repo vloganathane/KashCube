@@ -68,9 +68,9 @@ class FyArchiveService {
     required SettingsRepository settings,
     required DatabaseHelper dbHelper,
     required FiscalYearService fyService,
-  })  : _settings = settings,
-        _dbHelper = dbHelper,
-        _fyService = fyService;
+  }) : _settings = settings,
+       _dbHelper = dbHelper,
+       _fyService = fyService;
 
   static final FyArchiveService instance = FyArchiveService._(
     settings: SettingsRepositoryImpl(),
@@ -136,12 +136,10 @@ class FyArchiveService {
         (outstandingRows.first['owed'] as num?)?.toDouble() ?? 0.0;
 
     // ── Open Credits ─────────────────────────────────────────────────────
-    final creditRows = await db.rawQuery(
-      '''
+    final creditRows = await db.rawQuery('''
       SELECT COUNT(*) AS cnt FROM credits
       WHERE is_cleared = 0 AND deleted_at IS NULL
-      ''',
-    );
+      ''');
     final openCreditCount = (creditRows.first['cnt'] as int?) ?? 0;
 
     return FYSummary(
@@ -198,11 +196,14 @@ class FyArchiveService {
     await _settings.set('last_fy_close_date', today);
 
     // Update current_fy_start to the NEW FY start so isResetDue() → false.
-    final newFyStart =
-        (await _fyService.currentFiscalYear).start.toIso8601String().substring(0, 10);
+    final newFyStart = (await _fyService.currentFiscalYear).start
+        .toIso8601String()
+        .substring(0, 10);
     await _settings.set('current_fy_start', newFyStart);
 
-    debugPrint('[FY] Closed. last_fy_close_date=$today, current_fy_start=$newFyStart');
+    debugPrint(
+      '[FY] Closed. last_fy_close_date=$today, current_fy_start=$newFyStart',
+    );
 
     // 6. Reopen DB (triggers integrity check + snapshot pipeline).
     await _dbHelper.database;
@@ -230,9 +231,11 @@ class FyArchiveService {
     return dir
         .listSync()
         .whereType<File>()
-        .where((f) =>
-            basename(f.path).startsWith('kash_cube_archive_FY') &&
-            f.path.endsWith('.db'))
+        .where(
+          (f) =>
+              basename(f.path).startsWith('kash_cube_archive_FY') &&
+              f.path.endsWith('.db'),
+        )
         .toList()
       ..sort((a, b) => a.path.compareTo(b.path));
   }
@@ -246,7 +249,8 @@ class FyArchiveService {
       // current_fy_start still points to the OLD FY start — use it.
       final storedStr = await _settings.get('current_fy_start') ?? '';
       final storedStart =
-          DateTime.tryParse(storedStr) ?? DateTime.now().subtract(const Duration(days: 366));
+          DateTime.tryParse(storedStr) ??
+          DateTime.now().subtract(const Duration(days: 366));
       return _fyService.getFiscalYearFor(storedStart);
     }
     return _fyService.currentFiscalYear;

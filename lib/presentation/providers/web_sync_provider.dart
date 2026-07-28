@@ -24,11 +24,11 @@ import '../web/web_url_reader_stub.dart'
     if (dart.library.js_interop) '../web/web_url_reader_web.dart'
     as url_reader;
 import '../web/web_media_upload_stub.dart'
-  if (dart.library.js_interop) '../web/web_media_upload_web.dart'
-  as web_media_upload;
+    if (dart.library.js_interop) '../web/web_media_upload_web.dart'
+    as web_media_upload;
 import '../web/web_preflight_probe_stub.dart'
-  if (dart.library.js_interop) '../web/web_preflight_probe_web.dart'
-  as web_preflight_probe;
+    if (dart.library.js_interop) '../web/web_preflight_probe_web.dart'
+    as web_preflight_probe;
 
 // ── WebSocket connection state ─────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ const _webSyncNoChange = Object();
 
 class _PendingOutboundWrite {
   _PendingOutboundWrite({required Map<String, dynamic> payload})
-      : payload = Map<String, dynamic>.from(payload);
+    : payload = Map<String, dynamic>.from(payload);
 
   final Map<String, dynamic> payload;
   int attemptCount = 0;
@@ -62,8 +62,8 @@ class _PendingOutboundWrite {
 
 class WebSyncState {
   const WebSyncState({
-    this.state        = WsConnState.disconnected,
-    this.authPhase    = WebAuthPhase.idle,
+    this.state = WsConnState.disconnected,
+    this.authPhase = WebAuthPhase.idle,
     this.deviceName,
     this.errorMsg,
     this.progressMsg,
@@ -74,9 +74,9 @@ class WebSyncState {
   });
   final WsConnState state;
   final WebAuthPhase authPhase;
-  final String?     deviceName;
-  final String?     errorMsg;
-  final String?     progressMsg;
+  final String? deviceName;
+  final String? errorMsg;
+  final String? progressMsg;
 
   /// Tables that have received their final ROWS frame from the phone.
   final Set<String> syncedTables;
@@ -89,33 +89,32 @@ class WebSyncState {
   WebSyncState copyWith({
     WsConnState? state,
     WebAuthPhase? authPhase,
-    Object?      deviceName = _webSyncNoChange,
-    Object?      errorMsg = _webSyncNoChange,
-    Object?      progressMsg = _webSyncNoChange,
+    Object? deviceName = _webSyncNoChange,
+    Object? errorMsg = _webSyncNoChange,
+    Object? progressMsg = _webSyncNoChange,
     Set<String>? syncedTables,
-    bool?        syncComplete,
-    Object?      authQrPayload = _webSyncNoChange,
-    bool?        awaitingApproval,
-  }) =>
-      WebSyncState(
-        state:        state        ?? this.state,
-        authPhase: authPhase ?? this.authPhase,
-        deviceName: identical(deviceName, _webSyncNoChange)
-            ? this.deviceName
-            : deviceName as String?,
-        errorMsg: identical(errorMsg, _webSyncNoChange)
-            ? this.errorMsg
-            : errorMsg as String?,
-        progressMsg: identical(progressMsg, _webSyncNoChange)
-          ? this.progressMsg
-          : progressMsg as String?,
-        syncedTables: syncedTables ?? this.syncedTables,
-        syncComplete: syncComplete ?? this.syncComplete,
-        authQrPayload: identical(authQrPayload, _webSyncNoChange)
-            ? this.authQrPayload
-            : authQrPayload as String?,
-        awaitingApproval: awaitingApproval ?? this.awaitingApproval,
-      );
+    bool? syncComplete,
+    Object? authQrPayload = _webSyncNoChange,
+    bool? awaitingApproval,
+  }) => WebSyncState(
+    state: state ?? this.state,
+    authPhase: authPhase ?? this.authPhase,
+    deviceName: identical(deviceName, _webSyncNoChange)
+        ? this.deviceName
+        : deviceName as String?,
+    errorMsg: identical(errorMsg, _webSyncNoChange)
+        ? this.errorMsg
+        : errorMsg as String?,
+    progressMsg: identical(progressMsg, _webSyncNoChange)
+        ? this.progressMsg
+        : progressMsg as String?,
+    syncedTables: syncedTables ?? this.syncedTables,
+    syncComplete: syncComplete ?? this.syncComplete,
+    authQrPayload: identical(authQrPayload, _webSyncNoChange)
+        ? this.authQrPayload
+        : authQrPayload as String?,
+    awaitingApproval: awaitingApproval ?? this.awaitingApproval,
+  );
 }
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -173,22 +172,21 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     int inboundDedupeCapacity = 512,
     Future<void> Function(String table, List<dynamic> rows)? upsertRowsHook,
     void Function(String table)? notifyChangeHook,
-  })
-      : _preferWebRtcTransport = preferWebRtcTransport,
-        _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
-        _signalingMode = signalingMode ?? resolveDefaultSignalingMode(),
-        _turnConfigSource = turnConfigSource ?? defaultTurnConfigSource(),
-        _cloudAdapterInjected = cloudAdapterInjected,
-        _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
-        _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
-        _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
-        _reconnectRunner = reconnectRunner,
-        _writeAckTimeout = writeAckTimeout,
-        _maxWriteRetryAttempts = maxWriteRetryAttempts,
-        _inboundDedupeCapacity = inboundDedupeCapacity,
-        _upsertRowsHook = upsertRowsHook,
-        _notifyChangeHook = notifyChangeHook,
-        super(const WebSyncState());
+  }) : _preferWebRtcTransport = preferWebRtcTransport,
+       _peerOpsMode = peerOpsMode ?? resolveDefaultPeerOpsMode(),
+       _signalingMode = signalingMode ?? resolveDefaultSignalingMode(),
+       _turnConfigSource = turnConfigSource ?? defaultTurnConfigSource(),
+       _cloudAdapterInjected = cloudAdapterInjected,
+       _sessionIdProvider = sessionIdProvider ?? url_reader.getSavedSessionId,
+       _heartbeatReconnectBaseDelay = heartbeatReconnectBaseDelay,
+       _maxHeartbeatReconnectAttempts = maxHeartbeatReconnectAttempts,
+       _reconnectRunner = reconnectRunner,
+       _writeAckTimeout = writeAckTimeout,
+       _maxWriteRetryAttempts = maxWriteRetryAttempts,
+       _inboundDedupeCapacity = inboundDedupeCapacity,
+       _upsertRowsHook = upsertRowsHook,
+       _notifyChangeHook = notifyChangeHook,
+       super(const WebSyncState());
 
   SyncTransportChannel? _channel;
   StreamSubscription<dynamic>? _sub;
@@ -209,26 +207,28 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   final Duration _writeAckTimeout;
   final int _maxWriteRetryAttempts;
   final int _inboundDedupeCapacity;
-  final Future<void> Function(String table, List<dynamic> rows)? _upsertRowsHook;
+  final Future<void> Function(String table, List<dynamic> rows)?
+  _upsertRowsHook;
   final void Function(String table)? _notifyChangeHook;
   Timer? _heartbeatReconnectTimer;
   int _heartbeatReconnectAttempts = 0;
   bool _heartbeatReconnectInFlight = false;
   final Map<String, _PendingOutboundWrite> _pendingOutboundWrites =
       <String, _PendingOutboundWrite>{};
-    final Map<String, Set<String>> _seenInboundRowIdsByTable =
+  final Map<String, Set<String>> _seenInboundRowIdsByTable =
       <String, Set<String>>{};
-    final Map<String, ListQueue<String>> _seenInboundRowOrderByTable =
+  final Map<String, ListQueue<String>> _seenInboundRowOrderByTable =
       <String, ListQueue<String>>{};
   final Map<String, SyncTablePlan> _syncPlans = {};
   final Map<String, DateTime> _outboundLastSentAt = {};
-  final Map<String, int>      _outboundLastSentVersion = {};
-  final Set<String>           _snapshotSentTables = {};
+  final Map<String, int> _outboundLastSentVersion = {};
+  final Set<String> _snapshotSentTables = {};
   Set<String> _pullTables = const <String>{};
   final WebRtcNegotiationMailbox _webrtcMailbox =
       WebRtcNegotiationMailbox.instance;
   String? _latestRemoteAnswerSdp;
-  final List<Map<String, dynamic>> _remoteIceCandidates = <Map<String, dynamic>>[];
+  final List<Map<String, dynamic>> _remoteIceCandidates =
+      <Map<String, dynamic>>[];
 
   WebRtcPeerOpsFactory _buildWebRtcPeerOpsFactory() {
     return buildWebRtcPeerOpsFactory(_peerOpsMode);
@@ -238,10 +238,15 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   ///
   /// Set [isSession] to true when passing a session token instead of a QR
   /// token — the phone will verify it with [SESSION_AUTH] handling.
-  Future<void> connect(String wsUrl, String token,
-      {bool isSession = false}) async {
+  Future<void> connect(
+    String wsUrl,
+    String token, {
+    bool isSession = false,
+  }) async {
     if (state.state == WsConnState.connecting ||
-        state.state == WsConnState.connected) { return; }
+        state.state == WsConnState.connected) {
+      return;
+    }
 
     state = state.copyWith(
       state: WsConnState.connecting,
@@ -274,13 +279,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final uri = Uri.parse(wsUrl);
       _channel = await _connectTransport(uri);
 
-      state = state.copyWith(
-        authPhase: WebAuthPhase.wsReachable,
-      );
+      state = state.copyWith(authPhase: WebAuthPhase.wsReachable);
 
       _sub = _channel!.stream.listen(
         _onMessage,
-        onDone:  _onDisconnected,
+        onDone: _onDisconnected,
         onError: (_) => _onDisconnected(),
       );
 
@@ -288,12 +291,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
       // Send AUTH or SESSION_AUTH depending on credential type.
       _channel!.sendJson({
-        'type':  isSession ? 'SESSION_AUTH' : 'AUTH',
+        'type': isSession ? 'SESSION_AUTH' : 'AUTH',
         'token': token,
       });
     } catch (e) {
       state = state.copyWith(
-        state:    WsConnState.disconnected,
+        state: WsConnState.disconnected,
         authPhase: WebAuthPhase.idle,
         errorMsg: 'Connection failed: $e',
         progressMsg: 'Could not open local channel',
@@ -338,9 +341,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final uri = Uri.parse(wsUrl);
       _channel = await _connectTransport(uri);
 
-      state = state.copyWith(
-        authPhase: WebAuthPhase.wsReachable,
-      );
+      state = state.copyWith(authPhase: WebAuthPhase.wsReachable);
 
       _sub = _channel!.stream.listen(
         _onMessage,
@@ -376,7 +377,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final gateResult = gate.check();
       if (gateResult is CloudSignalingNotReady) {
         final reasonNames = gateResult.reasons.map((r) => r.name).join(', ');
-        debugPrint('[WebSync] Cloud signaling not ready ($reasonNames), using local signaling');
+        debugPrint(
+          '[WebSync] Cloud signaling not ready ($reasonNames), using local signaling',
+        );
         state = state.copyWith(
           progressMsg: 'Cloud signaling not ready. Using local signaling…',
         );
@@ -394,9 +397,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           state = state.copyWith(progressMsg: 'Cloud signaling mode active');
           return cloudChannel;
         } catch (e) {
-          debugPrint('[WebSync] Cloud signaling unavailable, falling back to local signaling: $e');
+          debugPrint(
+            '[WebSync] Cloud signaling unavailable, falling back to local signaling: $e',
+          );
           state = state.copyWith(
-              progressMsg: 'Cloud signaling unavailable. Using local signaling…');
+            progressMsg: 'Cloud signaling unavailable. Using local signaling…',
+          );
         }
       }
     }
@@ -411,7 +417,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       return preferredChannel;
     } catch (e) {
       if (preferred != SyncTransportKind.webRtc) rethrow;
-      debugPrint('[WebSync] WebRTC transport unavailable, falling back to WebSocket: $e');
+      debugPrint(
+        '[WebSync] WebRTC transport unavailable, falling back to WebSocket: $e',
+      );
 
       final fallback = SyncTransportPolicy.create(SyncTransportKind.webSocket);
       await fallback.connect(uri);
@@ -444,7 +452,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
   void _onMessage(dynamic raw) {
     try {
-      final msg  = jsonDecode(raw as String) as Map<String, dynamic>;
+      final msg = jsonDecode(raw as String) as Map<String, dynamic>;
       final type = (msg['type'] as String? ?? '').toUpperCase();
       switch (type) {
         case SyncSignalingMessages.authOk:
@@ -457,8 +465,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           // Clear saved session so the user is prompted to scan a new QR.
           url_reader.clearSession();
           state = state.copyWith(
-            state:    WsConnState.disconnected,
-              authPhase: WebAuthPhase.idle,
+            state: WsConnState.disconnected,
+            authPhase: WebAuthPhase.idle,
             errorMsg: 'Authentication failed — scan a new QR code',
             progressMsg: 'Authentication failed',
             authQrPayload: null,
@@ -485,7 +493,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           _handleSyncPlan(msg);
           break;
         case SyncSignalingMessages.signalOffer:
-          debugPrint('[WebSync] SIGNAL_OFFER received - awaiting browser peer wiring');
+          debugPrint(
+            '[WebSync] SIGNAL_OFFER received - awaiting browser peer wiring',
+          );
           break;
         case SyncSignalingMessages.signalAnswer:
           _handleIncomingSignalAnswer(msg);
@@ -516,9 +526,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   void _handleSignalAck(Map<String, dynamic> msg) {
     final sourceType = msg['source_type']?.toString() ?? 'unknown';
     final status = msg['status']?.toString() ?? 'accepted';
-    state = state.copyWith(
-      progressMsg: 'Signaling $sourceType: $status',
-    );
+    state = state.copyWith(progressMsg: 'Signaling $sourceType: $status');
     debugPrint('[WebSync] SIGNAL_ACK source=$sourceType status=$status');
   }
 
@@ -535,9 +543,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
 
     _latestRemoteAnswerSdp = sdp;
-    state = state.copyWith(
-      progressMsg: 'Received answer SDP from phone',
-    );
+    state = state.copyWith(progressMsg: 'Received answer SDP from phone');
 
     _refreshWebRtcRuntimeState(msg['session_id']?.toString());
     debugPrint('[WebSync] SIGNAL_ANSWER received (length=${sdp.length})');
@@ -584,9 +590,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   Future<void> _handleSignalError(Map<String, dynamic> msg) async {
     final code = msg['code']?.toString() ?? 'UNKNOWN_ERROR';
     final reason = msg['reason']?.toString() ?? 'Signaling error';
-    state = state.copyWith(
-      errorMsg: 'Signaling error ($code): $reason',
-    );
+    state = state.copyWith(errorMsg: 'Signaling error ($code): $reason');
     debugPrint('[WebSync] SIGNAL_ERROR code=$code reason=$reason');
 
     if (code == 'HEARTBEAT_TIMEOUT') {
@@ -604,7 +608,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     final wsUrl = _wsUrl;
     final sessionId = _sessionIdProvider();
-    if (wsUrl == null || wsUrl.isEmpty || sessionId == null || sessionId.isEmpty) {
+    if (wsUrl == null ||
+        wsUrl.isEmpty ||
+        sessionId == null ||
+        sessionId.isEmpty) {
       state = state.copyWith(
         progressMsg: 'Connection lost. Auto-reconnect unavailable.',
       );
@@ -659,9 +666,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
 
     if (_heartbeatReconnectAttempts >= _maxHeartbeatReconnectAttempts) {
-      state = state.copyWith(
-        progressMsg: 'Connection lost. Please reconnect.',
-      );
+      state = state.copyWith(progressMsg: 'Connection lost. Please reconnect.');
       return;
     }
 
@@ -684,12 +689,11 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   void _handleSignalUnsupported(Map<String, dynamic> msg) {
-    final reason = msg['reason']?.toString() ?? 'WebRTC signaling not available';
+    final reason =
+        msg['reason']?.toString() ?? 'WebRTC signaling not available';
     final code = msg['code']?.toString();
     final detail = (code == null || code.isEmpty) ? reason : '$reason ($code)';
-    state = state.copyWith(
-      progressMsg: 'Signaling fallback active: $detail',
-    );
+    state = state.copyWith(progressMsg: 'Signaling fallback active: $detail');
     debugPrint('[WebSync] SIGNAL_UNSUPPORTED $detail');
   }
 
@@ -699,24 +703,16 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
     switch (event) {
       case 'PEER_SESSION_CREATED':
-        state = state.copyWith(
-          progressMsg: 'WebRTC peer session created',
-        );
+        state = state.copyWith(progressMsg: 'WebRTC peer session created');
         break;
       case 'DATA_CHANNEL_READY':
-        state = state.copyWith(
-          progressMsg: 'WebRTC data channel ready',
-        );
+        state = state.copyWith(progressMsg: 'WebRTC data channel ready');
         break;
       case 'PEER_SESSION_CLOSED':
-        state = state.copyWith(
-          progressMsg: 'WebRTC peer session closed',
-        );
+        state = state.copyWith(progressMsg: 'WebRTC peer session closed');
         break;
       default:
-        state = state.copyWith(
-          progressMsg: 'WebRTC runtime event: $event',
-        );
+        state = state.copyWith(progressMsg: 'WebRTC runtime event: $event');
         break;
     }
 
@@ -735,7 +731,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
 
     final channel = _channel;
-    if (sessionId != null && sessionId.isNotEmpty &&
+    if (sessionId != null &&
+        sessionId.isNotEmpty &&
         channel is WebRtcSyncTransportChannel) {
       channel.registerDataChannelBridge(
         sessionId: sessionId,
@@ -763,12 +760,12 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
 
     state = state.copyWith(
-      state:        WsConnState.connected,
+      state: WsConnState.connected,
       authPhase: WebAuthPhase.approved,
-      deviceName:   msg['device_name'] as String?,
+      deviceName: msg['device_name'] as String?,
       syncedTables: {},
       syncComplete: _pullTables.isEmpty,
-      errorMsg:     '',
+      errorMsg: '',
       progressMsg: _pullTables.isEmpty
           ? 'Connected'
           : 'Connected. Syncing local data…',
@@ -814,8 +811,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
           .map((p) => p.tableName)
           .toSet();
       final deltaTs = plans.where((p) => p.mode == SyncMode.deltaTs).length;
-      final deltaVersion =
-          plans.where((p) => p.mode == SyncMode.deltaVersion).length;
+      final deltaVersion = plans
+          .where((p) => p.mode == SyncMode.deltaVersion)
+          .length;
       final snapshot = plans.where((p) => p.mode == SyncMode.snapshot).length;
 
       debugPrint(
@@ -830,8 +828,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   /// table done when is_final is true. Emits syncComplete when all tables
   /// have received their final frame.
   Future<void> _handleRows(Map<String, dynamic> msg) async {
-    final table   = msg['table']    as String?;
-    final rows    = msg['rows']     as List<dynamic>?;
+    final table = msg['table'] as String?;
+    final rows = msg['rows'] as List<dynamic>?;
     final isFinal = msg['is_final'] as bool? ?? false;
 
     if (table == null || rows == null) return;
@@ -859,11 +857,13 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   /// Handles a PUSH frame (live phone write): upserts rows incrementally.
   Future<void> _handlePush(Map<String, dynamic> msg) async {
     final table = msg['table'] as String?;
-    final rows  = msg['rows']  as List<dynamic>?;
+    final rows = msg['rows'] as List<dynamic>?;
     if (table == null || rows == null || rows.isEmpty) return;
     final filteredRows = _filterNewInboundRows(table, rows);
     if (filteredRows.isEmpty) {
-      debugPrint('[WebSync] PUSH deduped: $table (${rows.length} duplicate row(s))');
+      debugPrint(
+        '[WebSync] PUSH deduped: $table (${rows.length} duplicate row(s))',
+      );
       return;
     }
 
@@ -972,13 +972,16 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final db = await DatabaseHelper.instance.database;
       for (final plan in _outboundTables()) {
         final table = plan.tableName;
-        if (plan.mode == SyncMode.snapshot && _snapshotSentTables.contains(table)) {
+        if (plan.mode == SyncMode.snapshot &&
+            _snapshotSentTables.contains(table)) {
           continue;
         }
 
         final query = GenericSyncQueryBuilder.buildOutboundQuery(
           plan: plan,
-          since: plan.mode == SyncMode.deltaTs ? _outboundLastSentAt[table] : null,
+          since: plan.mode == SyncMode.deltaTs
+              ? _outboundLastSentAt[table]
+              : null,
           afterVersion: plan.mode == SyncMode.deltaVersion
               ? _outboundLastSentVersion[table]
               : null,
@@ -1000,7 +1003,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
         // Advance watermark after successful push.
         switch (plan.mode) {
           case SyncMode.deltaTs:
-            _outboundLastSentAt[table] = GenericSyncQueryBuilder.maxTimestamp(rows);
+            _outboundLastSentAt[table] = GenericSyncQueryBuilder.maxTimestamp(
+              rows,
+            );
           case SyncMode.deltaVersion:
             final maxV = GenericSyncQueryBuilder.maxVersion(rows);
             if (maxV != null) _outboundLastSentVersion[table] = maxV;
@@ -1047,7 +1052,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
       if (pending.attemptCount >= _maxWriteRetryAttempts) {
         state = state.copyWith(
-          progressMsg: 'Write delivery pending confirmation. Reconnect may be required.',
+          progressMsg:
+              'Write delivery pending confirmation. Reconnect may be required.',
         );
         continue;
       }
@@ -1056,7 +1062,10 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
     }
   }
 
-  void _sendPendingWrite(_PendingOutboundWrite pending, {required bool isRetry}) {
+  void _sendPendingWrite(
+    _PendingOutboundWrite pending, {
+    required bool isRetry,
+  }) {
     final channel = _channel;
     if (channel == null) {
       return;
@@ -1082,15 +1091,14 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 
   List<SyncTablePlan> _outboundTables() {
-    return _syncPlans.values
-        .where((plan) => plan.isWebEligible)
-        .toList()
+    return _syncPlans.values.where((plan) => plan.isWebEligible).toList()
       ..sort((a, b) => a.tableName.compareTo(b.tableName));
   }
 
   void _markOutboundWatermarkFromRows(String table, List<dynamic> rows) {
     if (rows.isEmpty) return;
-    var maxTs = _outboundLastSentAt[table] ??
+    var maxTs =
+        _outboundLastSentAt[table] ??
         DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
 
     for (final row in rows) {
@@ -1098,7 +1106,8 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
       final map = row;
       final updatedRaw = map['updated_at']?.toString();
       final createdRaw = map['created_at']?.toString();
-      final ts = DateTime.tryParse(updatedRaw ?? '') ??
+      final ts =
+          DateTime.tryParse(updatedRaw ?? '') ??
           DateTime.tryParse(createdRaw ?? '');
       if (ts != null && ts.toUtc().isAfter(maxTs)) {
         maxTs = ts.toUtc();
@@ -1145,7 +1154,7 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
 
   void _onDisconnected() {
     state = state.copyWith(
-      state:      WsConnState.disconnected,
+      state: WsConnState.disconnected,
       authPhase: WebAuthPhase.idle,
       deviceName: null,
       progressMsg: 'Disconnected',
@@ -1206,7 +1215,9 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }) {
     final sessionId = url_reader.getSavedSessionId();
     if (state.state != WsConnState.connected || _channel == null) {
-      state = state.copyWith(errorMsg: 'Cannot send signaling frame while disconnected');
+      state = state.copyWith(
+        errorMsg: 'Cannot send signaling frame while disconnected',
+      );
       return;
     }
     if (sessionId == null || sessionId.isEmpty) {
@@ -1295,7 +1306,6 @@ class WebSyncNotifier extends StateNotifier<WebSyncState> {
   }
 }
 
-final webSyncProvider =
-    StateNotifierProvider<WebSyncNotifier, WebSyncState>(
+final webSyncProvider = StateNotifierProvider<WebSyncNotifier, WebSyncState>(
   (_) => WebSyncNotifier(),
 );

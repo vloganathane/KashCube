@@ -33,18 +33,12 @@ Future<SmsConfirmAction?> showSmsConfirmationSheet(
         top: Radius.circular(AppSpacing.radiusLg),
       ),
     ),
-    builder: (context) => _SmsConfirmationContent(
-      parsed: parsed,
-      ref: ref,
-    ),
+    builder: (context) => _SmsConfirmationContent(parsed: parsed, ref: ref),
   );
 }
 
 class _SmsConfirmationContent extends StatefulWidget {
-  const _SmsConfirmationContent({
-    required this.parsed,
-    required this.ref,
-  });
+  const _SmsConfirmationContent({required this.parsed, required this.ref});
 
   final ParsedSms parsed;
   final WidgetRef ref;
@@ -211,8 +205,7 @@ class _SmsConfirmationContentState extends State<_SmsConfirmationContent> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _categories.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(width: AppSpacing.sm),
+              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
               itemBuilder: (context, index) {
                 final cat = _categories[index];
                 final selected = cat == _category;

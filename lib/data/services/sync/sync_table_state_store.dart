@@ -164,10 +164,6 @@ class SyncTableStateStore {
 
   Future<void> clearTable(String tableName) async {
     final db = await DatabaseHelper.instance.database;
-    await db.delete(
-      _table,
-      where: 'table_name = ?',
-      whereArgs: [tableName],
-    );
+    await db.delete(_table, where: 'table_name = ?', whereArgs: [tableName]);
   }
 }

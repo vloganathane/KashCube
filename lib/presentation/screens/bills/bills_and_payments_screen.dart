@@ -34,10 +34,7 @@ enum _SpFilter { all, recurring, oneTime, overdue, paid }
 /// Pass [billContext] `'personal'` (default) for the Transactions tab
 /// or `'business'` for the Business → Payables tab.
 class BillsAndPaymentsScreen extends ConsumerStatefulWidget {
-  const BillsAndPaymentsScreen({
-    super.key,
-    this.billContext = 'personal',
-  });
+  const BillsAndPaymentsScreen({super.key, this.billContext = 'personal'});
 
   /// `'personal'` or `'business'`.
   final String billContext;
@@ -70,7 +67,8 @@ class _BillsAndPaymentsScreenState
             tooltip: 'Search bills',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const SearchScreen(initialFilter: SearchFilter.bills),
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.bills),
               ),
             ),
           ),
@@ -127,10 +125,8 @@ class _BillsAndPaymentsScreenState
           // ── List ─────────────────────────────────────────────────────────
           Expanded(
             child: asyncItems.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('Error: $e')),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Error: $e')),
               data: (items) {
                 final filtered = _applyFilter(items);
                 if (filtered.isEmpty) return _emptyState(context);
@@ -144,8 +140,7 @@ class _BillsAndPaymentsScreenState
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (_, i) =>
-                      _PaymentCard(item: filtered[i]),
+                  itemBuilder: (_, i) => _PaymentCard(item: filtered[i]),
                 );
               },
             ),
@@ -165,37 +160,38 @@ class _BillsAndPaymentsScreenState
       };
 
   Widget _emptyState(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event_repeat,
-              size: 64,
-              color: context.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: AppSpacing.base),
-            Text(
-              _filter == _SpFilter.all
-                  ? 'No bills or payments yet'
-                  : 'Nothing here',
-              style: context.textTheme.titleMedium?.copyWith(
-                color: context.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (_filter == _SpFilter.all) ...[
-              const SizedBox(height: AppSpacing.sm),
-              const Text('Tap + to add a bill, subscription, or salary'),
-            ],
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.event_repeat,
+          size: 64,
+          color: context.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
         ),
-      );
+        const SizedBox(height: AppSpacing.base),
+        Text(
+          _filter == _SpFilter.all
+              ? 'No bills or payments yet'
+              : 'Nothing here',
+          style: context.textTheme.titleMedium?.copyWith(
+            color: context.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        if (_filter == _SpFilter.all) ...[
+          const SizedBox(height: AppSpacing.sm),
+          const Text('Tap + to add a bill, subscription, or salary'),
+        ],
+      ],
+    ),
+  );
 
   void _openAdd(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-          builder: (_) => AddEditScheduledPaymentScreen(
-                defaultBillContext: widget.billContext,
-              )),
+        builder: (_) => AddEditScheduledPaymentScreen(
+          defaultBillContext: widget.billContext,
+        ),
+      ),
     );
   }
 }
@@ -261,26 +257,30 @@ class _SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 4),
-              Text(label,
-                  style: context.textTheme.labelSmall?.copyWith(
-                    color: context.colorScheme.onSurfaceVariant,
-                  )),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xs),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
           Text(
-            CurrencyFormatter.format(amount),
-            style: context.textTheme.titleMedium
-                ?.copyWith(color: color, fontWeight: FontWeight.bold),
+            label,
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
-      );
+      ),
+      const SizedBox(height: AppSpacing.xs),
+      Text(
+        CurrencyFormatter.format(amount),
+        style: context.textTheme.titleMedium?.copyWith(
+          color: color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -295,8 +295,9 @@ class _PaymentCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isIncome = item.isIncome;
-    final amountColor =
-        isIncome ? context.kashColors.income : context.kashColors.expense;
+    final amountColor = isIncome
+        ? context.kashColors.income
+        : context.kashColors.expense;
     final isPaid = item.isPaidThisPeriod;
     final isOverdue = item.isOverdue;
 
@@ -304,20 +305,11 @@ class _PaymentCard extends ConsumerWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: amountColor.withValues(alpha: 0.12),
-          child: Icon(
-            _iconFor(item),
-            color: amountColor,
-            size: 20,
-          ),
+          child: Icon(_iconFor(item), color: amountColor, size: 20),
         ),
         title: Row(
           children: [
-            Expanded(
-              child: Text(
-                item.name,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            Expanded(child: Text(item.name, overflow: TextOverflow.ellipsis)),
             if (isOverdue)
               _Badge(label: 'Overdue', color: context.kashColors.overdue),
             if (isPaid && !isOverdue)
@@ -380,22 +372,17 @@ class _Badge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(left: AppSpacing.xs),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
+    margin: const EdgeInsets.only(left: AppSpacing.xs),
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -478,10 +465,12 @@ class _DetailSheet extends StatelessWidget {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) =>
-                            AddEditScheduledPaymentScreen(payment: item),
-                      ));
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              AddEditScheduledPaymentScreen(payment: item),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Edit'),
@@ -500,8 +489,9 @@ class _DetailSheet extends StatelessWidget {
                       useRootNavigator: false,
                       builder: (_) => AlertDialog(
                         title: const Text('Delete?'),
-                        content:
-                            const Text('This will remove the scheduled item.'),
+                        content: const Text(
+                          'This will remove the scheduled item.',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(context, false),
@@ -518,7 +508,9 @@ class _DetailSheet extends StatelessWidget {
                       ),
                     );
                     if (ok == true && item.id != null) {
-                      ref.read(scheduledPaymentsProvider.notifier).remove(item.id!);
+                      ref
+                          .read(scheduledPaymentsProvider.notifier)
+                          .remove(item.id!);
                     }
                   },
                   icon: const Icon(Icons.delete_outline),
@@ -541,22 +533,22 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 130,
-              child: Text(
-                label,
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: context.colorScheme.onSurfaceVariant,
-                ),
-              ),
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 130,
+          child: Text(
+            label,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: context.colorScheme.onSurfaceVariant,
             ),
-            Expanded(child: Text(value)),
-          ],
+          ),
         ),
-      );
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -623,14 +615,12 @@ class _AddEditScheduledPaymentScreenState
   void initState() {
     super.initState();
     final p = widget.payment;
-    _nameCtrl =
-        TextEditingController(text: p?.name ?? '');
-    _amountCtrl =
-        TextEditingController(text: p != null ? p.amount.toStringAsFixed(0) : '');
-    _partyCtrl =
-        TextEditingController(text: p?.partyName ?? '');
-    _notesCtrl =
-        TextEditingController(text: p?.notes ?? '');
+    _nameCtrl = TextEditingController(text: p?.name ?? '');
+    _amountCtrl = TextEditingController(
+      text: p != null ? p.amount.toStringAsFixed(0) : '',
+    );
+    _partyCtrl = TextEditingController(text: p?.partyName ?? '');
+    _notesCtrl = TextEditingController(text: p?.notes ?? '');
 
     _type = p?.type ?? 'expense';
     _isOneTime = p?.isOneTime ?? false;
@@ -653,9 +643,8 @@ class _AddEditScheduledPaymentScreenState
     super.dispose();
   }
 
-  List<String> get _categories => _type == 'income'
-      ? AppConstants.incomeCategories
-      : _billCategories;
+  List<String> get _categories =>
+      _type == 'income' ? AppConstants.incomeCategories : _billCategories;
 
   @override
   Widget build(BuildContext context) {
@@ -671,7 +660,11 @@ class _AddEditScheduledPaymentScreenState
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
           child: FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.check),
@@ -699,8 +692,7 @@ class _AddEditScheduledPaymentScreenState
                 ),
               ],
               selected: {_type},
-              onSelectionChanged: (v) =>
-                  setState(() => _type = v.first),
+              onSelectionChanged: (v) => setState(() => _type = v.first),
             ),
             const SizedBox(height: AppSpacing.base),
             // ── Context toggle (Personal / Business) ─────────────────────
@@ -718,8 +710,7 @@ class _AddEditScheduledPaymentScreenState
                 ),
               ],
               selected: {_billContext},
-              onSelectionChanged: (v) =>
-                  setState(() => _billContext = v.first),
+              onSelectionChanged: (v) => setState(() => _billContext = v.first),
             ),
             const SizedBox(height: AppSpacing.base),
             // ── Schedule toggle ────────────────────────────────────────────
@@ -737,8 +728,7 @@ class _AddEditScheduledPaymentScreenState
                 ),
               ],
               selected: {_isOneTime},
-              onSelectionChanged: (v) =>
-                  setState(() => _isOneTime = v.first),
+              onSelectionChanged: (v) => setState(() => _isOneTime = v.first),
             ),
             const SizedBox(height: AppSpacing.base),
 
@@ -766,7 +756,9 @@ class _AddEditScheduledPaymentScreenState
                 prefixIcon: const Icon(Icons.currency_rupee),
                 border: const OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               validator: (v) {
                 if (v == null || v.isEmpty) return 'Enter amount';
                 if (double.tryParse(v) == null || double.parse(v) <= 0) {
@@ -805,8 +797,9 @@ class _AddEditScheduledPaymentScreenState
                   border: OutlineInputBorder(),
                 ),
                 items: ScheduledFrequency.values
-                    .map((f) =>
-                        DropdownMenuItem(value: f, child: Text(f.label)))
+                    .map(
+                      (f) => DropdownMenuItem(value: f, child: Text(f.label)),
+                    )
                     .toList(),
                 onChanged: (v) {
                   if (v != null) setState(() => _frequency = v);
@@ -823,8 +816,10 @@ class _AddEditScheduledPaymentScreenState
                     border: OutlineInputBorder(),
                   ),
                   items: List.generate(28, (i) => i + 1)
-                      .map((d) => DropdownMenuItem(
-                          value: d, child: Text('Day $d')))
+                      .map(
+                        (d) =>
+                            DropdownMenuItem(value: d, child: Text('Day $d')),
+                      )
                       .toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _dueDay = v);
@@ -850,8 +845,7 @@ class _AddEditScheduledPaymentScreenState
                     context: context,
                     initialDate: _dueDate,
                     firstDate: DateTime.now(),
-                    lastDate:
-                        DateTime.now().add(const Duration(days: 365 * 5)),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
                   );
                   if (picked != null) setState(() => _dueDate = picked);
                 },
@@ -865,7 +859,8 @@ class _AddEditScheduledPaymentScreenState
               onChanged: (v) => setState(() => _autoCreate = v),
               title: const Text('Auto-create transaction'),
               subtitle: const Text(
-                  'Automatically add to ledger on the due date'),
+                'Automatically add to ledger on the due date',
+              ),
               contentPadding: EdgeInsets.zero,
             ),
             SwitchListTile.adaptive(
@@ -886,18 +881,17 @@ class _AddEditScheduledPaymentScreenState
                 border: OutlineInputBorder(),
               ),
               items: AppConstants.paymentMethods
-                  .map((m) =>
-                      DropdownMenuItem(value: m, child: Text(m)))
+                  .map((m) => DropdownMenuItem(value: m, child: Text(m)))
                   .toList(),
-              onChanged: (v) =>
-                  setState(() => _paymentMethod = v),
+              onChanged: (v) => setState(() => _paymentMethod = v),
             ),
             const SizedBox(height: AppSpacing.base),
 
             // ── Party ──────────────────────────────────────────────────────
             PartyPickerField(
               controller: _partyCtrl,
-              labelText: 'Party / Payee (optional)',              onPartySelected: (party) {
+              labelText: 'Party / Payee (optional)',
+              onPartySelected: (party) {
                 // Auto-route to business context when a vendor/business party is selected.
                 if (party.partyType == PartyType.vendor ||
                     party.partyType == PartyType.customer ||
@@ -906,7 +900,8 @@ class _AddEditScheduledPaymentScreenState
                 } else {
                   setState(() => _billContext = 'personal');
                 }
-              },            ),
+              },
+            ),
             const SizedBox(height: AppSpacing.base),
 
             // ── Notes ──────────────────────────────────────────────────────
@@ -965,8 +960,7 @@ class _AddEditScheduledPaymentScreenState
       nextDate: nextDate,
       lastPaidDate: widget.payment?.lastPaidDate,
       lastGenerated: widget.payment?.lastGenerated,
-      partyName:
-          _partyCtrl.text.trim().isEmpty ? null : _partyCtrl.text.trim(),
+      partyName: _partyCtrl.text.trim().isEmpty ? null : _partyCtrl.text.trim(),
       paymentMethod: _paymentMethod,
       notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       createdAt: widget.payment?.createdAt ?? now,

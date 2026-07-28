@@ -16,6 +16,7 @@ import '../models/quote.dart';
 import 'app_logger.dart';
 import 'document_template_service.dart';
 import 'gst_calculator.dart';
+import 'pdf_copy_info.dart';
 import 'pdf_document_data.dart';
 import 'pdf_layout_engine.dart';
 
@@ -43,6 +44,7 @@ class InvoicePdfService {
     String? termsAndConditions,
     bool showFreeWatermark = false,
     bool showUpiQr = false,
+    String? copyLabel,
   }) async {
     final logoInfo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
@@ -58,6 +60,7 @@ class InvoicePdfService {
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
+      copyLabel: copyLabel,
     );
     final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
@@ -67,6 +70,35 @@ class InvoicePdfService {
     );
   }
 
+  Future<Uint8List> generateInvoicePdfBytes(
+    Invoice invoice, {
+    Business? business,
+    Party? customerParty,
+    String? termsAndConditions,
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+    String? copyLabel,
+  }) async {
+    final logoInfo = business != null ? await _loadLogo(business) : null;
+    final upiQrBytes =
+        (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
+        ? await _buildUpiQrBytes(business, invoice.total, invoice.invoiceNo)
+        : null;
+    final data = _invoiceToData(
+      invoice,
+      business: business,
+      customerParty: customerParty,
+      logo: logoInfo?.image,
+      logoIsWide: logoInfo?.isWide ?? false,
+      termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+      upiQrBytes: upiQrBytes,
+      copyLabel: copyLabel,
+    );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
+    return PdfLayoutEngine.instance.generateBytes(data, template);
+  }
+
   Future<XFile> generateQuotePdf(
     Quote quote, {
     Business? business,
@@ -74,6 +106,7 @@ class InvoicePdfService {
     String? termsAndConditions,
     bool showFreeWatermark = false,
     bool showUpiQr = false,
+    String? copyLabel,
   }) async {
     final logoInfo = business != null ? await _loadLogo(business) : null;
     final upiQrBytes =
@@ -89,6 +122,7 @@ class InvoicePdfService {
       termsAndConditions: termsAndConditions,
       showFreeWatermark: showFreeWatermark,
       upiQrBytes: upiQrBytes,
+      copyLabel: copyLabel,
     );
     final template = await DocumentTemplateService.instance.getActiveTemplate();
     return PdfLayoutEngine.instance.generateXFile(
@@ -96,6 +130,35 @@ class InvoicePdfService {
       template,
       'Quote_${quote.quoteNo}.pdf',
     );
+  }
+
+  Future<Uint8List> generateQuotePdfBytes(
+    Quote quote, {
+    Business? business,
+    Party? customerParty,
+    String? termsAndConditions,
+    bool showFreeWatermark = false,
+    bool showUpiQr = false,
+    String? copyLabel,
+  }) async {
+    final logoInfo = business != null ? await _loadLogo(business) : null;
+    final upiQrBytes =
+        (showUpiQr && business != null && (business.upiId?.isNotEmpty ?? false))
+        ? await _buildUpiQrBytes(business, quote.total, quote.quoteNo)
+        : null;
+    final data = _quoteToData(
+      quote,
+      business: business,
+      customerParty: customerParty,
+      logo: logoInfo?.image,
+      logoIsWide: logoInfo?.isWide ?? false,
+      termsAndConditions: termsAndConditions,
+      showFreeWatermark: showFreeWatermark,
+      upiQrBytes: upiQrBytes,
+      copyLabel: copyLabel,
+    );
+    final template = await DocumentTemplateService.instance.getActiveTemplate();
+    return PdfLayoutEngine.instance.generateBytes(data, template);
   }
 
   // ── Invoice serialiser ─────────────────────────────────────────────────────
@@ -109,6 +172,7 @@ class InvoicePdfService {
     String? termsAndConditions,
     bool showFreeWatermark = false,
     Uint8List? upiQrBytes,
+    String? copyLabel,
   }) {
     final sellerState = business?.state;
     final buyerState = customerParty?.state;
@@ -121,6 +185,8 @@ class InvoicePdfService {
     final isInterState = gstRows.isNotEmpty
         ? gstRows.first.isInterState
         : GstCalculator.isInterState(sellerState, buyerState);
+
+    final copyInfo = buildInvoiceCopyInfo(invoice.items);
 
     return PdfDocumentData(
       type: PdfDocumentType.invoice,
@@ -174,6 +240,8 @@ class InvoicePdfService {
         grandTotal: invoice.total,
         paidAmount: invoice.paidAmount,
       ),
+      copyInfo: copyInfo,
+      copyLabel: copyLabel ?? copyInfo.copyLabels.first,
       termsAndConditions: termsAndConditions,
       footerNote: 'Thank you for your business!',
       upiQrBytes: upiQrBytes,
@@ -216,6 +284,7 @@ class InvoicePdfService {
     String? termsAndConditions,
     bool showFreeWatermark = false,
     Uint8List? upiQrBytes,
+    String? copyLabel,
   }) {
     final sellerState = business?.state;
     final buyerState = customerParty?.state;
@@ -239,6 +308,8 @@ class InvoicePdfService {
     final validNote = quote.validUntil != null
         ? 'This quote is valid until ${_shortDate(quote.validUntil!)}.'
         : 'This quote is valid until acceptance.';
+
+    final copyInfo = buildQuoteCopyInfo(quote.items);
 
     return PdfDocumentData(
       type: PdfDocumentType.quote,
@@ -285,6 +356,8 @@ class InvoicePdfService {
         packing: quote.packingAmt,
         grandTotal: quote.total,
       ),
+      copyInfo: copyInfo,
+      copyLabel: copyLabel ?? copyInfo.copyLabels.first,
       termsAndConditions: termsAndConditions,
       footerNote: validNote,
       upiQrBytes: upiQrBytes,

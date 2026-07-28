@@ -5,6 +5,7 @@ import 'package:printing/printing.dart';
 import 'dart:convert';
 
 import '../../data/models/document_template_record.dart';
+import '../../data/services/pdf_copy_info.dart';
 import '../../data/services/pdf_document_data.dart';
 import '../../data/services/pdf_layout_engine.dart';
 
@@ -141,6 +142,7 @@ PageSize _pageSizeFromName(String name) {
 PdfDocumentData _sampleDocumentData() {
   final now = DateTime(2026, 3, 4);
   final due = DateTime(2026, 3, 18);
+  final copyInfo = buildGoodsCopyInfo();
 
   return PdfDocumentData(
     type: PdfDocumentType.invoice,
@@ -188,6 +190,8 @@ PdfDocumentData _sampleDocumentData() {
       ),
     ],
     totals: const PdfTotals(subtotal: 7500, grandTotal: 8750, paidAmount: 8750),
+    copyInfo: copyInfo,
+    copyLabel: copyInfo.copyLabels.first,
     footerNote: 'Thank you for your business!',
   );
 }

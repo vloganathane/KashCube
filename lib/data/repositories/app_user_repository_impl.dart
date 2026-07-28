@@ -10,7 +10,7 @@ class AppUserRepositoryImpl implements AppUserRepository {
   final DatabaseHelper _dbHelper;
 
   AppUserRepositoryImpl({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   Future<Database> get _db => _dbHelper.database;
 
@@ -49,8 +49,7 @@ class AppUserRepositoryImpl implements AppUserRepository {
   @override
   Future<void> update(AppUser user) async {
     final db = await _db;
-    final map = user.toMap()
-      ..['updated_at'] = DateTime.now().toIso8601String();
+    final map = user.toMap()..['updated_at'] = DateTime.now().toIso8601String();
     await db.update('app_users', map, where: 'id = ?', whereArgs: [user.id]);
   }
 
@@ -113,8 +112,11 @@ class AppUserRepositoryImpl implements AppUserRepository {
         whereArgs: [userId, businessId],
       );
       for (final perm in permissions) {
-        await txn.insert('user_permissions', perm.toMap(),
-            conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert(
+          'user_permissions',
+          perm.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
       }
     });
   }
@@ -158,9 +160,9 @@ class AppUserRepositoryImpl implements AppUserRepository {
     if (rows.isEmpty) return Permission.none;
     final r = rows.first;
     return Permission(
-      canView:   (r['can_view']   as int? ?? 0) == 1,
+      canView: (r['can_view'] as int? ?? 0) == 1,
       canCreate: (r['can_create'] as int? ?? 0) == 1,
-      canEdit:   (r['can_edit']   as int? ?? 0) == 1,
+      canEdit: (r['can_edit'] as int? ?? 0) == 1,
       canDelete: (r['can_delete'] as int? ?? 0) == 1,
     );
   }

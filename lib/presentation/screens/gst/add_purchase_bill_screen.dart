@@ -33,15 +33,27 @@ class _LineItem {
     String unit = 'PCS',
     String hsnOrSac = 'HSN',
     String lotNo = '',
-  })  : itemNameCtrl = TextEditingController(text: itemName ?? ''),
-        qtyCtrl = TextEditingController(text: qty == qty.truncateToDouble() ? qty.toInt().toString() : qty.toString()),
-        unitPriceCtrl = TextEditingController(text: unitPrice == 0 ? '' : unitPrice.toString()),
-        taxPctCtrl = TextEditingController(text: taxPct == taxPct.truncateToDouble() ? taxPct.toInt().toString() : taxPct.toString()),
-        discountPctCtrl = TextEditingController(text: discountPct == 0 ? '' : discountPct.toString()),
-        hsnCodeCtrl = TextEditingController(text: hsnCode),
-        unitCtrl = TextEditingController(text: unit),
-        lotNoCtrl = TextEditingController(text: lotNo),
-        _hsnOrSac = hsnOrSac;
+  }) : itemNameCtrl = TextEditingController(text: itemName ?? ''),
+       qtyCtrl = TextEditingController(
+         text: qty == qty.truncateToDouble()
+             ? qty.toInt().toString()
+             : qty.toString(),
+       ),
+       unitPriceCtrl = TextEditingController(
+         text: unitPrice == 0 ? '' : unitPrice.toString(),
+       ),
+       taxPctCtrl = TextEditingController(
+         text: taxPct == taxPct.truncateToDouble()
+             ? taxPct.toInt().toString()
+             : taxPct.toString(),
+       ),
+       discountPctCtrl = TextEditingController(
+         text: discountPct == 0 ? '' : discountPct.toString(),
+       ),
+       hsnCodeCtrl = TextEditingController(text: hsnCode),
+       unitCtrl = TextEditingController(text: unit),
+       lotNoCtrl = TextEditingController(text: lotNo),
+       _hsnOrSac = hsnOrSac;
 
   final TextEditingController itemNameCtrl;
   final TextEditingController qtyCtrl;
@@ -52,10 +64,13 @@ class _LineItem {
   final TextEditingController unitCtrl;
   final TextEditingController lotNoCtrl;
   final String _hsnOrSac;
+
   /// FK to [item_catalog.id] — null for manually-typed items.
   int? catalogItemId;
+
   /// Expiry date for this lot (optional).
   DateTime? expiryDate;
+
   /// Manufacturing date for this lot (optional).
   DateTime? mfgDate;
 
@@ -63,7 +78,8 @@ class _LineItem {
   double get unitPrice => double.tryParse(unitPriceCtrl.text) ?? 0;
   double get taxPct => double.tryParse(taxPctCtrl.text) ?? 0;
   double get discountPct => double.tryParse(discountPctCtrl.text) ?? 0;
-  double get taxableAmount => _round2(qty * unitPrice * (1 - discountPct / 100));
+  double get taxableAmount =>
+      _round2(qty * unitPrice * (1 - discountPct / 100));
 
   static double _round2(double v) => (v * 100).roundToDouble() / 100;
 
@@ -92,8 +108,7 @@ class AddPurchaseBillScreen extends ConsumerStatefulWidget {
       _AddPurchaseBillScreenState();
 }
 
-class _AddPurchaseBillScreenState
-    extends ConsumerState<AddPurchaseBillScreen> {
+class _AddPurchaseBillScreenState extends ConsumerState<AddPurchaseBillScreen> {
   // ── Form key ────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
 
@@ -171,13 +186,8 @@ class _AddPurchaseBillScreenState
         ?.state;
   }
 
-  ({
-    double subtotal,
-    double igst,
-    double cgst,
-    double sgst,
-    double total,
-  }) get _totals {
+  ({double subtotal, double igst, double cgst, double sgst, double total})
+  get _totals {
     double subtotal = 0, igst = 0, cgst = 0, sgst = 0;
     for (final item in _items) {
       final taxable = item.taxableAmount;
@@ -216,12 +226,14 @@ class _AddPurchaseBillScreenState
     }
 
     final businesses = ref.read(businessesProvider).valueOrNull ?? [];
-    final business =
-        businesses.where((b) => b.id == _selectedBusinessId).firstOrNull;
+    final business = businesses
+        .where((b) => b.id == _selectedBusinessId)
+        .firstOrNull;
     if (business == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('No active business. Set up your business first.')),
+          content: Text('No active business. Set up your business first.'),
+        ),
       );
       return;
     }
@@ -233,13 +245,17 @@ class _AddPurchaseBillScreenState
       String? resolvedAttachmentPath = _existingAttachmentPath;
       if (_attachmentRemoved && _pendingBill == null) {
         if (_existingAttachmentPath != null) {
-          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+          File(
+            _existingAttachmentPath!,
+          ).delete().catchError((_) => File(_existingAttachmentPath!));
         }
         resolvedAttachmentPath = null;
       }
       if (_pendingBill != null) {
         if (_existingAttachmentPath != null) {
-          File(_existingAttachmentPath!).delete().catchError((_) => File(_existingAttachmentPath!));
+          File(
+            _existingAttachmentPath!,
+          ).delete().catchError((_) => File(_existingAttachmentPath!));
         }
         final appDir = await getApplicationDocumentsDirectory();
         final billsDir = Directory('${appDir.path}/bills');
@@ -260,8 +276,9 @@ class _AddPurchaseBillScreenState
         billNo: _billNoCtrl.text.trim(),
         vendorPartyId: _vendorPartyId,
         vendorName: _vendorCtrl.text.trim(),
-        vendorGstin:
-            _vendorGstinCtrl.text.trim().isEmpty ? null : _vendorGstinCtrl.text.trim(),
+        vendorGstin: _vendorGstinCtrl.text.trim().isEmpty
+            ? null
+            : _vendorGstinCtrl.text.trim(),
         billDate: _billDate,
         dueDate: _dueDate,
         placeOfSupply: _placeOfSupply,
@@ -295,28 +312,33 @@ class _AddPurchaseBillScreenState
           taxableAmount: taxable,
           gstPct: item.taxPct,
         );
-        billItems.add(PurchaseBillItem(
-          billId: 0,
-          itemName: name,
-          qty: item.qty,
-          unitPrice: item.unitPrice,
-          taxPct: item.taxPct,
-          discountPct: item.discountPct,
-          lineTotal: taxable,
-          igstAmount: split.igst,
-          cgstAmount: split.cgst,
-          sgstAmount: split.sgst,
-          hsnCode:
-              item.hsnCodeCtrl.text.trim().isEmpty ? null : item.hsnCodeCtrl.text.trim(),
-          unit: item.unitCtrl.text.trim().isEmpty ? 'PCS' : item.unitCtrl.text.trim(),
-          hsnOrSac: item._hsnOrSac,
-          catalogItemId: item.catalogItemId,
-          lotNo: item.lotNoCtrl.text.trim().isEmpty
-              ? null
-              : item.lotNoCtrl.text.trim(),
-          expiryDate: item.expiryDate,
-          mfgDate: item.mfgDate,
-        ));
+        billItems.add(
+          PurchaseBillItem(
+            billId: 0,
+            itemName: name,
+            qty: item.qty,
+            unitPrice: item.unitPrice,
+            taxPct: item.taxPct,
+            discountPct: item.discountPct,
+            lineTotal: taxable,
+            igstAmount: split.igst,
+            cgstAmount: split.cgst,
+            sgstAmount: split.sgst,
+            hsnCode: item.hsnCodeCtrl.text.trim().isEmpty
+                ? null
+                : item.hsnCodeCtrl.text.trim(),
+            unit: item.unitCtrl.text.trim().isEmpty
+                ? 'PCS'
+                : item.unitCtrl.text.trim(),
+            hsnOrSac: item._hsnOrSac,
+            catalogItemId: item.catalogItemId,
+            lotNo: item.lotNoCtrl.text.trim().isEmpty
+                ? null
+                : item.lotNoCtrl.text.trim(),
+            expiryDate: item.expiryDate,
+            mfgDate: item.mfgDate,
+          ),
+        );
       }
 
       if (widget.billId != null && _existingBill != null) {
@@ -328,21 +350,17 @@ class _AddPurchaseBillScreenState
           itcAvailed: _existingBill!.itcAvailed,
           createdAt: _existingBill!.createdAt,
         );
-        await ref
-            .read(purchaseBillsProvider.notifier)
-            .edit(updated, billItems);
+        await ref.read(purchaseBillsProvider.notifier).edit(updated, billItems);
       } else {
-        await ref
-            .read(purchaseBillsProvider.notifier)
-            .add(bill, billItems);
+        await ref.read(purchaseBillsProvider.notifier).add(bill, billItems);
       }
 
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving bill: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error saving bill: $e')));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -378,29 +396,36 @@ class _AddPurchaseBillScreenState
       _itcBlockReason = bill.itcBlockReason;
 
       // Populate line items
-      for (final item in _items) { item.dispose(); }
+      for (final item in _items) {
+        item.dispose();
+      }
       _items
         ..clear()
-        ..addAll(bill.items.map((i) => _LineItem(
-              itemName: i.itemName,
-              qty: i.qty,
-              unitPrice: i.unitPrice,
-              taxPct: i.taxPct,
-              discountPct: i.discountPct,
-              hsnCode: i.hsnCode ?? '',
-              unit: i.unit,
-              hsnOrSac: i.hsnOrSac,
-              lotNo: i.lotNo ?? '',
-            )
-              ..catalogItemId = i.catalogItemId
-              ..expiryDate = i.expiryDate
-              ..mfgDate = i.mfgDate));
+        ..addAll(
+          bill.items.map(
+            (i) =>
+                _LineItem(
+                    itemName: i.itemName,
+                    qty: i.qty,
+                    unitPrice: i.unitPrice,
+                    taxPct: i.taxPct,
+                    discountPct: i.discountPct,
+                    hsnCode: i.hsnCode ?? '',
+                    unit: i.unit,
+                    hsnOrSac: i.hsnOrSac,
+                    lotNo: i.lotNo ?? '',
+                  )
+                  ..catalogItemId = i.catalogItemId
+                  ..expiryDate = i.expiryDate
+                  ..mfgDate = i.mfgDate,
+          ),
+        );
       if (_items.isEmpty) _items.add(_LineItem());
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load bill: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load bill: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -436,7 +461,8 @@ class _AddPurchaseBillScreenState
     final picked = await Navigator.push<ItemCatalog>(
       context,
       MaterialPageRoute(
-          builder: (_) => const ItemCatalogScreen(pickMode: true)),
+        builder: (_) => const ItemCatalogScreen(pickMode: true),
+      ),
     );
     if (picked == null || !mounted) return;
     // Replace first empty item or add new one — matches invoice behaviour
@@ -449,7 +475,8 @@ class _AddPurchaseBillScreenState
       final purchasePrice = picked.dealerPrice ?? picked.unitPrice;
       if (purchasePrice > 0) {
         first.unitPriceCtrl.text = purchasePrice.toStringAsFixed(
-            purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2);
+          purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2,
+        );
       }
       first.taxPctCtrl.text = picked.taxPct == picked.taxPct.truncateToDouble()
           ? picked.taxPct.toInt().toString()
@@ -463,12 +490,13 @@ class _AddPurchaseBillScreenState
       final purchasePrice = picked.dealerPrice ?? picked.unitPrice;
       if (purchasePrice > 0) {
         newItem.unitPriceCtrl.text = purchasePrice.toStringAsFixed(
-            purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2);
+          purchasePrice == purchasePrice.truncateToDouble() ? 0 : 2,
+        );
       }
       newItem.taxPctCtrl.text =
           picked.taxPct == picked.taxPct.truncateToDouble()
-              ? picked.taxPct.toInt().toString()
-              : picked.taxPct.toString();
+          ? picked.taxPct.toInt().toString()
+          : picked.taxPct.toString();
       newItem.hsnCodeCtrl.text = picked.hsnCode ?? '';
       newItem.unitCtrl.text = picked.unit.toUpperCase();
       newItem.catalogItemId = picked.id;
@@ -490,308 +518,336 @@ class _AddPurchaseBillScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.billId == null ? 'Add Purchase Bill' : 'Edit Purchase Bill'),
+        title: Text(
+          widget.billId == null ? 'Add Purchase Bill' : 'Edit Purchase Bill',
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
-              AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+            AppSpacing.base,
+            AppSpacing.sm,
+            AppSpacing.base,
+            AppSpacing.base,
+          ),
           child: _isSaving
               ? const FilledButton(
                   onPressed: null,
                   child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white)),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  ),
                 )
               : FilledButton(
                   onPressed: _save,
                   child: Text(
-                      widget.billId == null ? 'Save Purchase Bill' : 'Update Purchase Bill'),
+                    widget.billId == null
+                        ? 'Save Purchase Bill'
+                        : 'Update Purchase Bill',
+                  ),
                 ),
         ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(AppSpacing.base),
-          children: [
-            // ── Business selector ─────────────────────────────────────────
-            if (allBusinesses.isNotEmpty) ...[
-              DropdownButtonFormField<int>(
-                initialValue: _selectedBusinessId,
-                decoration: const InputDecoration(
-                  labelText: 'Business',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.business_outlined),
-                ),
-                items: allBusinesses.map((biz) {
-                  return DropdownMenuItem(
-                    value: biz.id,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(biz.name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
-                        if (biz.gstNo != null)
-                          Text(
-                            'GST: ${biz.gstNo}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurface
-                                  .withValues(alpha: 0.6),
-                            ),
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(AppSpacing.base),
+                children: [
+                  // ── Business selector ─────────────────────────────────────────
+                  if (allBusinesses.isNotEmpty) ...[
+                    DropdownButtonFormField<int>(
+                      initialValue: _selectedBusinessId,
+                      decoration: const InputDecoration(
+                        labelText: 'Business',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.business_outlined),
+                      ),
+                      items: allBusinesses.map((biz) {
+                        return DropdownMenuItem(
+                          value: biz.id,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                biz.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              if (biz.gstNo != null)
+                                Text(
+                                  'GST: ${biz.gstNo}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: theme.colorScheme.onSurface
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedBusinessId = value;
+                          // Update place of supply to match the new business's state
+                          final biz = allBusinesses
+                              .where((b) => b.id == value)
+                              .firstOrNull;
+                          if (biz != null) _placeOfSupply = biz.state;
+                        });
+                      },
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedBusinessId = value;
-                    // Update place of supply to match the new business's state
-                    final biz = allBusinesses
-                        .where((b) => b.id == value)
-                        .firstOrNull;
-                    if (biz != null) _placeOfSupply = biz.state;
-                  });
-                },
-              ),
-              const SizedBox(height: AppSpacing.base),
-            ],
+                    const SizedBox(height: AppSpacing.base),
+                  ],
 
-            // ── Bill header ────────────────────────────────────────────────
-            _SectionHeader(label: 'Bill Details'),
-            const SizedBox(height: AppSpacing.sm),
+                  // ── Bill header ────────────────────────────────────────────────
+                  _SectionHeader(label: 'Bill Details'),
+                  const SizedBox(height: AppSpacing.sm),
 
-            // Bill number
-            TextFormField(
-              controller: _billNoCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Bill / Invoice Number *',
-                hintText: 'e.g. INV-2024-001',
-                prefixIcon: Icon(Icons.receipt_outlined),
-              ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // Vendor picker
-            PartyPickerField(
-              controller: _vendorCtrl,
-              labelText: 'Vendor / Supplier *',
-              hintText: 'Select or type vendor name',
-              validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-              onSelected: (_) => setState(() {}),
-              onPartySelected: (party) => setState(() {
-                _vendorPartyId = party.id;
-                if (party.gstin != null && party.gstin!.isNotEmpty) {
-                  _vendorGstinCtrl.text = party.gstin!;
-                }
-              }),
-            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // Vendor GSTIN
-            TextFormField(
-              controller: _vendorGstinCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Vendor GSTIN (optional)',
-                hintText: 'e.g. 27AAAAA0000A1Z5',
-                prefixIcon: Icon(Icons.business_outlined),
-              ),
-              textCapitalization: TextCapitalization.characters,
-              maxLength: 15,
-              textInputAction: TextInputAction.next,
-              buildCounter: (_, {currentLength = 0, maxLength, isFocused = false}) => null,
-            ),
-            const SizedBox(height: AppSpacing.base),
-
-            // Bill date + Due date row
-            Row(
-              children: [
-                Expanded(
-                  child: _DateTile(
-                    label: 'Bill Date *',
-                    date: _billDate,
-                    onTap: _pickBillDate,
+                  // Bill number
+                  TextFormField(
+                    controller: _billNoCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Bill / Invoice Number *',
+                      hintText: 'e.g. INV-2024-001',
+                      prefixIcon: Icon(Icons.receipt_outlined),
+                    ),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
+                    textInputAction: TextInputAction.next,
                   ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _DateTile(
-                    label: 'Due Date',
-                    date: _dueDate,
-                    onTap: _pickDueDate,
-                    suffix: _dueDate != null
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 16),
-                            onPressed: () => setState(() => _dueDate = null),
-                            visualDensity: VisualDensity.compact,
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Vendor picker
+                  PartyPickerField(
+                    controller: _vendorCtrl,
+                    labelText: 'Vendor / Supplier *',
+                    hintText: 'Select or type vendor name',
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
+                    onSelected: (_) => setState(() {}),
+                    onPartySelected: (party) => setState(() {
+                      _vendorPartyId = party.id;
+                      if (party.gstin != null && party.gstin!.isNotEmpty) {
+                        _vendorGstinCtrl.text = party.gstin!;
+                      }
+                    }),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Vendor GSTIN
+                  TextFormField(
+                    controller: _vendorGstinCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Vendor GSTIN (optional)',
+                      hintText: 'e.g. 27AAAAA0000A1Z5',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 15,
+                    textInputAction: TextInputAction.next,
+                    buildCounter:
+                        (
+                          _, {
+                          currentLength = 0,
+                          maxLength,
+                          isFocused = false,
+                        }) => null,
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Bill date + Due date row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateTile(
+                          label: 'Bill Date *',
+                          date: _billDate,
+                          onTap: _pickBillDate,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: _DateTile(
+                          label: 'Due Date',
+                          date: _dueDate,
+                          onTap: _pickDueDate,
+                          suffix: _dueDate != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 16),
+                                  onPressed: () =>
+                                      setState(() => _dueDate = null),
+                                  visualDensity: VisualDensity.compact,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Place of Supply
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(
+                      labelText: 'Place of Supply',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    initialValue: _placeOfSupply,
+                    hint: const Text('(auto from business state)'),
+                    isExpanded: true,
+                    items: kIndianStates
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _placeOfSupply = v),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+
+                  // Reverse charge toggle
+                  _ToggleTile(
+                    label: 'Reverse Charge (RCM)',
+                    subtitle: 'You pay GST instead of vendor',
+                    value: _reverseCharge,
+                    onChanged: (v) => setState(() => _reverseCharge = v),
+                  ),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── Line items ─────────────────────────────────────────────────
+                  Row(
+                    children: [
+                      _SectionHeader(label: 'Line Items'),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.inventory_2_outlined, size: 16),
+                        label: const Text('Catalog'),
+                        onPressed: () => _pickFromCatalog(),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: 'Add Item',
+                        onPressed: () =>
+                            setState(() => _items.add(_LineItem())),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  ..._items.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final item = entry.value;
+                    return _LineItemCard(
+                      key: ValueKey(item),
+                      item: item,
+                      index: index,
+                      gstRates: _gstRates,
+                      businessState: _businessState,
+                      placeOfSupply: _placeOfSupply,
+                      onChanged: () => setState(() {}),
+                      onRemove: _items.length > 1
+                          ? () => setState(() {
+                              item.dispose();
+                              _items.removeAt(index);
+                            })
+                          : null,
+                    );
+                  }),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── Totals strip ───────────────────────────────────────────────
+                  _TotalsCard(totals: _totals, colors: colors),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── ITC section ────────────────────────────────────────────────
+                  _SectionHeader(label: 'Input Tax Credit (ITC)'),
+                  const SizedBox(height: AppSpacing.sm),
+
+                  // ITC eligibility
+                  DropdownButtonFormField<ItcEligibility>(
+                    decoration: const InputDecoration(
+                      labelText: 'ITC Eligibility',
+                      prefixIcon: Icon(Icons.verified_outlined),
+                    ),
+                    initialValue: _itcEligibility,
+                    items: const [
+                      DropdownMenuItem(
+                        value: ItcEligibility.eligible,
+                        child: Text('Eligible'),
+                      ),
+                      DropdownMenuItem(
+                        value: ItcEligibility.blocked,
+                        child: Text('Blocked (Sec. 17(5))'),
+                      ),
+                      DropdownMenuItem(
+                        value: ItcEligibility.ineligible,
+                        child: Text('Ineligible'),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() {
+                      _itcEligibility = v ?? ItcEligibility.eligible;
+                      if (_itcEligibility != ItcEligibility.blocked) {
+                        _itcBlockReason = null;
+                      }
+                    }),
+                  ),
+
+                  // Block reason (only when blocked)
+                  if (_itcEligibility == ItcEligibility.blocked) ...[
+                    const SizedBox(height: AppSpacing.base),
+                    DropdownButtonFormField<ItcBlockReason>(
+                      decoration: const InputDecoration(
+                        labelText: 'Block Reason *',
+                        prefixIcon: Icon(Icons.block_outlined),
+                      ),
+                      initialValue: _itcBlockReason,
+                      hint: const Text('Select reason'),
+                      validator: (v) =>
+                          v == null ? 'Required when blocked' : null,
+                      items: ItcBlockReason.values
+                          .map(
+                            (r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(_blockReasonLabel(r)),
+                            ),
                           )
-                        : null,
+                          .toList(),
+                      onChanged: (v) => setState(() => _itcBlockReason = v),
+                    ),
+                  ],
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ── Notes ──────────────────────────────────────────────────────
+                  _SectionHeader(label: 'Notes'),
+                  const SizedBox(height: AppSpacing.sm),
+                  TextFormField(
+                    controller: _notesCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Internal notes (optional)',
+                      prefixIcon: Icon(Icons.notes_outlined),
+                    ),
+                    maxLines: 3,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.base),
 
-            // Place of Supply
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Place of Supply',
-                prefixIcon: Icon(Icons.location_on_outlined),
+                  // ── Attachment ─────────────────────────────────────────────────
+                  const SizedBox(height: AppSpacing.xl),
+                  _SectionHeader(label: 'Attachment'),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildAttachmentSection(),
+
+                  const SizedBox(height: AppSpacing.xxxl),
+                ],
               ),
-              initialValue: _placeOfSupply,
-              hint: const Text('(auto from business state)'),
-              isExpanded: true,
-              items: kIndianStates
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) => setState(() => _placeOfSupply = v),
             ),
-            const SizedBox(height: AppSpacing.base),
-
-            // Reverse charge toggle
-            _ToggleTile(
-              label: 'Reverse Charge (RCM)',
-              subtitle: 'You pay GST instead of vendor',
-              value: _reverseCharge,
-              onChanged: (v) => setState(() => _reverseCharge = v),
-            ),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // ── Line items ─────────────────────────────────────────────────
-            Row(
-              children: [
-                _SectionHeader(label: 'Line Items'),
-                const Spacer(),
-                TextButton.icon(
-                  icon: const Icon(Icons.inventory_2_outlined, size: 16),
-                  label: const Text('Catalog'),
-                  onPressed: () => _pickFromCatalog(),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  tooltip: 'Add Item',
-                  onPressed: () => setState(() => _items.add(_LineItem())),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-
-            ..._items.asMap().entries.map((entry) {
-              final index = entry.key;
-              final item = entry.value;
-              return _LineItemCard(
-                key: ValueKey(item),
-                item: item,
-                index: index,
-                gstRates: _gstRates,
-                businessState: _businessState,
-                placeOfSupply: _placeOfSupply,
-                onChanged: () => setState(() {}),
-                onRemove: _items.length > 1
-                    ? () => setState(() {
-                          item.dispose();
-                          _items.removeAt(index);
-                        })
-                    : null,
-              );
-            }),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // ── Totals strip ───────────────────────────────────────────────
-            _TotalsCard(totals: _totals, colors: colors),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // ── ITC section ────────────────────────────────────────────────
-            _SectionHeader(label: 'Input Tax Credit (ITC)'),
-            const SizedBox(height: AppSpacing.sm),
-
-            // ITC eligibility
-            DropdownButtonFormField<ItcEligibility>(
-              decoration: const InputDecoration(
-                labelText: 'ITC Eligibility',
-                prefixIcon: Icon(Icons.verified_outlined),
-              ),
-              initialValue: _itcEligibility,
-              items: const [
-                DropdownMenuItem(
-                  value: ItcEligibility.eligible,
-                  child: Text('Eligible'),
-                ),
-                DropdownMenuItem(
-                  value: ItcEligibility.blocked,
-                  child: Text('Blocked (Sec. 17(5))'),
-                ),
-                DropdownMenuItem(
-                  value: ItcEligibility.ineligible,
-                  child: Text('Ineligible'),
-                ),
-              ],
-              onChanged: (v) => setState(() {
-                _itcEligibility = v ?? ItcEligibility.eligible;
-                if (_itcEligibility != ItcEligibility.blocked) {
-                  _itcBlockReason = null;
-                }
-              }),
-            ),
-
-            // Block reason (only when blocked)
-            if (_itcEligibility == ItcEligibility.blocked) ...[
-              const SizedBox(height: AppSpacing.base),
-              DropdownButtonFormField<ItcBlockReason>(
-                decoration: const InputDecoration(
-                  labelText: 'Block Reason *',
-                  prefixIcon: Icon(Icons.block_outlined),
-                ),
-                initialValue: _itcBlockReason,
-                hint: const Text('Select reason'),
-                validator: (v) => v == null ? 'Required when blocked' : null,
-                items: ItcBlockReason.values
-                    .map((r) => DropdownMenuItem(
-                          value: r,
-                          child: Text(_blockReasonLabel(r)),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() => _itcBlockReason = v),
-              ),
-            ],
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // ── Notes ──────────────────────────────────────────────────────
-            _SectionHeader(label: 'Notes'),
-            const SizedBox(height: AppSpacing.sm),
-            TextFormField(
-              controller: _notesCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Internal notes (optional)',
-                prefixIcon: Icon(Icons.notes_outlined),
-              ),
-              maxLines: 3,
-            ),
-
-            // ── Attachment ─────────────────────────────────────────────────
-            const SizedBox(height: AppSpacing.xl),
-            _SectionHeader(label: 'Attachment'),
-            const SizedBox(height: AppSpacing.sm),
-            _buildAttachmentSection(),
-
-            const SizedBox(height: AppSpacing.xxxl),
-          ],
-        ),
-      ),
     );
   }
 
@@ -874,9 +930,9 @@ class _SectionHeader extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
-          ),
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).colorScheme.primary,
+      ),
     );
   }
 }
@@ -906,7 +962,9 @@ class _DateTile extends StatelessWidget {
           prefixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
           suffix: suffix,
           contentPadding: const EdgeInsets.symmetric(
-              vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+            vertical: AppSpacing.md,
+            horizontal: AppSpacing.sm,
+          ),
         ),
         child: Text(
           date != null ? DateFormatter.formatFull(date!) : '—',
@@ -934,7 +992,12 @@ class _ToggleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card.outlined(
       child: SwitchListTile(
-        title: Text(label, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+        title: Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
         subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
         value: value,
         onChanged: onChanged,
@@ -987,10 +1050,13 @@ class _LineItemCard extends StatelessWidget {
             // Header row: item # + remove button
             Row(
               children: [
-                Text('Item ${index + 1}',
-                    style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w600)),
+                Text(
+                  'Item ${index + 1}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const Spacer(),
                 if (onRemove != null)
                   IconButton(
@@ -1024,12 +1090,16 @@ class _LineItemCard extends StatelessWidget {
                   child: TextFormField(
                     controller: item.qtyCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'Qty', isDense: true),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'Qty',
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,3}'))
+                        RegExp(r'^\d*\.?\d{0,3}'),
+                      ),
                     ],
                     onChanged: (_) => onChanged(),
                   ),
@@ -1040,17 +1110,20 @@ class _LineItemCard extends StatelessWidget {
                   child: TextFormField(
                     controller: item.unitPriceCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'Unit Price ₹', isDense: true),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'Unit Price ₹',
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}'))
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
                     ],
                     onChanged: (_) => onChanged(),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'Required'
-                        : null,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.sm),
@@ -1059,12 +1132,16 @@ class _LineItemCard extends StatelessWidget {
                   child: TextFormField(
                     controller: item.discountPctCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'Disc %', isDense: true),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
+                      labelText: 'Disc %',
+                      isDense: true,
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
                       FilteringTextInputFormatter.allow(
-                          RegExp(r'^\d*\.?\d{0,2}'))
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
                     ],
                     onChanged: (_) => onChanged(),
                   ),
@@ -1079,15 +1156,21 @@ class _LineItemCard extends StatelessWidget {
                 Expanded(
                   child: DropdownButtonFormField<double>(
                     decoration: const InputDecoration(
-                        labelText: 'GST %', isDense: true),
-                    initialValue: gstRates.contains(item.taxPct) ? item.taxPct : null,
+                      labelText: 'GST %',
+                      isDense: true,
+                    ),
+                    initialValue: gstRates.contains(item.taxPct)
+                        ? item.taxPct
+                        : null,
                     hint: const Text('Custom'),
                     isExpanded: true,
                     items: gstRates
-                        .map((r) => DropdownMenuItem(
-                              value: r,
-                              child: Text('${r.toInt()}%'),
-                            ))
+                        .map(
+                          (r) => DropdownMenuItem(
+                            value: r,
+                            child: Text('${r.toInt()}%'),
+                          ),
+                        )
                         .toList(),
                     onChanged: (v) {
                       if (v != null) {
@@ -1102,7 +1185,9 @@ class _LineItemCard extends StatelessWidget {
                   child: TextFormField(
                     controller: item.hsnCodeCtrl,
                     decoration: const InputDecoration(
-                        labelText: 'HSN/SAC', isDense: true),
+                      labelText: 'HSN/SAC',
+                      isDense: true,
+                    ),
                     textCapitalization: TextCapitalization.characters,
                     onChanged: (_) => onChanged(),
                   ),
@@ -1111,8 +1196,10 @@ class _LineItemCard extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: item.unitCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Unit', isDense: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Unit',
+                      isDense: true,
+                    ),
                     textCapitalization: TextCapitalization.characters,
                     onChanged: (_) => onChanged(),
                   ),
@@ -1130,7 +1217,9 @@ class _LineItemCard extends StatelessWidget {
                     child: TextFormField(
                       controller: item.lotNoCtrl,
                       decoration: const InputDecoration(
-                          labelText: 'Batch / Lot No.', isDense: true),
+                        labelText: 'Batch / Lot No.',
+                        isDense: true,
+                      ),
                       onChanged: (_) => onChanged(),
                     ),
                   ),
@@ -1141,7 +1230,8 @@ class _LineItemCard extends StatelessWidget {
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
-                          initialDate: item.expiryDate ??
+                          initialDate:
+                              item.expiryDate ??
                               DateTime.now().add(const Duration(days: 365)),
                           firstDate: DateTime.now(),
                           lastDate: DateTime(2099),
@@ -1174,8 +1264,7 @@ class _LineItemCard extends StatelessWidget {
                     onTap: () async {
                       final picked = await showDatePicker(
                         context: context,
-                        initialDate:
-                            item.mfgDate ?? DateTime.now(),
+                        initialDate: item.mfgDate ?? DateTime.now(),
                         firstDate: DateTime(2000),
                         lastDate: DateTime.now(),
                       );
@@ -1208,21 +1297,34 @@ class _LineItemCard extends StatelessWidget {
               runSpacing: AppSpacing.xs,
               children: [
                 _AmountChip(
-                    label: 'Taxable', amount: taxable, color: theme.colorScheme.primary),
+                  label: 'Taxable',
+                  amount: taxable,
+                  color: theme.colorScheme.primary,
+                ),
                 if (split.cgst > 0) ...[
                   _AmountChip(
-                      label: 'CGST', amount: split.cgst, color: Colors.blue.shade700),
+                    label: 'CGST',
+                    amount: split.cgst,
+                    color: Colors.blue.shade700,
+                  ),
                   _AmountChip(
-                      label: 'SGST', amount: split.sgst, color: Colors.teal.shade700),
+                    label: 'SGST',
+                    amount: split.sgst,
+                    color: Colors.teal.shade700,
+                  ),
                 ],
                 if (split.igst > 0)
                   _AmountChip(
-                      label: 'IGST', amount: split.igst, color: Colors.deepPurple),
+                    label: 'IGST',
+                    amount: split.igst,
+                    color: Colors.deepPurple,
+                  ),
                 _AmountChip(
-                    label: 'Line Total',
-                    amount: taxable + split.total,
-                    color: theme.colorScheme.onSurface,
-                    bold: true),
+                  label: 'Line Total',
+                  amount: taxable + split.total,
+                  color: theme.colorScheme.onSurface,
+                  bold: true,
+                ),
               ],
             ),
           ],
@@ -1249,7 +1351,9 @@ class _AmountChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
@@ -1258,13 +1362,15 @@ class _AmountChip extends StatelessWidget {
       child: RichText(
         text: TextSpan(
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: bold ? FontWeight.w700 : FontWeight.w500),
+            color: color,
+            fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+          ),
           children: [
             TextSpan(text: '$label: '),
             TextSpan(
-                text: CurrencyFormatter.format(amount, showDecimals: true),
-                style: const TextStyle(fontFamily: 'RobotoMono')),
+              text: CurrencyFormatter.format(amount, showDecimals: true),
+              style: const TextStyle(fontFamily: 'RobotoMono'),
+            ),
           ],
         ),
       ),
@@ -1277,13 +1383,8 @@ class _AmountChip extends StatelessWidget {
 class _TotalsCard extends StatelessWidget {
   const _TotalsCard({required this.totals, required this.colors});
 
-  final ({
-    double subtotal,
-    double igst,
-    double cgst,
-    double sgst,
-    double total,
-  }) totals;
+  final ({double subtotal, double igst, double cgst, double sgst, double total})
+  totals;
   final KashCubeColors colors;
 
   @override
@@ -1299,33 +1400,41 @@ class _TotalsCard extends StatelessWidget {
         child: Column(
           children: [
             _TotalRow(
-                label: 'Subtotal (taxable)',
-                amount: totals.subtotal,
-                style: theme.textTheme.bodyMedium),
+              label: 'Subtotal (taxable)',
+              amount: totals.subtotal,
+              style: theme.textTheme.bodyMedium,
+            ),
             if (hasCgstSgst) ...[
               _TotalRow(
-                  label: 'CGST',
-                  amount: totals.cgst,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: Colors.blue.shade700)),
+                label: 'CGST',
+                amount: totals.cgst,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.blue.shade700,
+                ),
+              ),
               _TotalRow(
-                  label: 'SGST',
-                  amount: totals.sgst,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: Colors.teal.shade700)),
+                label: 'SGST',
+                amount: totals.sgst,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.teal.shade700,
+                ),
+              ),
             ],
             if (hasIgst)
               _TotalRow(
-                  label: 'IGST',
-                  amount: totals.igst,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: Colors.deepPurple)),
+                label: 'IGST',
+                amount: totals.igst,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.deepPurple,
+                ),
+              ),
             const Divider(),
             _TotalRow(
               label: 'Total',
               amount: totals.total,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -1348,11 +1457,12 @@ class _TotalRow extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: style),
-          Text(CurrencyFormatter.format(amount, showDecimals: true),
-              style: style?.copyWith(fontFamily: 'RobotoMono')),
+          Text(
+            CurrencyFormatter.format(amount, showDecimals: true),
+            style: style?.copyWith(fontFamily: 'RobotoMono'),
+          ),
         ],
       ),
     );
   }
 }
-

@@ -9,7 +9,7 @@ class BillRepositoryImpl implements BillRepository {
   final DatabaseHelper _dbHelper;
 
   BillRepositoryImpl({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+    : _dbHelper = dbHelper ?? DatabaseHelper.instance;
 
   Future<Database> get _db => _dbHelper.database;
 
@@ -39,11 +39,7 @@ class BillRepositoryImpl implements BillRepository {
   @override
   Future<void> delete(int id) async {
     final db = await _db;
-    await db.delete(
-      'bill_attachments',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('bill_attachments', where: 'id = ?', whereArgs: [id]);
   }
 
   @override

@@ -7,20 +7,18 @@ import 'context_provider.dart';
 
 /// Repository provider for credits / udhar.
 /// Rebuilds automatically when [activeContextProvider] changes.
-final creditRepositoryProvider = Provider<CreditRepository>(
-  (ref) {
-    final contextId = ref.watch(activeContextProvider);
-    return CreditRepositoryImpl(null, contextId);
-  },
-);
+final creditRepositoryProvider = Provider<CreditRepository>((ref) {
+  final contextId = ref.watch(activeContextProvider);
+  return CreditRepositoryImpl(null, contextId);
+});
 
 // ── All active credits ─────────────────────────────────────────────────────
 
 /// All active (not cleared, not deleted) credits.
 final activeCreditsProvider =
     StateNotifierProvider<CreditsNotifier, AsyncValue<List<Credit>>>(
-  (ref) => CreditsNotifier(ref.watch(creditRepositoryProvider)),
-);
+      (ref) => CreditsNotifier(ref.watch(creditRepositoryProvider)),
+    );
 
 class CreditsNotifier extends StateNotifier<AsyncValue<List<Credit>>> {
   final CreditRepository _repo;
@@ -79,8 +77,10 @@ final personalCreditsPendingGivenProvider = FutureProvider<double>((ref) {
 
 /// Credits for a specific party name (all, not only personal).
 /// Used in party detail screen to show credit history.
-final partyCreditsProvider =
-    FutureProvider.family<List<Credit>, String>((ref, partyName) {
+final partyCreditsProvider = FutureProvider.family<List<Credit>, String>((
+  ref,
+  partyName,
+) {
   return ref.read(creditRepositoryProvider).getByPartyName(partyName);
 });
 
@@ -97,7 +97,8 @@ final totalCreditsPendingReceivedProvider = FutureProvider<double>((ref) {
 });
 
 /// Party-wise credit summaries for the credits overview screen.
-final creditPartySummariesProvider =
-    FutureProvider<List<PartyCreditSummary>>((ref) {
+final creditPartySummariesProvider = FutureProvider<List<PartyCreditSummary>>((
+  ref,
+) {
   return ref.read(creditRepositoryProvider).getPartySummaries();
 });

@@ -35,8 +35,7 @@ class BulkReminderService {
   /// Items are grouped by [ActionItem.title] (party name). One WhatsApp
   /// message is sent per party. If WhatsApp is not installed the device
   /// falls back to SMS.
-  Future<void> remindAll(
-      BuildContext context, List<ActionItem> items) async {
+  Future<void> remindAll(BuildContext context, List<ActionItem> items) async {
     if (items.isEmpty) return;
 
     // Group by party title (= party name in ActionItem)
@@ -73,11 +72,14 @@ class BulkReminderService {
     buf.writeln('Dear $partyName,');
     buf.writeln();
     buf.writeln(
-        'This is a gentle reminder for the following outstanding item(s):');
+      'This is a gentle reminder for the following outstanding item(s):',
+    );
     buf.writeln();
 
     for (final item in items) {
-      final sign = item.direction == ActionItemDirection.toCollect ? '' : '(to pay) ';
+      final sign = item.direction == ActionItemDirection.toCollect
+          ? ''
+          : '(to pay) ';
       final amountStr = '₹${_formatAmount(item.amount)}';
       buf.write('  \u2022 $sign$amountStr');
       if (item.subtitle != null && item.subtitle!.isNotEmpty) {
@@ -111,7 +113,10 @@ class BulkReminderService {
     final rest = s.substring(0, s.length - 3);
     final parts = <String>[];
     for (int i = rest.length; i > 0; i -= 2) {
-      parts.insert(0, rest.substring(i.clamp(0, rest.length) - 2.clamp(0, i), i));
+      parts.insert(
+        0,
+        rest.substring(i.clamp(0, rest.length) - 2.clamp(0, i), i),
+      );
     }
     return '${parts.join(',')},$last3';
   }
@@ -138,13 +143,16 @@ class BulkReminderService {
 
   // ── Toast ─────────────────────────────────────────────────────────────────
 
-  void _showResult(BuildContext context,
-      {required int sent, required int failed}) {
+  void _showResult(
+    BuildContext context, {
+    required int sent,
+    required int failed,
+  }) {
     final msg = sent > 0 && failed == 0
         ? 'Reminder${sent > 1 ? 's' : ''} sent for $sent part${sent > 1 ? 'ies' : 'y'}'
         : failed > 0 && sent == 0
-            ? 'Could not open WhatsApp. Is it installed?'
-            : '$sent sent, $failed failed to open';
+        ? 'Could not open WhatsApp. Is it installed?'
+        : '$sent sent, $failed failed to open';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

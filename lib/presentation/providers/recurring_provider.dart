@@ -13,28 +13,30 @@ import 'transaction_provider.dart';
 
 final recurringTransactionRepositoryProvider =
     Provider<RecurringTransactionRepository>(
-  (_) => RecurringTransactionRepositoryImpl(),
-);
+      (_) => RecurringTransactionRepositoryImpl(),
+    );
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
 /// All recurring transactions (active + inactive).
-final recurringTransactionsProvider = StateNotifierProvider<
-    RecurringTransactionsNotifier,
-    AsyncValue<List<RecurringTransaction>>>(
-  (ref) => RecurringTransactionsNotifier(
-    ref.read(recurringTransactionRepositoryProvider),
-  ),
-);
+final recurringTransactionsProvider =
+    StateNotifierProvider<
+      RecurringTransactionsNotifier,
+      AsyncValue<List<RecurringTransaction>>
+    >(
+      (ref) => RecurringTransactionsNotifier(
+        ref.read(recurringTransactionRepositoryProvider),
+      ),
+    );
 
 class RecurringTransactionsNotifier
     extends StateNotifier<AsyncValue<List<RecurringTransaction>>> {
   final RecurringTransactionRepository _repository;
 
   RecurringTransactionsNotifier(this._repository)
-      : super(const AsyncValue.loading()) {
+    : super(const AsyncValue.loading()) {
     load();
   }
 
@@ -93,26 +95,26 @@ class RecurringTransactionsNotifier
 /// recurring transactions (amounts normalised to monthly).
 final recurringMonthlySummaryProvider =
     Provider<({double income, double expense})>((ref) {
-  final asyncList = ref.watch(recurringTransactionsProvider);
-  return asyncList.when(
-    data: (items) {
-      double income = 0;
-      double expense = 0;
-      for (final item in items) {
-        if (!item.isActive) continue;
-        final monthly = _toMonthly(item.amount, item.frequency);
-        if (item.type == 'income') {
-          income += monthly;
-        } else {
-          expense += monthly;
-        }
-      }
-      return (income: income, expense: expense);
-    },
-    loading: () => (income: 0.0, expense: 0.0),
-    error: (e, st) => (income: 0.0, expense: 0.0),
-  );
-});
+      final asyncList = ref.watch(recurringTransactionsProvider);
+      return asyncList.when(
+        data: (items) {
+          double income = 0;
+          double expense = 0;
+          for (final item in items) {
+            if (!item.isActive) continue;
+            final monthly = _toMonthly(item.amount, item.frequency);
+            if (item.type == 'income') {
+              income += monthly;
+            } else {
+              expense += monthly;
+            }
+          }
+          return (income: income, expense: expense);
+        },
+        loading: () => (income: 0.0, expense: 0.0),
+        error: (e, st) => (income: 0.0, expense: 0.0),
+      );
+    });
 
 double _toMonthly(double amount, RecurringFrequency freq) {
   switch (freq) {
@@ -168,10 +170,7 @@ Future<int> processDueRecurringTransactions(WidgetRef ref) async {
       // Advance to next occurrence
       final nextDate = item.frequency.nextOccurrence(item.nextDate);
       await recurringRepo.update(
-        item.copyWith(
-          nextDate: nextDate,
-          lastGenerated: DateTime.now(),
-        ),
+        item.copyWith(nextDate: nextDate, lastGenerated: DateTime.now()),
       );
 
       generated++;

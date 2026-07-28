@@ -21,8 +21,7 @@ class CustomCategoriesState {
 
 // ── Notifier ───────────────────────────────────────────────────────────────
 
-class CustomCategoriesNotifier
-    extends StateNotifier<CustomCategoriesState> {
+class CustomCategoriesNotifier extends StateNotifier<CustomCategoriesState> {
   CustomCategoriesNotifier() : super(const CustomCategoriesState()) {
     _load();
   }
@@ -65,23 +64,19 @@ class CustomCategoriesNotifier
 
 final customCategoriesProvider =
     StateNotifierProvider<CustomCategoriesNotifier, CustomCategoriesState>(
-  (ref) => CustomCategoriesNotifier(),
-);
+      (ref) => CustomCategoriesNotifier(),
+    );
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /// Returns all categories for [type] ('expense' | 'income') including
 /// user-created ones, with a trailing sentinel for "add new".
-List<String> buildCategoryList(
-  CustomCategoriesState custom,
-  String type,
-) {
+List<String> buildCategoryList(CustomCategoriesState custom, String type) {
   final base = type == 'income'
       ? AppConstants.incomeCategories
       : AppConstants.defaultCategories;
 
-  final userList =
-      type == 'income' ? custom.income : custom.expense;
+  final userList = type == 'income' ? custom.income : custom.expense;
 
   return [
     ...base,

@@ -16,9 +16,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
     final settingsAsync = ref.watch(notificationSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notifications'),
-      ),
+      appBar: AppBar(title: const Text('Notifications')),
       body: settingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -38,12 +36,13 @@ class NotificationSettingsScreen extends ConsumerWidget {
                     secondary: const Icon(Icons.notifications_outlined),
                     title: const Text('Enable Notifications'),
                     subtitle: const Text(
-                        'Receive reminders for payments and appointments'),
+                      'Receive reminders for payments and appointments',
+                    ),
                     value: globalEnabled,
                     onChanged: (val) async {
                       if (val) {
-                        final granted =
-                            await NotificationService.instance.requestPermission();
+                        final granted = await NotificationService.instance
+                            .requestPermission();
                         if (!granted) {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -78,53 +77,69 @@ class NotificationSettingsScreen extends ConsumerWidget {
                       secondary: const Icon(Icons.receipt_long_outlined),
                       title: const Text('Invoice Reminders'),
                       subtitle: const Text(
-                          'Notify about overdue and upcoming invoices'),
-                      value: settings[NotificationKeys.invoicesNotifications]
+                        'Notify about overdue and upcoming invoices',
+                      ),
+                      value:
+                          settings[NotificationKeys.invoicesNotifications]
                               as bool? ??
                           true,
                       onChanged: (val) => ref
                           .read(notificationSettingsProvider.notifier)
                           .updateSetting(
-                              NotificationKeys.invoicesNotifications, val),
+                            NotificationKeys.invoicesNotifications,
+                            val,
+                          ),
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.calendar_month_outlined),
                       title: const Text('Booking Reminders'),
                       subtitle: const Text(
-                          'Notify about upcoming appointments'),
-                      value: settings[NotificationKeys.bookingsNotifications]
+                        'Notify about upcoming appointments',
+                      ),
+                      value:
+                          settings[NotificationKeys.bookingsNotifications]
                               as bool? ??
                           true,
                       onChanged: (val) => ref
                           .read(notificationSettingsProvider.notifier)
                           .updateSetting(
-                              NotificationKeys.bookingsNotifications, val),
+                            NotificationKeys.bookingsNotifications,
+                            val,
+                          ),
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.handshake_outlined),
                       title: const Text('Credit & Loan Reminders'),
-                      subtitle:
-                          const Text('Notify about lent/borrowed due dates'),
-                      value: settings[NotificationKeys.creditsNotifications]
+                      subtitle: const Text(
+                        'Notify about lent/borrowed due dates',
+                      ),
+                      value:
+                          settings[NotificationKeys.creditsNotifications]
                               as bool? ??
                           true,
                       onChanged: (val) => ref
                           .read(notificationSettingsProvider.notifier)
                           .updateSetting(
-                              NotificationKeys.creditsNotifications, val),
+                            NotificationKeys.creditsNotifications,
+                            val,
+                          ),
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.event_repeat_outlined),
                       title: const Text('Bill Reminders'),
-                      subtitle:
-                          const Text('Notify before scheduled bill payments'),
-                      value: settings[NotificationKeys.billsNotifications]
+                      subtitle: const Text(
+                        'Notify before scheduled bill payments',
+                      ),
+                      value:
+                          settings[NotificationKeys.billsNotifications]
                               as bool? ??
                           true,
                       onChanged: (val) => ref
                           .read(notificationSettingsProvider.notifier)
                           .updateSetting(
-                              NotificationKeys.billsNotifications, val),
+                            NotificationKeys.billsNotifications,
+                            val,
+                          ),
                     ),
                   ],
                 ),
@@ -145,14 +160,13 @@ class NotificationSettingsScreen extends ConsumerWidget {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.base),
+                        horizontal: AppSpacing.base,
+                      ),
                       child: Text(
                         'No push notifications will be delivered during Quiet Hours.',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm),
@@ -175,12 +189,9 @@ class NotificationSettingsScreen extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         'All notifications are local. No data is sent to any server.',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ),
                   ],
@@ -264,10 +275,10 @@ class _Section extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
+            ),
           ),
         ),
         ...children,

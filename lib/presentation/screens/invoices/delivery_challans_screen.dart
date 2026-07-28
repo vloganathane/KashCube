@@ -36,7 +36,8 @@ class _DeliveryChallansScreenState
             tooltip: 'Search challans',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const SearchScreen(initialFilter: SearchFilter.challans),
+                builder: (_) =>
+                    const SearchScreen(initialFilter: SearchFilter.challans),
               ),
             ),
           ),
@@ -54,11 +55,13 @@ class _DeliveryChallansScreenState
         heroTag: null,
         tooltip: 'New Delivery Challan',
         onPressed: () => Navigator.of(context)
-            .push(MaterialPageRoute(
-              builder: (_) => const QuoteBuilderScreen(
-                docType: DocumentType.deliveryChallan,
+            .push(
+              MaterialPageRoute(
+                builder: (_) => const QuoteBuilderScreen(
+                  docType: DocumentType.deliveryChallan,
+                ),
               ),
-            ))
+            )
             .then((_) => ref.read(challansProvider.notifier).invalidate()),
         child: const Icon(Icons.add),
       ),
@@ -82,8 +85,10 @@ class _DeliveryChallansScreenState
                 ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
-            child: Text('Error: $e',
-                style: TextStyle(color: context.colorScheme.error)),
+            child: Text(
+              'Error: $e',
+              style: TextStyle(color: context.colorScheme.error),
+            ),
           ),
         ),
       ),
@@ -104,7 +109,9 @@ class _FilterChips extends StatelessWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.sm),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: [
           FilterChip(
@@ -113,16 +120,17 @@ class _FilterChips extends StatelessWidget {
             onSelected: (_) => onSelect(null),
           ),
           const SizedBox(width: AppSpacing.sm),
-          ...ChallanStatus.values.map((s) => Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm),
-                child: FilterChip(
-                  label: Text(s.label),
-                  selected: selected == s,
-                  onSelected: (_) =>
-                      onSelect(selected == s ? null : s),
-                  avatar: Icon(_statusIcon(s), size: 14),
-                ),
-              )),
+          ...ChallanStatus.values.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(right: AppSpacing.sm),
+              child: FilterChip(
+                label: Text(s.label),
+                selected: selected == s,
+                onSelected: (_) => onSelect(selected == s ? null : s),
+                avatar: Icon(_statusIcon(s), size: 14),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -165,8 +173,7 @@ class _ChallanCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) =>
-                DeliveryChallanDetailScreen(challanId: challan.id!),
+            builder: (_) => DeliveryChallanDetailScreen(challanId: challan.id!),
           ),
         ),
         child: Padding(
@@ -177,7 +184,10 @@ class _ChallanCard extends ConsumerWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: _statusColor(challan.status, context).withValues(alpha: 0.12),
+                  color: _statusColor(
+                    challan.status,
+                    context,
+                  ).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(

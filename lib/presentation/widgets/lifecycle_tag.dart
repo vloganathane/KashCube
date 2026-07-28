@@ -57,12 +57,7 @@ class LifecycleTag extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        _TagPill(
-          label: label,
-          days: days,
-          color: color,
-          bgAlpha: bgAlpha,
-        ),
+        _TagPill(label: label, days: days, color: color, bgAlpha: bgAlpha),
         if (expandedMode) ...[
           const SizedBox(height: AppSpacing.xs),
           _StageProgressDots(currentStage: info.stage),
@@ -72,20 +67,19 @@ class LifecycleTag extends StatelessWidget {
   }
 
   /// Returns (foreground Color, background alpha 0-255) for a stage.
-  static (Color, int) _stageColor(
-      BuildContext context, LifecycleStage stage) {
+  static (Color, int) _stageColor(BuildContext context, LifecycleStage stage) {
     final cs = context.colorScheme;
     final kash = context.kashColors;
     return switch (stage) {
-      LifecycleStage.overdue      => (cs.error, 30),
-      LifecycleStage.reminded     => (const Color(0xFFE65100), 28),
-      LifecycleStage.sent         => (cs.primary, 28),
+      LifecycleStage.overdue => (cs.error, 30),
+      LifecycleStage.reminded => (const Color(0xFFE65100), 28),
+      LifecycleStage.sent => (cs.primary, 28),
       LifecycleStage.partiallyPaid => (kash.credit, 28),
-      LifecycleStage.paying       => (kash.income, 28),
-      LifecycleStage.paid         => (kash.income, 22),
-      LifecycleStage.cleared      => (cs.outline, 20),
-      LifecycleStage.active       => (cs.outline, 20),
-      LifecycleStage.draft        => (cs.outline, 20),
+      LifecycleStage.paying => (kash.income, 28),
+      LifecycleStage.paid => (kash.income, 22),
+      LifecycleStage.cleared => (cs.outline, 20),
+      LifecycleStage.active => (cs.outline, 20),
+      LifecycleStage.draft => (cs.outline, 20),
     };
   }
 }
@@ -109,7 +103,9 @@ class _TagPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm, vertical: 2),
+        horizontal: AppSpacing.sm,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withAlpha(bgAlpha),
         borderRadius: BorderRadius.circular(6),
@@ -196,10 +192,7 @@ class _StageProgressDots extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               width: isCurrent ? 10 : 6,
               height: isCurrent ? 10 : 6,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
             if (i < _stages.length - 1)
               Container(

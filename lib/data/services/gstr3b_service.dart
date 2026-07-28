@@ -42,20 +42,20 @@ class Gstr3bTaxAmounts {
   double get totalTax => igst + cgst + sgst + cess;
 
   Gstr3bTaxAmounts operator +(Gstr3bTaxAmounts other) => Gstr3bTaxAmounts(
-        taxableValue: taxableValue + other.taxableValue,
-        igst: igst + other.igst,
-        cgst: cgst + other.cgst,
-        sgst: sgst + other.sgst,
-        cess: cess + other.cess,
-      );
+    taxableValue: taxableValue + other.taxableValue,
+    igst: igst + other.igst,
+    cgst: cgst + other.cgst,
+    sgst: sgst + other.sgst,
+    cess: cess + other.cess,
+  );
 
   Gstr3bTaxAmounts withDecimals() => Gstr3bTaxAmounts(
-        taxableValue: _r2(taxableValue),
-        igst: _r2(igst),
-        cgst: _r2(cgst),
-        sgst: _r2(sgst),
-        cess: _r2(cess),
-      );
+    taxableValue: _r2(taxableValue),
+    igst: _r2(igst),
+    cgst: _r2(cgst),
+    sgst: _r2(sgst),
+    cess: _r2(cess),
+  );
 
   static double _r2(double v) => (v * 100).roundToDouble() / 100;
 
@@ -185,7 +185,7 @@ class Gstr3bWorkbook {
 
   // ── Table 3.1: Outward supply liability ──────────────────────────────────
   final Gstr3bTaxAmounts outwardRegular;
-  final Gstr3bTaxAmounts outwardZeroRated;   // manual / not tracked
+  final Gstr3bTaxAmounts outwardZeroRated; // manual / not tracked
   final Gstr3bTaxAmounts outwardNilExempted; // manual / not tracked
 
   // ── Table 3.1(d): RCM (inward supply) ────────────────────────────────────
@@ -206,20 +206,26 @@ class Gstr3bWorkbook {
 
   Gstr3bTaxAmounts get netItc {
     return Gstr3bTaxAmounts(
-      igst: _r2((itcEligible.igst - itcReversed.igst).clamp(0.0, double.infinity)),
-      cgst: _r2((itcEligible.cgst - itcReversed.cgst).clamp(0.0, double.infinity)),
-      sgst: _r2((itcEligible.sgst - itcReversed.sgst).clamp(0.0, double.infinity)),
+      igst: _r2(
+        (itcEligible.igst - itcReversed.igst).clamp(0.0, double.infinity),
+      ),
+      cgst: _r2(
+        (itcEligible.cgst - itcReversed.cgst).clamp(0.0, double.infinity),
+      ),
+      sgst: _r2(
+        (itcEligible.sgst - itcReversed.sgst).clamp(0.0, double.infinity),
+      ),
     );
   }
 
   Gstr3bOffset get offsetData => Gstr3bOffset(
-        igstLiability: totalLiability.igst,
-        cgstLiability: totalLiability.cgst,
-        sgstLiability: totalLiability.sgst,
-        igstItc: netItc.igst,
-        cgstItc: netItc.cgst,
-        sgstItc: netItc.sgst,
-      );
+    igstLiability: totalLiability.igst,
+    cgstLiability: totalLiability.cgst,
+    sgstLiability: totalLiability.sgst,
+    igstItc: netItc.igst,
+    cgstItc: netItc.cgst,
+    sgstItc: netItc.sgst,
+  );
 
   static double _r2(double v) => (v * 100).roundToDouble() / 100;
 }
@@ -231,9 +237,9 @@ class Gstr3bService {
     required BusinessRepository businessRepo,
     required InvoiceRepository invoiceRepo,
     required PurchaseBillRepository purchaseBillRepo,
-  })  : _business = businessRepo,
-        _invoice = invoiceRepo,
-        _purchaseBill = purchaseBillRepo;
+  }) : _business = businessRepo,
+       _invoice = invoiceRepo,
+       _purchaseBill = purchaseBillRepo;
 
   final BusinessRepository _business;
   final InvoiceRepository _invoice;
@@ -262,9 +268,13 @@ class Gstr3bService {
       from: from,
       to: to,
     );
-    final invoices = allInvoices.where((inv) =>
-        inv.status != InvoiceStatus.draft &&
-        inv.status != InvoiceStatus.cancelled).toList();
+    final invoices = allInvoices
+        .where(
+          (inv) =>
+              inv.status != InvoiceStatus.draft &&
+              inv.status != InvoiceStatus.cancelled,
+        )
+        .toList();
 
     // ── Fetch purchase bills for period ───────────────────────────────────
     final bills = await _purchaseBill.fetchForPeriod(
@@ -286,7 +296,9 @@ class Gstr3bService {
 
       // Sum tax amounts per item using GstCalculator
       for (final item in inv.items) {
-        final taxable = _r2(item.qty * item.unitPrice * (1 - item.discountPct / 100));
+        final taxable = _r2(
+          item.qty * item.unitPrice * (1 - item.discountPct / 100),
+        );
         final split = GstCalculator.calculate(
           sellerState: sellerState,
           buyerState: inv.placeOfSupply,
@@ -367,12 +379,12 @@ class Gstr3bService {
 
 // ─── Riverpod Provider ───────────────────────────────────────────────────────
 
-final gstr3bServiceProvider = Provider<Gstr3bService>((ref) => Gstr3bService(
-      businessRepo: ref.read(businessRepositoryProvider),
-      invoiceRepo: ref.read(invoiceRepositoryProvider),
-      purchaseBillRepo: ref.read(purchaseBillRepositoryProvider),
-    ));
+final gstr3bServiceProvider = Provider<Gstr3bService>(
+  (ref) => Gstr3bService(
+    businessRepo: ref.read(businessRepositoryProvider),
+    invoiceRepo: ref.read(invoiceRepositoryProvider),
+    purchaseBillRepo: ref.read(purchaseBillRepositoryProvider),
+  ),
+);
 
 // PDF generation: see gstr3b_pdf_service.dart
-
-

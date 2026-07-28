@@ -218,7 +218,8 @@ class _FyCloseWizardScreenState extends ConsumerState<FyCloseWizardScreen> {
                     await Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => const EncryptedBackupScreen()),
+                        builder: (_) => const EncryptedBackupScreen(),
+                      ),
                     );
                     // Re-check backup status after returning.
                     if (mounted) setState(() {});
@@ -235,7 +236,11 @@ class _FyCloseWizardScreenState extends ConsumerState<FyCloseWizardScreen> {
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.base, AppSpacing.sm, AppSpacing.base, AppSpacing.base),
+                  AppSpacing.base,
+                  AppSpacing.sm,
+                  AppSpacing.base,
+                  AppSpacing.base,
+                ),
                 child: Row(
                   children: [
                     if (_currentStep > 0)
@@ -286,7 +291,9 @@ class _StepIndicator extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.base, vertical: AppSpacing.md),
+        horizontal: AppSpacing.base,
+        vertical: AppSpacing.md,
+      ),
       child: Row(
         children: List.generate(total, (i) {
           final isActive = i == current;
@@ -315,10 +322,11 @@ class _StepIndicator extends StatelessWidget {
                           color: isActive
                               ? scheme.primary
                               : isDone
-                                  ? scheme.primary.withValues(alpha: 0.7)
-                                  : scheme.onSurfaceVariant,
-                          fontWeight:
-                              isActive ? FontWeight.w600 : FontWeight.normal,
+                              ? scheme.primary.withValues(alpha: 0.7)
+                              : scheme.onSurfaceVariant,
+                          fontWeight: isActive
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -358,8 +366,10 @@ class _Step1Summary extends StatelessWidget {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Text('Error loading summary: $error',
-              textAlign: TextAlign.center),
+          child: Text(
+            'Error loading summary: $error',
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
@@ -374,13 +384,15 @@ class _Step1Summary extends StatelessWidget {
         children: [
           Text(
             s.fyLabel,
-            style: context.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: context.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           Text(
             '${_fmt(s.fyRange.start)} — ${_fmt(s.fyRange.end)}',
-            style: context.textTheme.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
 
@@ -446,10 +458,20 @@ class _Step1Summary extends StatelessWidget {
 
   String _fmt(DateTime d) => '${d.day} ${_month(d.month)} ${d.year}';
   String _month(int m) => const [
-        '',
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
 }
 
 // ---------------------------------------------------------------------------
@@ -488,15 +510,17 @@ class _Step2Review extends StatelessWidget {
         children: [
           Text(
             'Review Before Closing',
-            style: context.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: context.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'These items will carry over to the new financial year. '
             'Please review and confirm.',
-            style: context.textTheme.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.lg),
 
@@ -540,12 +564,17 @@ class _Step2Review extends StatelessWidget {
                 color: (colors?.income ?? Colors.green).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: (colors?.income ?? Colors.green).withValues(alpha: 0.3)),
+                  color: (colors?.income ?? Colors.green).withValues(
+                    alpha: 0.3,
+                  ),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline,
-                      color: colors?.income ?? Colors.green),
+                  Icon(
+                    Icons.check_circle_outline,
+                    color: colors?.income ?? Colors.green,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
@@ -561,22 +590,18 @@ class _Step2Review extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
 
           // ── Closing notes ─────────────────────────────────────────────
-          Text(
-            'Closing Notes (optional)',
-            style: context.textTheme.titleSmall,
-          ),
+          Text('Closing Notes (optional)', style: context.textTheme.titleSmall),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: notesController,
             maxLines: 3,
             maxLength: 300,
             decoration: InputDecoration(
-              hintText:
-                  'Add any notes for this FY close, e.g. key highlights…',
+              hintText: 'Add any notes for this FY close, e.g. key highlights…',
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              contentPadding:
-                  const EdgeInsets.all(AppSpacing.md),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              contentPadding: const EdgeInsets.all(AppSpacing.md),
             ),
           ),
         ],
@@ -612,10 +637,7 @@ class _Step3Archive extends StatelessWidget {
     final colors = Theme.of(context).extension<KashCubeColors>();
 
     if (archiveDone) {
-      return _ArchiveDoneView(
-        summary: summary,
-        onDone: onDone,
-      );
+      return _ArchiveDoneView(summary: summary, onDone: onDone);
     }
 
     return SingleChildScrollView(
@@ -625,14 +647,16 @@ class _Step3Archive extends StatelessWidget {
         children: [
           Text(
             'Archive & Close',
-            style: context.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: context.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Before closing, we recommend taking an encrypted backup.',
-            style: context.textTheme.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
 
@@ -691,16 +715,16 @@ class _Step3Archive extends StatelessWidget {
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.archive_outlined),
-              label: Text(
-                  archiving ? 'Archiving…' : 'Archive & Close FY'),
+              label: Text(archiving ? 'Archiving…' : 'Archive & Close FY'),
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    colors?.income ?? scheme.primary,
+                backgroundColor: colors?.income ?? scheme.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                    vertical: AppSpacing.md),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
               ),
             ),
           ),
@@ -738,8 +762,9 @@ class _ArchiveDoneView extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Text(
             '${summary?.fyLabel ?? 'FY'} Closed!',
-            style: context.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
+            style: context.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.md),
@@ -747,16 +772,14 @@ class _ArchiveDoneView extends StatelessWidget {
             'Your database has been archived and invoice numbering '
             'will reset for the new financial year.',
             textAlign: TextAlign.center,
-            style: context.textTheme.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: AppSpacing.xxxl),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              onPressed: onDone,
-              child: const Text('Done'),
-            ),
+            child: FilledButton(onPressed: onDone, child: const Text('Done')),
           ),
         ],
       ),
@@ -804,7 +827,9 @@ class _BackupStatusCardState extends State<_BackupStatusCard> {
 
     if (_loading) {
       return const SizedBox(
-          height: 64, child: Center(child: CircularProgressIndicator()));
+        height: 64,
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
 
     final hasBackup = _lastBackup != null;
@@ -846,7 +871,8 @@ class _BackupStatusCardState extends State<_BackupStatusCard> {
                       ? 'Last backup: ${_fmtDate(_lastBackup!)}'
                       : 'Create an encrypted backup before archiving.',
                   style: context.textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurfaceVariant),
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -860,14 +886,23 @@ class _BackupStatusCardState extends State<_BackupStatusCard> {
     );
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.day} ${_month(d.month)} ${d.year}';
+  String _fmtDate(DateTime d) => '${d.day} ${_month(d.month)} ${d.year}';
 
   String _month(int m) => const [
-        '',
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-      ][m];
+    '',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ][m];
 }
 
 // ---------------------------------------------------------------------------
@@ -893,9 +928,12 @@ class _SummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: context.textTheme.titleSmall
-                  ?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: context.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           ...children,
         ],
@@ -929,9 +967,12 @@ class _SummaryRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: context.textTheme.bodyMedium?.copyWith(
-                    fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+            child: Text(
+              label,
+              style: context.textTheme.bodyMedium?.copyWith(
+                fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
           ),
           Text(value, style: style),
         ],
@@ -984,15 +1025,17 @@ class _AcknowledgeCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(body,
-              style: context.textTheme.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant)),
+          Text(
+            body,
+            style: context.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: AppSpacing.sm),
           CheckboxListTile(
             value: checked,
             onChanged: (v) => onChanged(v ?? false),
-            title: Text(checkLabel,
-                style: context.textTheme.bodySmall),
+            title: Text(checkLabel, style: context.textTheme.bodySmall),
             dense: true,
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
@@ -1020,9 +1063,12 @@ class _BulletItem extends StatelessWidget {
           Icon(icon, size: 16, color: scheme.onSurfaceVariant),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
-            child: Text(text,
-                style: context.textTheme.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant)),
+            child: Text(
+              text,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ],
       ),

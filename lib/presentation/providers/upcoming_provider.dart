@@ -32,6 +32,7 @@ final class LoanUpcomingItem extends UpcomingItem {
   const LoanUpcomingItem(this.loan, {this.resolvedDueDate});
 
   final Loan loan;
+
   /// Overrides loan.nextEmiDate when that field is null (e.g. legacy data).
   final DateTime? resolvedDueDate;
 
@@ -90,18 +91,23 @@ final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
           if (loan.isCleared) continue;
 
           // Resolve effective due date
-          final due = loan.nextEmiDate
-              ?? nextDates[loan.id]  // fallback: first unpaid installment
-              ?? loan.dueDate;
+          final due =
+              loan.nextEmiDate ??
+              nextDates[loan.id] // fallback: first unpaid installment
+              ??
+              loan.dueDate;
 
           if (due == null) continue;
           final dueOnly = DateTime(due.year, due.month, due.day);
           if (dueOnly.difference(today).inDays <= windowDays) {
-            items.add(LoanUpcomingItem(
-              loan,
-              resolvedDueDate:
-                  loan.nextEmiDate == null ? nextDates[loan.id] : null,
-            ));
+            items.add(
+              LoanUpcomingItem(
+                loan,
+                resolvedDueDate: loan.nextEmiDate == null
+                    ? nextDates[loan.id]
+                    : null,
+              ),
+            );
           }
         }
 
@@ -110,7 +116,10 @@ final upcomingItemsProvider = Provider<AsyncValue<List<UpcomingItem>>>((ref) {
           if (!payment.isActive) continue;
           if (payment.isPaidThisPeriod) continue;
           final dueOnly = DateTime(
-              payment.nextDate.year, payment.nextDate.month, payment.nextDate.day);
+            payment.nextDate.year,
+            payment.nextDate.month,
+            payment.nextDate.day,
+          );
           if (dueOnly.difference(today).inDays <= windowDays) {
             items.add(ScheduledUpcomingItem(payment));
           }

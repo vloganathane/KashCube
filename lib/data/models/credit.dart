@@ -37,7 +37,7 @@ enum CreditInterestType {
 
 /// A single credit / udhar entry (given or received).
 ///
-/// [businessId] == null  → personal credit  
+/// [businessId] == null  → personal credit
 /// [businessId] == N     → credit belongs to Business N
 class Credit {
   final int? id;

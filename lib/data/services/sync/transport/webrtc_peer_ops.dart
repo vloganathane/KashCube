@@ -10,10 +10,7 @@ enum WebRtcPeerRuntimeEventType {
 }
 
 class WebRtcPeerRuntimeEvent {
-  const WebRtcPeerRuntimeEvent({
-    required this.sessionId,
-    required this.type,
-  });
+  const WebRtcPeerRuntimeEvent({required this.sessionId, required this.type});
 
   final String sessionId;
   final WebRtcPeerRuntimeEventType type;
@@ -30,10 +27,7 @@ class WebRtcPeerRuntimeEvent {
   }
 
   Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'session_id': sessionId,
-      'event': typeName,
-    };
+    return <String, dynamic>{'session_id': sessionId, 'event': typeName};
   }
 }
 
@@ -59,11 +53,7 @@ abstract class WebRtcPeerOps {
 
 typedef WebRtcPeerOpsFactory = WebRtcPeerOps Function(String sessionId);
 
-enum WebRtcPeerOpsMode {
-  noop,
-  flutterShell,
-  platformChannel,
-}
+enum WebRtcPeerOpsMode { noop, flutterShell, platformChannel }
 
 WebRtcPeerOpsMode parseWebRtcPeerOpsMode(String? raw) {
   switch ((raw ?? '').trim().toLowerCase()) {
@@ -133,11 +123,11 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
   String? remoteAnswerSdp;
   final List<Map<String, dynamic>> remoteIceCandidates =
       <Map<String, dynamic>>[];
-    final List<String> sentDataChannelFrames = <String>[];
+  final List<String> sentDataChannelFrames = <String>[];
   final List<String> operationLog = <String>[];
   final StreamController<WebRtcPeerRuntimeEvent> _runtimeEventsController =
       StreamController<WebRtcPeerRuntimeEvent>.broadcast();
-    final StreamController<String> _payloadFramesController =
+  final StreamController<String> _payloadFramesController =
       StreamController<String>.broadcast();
   bool dataChannelEnsured = false;
   bool sessionCreated = false;
@@ -230,23 +220,22 @@ class FlutterWebRtcPeerOpsShell implements WebRtcPeerOps {
 /// preserving current fallback behavior: when no plugin handler is available,
 /// calls are ignored with a debug log and do not throw.
 class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
-  MethodChannelWebRtcPeerOps({
-    required this.sessionId,
-    MethodChannel? channel,
-  }) : _channel = channel ?? _sharedChannel {
+  MethodChannelWebRtcPeerOps({required this.sessionId, MethodChannel? channel})
+    : _channel = channel ?? _sharedChannel {
     _runtimeEventControllers[sessionId] = _runtimeEventsController;
     _ensureMethodCallHandler();
   }
 
   static const String _defaultChannelName = 'kashcube/webrtc_peer_ops';
   static const String _runtimeEventMethod = 'onRuntimeEvent';
-    static const String _dataChannelFrameMethod = 'onDataChannelFrame';
-  static final MethodChannel _sharedChannel =
-      const MethodChannel(_defaultChannelName);
+  static const String _dataChannelFrameMethod = 'onDataChannelFrame';
+  static final MethodChannel _sharedChannel = const MethodChannel(
+    _defaultChannelName,
+  );
   static final Map<String, StreamController<WebRtcPeerRuntimeEvent>>
-      _runtimeEventControllers =
+  _runtimeEventControllers =
       <String, StreamController<WebRtcPeerRuntimeEvent>>{};
-    static final Map<String, StreamController<String>> _payloadControllers =
+  static final Map<String, StreamController<String>> _payloadControllers =
       <String, StreamController<String>>{};
   static bool _methodCallHandlerInstalled = false;
 
@@ -254,15 +243,15 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   final MethodChannel _channel;
   final StreamController<WebRtcPeerRuntimeEvent> _runtimeEventsController =
       StreamController<WebRtcPeerRuntimeEvent>.broadcast();
-    final StreamController<String> _payloadFramesController =
+  final StreamController<String> _payloadFramesController =
       StreamController<String>.broadcast();
 
   @override
   Stream<WebRtcPeerRuntimeEvent> get runtimeEvents =>
       _runtimeEventsController.stream;
 
-    @override
-    Stream<String> get payloadFrames => _payloadFramesController.stream;
+  @override
+  Stream<String> get payloadFrames => _payloadFramesController.stream;
 
   static void _ensureMethodCallHandler() {
     if (_methodCallHandlerInstalled) {
@@ -322,7 +311,10 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
   static void _dispatchPayloadFrame(Map<String, dynamic> payload) {
     final sessionId = payload['session_id']?.toString();
     final frame = payload['frame']?.toString();
-    if (sessionId == null || sessionId.isEmpty || frame == null || frame.isEmpty) {
+    if (sessionId == null ||
+        sessionId.isEmpty ||
+        frame == null ||
+        frame.isEmpty) {
       return;
     }
 
@@ -396,13 +388,10 @@ class MethodChannelWebRtcPeerOps implements WebRtcPeerOps {
 
   Future<void> _invoke(String method, Map<String, dynamic> payload) async {
     try {
-      await _channel.invokeMethod<void>(
-        method,
-        <String, dynamic>{
-          'session_id': sessionId,
-          ...payload,
-        },
-      );
+      await _channel.invokeMethod<void>(method, <String, dynamic>{
+        'session_id': sessionId,
+        ...payload,
+      });
     } on MissingPluginException {
       debugPrint(
         '[MethodChannelWebRtcPeerOps] Missing plugin for $method '

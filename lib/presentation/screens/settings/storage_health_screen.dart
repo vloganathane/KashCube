@@ -160,7 +160,9 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
     final daysSinceBackup = stats.lastBackup == null
         ? null
         : DateTime.now().difference(stats.lastBackup!).inDays;
-    final backupWarning = stats.lastBackup == null || (daysSinceBackup != null && daysSinceBackup > 30);
+    final backupWarning =
+        stats.lastBackup == null ||
+        (daysSinceBackup != null && daysSinceBackup > 30);
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(_storageStatsProvider),
@@ -170,9 +172,9 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
           // ── Storage Usage ────────────────────────────────────────────────
           Text(
             'Storage Usage',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.sm),
           Card(
@@ -231,17 +233,13 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       children: [
                         Text(
                           'Total',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
                           _formatBytes(stats.totalBytes),
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -256,9 +254,9 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
           // ── Backup ────────────────────────────────────────────────────────
           Text(
             'Backup',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.sm),
           Card(
@@ -281,9 +279,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                           stats.lastBackup == null
                               ? 'Last backup: Never'
                               : 'Last backup: ${dateFormat.format(stats.lastBackup!)}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
+                          style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(
                                 color: backupWarning ? colors.expense : null,
                               ),
@@ -297,9 +293,9 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       stats.lastBackup == null
                           ? 'You have never backed up. Your data is only on this device.'
                           : 'Last backup was $daysSinceBackup days ago — back up regularly.',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: colors.expense,
-                          ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: colors.expense),
                     ),
                   ],
                   const SizedBox(height: AppSpacing.base),
@@ -325,9 +321,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _restoring
-                              ? null
-                              : _showRestoreDialog,
+                          onPressed: _restoring ? null : _showRestoreDialog,
                           icon: const Icon(Icons.restore, size: 18),
                           label: const Text('Restore'),
                         ),
@@ -335,9 +329,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: _exporting
-                              ? null
-                              : _exportCsv,
+                          onPressed: _exporting ? null : _exportCsv,
                           icon: _exporting
                               ? const SizedBox(
                                   width: 14,
@@ -362,7 +354,8 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Auto Backup'),
                     subtitle: const Text(
-                        'Automatically back up in the background'),
+                      'Automatically back up in the background',
+                    ),
                     value: _autoBackupEnabled,
                     onChanged: _toggleAutoBackup,
                   ),
@@ -372,8 +365,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       segments: const [
                         ButtonSegment(value: 'daily', label: Text('Daily')),
                         ButtonSegment(value: 'weekly', label: Text('Weekly')),
-                        ButtonSegment(
-                            value: 'monthly', label: Text('Monthly')),
+                        ButtonSegment(value: 'monthly', label: Text('Monthly')),
                       ],
                       selected: {_autoBackupInterval},
                       onSelectionChanged: (v) =>
@@ -384,10 +376,8 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
                       'Keeps the last 3 auto-backups. '
                       'On iOS, timing is best-effort.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                          ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ],
@@ -456,10 +446,7 @@ class _StorageHealthScreenState extends ConsumerState<StorageHealthScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(AppSpacing.base),
-              child: Text(
-                'Select Backup',
-                style: ctx.textTheme.titleMedium,
-              ),
+              child: Text('Select Backup', style: ctx.textTheme.titleMedium),
             ),
             const Divider(height: 1),
             Flexible(
@@ -596,7 +583,11 @@ class _StorageRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                icon,
+                size: 18,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(child: Text(label)),
               ?trailing,
@@ -613,8 +604,9 @@ class _StorageRow extends StatelessWidget {
             child: LinearProgressIndicator(
               value: fraction.clamp(0.0, 1.0),
               minHeight: 4,
-              backgroundColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
             ),
           ),
         ],

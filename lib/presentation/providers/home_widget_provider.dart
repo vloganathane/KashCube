@@ -14,10 +14,8 @@ import 'settings_provider.dart';
 
 // ─── Notifier ─────────────────────────────────────────────────────────────────
 
-class HomeWidgetNotifier
-    extends StateNotifier<List<HomeWidgetConfig>> {
-  HomeWidgetNotifier(this._settings)
-      : super(List.of(HomeWidgetId.defaults)) {
+class HomeWidgetNotifier extends StateNotifier<List<HomeWidgetConfig>> {
+  HomeWidgetNotifier(this._settings) : super(List.of(HomeWidgetId.defaults)) {
     _load();
   }
 
@@ -42,7 +40,9 @@ class HomeWidgetNotifier
   /// Toggle the enabled flag for a single widget by [id].
   Future<void> toggle(String id) async {
     await save(
-      state.map((c) => c.id == id ? c.copyWith(enabled: !c.enabled) : c).toList(),
+      state
+          .map((c) => c.id == id ? c.copyWith(enabled: !c.enabled) : c)
+          .toList(),
     );
   }
 
@@ -65,5 +65,5 @@ class HomeWidgetNotifier
 
 final homeWidgetProvider =
     StateNotifierProvider<HomeWidgetNotifier, List<HomeWidgetConfig>>(
-  (ref) => HomeWidgetNotifier(ref.read(settingsRepositoryProvider)),
-);
+      (ref) => HomeWidgetNotifier(ref.read(settingsRepositoryProvider)),
+    );

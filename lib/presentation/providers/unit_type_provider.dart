@@ -14,6 +14,7 @@ class UnitType {
   final int id;
   final String label;
   final bool isSystem;
+
   /// Official e-Way Bill GST UOM code (e.g. 'NOS', 'KGS').
   /// Null for non-GST units (software, time, specialty).
   final String? code;
@@ -36,12 +37,14 @@ class UnitTypesNotifier extends StateNotifier<List<UnitType>> {
   Future<void> _load() async {
     final rows = await DatabaseHelper.instance.getUnitTypes();
     state = rows
-        .map((r) => UnitType(
-              id: r['id'] as int,
-              code: r['code'] as String?,
-              label: r['label'] as String,
-              isSystem: (r['is_system'] as int) == 1,
-            ))
+        .map(
+          (r) => UnitType(
+            id: r['id'] as int,
+            code: r['code'] as String?,
+            label: r['label'] as String,
+            isSystem: (r['is_system'] as int) == 1,
+          ),
+        )
         .toList();
   }
 
@@ -64,5 +67,5 @@ class UnitTypesNotifier extends StateNotifier<List<UnitType>> {
 
 final unitTypesProvider =
     StateNotifierProvider<UnitTypesNotifier, List<UnitType>>(
-  (ref) => UnitTypesNotifier(),
-);
+      (ref) => UnitTypesNotifier(),
+    );

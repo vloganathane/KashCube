@@ -92,6 +92,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
   final _notesController = TextEditingController();
   late final TextEditingController _customerCtrl;
   late final TextEditingController _documentNoCtrl;
+  late final TextEditingController _poNumberCtrl;
   late final TextEditingController _freightCtrl;
   late final TextEditingController _insuranceCtrl;
   late final TextEditingController _packingCtrl;
@@ -123,6 +124,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     super.initState();
     _customerCtrl = TextEditingController();
     _documentNoCtrl = TextEditingController();
+    _poNumberCtrl = TextEditingController();
     _freightCtrl = TextEditingController();
     _insuranceCtrl = TextEditingController();
     _packingCtrl = TextEditingController();
@@ -194,6 +196,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _customerCtrl.text = source.customerName;
       _customerPartyId = source.customerPartyId;
       _selectedBusinessId = source.businessId;
+      _poNumberCtrl.text = source.poNumber ?? '';
       _issueDate = DateTime.now();
       _dueDate = null; // Credit/debit notes typically have no due date
       _notesController.text =
@@ -321,6 +324,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       _customerName = invoice.customerName;
       _customerCtrl.text = invoice.customerName;
       _documentNoCtrl.text = invoice.invoiceNo;
+      _poNumberCtrl.text = invoice.poNumber ?? '';
       _customerPartyId = invoice.customerPartyId;
       _selectedBusinessId = invoice.businessId;
       _issueDate = invoice.issueDate;
@@ -435,6 +439,7 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
     _notesController.dispose();
     _customerCtrl.dispose();
     _documentNoCtrl.dispose();
+    _poNumberCtrl.dispose();
     _freightCtrl.dispose();
     _insuranceCtrl.dispose();
     _packingCtrl.dispose();
@@ -732,6 +737,9 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
       notes: _notesController.text.trim().isEmpty
           ? null
           : _notesController.text.trim(),
+      poNumber: _poNumberCtrl.text.trim().isEmpty
+          ? null
+          : _poNumberCtrl.text.trim(),
       deliveryAddress: _selectedDeliveryAddress?.address,
       deliveryCity: _selectedDeliveryAddress?.city,
       deliveryState: _selectedDeliveryAddress?.state,
@@ -2254,6 +2262,18 @@ class _QuoteBuilderScreenState extends ConsumerState<QuoteBuilderScreen> {
               },
             ),
             const SizedBox(height: AppSpacing.base),
+
+            if (isInvoice) ...[
+              TextFormField(
+                controller: _poNumberCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'P.O. Number (optional)',
+                  hintText: 'Purchase order reference',
+                  prefixIcon: Icon(Icons.receipt_long_outlined),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.base),
+            ],
 
             // Date fields
             if (isInvoice) ...[

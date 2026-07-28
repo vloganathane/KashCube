@@ -975,6 +975,8 @@ class DatabaseHelper {
           phone TEXT,
           email TEXT,
           gst_no TEXT,
+          pan_no TEXT,
+          tin_no TEXT,
           logo_path TEXT,
           is_active INTEGER NOT NULL DEFAULT 0,
           created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -4098,6 +4100,47 @@ class DatabaseHelper {
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
 
+    if (oldVersion < 96) {
+      await _seedDocumentTemplatePresets(db);
+      await db.insert('schema_version', {
+        'version': 96,
+        'description':
+            'Seed Industrial Grid and re-sync built-in PDF template presets',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 97) {
+      await db.execute('ALTER TABLE invoices ADD COLUMN po_number TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN ifsc_code TEXT');
+      await db.execute('ALTER TABLE accounts ADD COLUMN branch TEXT');
+      await db.insert('schema_version', {
+        'version': 97,
+        'description':
+            'Add purchase order number to invoices plus IFSC code and branch to accounts',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 98) {
+      await db.execute('ALTER TABLE businesses ADD COLUMN pan_no TEXT');
+      await db.execute('ALTER TABLE businesses ADD COLUMN tin_no TEXT');
+      await db.insert('schema_version', {
+        'version': 98,
+        'description': 'Add PAN and TIN fields to businesses',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
+    if (oldVersion < 99) {
+      await db.execute('ALTER TABLE accounts ADD COLUMN business_id INTEGER');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_accounts_business ON accounts(business_id)',
+      );
+      await db.insert('schema_version', {
+        'version': 99,
+        'description':
+            'Add business link to accounts for multi-business bank details',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    }
+
     sw.stop();
     debugPrint(
       '[DB] Migration complete (v$oldVersion → v$newVersion) in ${sw.elapsedMilliseconds} ms',
@@ -4314,7 +4357,7 @@ class DatabaseHelper {
     return DateTime(fyStartYear, 4, 1).toIso8601String().substring(0, 10);
   }
 
-  /// Seeds the ten built-in [document_templates] presets (5 layout + 5 industry).
+  /// Seeds built-in [document_templates] presets.
   /// Safe to call multiple times — uses INSERT OR IGNORE on the preset names.
   Future<void> _seedDocumentTemplatePresets(Database db) async {
     const now = '2026-01-01T00:00:00.000';
@@ -4334,6 +4377,18 @@ class DatabaseHelper {
       {
         'name': 'Corporate Ledger',
         'based_on': 'ledger',
+        'accent_color_hex': '#000000',
+        'header_style': 'minimal',
+        'show_logo': 1,
+        'amount_decimal_digits': 2,
+        'page_size': 'a4',
+        'is_active': 0,
+        'is_preset': 1,
+        'created_at': now,
+      },
+      {
+        'name': 'Industrial Grid',
+        'based_on': 'industrial',
         'accent_color_hex': '#000000',
         'header_style': 'minimal',
         'show_logo': 1,

@@ -685,6 +685,91 @@ class DocumentTemplate {
     amountDecimalDigits: 0,
   );
 
+  /// Industrial Grid: dense black-and-white tabular invoice inspired by
+  /// traditional manufacturing invoice stationery.
+  static const industrial = DocumentTemplate(
+    id: 'industrial',
+    name: 'Industrial Grid',
+    accentColor: PdfColors.black,
+    headerStyle: PdfHeaderStyle.minimal,
+    showLogo: true,
+    amountDecimalDigits: 2,
+    pageSize: PageSize.a4,
+    fontFamily: PdfFontFamily.times,
+    bodyFontSize: 8.5,
+    titleFontSize: 18,
+    pageMargin: 20,
+    sectionSpacing: 10,
+    itemColumnWidthPct: 46,
+    headerAlignment: PdfHeaderAlignment.left,
+    config: PdfTemplateConfig(
+      sectionOrder: ['header', 'parties', 'items', 'gst', 'totals', 'footer'],
+      columns: [
+        PdfTemplateColumn(
+          id: 'index',
+          label: 'SL. No.',
+          widthPct: 6,
+          alignment: PdfTextAlign.center,
+        ),
+        PdfTemplateColumn(
+          id: 'hsn',
+          label: 'HSN Code',
+          widthPct: 10,
+          alignment: PdfTextAlign.left,
+        ),
+        PdfTemplateColumn(
+          id: 'item',
+          label: 'Product Name / Description',
+          widthPct: 46,
+          alignment: PdfTextAlign.left,
+        ),
+        PdfTemplateColumn(
+          id: 'qty',
+          label: 'Qty.',
+          widthPct: 11,
+          alignment: PdfTextAlign.center,
+        ),
+        PdfTemplateColumn(
+          id: 'rate',
+          label: 'Unit Price',
+          widthPct: 13,
+          alignment: PdfTextAlign.center,
+        ),
+        PdfTemplateColumn(
+          id: 'amount',
+          label: 'Total',
+          widthPct: 14,
+          alignment: PdfTextAlign.center,
+        ),
+      ],
+      rowDensity: 'compact',
+      logoPosition: 'aboveRight',
+      logoSize: 50,
+      titleStyle: 'boxed',
+      dividerThickness: 2,
+      totalsAlignment: 'right',
+      showSubtotal: true,
+      showTaxBreakdown: true,
+      showPaid: true,
+      showBalance: true,
+      showAmountInWords: false,
+      balanceColorHex: '#000000',
+      paymentDisplay: 'text',
+      paymentText: '',
+      footerMessage: '',
+      showTerms: true,
+      showSignature: true,
+      signatureLabel: 'For Authorised Signatory',
+      signatureAlignment: 'right',
+      showGeneratedDate: false,
+      showDocumentNumber: true,
+      showDates: true,
+      showGstin: true,
+      showAddresses: true,
+      showNotes: true,
+    ),
+  );
+
   static const List<DocumentTemplate> presets = [
     classic,
     ledger,
@@ -696,6 +781,7 @@ class DocumentTemplate {
     service,
     freelancer,
     generic,
+    industrial,
   ];
 
   static DocumentTemplate fromId(String id) =>
@@ -718,6 +804,8 @@ class PdfPartyInfo {
   const PdfPartyInfo({
     required this.name,
     this.gstin,
+    this.panNo,
+    this.tinNo,
     this.address,
     this.phone,
     this.phones,
@@ -729,6 +817,8 @@ class PdfPartyInfo {
 
   final String name;
   final String? gstin;
+  final String? panNo;
+  final String? tinNo;
   final String? address;
   final String? phone;
   final List<String>? phones;
@@ -906,6 +996,15 @@ class PdfDocumentData {
     this.placeOfSupply,
     this.reverseCharge = false,
     this.notes,
+    this.referenceDocNo,
+    this.referenceDocDate,
+    this.poNumber,
+    this.vehicleNo,
+    this.bankName,
+    this.bankAccountNo,
+    this.bankIfsc,
+    this.bankBranch,
+    this.bankAccountName,
     required this.lineItems,
     required this.totals,
     this.transport,
@@ -948,6 +1047,17 @@ class PdfDocumentData {
   final String? placeOfSupply;
   final bool reverseCharge;
   final String? notes;
+
+  // ── Optional invoice metadata used by industrial grid layout ─────────────
+  final String? referenceDocNo;
+  final String? referenceDocDate;
+  final String? poNumber;
+  final String? vehicleNo;
+  final String? bankName;
+  final String? bankAccountNo;
+  final String? bankIfsc;
+  final String? bankBranch;
+  final String? bankAccountName;
 
   final List<PdfLineItem> lineItems;
   final PdfTotals totals;

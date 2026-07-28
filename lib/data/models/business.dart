@@ -18,6 +18,8 @@ class Business extends Equatable {
     this.email,
     this.phones,
     this.gstNo,
+    this.panNo,
+    this.tinNo,
     this.logoPath,
     this.logoMediaId,
     this.isActive = false,
@@ -49,6 +51,8 @@ class Business extends Equatable {
   final List<String>? phones;
   final String? email;
   final String? gstNo;
+  final String? panNo;
+  final String? tinNo;
 
   /// Absolute path to a locally stored logo image.
   final String? logoPath;
@@ -98,6 +102,8 @@ class Business extends Equatable {
     String? phone,
     String? email,
     String? gstNo,
+    String? panNo,
+    String? tinNo,
     String? logoPath,
     String? logoMediaId,
     bool? isActive,
@@ -122,6 +128,8 @@ class Business extends Equatable {
     phone: phone ?? this.phone,
     email: email ?? this.email,
     gstNo: gstNo ?? this.gstNo,
+    panNo: panNo ?? this.panNo,
+    tinNo: tinNo ?? this.tinNo,
     logoPath: logoPath ?? this.logoPath,
     logoMediaId: logoMediaId ?? this.logoMediaId,
     isActive: isActive ?? this.isActive,
@@ -149,6 +157,8 @@ class Business extends Equatable {
     'phones_json': phones == null ? null : jsonEncode(phones),
     'email': email,
     'gst_no': gstNo,
+    'pan_no': panNo,
+    'tin_no': tinNo,
     'logo_path': logoPath,
     'logo_media_id': logoMediaId,
     'is_active': isActive ? 1 : 0,
@@ -174,6 +184,8 @@ class Business extends Equatable {
     phone: map['phone'] as String?,
     email: map['email'] as String?,
     gstNo: map['gst_no'] as String?,
+    panNo: map['pan_no'] as String?,
+    tinNo: map['tin_no'] as String?,
     logoPath: map['logo_path'] as String?,
     logoMediaId: map['logo_media_id'] as String?,
     isActive: (map['is_active'] as int? ?? 0) == 1,
@@ -203,6 +215,8 @@ class Business extends Equatable {
     id,
     name,
     gstNo,
+    panNo,
+    tinNo,
     phone,
     phones,
     isActive,

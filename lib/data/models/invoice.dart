@@ -262,6 +262,7 @@ class Invoice extends Equatable {
     this.paidAt,
     this.paymentMethod,
     this.notes,
+    this.poNumber,
     this.items = const [],
     required this.createdAt,
     required this.updatedAt,
@@ -322,6 +323,7 @@ class Invoice extends Equatable {
   /// Payment method used (null if not paid). Stored as PaymentMethod enum name.
   final String? paymentMethod;
   final String? notes;
+  final String? poNumber;
   final List<InvoiceItem> items;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -445,6 +447,7 @@ class Invoice extends Equatable {
     DateTime? paidAt,
     String? paymentMethod,
     String? notes,
+    String? poNumber,
     List<InvoiceItem>? items,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -496,6 +499,7 @@ class Invoice extends Equatable {
       paidAt: paidAt ?? this.paidAt,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       notes: notes ?? this.notes,
+      poNumber: poNumber ?? this.poNumber,
       items: items ?? this.items,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -549,6 +553,7 @@ class Invoice extends Equatable {
     'paid_at': paidAt?.toIso8601String(),
     'payment_method': paymentMethod,
     'notes': notes,
+    'po_number': poNumber,
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
     'reminder_sent_at': reminderSentAt?.toIso8601String(),
@@ -607,6 +612,7 @@ class Invoice extends Equatable {
         : null,
     paymentMethod: map['payment_method'] as String?,
     notes: map['notes'] as String?,
+    poNumber: map['po_number'] as String?,
     items: items,
     createdAt: DateTime.parse(map['created_at'] as String),
     updatedAt: DateTime.parse(map['updated_at'] as String),
@@ -651,6 +657,7 @@ class Invoice extends Equatable {
     id,
     invoiceNo,
     customerName,
+    poNumber,
     status,
     total,
     paidAmount,

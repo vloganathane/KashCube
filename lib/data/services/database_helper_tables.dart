@@ -324,10 +324,13 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('''
       CREATE TABLE accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id INTEGER REFERENCES businesses(id),
         account_type TEXT NOT NULL,
         account_name TEXT NOT NULL,
         bank_name TEXT,
         account_number_last4 TEXT,
+        ifsc_code TEXT,
+        branch TEXT,
         current_balance REAL,
         opening_balance REAL,
         credit_limit REAL,
@@ -354,6 +357,9 @@ extension _DatabaseTableCreators on DatabaseHelper {
     await db.execute('CREATE INDEX idx_accounts_active ON accounts(is_active)');
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_accounts_context ON accounts(context_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_accounts_business ON accounts(business_id)',
     );
 
     await db.execute('''
@@ -554,6 +560,8 @@ extension _DatabaseTableCreators on DatabaseHelper {
         phones_json TEXT,
         email TEXT,
         gst_no TEXT,
+        pan_no TEXT,
+        tin_no TEXT,
         logo_path TEXT,
         logo_media_id TEXT,
         is_active INTEGER NOT NULL DEFAULT 0,
@@ -847,6 +855,7 @@ extension _DatabaseTableCreators on DatabaseHelper {
         paid_at TEXT,
         payment_method TEXT,
         reminder_sent_at TEXT,
+        po_number TEXT,
         invoice_type TEXT NOT NULL DEFAULT 'tax_invoice',
         place_of_supply TEXT,
         reverse_charge INTEGER NOT NULL DEFAULT 0,

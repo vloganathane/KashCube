@@ -323,6 +323,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
   late List<TextEditingController> _phoneControllers;
   late final TextEditingController _email;
   late final TextEditingController _gst;
+  late final TextEditingController _pan;
+  late final TextEditingController _tin;
   late final TextEditingController _website;
   late final TextEditingController _whatsapp;
   late final TextEditingController _linkedin;
@@ -361,6 +363,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
         .toList();
     _email = TextEditingController(text: b?.email ?? '');
     _gst = TextEditingController(text: b?.gstNo ?? '');
+    _pan = TextEditingController(text: b?.panNo ?? '');
+    _tin = TextEditingController(text: b?.tinNo ?? '');
     _website = TextEditingController(text: b?.website ?? '');
     _whatsapp = TextEditingController(text: b?.whatsapp ?? '');
     _linkedin = TextEditingController(text: b?.linkedin ?? '');
@@ -394,6 +398,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       _pincode,
       _email,
       _gst,
+      _pan,
+      _tin,
       _website,
       _whatsapp,
       _linkedin,
@@ -512,6 +518,8 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
       })(),
       email: nullIfEmpty(_email),
       gstNo: nullIfEmpty(_gst)?.toUpperCase(),
+      panNo: nullIfEmpty(_pan)?.toUpperCase(),
+      tinNo: nullIfEmpty(_tin)?.toUpperCase(),
       logoPath: _logoPath,
       logoMediaId: _logoMediaId,
       website: nullIfEmpty(_website),
@@ -617,6 +625,30 @@ class _BusinessFormSheetState extends ConsumerState<_BusinessFormSheet> {
                 ),
                 textCapitalization: TextCapitalization.characters,
                 validator: GstinValidator.validate,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+
+              // PAN / TIN
+              TextFormField(
+                controller: _pan,
+                decoration: const InputDecoration(
+                  labelText: 'PAN',
+                  hintText: 'ABCDE1234F',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.badge_outlined),
+                ),
+                textCapitalization: TextCapitalization.characters,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              TextFormField(
+                controller: _tin,
+                decoration: const InputDecoration(
+                  labelText: 'TIN',
+                  hintText: 'TIN / VAT number',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.confirmation_number_outlined),
+                ),
+                textCapitalization: TextCapitalization.characters,
               ),
               const SizedBox(height: AppSpacing.sm),
 

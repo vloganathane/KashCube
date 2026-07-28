@@ -211,6 +211,7 @@ class PdfLayoutEngine {
   ) {
     final seller = data.seller;
     final buyer = data.buyer;
+    final delivery = data.shipTo;
     final plainMoney = NumberFormat('#,##0.00', 'en_IN');
     final dateFmt = DateFormat('dd-MM-yyyy');
     final items = data.lineItems;
@@ -239,7 +240,7 @@ class PdfLayoutEngine {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
-            'INVOICE',
+            data.typeLabel.toUpperCase(),
             style: pw.TextStyle(
               fontSize: 24,
               fontWeight: pw.FontWeight.bold,
@@ -329,24 +330,24 @@ class PdfLayoutEngine {
                       textAlign: pw.TextAlign.right,
                       style: const pw.TextStyle(fontSize: 9),
                     ),
-                  // if (seller.gstin != null && seller.gstin!.isNotEmpty)
-                  //   pw.Text(
-                  //     'GSTIN: ${seller.gstin}',
-                  //     textAlign: pw.TextAlign.right,
-                  //     style: const pw.TextStyle(fontSize: 9),
-                  //   ),
-                  // if (seller.panNo != null && seller.panNo!.isNotEmpty)
-                  //   pw.Text(
-                  //     'PAN: ${seller.panNo}',
-                  //     textAlign: pw.TextAlign.right,
-                  //     style: const pw.TextStyle(fontSize: 9),
-                  //   ),
-                  // if (seller.tinNo != null && seller.tinNo!.isNotEmpty)
-                  //   pw.Text(
-                  //     'TIN: ${seller.tinNo}',
-                  //     textAlign: pw.TextAlign.right,
-                  //     style: const pw.TextStyle(fontSize: 9),
-                  //   ),
+                  if (seller.gstin != null && seller.gstin!.isNotEmpty)
+                    pw.Text(
+                      'GSTIN: ${seller.gstin}',
+                      textAlign: pw.TextAlign.right,
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  if (seller.panNo != null && seller.panNo!.isNotEmpty)
+                    pw.Text(
+                      'PAN: ${seller.panNo}',
+                      textAlign: pw.TextAlign.right,
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
+                  if (seller.tinNo != null && seller.tinNo!.isNotEmpty)
+                    pw.Text(
+                      'TIN: ${seller.tinNo}',
+                      textAlign: pw.TextAlign.right,
+                      style: const pw.TextStyle(fontSize: 9),
+                    ),
                 ],
               ),
             ),
@@ -377,7 +378,7 @@ class PdfLayoutEngine {
                   ),
                 ),
                 pw.Text(
-                  'Our Details',
+                  'Delivery Address',
                   style: pw.TextStyle(
                     color: PdfColors.white,
                     fontSize: 9,
@@ -433,16 +434,37 @@ class PdfLayoutEngine {
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      if (seller.gstin != null && seller.gstin!.isNotEmpty)
-                        _industrialKvp('GSTIN', seller.gstin!),
-                      if (seller.panNo != null && seller.panNo!.isNotEmpty)
-                        _industrialKvp('PAN', seller.panNo!),
-                      if (seller.tinNo != null && seller.tinNo!.isNotEmpty)
-                        _industrialKvp('TIN', seller.tinNo!),
-                      // if (seller.phone != null && seller.phone!.isNotEmpty)
-                      //   _industrialKvp('PHONE', seller.phone!),
-                      // if (seller.email != null && seller.email!.isNotEmpty)
-                      //   _industrialKvp('EMAIL', seller.email!),
+                      if (delivery != null) ...[
+                        pw.Text(
+                          delivery.name.toUpperCase(),
+                          style: pw.TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        if (delivery.address != null &&
+                            delivery.address!.isNotEmpty)
+                          pw.Text(
+                            delivery.address!,
+                            style: const pw.TextStyle(fontSize: 8.2),
+                          ),
+                        if (delivery.state != null &&
+                            delivery.state!.isNotEmpty)
+                          pw.Text(
+                            '${delivery.state}, India.',
+                            style: pw.TextStyle(
+                              fontSize: 8.2,
+                              fontStyle: pw.FontStyle.italic,
+                            ),
+                          ),
+                      ] else
+                        pw.Text(
+                          'Same as billing address',
+                          style: pw.TextStyle(
+                            fontSize: 8.2,
+                            fontStyle: pw.FontStyle.italic,
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -662,16 +684,6 @@ class PdfLayoutEngine {
           fontSize: 8.5,
           fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
         ),
-      ),
-    );
-  }
-
-  pw.Widget _industrialKvp(String key, String value) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.only(bottom: 2),
-      child: pw.Text(
-        '$key : $value',
-        style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
       ),
     );
   }

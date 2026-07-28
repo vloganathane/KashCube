@@ -38,7 +38,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Files]
-Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Exclude transient local database files from .dart_tool to avoid shipping
+; developer/runtime data inside the installer payload.
+Source: "..\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Excludes: ".dart_tool\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Dirs]
 ; Create a per-user data directory under Local AppData and mark it so

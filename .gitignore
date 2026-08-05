@@ -54,3 +54,4 @@ ios/Runner/GoogleService-Info.plist
 
 # Sample / scratch files
 /sample/
+.pi/

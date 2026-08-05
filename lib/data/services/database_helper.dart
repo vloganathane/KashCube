@@ -2508,9 +2508,9 @@ class DatabaseHelper {
         )
       ''');
 
-      // ── Step F: Seed subscription (free tier, 1 row) ───────────────────────
+      // ── Step F: Seed subscription (business tier — all features free) ───────────────────────
       await db.execute(
-        "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')",
+        "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'business')",
       );
 
       // ── Step G: Seed plan_features matrix ─────────────────────────────────
@@ -3409,7 +3409,7 @@ class DatabaseHelper {
             )
           """);
           await db.execute(
-            "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'free')",
+            "INSERT OR IGNORE INTO subscription (id, plan) VALUES (1, 'business')",
           );
           debugPrint('[DB v76] subscription recreated from scratch');
         } catch (e2) {
@@ -4212,7 +4212,7 @@ class DatabaseHelper {
     });
   }
 
-  /// Seeds the [plan_features] table with the free / pro / team capability matrix.
+  /// Seeds the [plan_features] table with the free / starter / business capability matrix.
   /// Uses [ConflictAlgorithm.ignore] so re-running on upgrades is safe.
   Future<void> _seedPlanFeatures(Database db) async {
     final rows = <Map<String, Object?>>[
@@ -4224,21 +4224,21 @@ class DatabaseHelper {
         'limit_value': 0,
       },
       {
-        'plan': 'pro',
+        'plan': 'starter',
         'feature': 'linked_devices',
         'enabled': 1,
         'limit_value': 2,
       },
       {
-        'plan': 'team',
+        'plan': 'business',
         'feature': 'linked_devices',
         'enabled': 1,
-        'limit_value': 10,
+        'limit_value': 0,
       },
       // app_users
       {'plan': 'free', 'feature': 'app_users', 'enabled': 1, 'limit_value': 0},
-      {'plan': 'pro', 'feature': 'app_users', 'enabled': 1, 'limit_value': 3},
-      {'plan': 'team', 'feature': 'app_users', 'enabled': 1, 'limit_value': 20},
+      {'plan': 'starter', 'feature': 'app_users', 'enabled': 1, 'limit_value': 3},
+      {'plan': 'business', 'feature': 'app_users', 'enabled': 1, 'limit_value': 0},
       // cashier_mode
       {
         'plan': 'free',
@@ -4247,26 +4247,21 @@ class DatabaseHelper {
         'limit_value': 1,
       },
       {
-        'plan': 'pro',
+        'plan': 'starter',
         'feature': 'cashier_mode',
         'enabled': 1,
         'limit_value': 1,
       },
       {
-        'plan': 'team',
+        'plan': 'business',
         'feature': 'cashier_mode',
         'enabled': 1,
-        'limit_value': 1,
+        'limit_value': 0,
       },
       // businesses
       {'plan': 'free', 'feature': 'businesses', 'enabled': 1, 'limit_value': 1},
-      {'plan': 'pro', 'feature': 'businesses', 'enabled': 1, 'limit_value': 3},
-      {
-        'plan': 'team',
-        'feature': 'businesses',
-        'enabled': 1,
-        'limit_value': 10,
-      },
+      {'plan': 'starter', 'feature': 'businesses', 'enabled': 1, 'limit_value': 3},
+      {'plan': 'business', 'feature': 'businesses', 'enabled': 1, 'limit_value': 0},
       // report_history_months (0 = unlimited)
       {
         'plan': 'free',
@@ -4275,21 +4270,21 @@ class DatabaseHelper {
         'limit_value': 3,
       },
       {
-        'plan': 'pro',
+        'plan': 'starter',
         'feature': 'report_history_months',
         'enabled': 1,
         'limit_value': 24,
       },
       {
-        'plan': 'team',
+        'plan': 'business',
         'feature': 'report_history_months',
         'enabled': 1,
         'limit_value': 0,
       },
       // lan_sync
       {'plan': 'free', 'feature': 'lan_sync', 'enabled': 0, 'limit_value': 0},
-      {'plan': 'pro', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 1},
-      {'plan': 'team', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 1},
+      {'plan': 'starter', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 1},
+      {'plan': 'business', 'feature': 'lan_sync', 'enabled': 1, 'limit_value': 0},
     ];
     for (final row in rows) {
       await db.insert(

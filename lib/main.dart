@@ -23,7 +23,6 @@ import 'data/services/pdf_cache_manager.dart';
 import 'data/services/web/web_companion_service.dart';
 import 'presentation/app_shell.dart';
 import 'presentation/providers/app_user_provider.dart';
-import 'presentation/providers/iap_provider.dart';
 import 'presentation/providers/notification_provider.dart';
 import 'presentation/providers/settings_provider.dart';
 import 'presentation/providers/sync_auto_refresh_provider.dart';
@@ -222,9 +221,6 @@ class KashCubeApp extends ConsumerWidget {
     // Activate the scheduler so notifications stay in sync with upcoming items.
     // Skip on web — flutter_local_notifications and timezone db are mobile-only.
     if (!kIsWeb) ref.watch(notificationSchedulerProvider);
-    // Initialise Play Billing so the subscription listener is live from startup.
-    // Skip on web — in_app_purchase is Android/iOS only.
-    if (!kIsWeb) ref.watch(iapServiceProvider);
 
     // ── Web Companion disabled for Play Store release ──────────────────────
     // See docs/WEB_COMPANION_REENABLE.md for re-enablement steps
